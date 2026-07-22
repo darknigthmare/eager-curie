@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIVE ASCENSION — Cycle Évolutif & RTS Organique</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Creepster&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/css/style.css?v=20260722-3">
+
+  <!-- Three.js runtime. The game shows a recovery message if the CDN or WebGL is unavailable. -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <div id="app-container">
+    <!-- WebGL Render Canvas -->
+    <canvas id="game-canvas" tabindex="0" aria-label="Zone de jeu 3D de HIVE ASCENSION">
+      Votre navigateur doit prendre en charge WebGL pour afficher la zone de jeu.
+    </canvas>
+
+    <!-- Post-Processing & Sensor Vision Overlays -->
+    <div id="vision-overlay" class="vision-normal" aria-hidden="true"></div>
+    <div id="crt-scanlines" aria-hidden="true"></div>
+
+    <!-- Top Status Header (Human / Hive Bimodal HUD) -->
+    <header id="hud-header">
+      <div class="hud-left">
+        <div class="brand-title">HIVE ASCENSION</div>
+        <div class="stage-badge" id="stage-badge">PHASE 1 : ŒUF</div>
+      </div>
+
+      <div class="hud-center">
+        <!-- Sensor Vision Selector -->
+        <div class="vision-selector" role="group" aria-label="Mode de vision">
+          <button type="button" id="btn-vis-normal" class="vis-btn active" aria-pressed="true" title="Vision optique normale (Clavier : F1)">NATIVE [F1]</button>
+          <button type="button" id="btn-vis-thermal" class="vis-btn" aria-pressed="false" title="Vision thermique (Clavier : F2)">THERMAL [F2]</button>
+          <button type="button" id="btn-vis-acoustic" class="vis-btn" aria-pressed="false" title="Vision sonar / vibration (Clavier : F3)">ACOUSTIC [F3]</button>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <!-- Human Alert Status -->
+        <div class="alert-box" id="alert-box">
+          <span class="alert-label">ALERTE STATION:</span>
+          <span class="alert-level level-0" id="alert-level-text" role="status" aria-live="polite">NIVEAU 0 — IGNORANCE</span>
+        </div>
+        <button type="button" id="btn-toggle-hud" class="mobile-hud-toggle" aria-expanded="true" aria-controls="hud-sidebar">MASQUER HUD</button>
+      </div>
+    </header>
+
+    <!-- Side Panel / Stats & Context Info -->
+    <aside id="hud-sidebar" class="sidebar-bio" aria-label="État et commandes du jeu" tabindex="0">
+      <div class="panel-section">
+        <h2 class="section-title" id="bio-title">STATUT BIOLOGIQUE</h2>
+
+        <!-- Health / Bio-Integrity -->
+        <div class="stat-bar-group">
+          <div class="stat-header">
+            <span id="stat-vital-label">INTÉGRITÉ BIO</span>
+            <span id="stat-vital-val">100%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill vital-fill" id="stat-vital-fill" role="progressbar" aria-labelledby="stat-vital-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" style="width: 100%;"></div></div>
+        </div>
+
+        <!-- Secondary Resource Bar (Acide / Biomass / Time) -->
+        <div class="stat-bar-group">
+          <div class="stat-header">
+            <span id="stat-sec-label">RÉSERVE ACIDE</span>
+            <span id="stat-sec-val">100%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill sec-fill" id="stat-sec-fill" role="progressbar" aria-labelledby="stat-sec-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" style="width: 100%;"></div></div>
+        </div>
+
+        <!-- Organic Hive Stats (Visible in Stage 4 & 5) -->
+        <div id="hive-stats-group" class="hidden">
+          <div class="hive-stat"><span class="h-icon">🧬</span> BIOMASSE: <span id="hive-biomass">120</span></div>
+          <div class="hive-stat"><span class="h-icon">👤</span> HÔTES EN COCON: <span id="hive-hosts">0</span></div>
+          <div class="hive-stat"><span class="h-icon">👾</span> UNITÉS RUCHE: <span id="hive-units">1</span></div>
+          <div class="hive-stat"><span class="h-icon">🕸️</span> EMPRISE RÉSINE: <span id="hive-resin">0%</span></div>
+        </div>
+      </div>
+
+      <!-- Stage Specific Action Controls & Instructions -->
+      <div class="panel-section">
+        <h2 class="section-title">COMMANDES & ACTION</h2>
+        <div id="stage-instructions" class="instruction-box">
+          <!-- Populated dynamically per stage -->
+        </div>
+        <div id="action-buttons-container" class="action-btn-list">
+          <!-- Dynamic Action Buttons -->
+        </div>
+      </div>
+
+      <!-- Sensor Log Output -->
+      <div class="panel-section log-section">
+        <h2 class="section-title">LOG SENSORIEL</h2>
+        <div id="sensor-log" class="log-box" role="log" aria-label="Historique du log sensoriel" aria-live="polite" aria-relevant="additions" tabindex="0">
+          <div class="log-line info">[SENSORS] Périmètre d'éclosion stabilisé. Présence biologique détectée.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Phase Transition Modal Banner -->
+    <div id="stage-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title" aria-describedby="modal-description">
+      <div class="modal-card">
+        <div class="modal-header" id="modal-stage-num">TRANSFORMATION BIOLOGIQUE</div>
+        <h2 id="modal-title">ÉVOLUTION EN COURS</h2>
+        <p id="modal-description">La créature mute et adapte sa physiologie aux besoins de la colonie...</p>
+
+        <!-- Conserved for the earlier modular prototype; hidden in the active game flow. -->
+        <div id="embryo-choices" class="choices-container hidden" role="group" aria-label="Adaptation embryonnaire">
+          <button type="button" class="choice-card" data-mutation="agility">
+            <span class="c-title">⚡ MUTATION AGILITÉ</span>
+            <span class="c-desc">Vitesse de déplacement accrue et mouvements silencieux.</span>
+          </button>
+          <button type="button" class="choice-card" data-mutation="acid">
+            <span class="c-title">🧪 SANG HYDROCHLORIQUE</span>
+            <span class="c-desc">Projection d'acide corrosive renforcée.</span>
+          </button>
+          <button type="button" class="choice-card" data-mutation="carapace">
+            <span class="c-title">🛡️ CHITINE RENFORCÉE</span>
+            <span class="c-desc">Résistance accrue aux projectiles et au feu.</span>
+          </button>
+        </div>
+
+        <button type="button" id="modal-btn-continue" class="modal-btn">POURSUIVRE L'ASCENSION ➔</button>
+      </div>
+    </div>
+
+    <!-- RTS Pheromone Paint Bar (Stage 5 Only) -->
+    <div id="rts-control-bar" class="rts-bar hidden" role="group" aria-label="Commandes phéromonales">
+      <div class="rts-bar-title">PHÉROMONES DE COMMANDE</div>
+      <button type="button" class="rts-cmd-btn active" data-cmd="HUNT" aria-pressed="true" title="Touche Q">
+        <span class="cmd-icon">🎯</span> CHASSER [Q]
+      </button>
+      <button type="button" class="rts-cmd-btn" data-cmd="CAPTURE" aria-pressed="false" title="Touche W">
+        <span class="cmd-icon">🕸️</span> CAPTURER [W]
+      </button>
+      <button type="button" class="rts-cmd-btn" data-cmd="DEFEND" aria-pressed="false" title="Touche E">
+        <span class="cmd-icon">🛡️</span> DÉFENDRE [E]
+      </button>
+      <button type="button" class="rts-cmd-btn" data-cmd="INFEST" aria-pressed="false" title="Touche R">
+        <span class="cmd-icon">☣️</span> INFESTER [R]
+      </button>
+      <button type="button" id="btn-possess-mode" class="rts-cmd-btn possess-btn" aria-pressed="false" title="Prendre le contrôle direct d'une unité (Touche P)">
+        <span class="cmd-icon">👁️</span> POSSESSION DIRECTE
+      </button>
+    </div>
+
+    <!-- Bottom Notification Toast -->
+    <div id="toast-message" class="toast hidden" role="status" aria-live="polite"></div>
+    <noscript><div class="fatal-message">JavaScript doit être activé pour lancer HIVE ASCENSION.</div></noscript>
+  </div>
+
+  <!-- Main Standalone Game Script -->
+  <script defer src="src/game.js?v=20260722-12"></script>
+</body>
+</html>

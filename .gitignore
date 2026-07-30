@@ -12,3 +12,6 @@ coverage/
 # Local Vercel project link
 .vercel/
 .tools/
+
+# Local visual QA evidence
+audit/current-flow/

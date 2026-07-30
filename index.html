@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HIVE ASCENSION — Cycle Évolutif & RTS Organique</title>
+  <title>HIVE ASCENSION — Campagne de la Ruche</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Creepster&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="src/css/style.css?v=20260722-3">
+  <link rel="stylesheet" href="src/css/style.css?v=20260730-1">
 
   <!-- Three.js runtime. The game shows a recovery message if the CDN or WebGL is unavailable. -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -22,6 +22,66 @@
     <!-- Post-Processing & Sensor Vision Overlays -->
     <div id="vision-overlay" class="vision-normal" aria-hidden="true"></div>
     <div id="crt-scanlines" aria-hidden="true"></div>
+
+    <!-- =========================================================
+         FRONT-END — MENU PRINCIPAL ET PROLOGUE
+    ========================================================== -->
+    <section id="boot-screen" class="front-screen" aria-labelledby="boot-title">
+      <div class="front-card boot-card">
+        <div class="front-kicker">ARCHIVE BIOLOGIQUE // LV-X91</div>
+        <h1 id="boot-title">HIVE <span>ASCENSION</span></h1>
+        <p class="front-subtitle">Une campagne complète, de l’ovomorphe à la conquête de la station MNEMOSYNE.</p>
+
+        <div class="transmission-card">
+          <span class="transmission-status" aria-hidden="true"></span>
+          <div>
+            <strong>TRANSMISSION RÉCUPÉRÉE</strong>
+            <p>Le programme de confinement ORPHEUS ne répond plus. Présence biologique non répertoriée.</p>
+          </div>
+        </div>
+
+        <div class="campaign-options">
+          <label for="difficulty-select">DIFFICULTÉ</label>
+          <select id="difficulty-select">
+            <option value="story">RÉCIT — menace réduite</option>
+            <option value="survivor" selected>SURVIVANT — expérience équilibrée</option>
+            <option value="nightmare">CAUCHEMAR — réaction humaine extrême</option>
+          </select>
+          <label class="toggle-row">
+            <input type="checkbox" id="expanded-lore-toggle" checked>
+            <span>Autoriser les castes compatibles avec l’univers étendu</span>
+          </label>
+        </div>
+
+        <div class="front-actions">
+          <button type="button" id="btn-new-campaign" class="front-primary">NOUVELLE CAMPAGNE</button>
+          <button type="button" id="btn-continue-campaign" class="front-secondary">CONTINUER</button>
+          <button type="button" id="btn-open-codex-menu" class="front-tertiary">CODEX BIOLOGIQUE</button>
+        </div>
+        <p class="front-meta">Campagne solo tactique · 5 actes · sauvegarde automatique · 3 conclusions</p>
+      </div>
+    </section>
+
+    <section id="prologue-screen" class="front-screen hidden" aria-labelledby="prologue-title" aria-hidden="true">
+      <div class="front-card prologue-card">
+        <div class="front-kicker">PROLOGUE // JOUR 01 — 03:17</div>
+        <h2 id="prologue-title">LE DERNIER ÉCHANTILLON</h2>
+        <div class="prologue-layout">
+          <div class="prologue-copy">
+            <p>Le remorqueur civil ÉCHO-12 a livré à MNEMOSYNE un conteneur récupéré près d’une épave sans balise.</p>
+            <p>La directrice Elian Torv a ordonné l’incubation malgré les réserves de l’équipe de quarantaine. Le premier scan a provoqué une panne. Le second n’a jamais été transmis.</p>
+            <blockquote>« IRISE exige un spécimen vivant. Aucun écart de protocole. »</blockquote>
+          </div>
+          <dl class="prologue-data">
+            <div><dt>STATION</dt><dd>MNEMOSYNE</dd></div>
+            <div><dt>ÉQUIPAGE</dt><dd>48 SIGNES VITAUX</dd></div>
+            <div><dt>CONFINEMENT</dt><dd>INSTABLE</dd></div>
+            <div><dt>DIRECTIVE</dt><dd>SURVIVRE · ADAPTER · PROLIFÉRER</dd></div>
+          </dl>
+        </div>
+        <button type="button" id="btn-start-act-one" class="front-primary">COMMENCER L’ACTE I</button>
+      </div>
+    </section>
 
     <!-- Top Status Header (Human / Hive Bimodal HUD) -->
     <header id="hud-header">
@@ -45,9 +105,24 @@
           <span class="alert-label">ALERTE STATION:</span>
           <span class="alert-level level-0" id="alert-level-text" role="status" aria-live="polite">NIVEAU 0 — IGNORANCE</span>
         </div>
+        <div class="utility-controls" role="group" aria-label="Menus du jeu">
+          <button type="button" id="btn-open-codex" class="utility-btn" title="Ouvrir le codex (C)">CODEX</button>
+          <button type="button" id="btn-audio-toggle" class="utility-btn" aria-pressed="false" title="Couper ou rétablir le son">SON</button>
+          <button type="button" id="btn-pause-game" class="utility-btn" title="Pause (Échap)">PAUSE</button>
+        </div>
         <button type="button" id="btn-toggle-hud" class="mobile-hud-toggle" aria-expanded="true" aria-controls="hud-sidebar">MASQUER HUD</button>
       </div>
     </header>
+
+    <!-- Mission tracker: deliberately separate from the action sidebar. -->
+    <section id="mission-tracker" aria-label="Objectif de mission">
+      <span id="mission-act">ACTE I</span>
+      <div>
+        <strong id="mission-title">ÉCLOSION</strong>
+        <p id="mission-objective">Percevoir une présence viable dans le laboratoire.</p>
+      </div>
+      <span id="mission-progress">0 / 3</span>
+    </section>
 
     <!-- Side Panel / Stats & Context Info -->
     <aside id="hud-sidebar" class="sidebar-bio" aria-label="État et commandes du jeu" tabindex="0">
@@ -74,10 +149,10 @@
 
         <!-- Organic Hive Stats (Visible in Stage 4 & 5) -->
         <div id="hive-stats-group" class="hidden">
-          <div class="hive-stat"><span class="h-icon">🧬</span> BIOMASSE: <span id="hive-biomass">120</span></div>
-          <div class="hive-stat"><span class="h-icon">👤</span> HÔTES EN COCON: <span id="hive-hosts">0</span></div>
-          <div class="hive-stat"><span class="h-icon">👾</span> UNITÉS RUCHE: <span id="hive-units">1</span></div>
-          <div class="hive-stat"><span class="h-icon">🕸️</span> EMPRISE RÉSINE: <span id="hive-resin">0%</span></div>
+          <div class="hive-stat">BIOMASSE: <span id="hive-biomass">0</span></div>
+          <div class="hive-stat">HÔTES EN COCON: <span id="hive-hosts">0</span></div>
+          <div class="hive-stat">UNITÉS RUCHE: <span id="hive-units">0</span></div>
+          <div class="hive-stat">EMPRISE RÉSINE: <span id="hive-resin">0%</span></div>
         </div>
       </div>
 
@@ -111,15 +186,15 @@
         <!-- Conserved for the earlier modular prototype; hidden in the active game flow. -->
         <div id="embryo-choices" class="choices-container hidden" role="group" aria-label="Adaptation embryonnaire">
           <button type="button" class="choice-card" data-mutation="agility">
-            <span class="c-title">⚡ MUTATION AGILITÉ</span>
+            <span class="c-title">MUTATION AGILITÉ</span>
             <span class="c-desc">Vitesse de déplacement accrue et mouvements silencieux.</span>
           </button>
           <button type="button" class="choice-card" data-mutation="acid">
-            <span class="c-title">🧪 SANG HYDROCHLORIQUE</span>
+            <span class="c-title">SANG ACIDE</span>
             <span class="c-desc">Projection d'acide corrosive renforcée.</span>
           </button>
           <button type="button" class="choice-card" data-mutation="carapace">
-            <span class="c-title">🛡️ CHITINE RENFORCÉE</span>
+            <span class="c-title">CHITINE RENFORCÉE</span>
             <span class="c-desc">Résistance accrue aux projectiles et au feu.</span>
           </button>
         </div>
@@ -132,20 +207,98 @@
     <div id="rts-control-bar" class="rts-bar hidden" role="group" aria-label="Commandes phéromonales">
       <div class="rts-bar-title">PHÉROMONES DE COMMANDE</div>
       <button type="button" class="rts-cmd-btn active" data-cmd="HUNT" aria-pressed="true" title="Touche Q">
-        <span class="cmd-icon">🎯</span> CHASSER [Q]
+        CHASSER [Q]
       </button>
       <button type="button" class="rts-cmd-btn" data-cmd="CAPTURE" aria-pressed="false" title="Touche W">
-        <span class="cmd-icon">🕸️</span> CAPTURER [W]
+        CAPTURER [W]
       </button>
       <button type="button" class="rts-cmd-btn" data-cmd="DEFEND" aria-pressed="false" title="Touche E">
-        <span class="cmd-icon">🛡️</span> DÉFENDRE [E]
+        DÉFENDRE [E]
       </button>
       <button type="button" class="rts-cmd-btn" data-cmd="INFEST" aria-pressed="false" title="Touche R">
-        <span class="cmd-icon">☣️</span> INFESTER [R]
+        INFESTER [R]
       </button>
       <button type="button" id="btn-possess-mode" class="rts-cmd-btn possess-btn" aria-pressed="false" title="Prendre le contrôle direct d'une unité (Touche P)">
-        <span class="cmd-icon">👁️</span> POSSESSION DIRECTE
+        IMPULSION SYNAPTIQUE [P]
       </button>
+    </div>
+
+    <!-- Story transmissions do not steal focus and disappear automatically. -->
+    <div id="narrative-banner" class="narrative-banner hidden" role="status" aria-live="polite">
+      <span id="narrative-speaker">MNEMOSYNE</span>
+      <p id="narrative-line"></p>
+    </div>
+
+    <!-- =========================================================
+         CODEX — CASTES, MENACES, ARCHIVES ET ARBRE BIOLOGIQUE
+    ========================================================== -->
+    <div id="codex-overlay" class="system-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="codex-title">
+      <div class="system-panel codex-panel">
+        <header class="system-panel-header">
+          <div>
+            <span class="front-kicker">BASE DE DONNÉES ORPHEUS</span>
+            <h2 id="codex-title">CODEX BIOLOGIQUE</h2>
+          </div>
+          <button type="button" id="btn-close-codex" class="close-system-btn">FERMER [C]</button>
+        </header>
+        <div class="codex-tabs" role="tablist" aria-label="Catégories du codex">
+          <button type="button" class="codex-tab active" data-category="castes" role="tab" aria-selected="true">CASTES</button>
+          <button type="button" class="codex-tab" data-category="threats" role="tab" aria-selected="false">MENACES</button>
+          <button type="button" class="codex-tab" data-category="archives" role="tab" aria-selected="false">ARCHIVES</button>
+          <button type="button" class="codex-tab" data-category="evolution" role="tab" aria-selected="false">ÉVOLUTION</button>
+        </div>
+        <div class="codex-layout">
+          <nav id="codex-list" class="codex-list" aria-label="Entrées du codex"></nav>
+          <article id="codex-detail" class="codex-detail" tabindex="0">
+            <span class="codex-status">DONNÉE VERROUILLÉE</span>
+            <h3>SÉLECTIONNEZ UNE ENTRÉE</h3>
+            <p>Les observations biologiques sont déverrouillées au fil de la campagne.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause menu and settings are kept in one focus-managed layer. -->
+    <div id="pause-overlay" class="system-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pause-title">
+      <div class="system-panel pause-panel">
+        <span class="front-kicker">SIMULATION SUSPENDUE</span>
+        <h2 id="pause-title">PAUSE</h2>
+        <p id="pause-summary">Progression sauvegardée automatiquement.</p>
+        <div class="pause-actions">
+          <button type="button" id="btn-resume-game" class="front-primary">REPRENDRE</button>
+          <button type="button" id="btn-open-settings" class="front-secondary">PARAMÈTRES</button>
+          <button type="button" id="btn-return-menu" class="front-tertiary">REVENIR AU MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="settings-overlay" class="system-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="settings-title">
+      <div class="system-panel settings-panel">
+        <header class="system-panel-header">
+          <div>
+            <span class="front-kicker">ACCESSIBILITÉ ET AFFICHAGE</span>
+            <h2 id="settings-title">PARAMÈTRES</h2>
+          </div>
+          <button type="button" id="btn-close-settings" class="close-system-btn">FERMER</button>
+        </header>
+        <div class="settings-grid">
+          <label>VOLUME PRINCIPAL <input type="range" id="setting-volume" min="0" max="100" value="70"></label>
+          <label>LUMINOSITÉ <input type="range" id="setting-brightness" min="70" max="140" value="100"></label>
+          <label class="toggle-row"><input type="checkbox" id="setting-scanlines" checked><span>Effet de scan</span></label>
+          <label class="toggle-row"><input type="checkbox" id="setting-reduced-motion"><span>Réduire les mouvements</span></label>
+          <label class="toggle-row"><input type="checkbox" id="setting-high-contrast"><span>Contraste renforcé</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ending selection: every option is a distinct narrative conclusion. -->
+    <div id="ending-overlay" class="system-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="ending-title">
+      <div class="system-panel ending-panel">
+        <span class="front-kicker">ACTE V // DIRECTIVE FINALE</span>
+        <h2 id="ending-title">LE DESTIN DE LA RUCHE</h2>
+        <p>MNEMOSYNE est à genoux. Le réseau attend votre dernière impulsion.</p>
+        <div id="ending-choices" class="ending-choices"></div>
+      </div>
     </div>
 
     <!-- Bottom Notification Toast -->
@@ -153,7 +306,10 @@
     <noscript><div class="fatal-message">JavaScript doit être activé pour lancer HIVE ASCENSION.</div></noscript>
   </div>
 
-  <!-- Main Standalone Game Script -->
-  <script defer src="src/game.js?v=20260722-12"></script>
+  <!-- Data, asset factories and systems are loaded before the standalone game. -->
+  <script defer src="src/content.js?v=20260730-1"></script>
+  <script defer src="src/models.js?v=20260730-1"></script>
+  <script defer src="src/game-systems.js?v=20260730-1"></script>
+  <script defer src="src/game.js?v=20260730-1"></script>
 </body>
 </html>

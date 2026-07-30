@@ -1622,6 +1622,9 @@
 
     setAdultCaste(caste, restoreHealth = true) {
       this.adultCaste = ADULT_CASTE_PROFILES[caste] ? caste : 'drone';
+      // Selecting the future morphology during implantation must not grant
+      // adult statistics to the egg, Facehugger or juvenile forms.
+      if (this.form !== 'drone') return;
       const profile = this.getAdultProfile();
       this.maxHealth = profile.maxHealth;
       this.speed = profile.speed;

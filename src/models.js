@@ -55,6 +55,16 @@
     k9: 'labhound',
     canine: 'labhound',
     dog: 'labhound',
+    labmouse: 'labrodent',
+    laboratorymouse: 'labrodent',
+    laboratoryrodent: 'labrodent',
+    labrat: 'labrodent',
+    labrodent: 'labrodent',
+    mouse: 'labrodent',
+    mice: 'labrodent',
+    rat: 'labrodent',
+    rodent: 'labrodent',
+    souris: 'labrodent',
     powerloader: 'powerloader',
     powerloadersuit: 'powerloader',
     exosuit: 'powerloader',
@@ -249,9 +259,83 @@
     // -------------------------------------------------------------------------
     _finalize(root, metadata) {
       root.userData = Object.assign(root.userData || {}, metadata || {});
+      this._buildAnimationRig(root);
       root.userData.hiveProceduralModel = true;
       root.userData.dispose = () => this.disposeModel(root);
       return root;
+    }
+
+    _resolveAnimationSpec(root, spec) {
+      if (typeof spec === 'string') return root.getObjectByName(spec) || null;
+      if (spec && spec.isObject3D) return spec;
+      if (Array.isArray(spec)) {
+        return spec.map((entry) => this._resolveAnimationSpec(root, entry)).filter(Boolean);
+      }
+      if (spec && typeof spec === 'object') {
+        return Object.keys(spec).reduce((resolved, key) => {
+          const entry = this._resolveAnimationSpec(root, spec[key]);
+          if (entry && (!Array.isArray(entry) || entry.length)) resolved[key] = entry;
+          return resolved;
+        }, {});
+      }
+      return null;
+    }
+
+    _flattenAnimationJoints(spec, target, label) {
+      const list = target || [];
+      if (!spec) return list;
+      if (spec.isObject3D) {
+        list.push({ label: label || spec.name, joint: spec });
+      } else if (Array.isArray(spec)) {
+        spec.forEach((entry, index) => this._flattenAnimationJoints(entry, list, `${label || 'joint'}_${index}`));
+      } else if (typeof spec === 'object') {
+        Object.keys(spec).forEach((key) => this._flattenAnimationJoints(spec[key], list, key));
+      }
+      return list;
+    }
+
+    _buildAnimationRig(root) {
+      const jointNames = root.userData && root.userData.animationJoints;
+      if (!jointNames || !root.getObjectByName) return;
+
+      const joints = this._resolveAnimationSpec(root, jointNames);
+      const descriptors = this._flattenAnimationJoints(joints);
+      const uniqueJoints = Array.from(new Set(descriptors.map((entry) => entry.joint)));
+      const explicitRoles = root.userData.animationRoles || {};
+      const roles = this._resolveAnimationSpec(root, explicitRoles) || {};
+
+      if (!roles.locomotion) {
+        roles.locomotion = descriptors
+          .filter((entry) => /leg|arm|tail|limb|hip|knee|ankle/i.test(`${entry.label} ${entry.joint.name}`))
+          .map((entry) => entry.joint);
+      }
+      if (!roles.attack) {
+        roles.attack = descriptors
+          .filter((entry) => /jaw|arm|claw|head|tail|mandible|feeler/i.test(`${entry.label} ${entry.joint.name}`))
+          .map((entry) => entry.joint);
+      }
+
+      const bindPose = uniqueJoints.map((joint) => ({
+        joint,
+        position: joint.position.clone(),
+        quaternion: joint.quaternion.clone(),
+        scale: joint.scale.clone()
+      }));
+
+      root.userData.joints = joints;
+      root.userData.animationRig = {
+        jointNames,
+        joints,
+        roles,
+        bindPose,
+        resetPose: () => {
+          bindPose.forEach((entry) => {
+            entry.joint.position.copy(entry.position);
+            entry.joint.quaternion.copy(entry.quaternion);
+            entry.joint.scale.copy(entry.scale);
+          });
+        }
+      };
     }
 
     disposeModel(root) {
@@ -556,9 +640,11 @@
       const T = this._three();
       const limb = new T.Group();
       limb.name = name;
+      const anchor = new T.Vector3(points[0].x, points[0].y, points[0].z);
+      limb.position.copy(anchor);
       for (let index = 0; index < points.length - 1; index++) {
-        const start = new T.Vector3(points[index].x, points[index].y, points[index].z);
-        const end = new T.Vector3(points[index + 1].x, points[index + 1].y, points[index + 1].z);
+        const start = new T.Vector3(points[index].x, points[index].y, points[index].z).sub(anchor);
+        const end = new T.Vector3(points[index + 1].x, points[index + 1].y, points[index + 1].z).sub(anchor);
         limb.add(this._segment(
           material,
           start,
@@ -572,7 +658,11 @@
           limb.add(this._joint(jointMaterial, start, radii[index] * 1.12, `${name}_joint_${index}`));
         }
       }
-      const finalPoint = points[points.length - 1];
+      const finalPoint = new T.Vector3(
+        points[points.length - 1].x,
+        points[points.length - 1].y,
+        points[points.length - 1].z
+      ).sub(anchor);
       limb.add(this._joint(
         jointMaterial,
         finalPoint,
@@ -597,16 +687,20 @@
     }
 
     _addTail(parent, material, boneMaterial, origin, length, lift, side, thickness) {
+      const T = this._three();
+      const tailRoot = new T.Group();
+      tailRoot.name = 'segmented_tail';
+      tailRoot.position.set(origin.x, origin.y, origin.z);
       const points = [
-        { x: origin.x, y: origin.y, z: origin.z },
-        { x: origin.x + side * length * 0.1, y: origin.y + lift * 0.2, z: origin.z - length * 0.2 },
-        { x: origin.x + side * length * 0.23, y: origin.y + lift * 0.34, z: origin.z - length * 0.43 },
-        { x: origin.x + side * length * 0.36, y: origin.y + lift * 0.15, z: origin.z - length * 0.7 },
-        { x: origin.x + side * length * 0.47, y: origin.y + lift, z: origin.z - length }
+        { x: 0, y: 0, z: 0 },
+        { x: side * length * 0.1, y: lift * 0.2, z: -length * 0.2 },
+        { x: side * length * 0.23, y: lift * 0.34, z: -length * 0.43 },
+        { x: side * length * 0.36, y: lift * 0.15, z: -length * 0.7 },
+        { x: side * length * 0.47, y: lift, z: -length }
       ];
-      parent.add(this._tube(material, points, thickness, 'segmented_tail', 34, 8));
+      tailRoot.add(this._tube(material, points, thickness, 'tail_skin', 34, 8));
       for (let index = 1; index < points.length - 1; index++) {
-        parent.add(this._ring(
+        tailRoot.add(this._ring(
           boneMaterial,
           thickness * 1.22,
           thickness * 0.13,
@@ -616,7 +710,7 @@
         ));
       }
       const tip = points[points.length - 1];
-      parent.add(this._coneAlong(
+      tailRoot.add(this._coneAlong(
         boneMaterial,
         tip,
         { x: side * 0.35, y: lift * 0.3, z: -1 },
@@ -625,6 +719,8 @@
         'tail_blade',
         7
       ));
+      parent.add(tailRoot);
+      return tailRoot;
     }
 
     _addCrest(parent, material, size, isRoyal) {
@@ -724,9 +820,11 @@
       const T = this._three();
       const limb = new T.Group();
       limb.name = name;
+      const anchor = new T.Vector3(points[0].x, points[0].y, points[0].z);
+      limb.position.copy(anchor);
       for (let index = 0; index < points.length - 1; index++) {
-        const start = new T.Vector3(points[index].x, points[index].y, points[index].z);
-        const end = new T.Vector3(points[index + 1].x, points[index + 1].y, points[index + 1].z);
+        const start = new T.Vector3(points[index].x, points[index].y, points[index].z).sub(anchor);
+        const end = new T.Vector3(points[index + 1].x, points[index + 1].y, points[index + 1].z).sub(anchor);
         limb.add(this._segment(metal, start, end, radii[index], radii[index + 1], `${name}_beam_${index}`, 10));
         limb.add(this._joint(dark, start, radii[index] * 1.28, `${name}_hub_${index}`));
 
@@ -741,7 +839,11 @@
           7
         ));
       }
-      const terminal = points[points.length - 1];
+      const terminal = new T.Vector3(
+        points[points.length - 1].x,
+        points[points.length - 1].y,
+        points[points.length - 1].z
+      ).sub(anchor);
       limb.add(this._joint(dark, terminal, radii[radii.length - 1] * 1.35, `${name}_terminal_hub`));
 
       if (addClamp) {
@@ -1700,6 +1802,9 @@
       const T = this._three();
       const root = new T.Group();
       root.name = open ? 'organic_incubator_open' : 'organic_incubator_closed';
+      const petalJoints = [];
+      const closedPetalAngle = -1.46;
+      const openPetalAngle = -0.18;
       const shell = this._material('chitinWarm', { color: 0x4a352d, roughness: 0.58 });
       const membrane = this._material('resin', {
         color: 0x5b2132,
@@ -1745,18 +1850,20 @@
         petalRoot.name = `articulated_petal_${petalIndex}`;
         petalRoot.position.set(0, 3.08, 0);
         petalRoot.rotation.y = angle;
-        petalRoot.rotation.x = open ? -0.88 : -0.14;
+        petalRoot.rotation.x = open ? openPetalAngle : closedPetalAngle;
+        petalRoot.userData.closedRotationX = closedPetalAngle;
+        petalRoot.userData.openRotationX = openPetalAngle;
         petalRoot.add(this._ellipsoid(
           shell,
-          { x: 0.72, y: 0.18, z: 1.2 },
-          { x: 0, y: 0.06, z: 0.76 },
+          { x: 0.8, y: 0.18, z: 1.06 },
+          { x: 0, y: 0.06, z: 0.64 },
           'petal_shell',
           20
         ));
         petalRoot.add(this._ellipsoid(
           membrane,
-          { x: 0.53, y: 0.08, z: 0.92 },
-          { x: 0, y: 0.2, z: 0.73 },
+          { x: 0.59, y: 0.08, z: 0.79 },
+          { x: 0, y: 0.2, z: 0.62 },
           'petal_membrane',
           16
         ));
@@ -1765,8 +1872,8 @@
             inner,
             [
               { x: vein * 0.16, y: 0.25, z: 0.1 },
-              { x: vein * 0.22, y: 0.28, z: 0.72 },
-              { x: vein * 0.12, y: 0.21, z: 1.34 }
+              { x: vein * 0.22, y: 0.28, z: 0.6 },
+              { x: vein * 0.12, y: 0.21, z: 1.16 }
             ],
             0.028,
             `petal_vein_${vein}`,
@@ -1775,39 +1882,73 @@
           ));
         }
         root.add(petalRoot);
+        petalJoints.push(petalRoot);
       }
 
-      if (open) {
-        root.add(this._ellipsoid(
-          inner,
-          { x: 0.72, y: 0.5, z: 0.72 },
-          { x: 0, y: 2.77, z: 0 },
-          'incubator_core',
-          18
+      // This shallow seal guarantees that the closed incubator has no visible
+      // luminous aperture, even from the high gameplay camera.
+      const apicalSeal = this._ellipsoid(
+        shell,
+        { x: 0.84, y: 0.13, z: 0.84 },
+        { x: 0, y: 3.25, z: 0 },
+        'apical_seal',
+        20
+      );
+      root.add(apicalSeal);
+
+      const innerAssembly = new T.Group();
+      innerAssembly.name = 'incubator_inner_assembly';
+      innerAssembly.add(this._ellipsoid(
+        inner,
+        { x: 0.72, y: 0.42, z: 0.72 },
+        { x: 0, y: 3.24, z: 0 },
+        'incubator_core',
+        18
+      ));
+      for (let tendril = 0; tendril < 6; tendril++) {
+        const angle = tendril / 6 * Math.PI * 2;
+        innerAssembly.add(this._tube(
+          membrane,
+          [
+            { x: 0, y: 3.12, z: 0 },
+            { x: Math.cos(angle) * 0.35, y: 3.25, z: Math.sin(angle) * 0.35 },
+            { x: Math.cos(angle) * 0.72, y: 3.34, z: Math.sin(angle) * 0.72 }
+          ],
+          0.045,
+          `inner_tendril_${tendril}`,
+          12,
+          6
         ));
-        for (let tendril = 0; tendril < 6; tendril++) {
-          const angle = tendril / 6 * Math.PI * 2;
-          root.add(this._tube(
-            membrane,
-            [
-              { x: 0, y: 2.7, z: 0 },
-              { x: Math.cos(angle) * 0.35, y: 2.86, z: Math.sin(angle) * 0.35 },
-              { x: Math.cos(angle) * 0.72, y: 3.02, z: Math.sin(angle) * 0.72 }
-            ],
-            0.045,
-            `inner_tendril_${tendril}`,
-            12,
-            6
-          ));
-        }
       }
+      root.add(innerAssembly);
+
       this._addCarapaceSpines(root, shell, 1.25, 7, 1.8, 1.28, -1);
-      return this._finalize(root, {
+      const egg = this._finalize(root, {
         modelType: 'egg',
         open: !!open,
-        height: open ? 3.95 : 3.45,
-        animationJoints: ['articulated_petal_0', 'articulated_petal_1', 'articulated_petal_2', 'articulated_petal_3']
+        height: open ? 3.55 : 4.45,
+        animationJoints: {
+          petals: ['articulated_petal_0', 'articulated_petal_1', 'articulated_petal_2', 'articulated_petal_3']
+        },
+        animationRoles: {
+          interaction: ['articulated_petal_0', 'articulated_petal_1', 'articulated_petal_2', 'articulated_petal_3']
+        }
       });
+
+      egg.userData.setOpenProgress = (value) => {
+        const progress = Math.max(0, Math.min(1, Number(value) || 0));
+        petalJoints.forEach((petal) => {
+          petal.rotation.x = closedPetalAngle + (openPetalAngle - closedPetalAngle) * progress;
+        });
+        apicalSeal.visible = progress < 0.08;
+        innerAssembly.visible = progress > 0.08;
+        egg.userData.openProgress = progress;
+        egg.userData.open = progress >= 0.98;
+      };
+      egg.userData.setOpen = (state) => egg.userData.setOpenProgress(state ? 1 : 0);
+      egg.userData.petalJoints = petalJoints;
+      egg.userData.setOpenProgress(open ? 1 : 0);
+      return egg;
     }
 
     // -------------------------------------------------------------------------
@@ -1817,6 +1958,9 @@
       const T = this._three();
       const root = new T.Group();
       root.name = 'parasitic_crawler';
+      const legJoints = [];
+      const kneeJoints = [];
+      const ankleJoints = [];
       const hide = this._material('chitinWarm', { color: 0x7c5b42, roughness: 0.52 });
       const joints = this._material('resin', { color: 0x5c342b, opacity: 0.96 });
       const claw = this._material('bone', { color: 0xc6ad79 });
@@ -1849,47 +1993,74 @@
         const knee = new T.Vector3(side * 1.15, 0.34 + (row % 2) * 0.08, zBase + (row - 1.5) * 0.08);
         const ankle = new T.Vector3(side * reach, 0.13, zBase + (row - 1.5) * 0.18);
         const toe = new T.Vector3(side * (reach + 0.28), 0.05, zBase + (row - 1.5) * 0.24);
-        limb.add(this._segment(hide, hip, knee, 0.14, 0.1, 'femur', 8));
-        limb.add(this._joint(joints, knee, 0.13, 'knee'));
-        limb.add(this._segment(hide, knee, ankle, 0.1, 0.065, 'tibia', 8));
-        limb.add(this._joint(joints, ankle, 0.085, 'ankle'));
-        limb.add(this._segment(hide, ankle, toe, 0.06, 0.035, 'tarsus', 7));
-        limb.add(this._coneAlong(
+        const localKnee = knee.clone().sub(hip);
+        const localAnkle = ankle.clone().sub(knee);
+        const localToe = toe.clone().sub(ankle);
+
+        limb.position.copy(hip);
+        limb.userData.side = side;
+        limb.userData.row = row;
+        limb.add(this._joint(joints, { x: 0, y: 0, z: 0 }, 0.145, 'hip'));
+        limb.add(this._segment(hide, new T.Vector3(), localKnee, 0.14, 0.1, 'femur', 8));
+
+        const kneeJoint = new T.Group();
+        kneeJoint.name = `crawler_knee_${legIndex}`;
+        kneeJoint.position.copy(localKnee);
+        kneeJoint.add(this._joint(joints, { x: 0, y: 0, z: 0 }, 0.13, 'knee'));
+        kneeJoint.add(this._segment(hide, new T.Vector3(), localAnkle, 0.1, 0.065, 'tibia', 8));
+
+        const ankleJoint = new T.Group();
+        ankleJoint.name = `crawler_ankle_${legIndex}`;
+        ankleJoint.position.copy(localAnkle);
+        ankleJoint.add(this._joint(joints, { x: 0, y: 0, z: 0 }, 0.085, 'ankle'));
+        ankleJoint.add(this._segment(hide, new T.Vector3(), localToe, 0.06, 0.035, 'tarsus', 7));
+        ankleJoint.add(this._coneAlong(
           claw,
-          toe,
+          localToe,
           { x: side, y: -0.22, z: (row - 1.5) * 0.12 },
           0.055,
           0.28,
           'gripping_claw',
           6
         ));
+        kneeJoint.add(ankleJoint);
+        limb.add(kneeJoint);
         root.add(limb);
+        legJoints.push(limb);
+        kneeJoints.push(kneeJoint);
+        ankleJoints.push(ankleJoint);
       }
 
-      root.add(this._tube(
+      const tailJoint = new T.Group();
+      tailJoint.name = 'crawler_tail_root';
+      const tailBase = new T.Vector3(0, 0.47, -0.85);
+      const tailPoints = [
+        new T.Vector3(0, 0.47, -0.85),
+        new T.Vector3(0.25, 0.36, -1.55),
+        new T.Vector3(0.74, 0.22, -2.15),
+        new T.Vector3(1.15, 0.38, -2.7),
+        new T.Vector3(0.82, 0.52, -3.28),
+        new T.Vector3(0.22, 0.43, -3.56)
+      ];
+      tailJoint.position.copy(tailBase);
+      tailJoint.add(this._tube(
         hide,
-        [
-          { x: 0, y: 0.47, z: -0.85 },
-          { x: 0.25, y: 0.36, z: -1.55 },
-          { x: 0.74, y: 0.22, z: -2.15 },
-          { x: 1.15, y: 0.38, z: -2.7 },
-          { x: 0.82, y: 0.52, z: -3.28 },
-          { x: 0.22, y: 0.43, z: -3.56 }
-        ],
+        tailPoints.map((point) => point.clone().sub(tailBase)),
         0.105,
         'prehensile_tail',
         42,
         8
       ));
-      root.add(this._coneAlong(
+      tailJoint.add(this._coneAlong(
         claw,
-        { x: 0.22, y: 0.43, z: -3.56 },
+        tailPoints[tailPoints.length - 1].clone().sub(tailBase),
         { x: -0.45, y: -0.08, z: -1 },
         0.12,
         0.42,
         'tail_hook',
         7
       ));
+      root.add(tailJoint);
       root.add(this._ellipsoid(
         joints,
         { x: 0.32, y: 0.14, z: 0.38 },
@@ -1911,11 +2082,62 @@
           6
         ));
       }
-      return this._finalize(root, {
+      // Keep the detailed silhouette while counterbalancing the global player
+      // scale applied by the game. The resulting parasite is visibly smaller
+      // than a human head instead of spanning the whole upper body.
+      const scaledAssembly = new T.Group();
+      scaledAssembly.name = 'crawler_scaled_assembly';
+      while (root.children.length) scaledAssembly.add(root.children[0]);
+      scaledAssembly.scale.setScalar(0.82);
+      root.add(scaledAssembly);
+
+      const facehugger = this._finalize(root, {
         modelType: 'facehugger',
-        height: 0.8,
-        animationJoints: Array.from({ length: 8 }, (_, index) => `crawler_leg_${index}`)
+        height: 0.66,
+        forwardAxis: '+Z',
+        animationJoints: {
+          legs: Array.from({ length: 8 }, (_, index) => `crawler_leg_${index}`),
+          knees: Array.from({ length: 8 }, (_, index) => `crawler_knee_${index}`),
+          ankles: Array.from({ length: 8 }, (_, index) => `crawler_ankle_${index}`),
+          tail: 'crawler_tail_root'
+        },
+        animationRoles: {
+          locomotion: Array.from({ length: 8 }, (_, index) => `crawler_leg_${index}`),
+          attack: [
+            ...Array.from({ length: 8 }, (_, index) => `crawler_knee_${index}`),
+            'crawler_tail_root'
+          ]
+        }
       });
+
+      const bindRotations = [...legJoints, ...kneeJoints, ...ankleJoints, tailJoint]
+        .map((joint) => joint.rotation.clone());
+      facehugger.userData.setFoldedPose = (folded) => {
+        [...legJoints, ...kneeJoints, ...ankleJoints, tailJoint].forEach((joint, index) => {
+          joint.rotation.copy(bindRotations[index]);
+        });
+        if (folded) {
+          legJoints.forEach((joint, index) => {
+            const side = joint.userData.side;
+            const row = joint.userData.row;
+            joint.rotation.z = side * 0.24;
+            joint.rotation.y = (row - 1.5) * 0.1;
+            kneeJoints[index].rotation.z = side * 2.2;
+            kneeJoints[index].rotation.y = (row - 1.5) * 0.16;
+            ankleJoints[index].rotation.z = side * 1.12;
+          });
+          tailJoint.rotation.x = -0.2;
+          tailJoint.rotation.y = 0.72;
+        }
+        facehugger.userData.foldedPose = !!folded;
+      };
+      facehugger.userData.setPose = (pose) => facehugger.userData.setFoldedPose(pose === 'folded');
+      facehugger.userData.attachmentPose = {
+        name: 'folded',
+        forwardAxis: '+Z',
+        suggestedFaceOffset: { x: 0, y: 0.02, z: 0.34 }
+      };
+      return facehugger;
     }
 
     // -------------------------------------------------------------------------
@@ -1978,7 +2200,19 @@
         return this._finalize(root, {
           modelType: 'chestburster',
           chrysalis: true,
-          height: 3.15
+          height: 3.15,
+          animationJoints: [
+            'pod_membrane',
+            'pod_band_0',
+            'pod_band_1',
+            'pod_band_2',
+            'pod_band_3',
+            'pod_band_4',
+            'pod_band_5',
+            'pod_band_6',
+            'pod_band_7',
+            'developing_silhouette'
+          ]
         });
       }
 
@@ -2319,6 +2553,128 @@
     // -------------------------------------------------------------------------
     // 12. PUBLIC MODEL: HUMAN / COMBATANT / EXOSUIT
     // -------------------------------------------------------------------------
+    _createLaboratoryRodent(requestedType) {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'laboratory_rodent';
+      const coat = this._material('fabric', { color: 0x9a8a78, roughness: 0.96 });
+      const skin = this._material('skin', { color: 0xd9a6a3, roughness: 0.84 });
+      const dark = this._material('darkMetal', { color: 0x111111, metalness: 0.04 });
+
+      root.add(this._ellipsoid(
+        coat,
+        { x: 0.14, y: 0.13, z: 0.28 },
+        { x: 0, y: 0.16, z: -0.02 },
+        'rodent_torso',
+        14
+      ));
+
+      const headJoint = new T.Group();
+      headJoint.name = 'rodent_head';
+      headJoint.position.set(0, 0.19, 0.24);
+      headJoint.add(this._ellipsoid(
+        coat,
+        { x: 0.12, y: 0.11, z: 0.15 },
+        { x: 0, y: 0, z: 0.04 },
+        'rodent_skull',
+        14
+      ));
+      headJoint.add(this._ellipsoid(
+        skin,
+        { x: 0.055, y: 0.045, z: 0.09 },
+        { x: 0, y: -0.015, z: 0.17 },
+        'rodent_muzzle',
+        10
+      ));
+      headJoint.add(this._ellipsoid(
+        dark,
+        { x: 0.022, y: 0.018, z: 0.022 },
+        { x: 0, y: -0.005, z: 0.255 },
+        'rodent_nose',
+        8
+      ));
+      for (let side = -1; side <= 1; side += 2) {
+        headJoint.add(this._ellipsoid(
+          skin,
+          { x: 0.058, y: 0.065, z: 0.022 },
+          { x: side * 0.075, y: 0.09, z: 0.005 },
+          `rodent_ear_${side < 0 ? 'left' : 'right'}`,
+          10
+        ));
+        headJoint.add(this._ellipsoid(
+          dark,
+          { x: 0.016, y: 0.016, z: 0.012 },
+          { x: side * 0.07, y: 0.035, z: 0.15 },
+          `rodent_eye_${side < 0 ? 'left' : 'right'}`,
+          8
+        ));
+      }
+      root.add(headJoint);
+
+      const legNames = [];
+      for (let legIndex = 0; legIndex < 4; legIndex++) {
+        const side = legIndex % 2 === 0 ? -1 : 1;
+        const front = legIndex < 2;
+        const z = front ? 0.13 : -0.17;
+        const legName = `rodent_leg_${front ? 'front' : 'rear'}_${side < 0 ? 'left' : 'right'}`;
+        const limb = this._addSegmentedLimb(
+          root,
+          coat,
+          skin,
+          [
+            { x: side * 0.09, y: 0.14, z },
+            { x: side * 0.15, y: 0.035, z: z + (front ? 0.05 : -0.04) }
+          ],
+          [0.025, 0.016],
+          legName,
+          null
+        );
+        limb.add(this._ellipsoid(
+          skin,
+          { x: 0.04, y: 0.014, z: 0.055 },
+          { x: side * 0.06, y: -0.105, z: front ? 0.07 : -0.055 },
+          `${legName}_paw`,
+          8
+        ));
+        legNames.push(legName);
+      }
+
+      const tailJoint = new T.Group();
+      tailJoint.name = 'rodent_tail';
+      tailJoint.position.set(0, 0.17, -0.27);
+      tailJoint.add(this._tube(
+        skin,
+        [
+          { x: 0, y: 0, z: 0 },
+          { x: 0.08, y: 0.015, z: -0.18 },
+          { x: 0.15, y: -0.02, z: -0.37 },
+          { x: 0.1, y: -0.05, z: -0.58 }
+        ],
+        0.014,
+        'rodent_tail_skin',
+        18,
+        6
+      ));
+      root.add(tailJoint);
+
+      return this._finalize(root, {
+        modelType: 'laboratoryRodent',
+        subtype: 'labrodent',
+        requestedSubtype: requestedType,
+        forwardAxis: '+Z',
+        height: 0.34,
+        animationJoints: {
+          head: 'rodent_head',
+          legs: legNames,
+          tail: 'rodent_tail'
+        },
+        animationRoles: {
+          locomotion: [...legNames, 'rodent_tail'],
+          attack: ['rodent_head']
+        }
+      });
+    }
+
     _createServiceAnimal(requestedType) {
       const T = this._three();
       const root = new T.Group();
@@ -2390,46 +2746,77 @@
 
         for (const front of [-0.72, 0.78]) {
           const legName = `labhound_leg_${front > 0 ? 'front' : 'rear'}_${side < 0 ? 'left' : 'right'}`;
-          root.add(this._segment(
+          const hip = new T.Vector3(side * 0.38, 1.05, front);
+          const knee = new T.Vector3(
+            side * 0.42,
+            0.55,
+            front + (front > 0 ? 0.08 : -0.08)
+          );
+          const paw = new T.Vector3(
+            side * 0.4,
+            0.16,
+            front + (front > 0 ? 0.2 : -0.2)
+          );
+          const localKnee = knee.clone().sub(hip);
+          const localPaw = paw.clone().sub(knee);
+          const legJoint = new T.Group();
+          legJoint.name = legName;
+          legJoint.position.copy(hip);
+          legJoint.add(this._segment(
             coat,
-            new T.Vector3(side * 0.38, 1.05, front),
-            new T.Vector3(side * 0.42, 0.55, front + (front > 0 ? 0.08 : -0.08)),
+            new T.Vector3(),
+            localKnee,
             0.16,
             0.13,
             `${legName}_upper`,
             10
           ));
-          root.add(this._segment(
+
+          const kneeJoint = new T.Group();
+          kneeJoint.name = `${legName}_knee`;
+          kneeJoint.position.copy(localKnee);
+          kneeJoint.add(this._joint(coat, { x: 0, y: 0, z: 0 }, 0.13, `${legName}_knee_cap`));
+          kneeJoint.add(this._segment(
             coat,
-            new T.Vector3(side * 0.42, 0.55, front + (front > 0 ? 0.08 : -0.08)),
-            new T.Vector3(side * 0.4, 0.16, front + (front > 0 ? 0.2 : -0.2)),
+            new T.Vector3(),
+            localPaw,
             0.13,
             0.09,
-            legName,
+            `${legName}_lower`,
             10
           ));
-          root.add(this._ellipsoid(
+          kneeJoint.add(this._ellipsoid(
             dark,
             { x: 0.15, y: 0.08, z: 0.24 },
-            { x: side * 0.4, y: 0.08, z: front + (front > 0 ? 0.3 : -0.3) },
+            {
+              x: localPaw.x,
+              y: localPaw.y - 0.08,
+              z: localPaw.z + (front > 0 ? 0.1 : -0.1)
+            },
             `${legName}_paw`,
             10
           ));
+          legJoint.add(kneeJoint);
+          root.add(legJoint);
         }
       }
 
-      root.add(this._tube(
+      const tailJoint = new T.Group();
+      tailJoint.name = 'labhound_tail';
+      tailJoint.position.set(0, 1.28, -1.18);
+      tailJoint.add(this._tube(
         coat,
         [
-          { x: 0, y: 1.28, z: -1.18 },
-          { x: 0.12, y: 1.52, z: -1.78 },
-          { x: 0.2, y: 1.22, z: -2.2 }
+          { x: 0, y: 0, z: 0 },
+          { x: 0.12, y: 0.24, z: -0.6 },
+          { x: 0.2, y: -0.06, z: -1.02 }
         ],
         0.11,
-        'labhound_tail',
+        'labhound_tail_skin',
         18,
         8
       ));
+      root.add(tailJoint);
 
       // Search harness and sensor pods make the role readable at RTS distance.
       root.add(this._box(
@@ -2467,7 +2854,23 @@
           frontLeft: 'labhound_leg_front_left',
           frontRight: 'labhound_leg_front_right',
           rearLeft: 'labhound_leg_rear_left',
-          rearRight: 'labhound_leg_rear_right'
+          rearRight: 'labhound_leg_rear_right',
+          knees: [
+            'labhound_leg_front_left_knee',
+            'labhound_leg_front_right_knee',
+            'labhound_leg_rear_left_knee',
+            'labhound_leg_rear_right_knee'
+          ]
+        },
+        animationRoles: {
+          locomotion: [
+            'labhound_leg_front_left',
+            'labhound_leg_front_right',
+            'labhound_leg_rear_left',
+            'labhound_leg_rear_right',
+            'labhound_tail'
+          ],
+          attack: ['labhound_head']
         }
       });
     }
@@ -2477,6 +2880,7 @@
       const normalizedType = this._normalizeHumanType(requestedType);
       if (normalizedType === 'powerloader') return this._createExosuit();
       if (normalizedType === 'labhound') return this._createServiceAnimal(requestedType);
+      if (normalizedType === 'labrodent') return this._createLaboratoryRodent(requestedType);
 
       const root = this._createHumanFigure(normalizedType, false);
       return this._finalize(root, {

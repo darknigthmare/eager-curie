@@ -17,25 +17,37 @@ Le jeu reprend des règles générales d’horreur biologique sans extraire d’
 
 Références de vérification : [20th Century Studios — Aliens](https://www.20thcenturystudios.com/movies/aliens), [Free League — ALIEN RPG](https://freeleaguepublishing.com/games/alien/), [Focus — Aliens: Dark Descent](https://www.focus-entmt.com/en/games/aliens-dark-descent), [Andrew E. C. Gaska — Defining Canon](https://roguereviewer.wordpress.com/2020/10/12/defining-canon-in-an-alien-world/).
 
+## Corrections du cycle initial
+
+- L’œuf est scellé au départ et son ouverture s’interpole uniquement lorsque l’hôte attiré est arrivé à portée.
+- Le stimulus et les déplacements au clic reposent sur une navigation A* avec contournement des obstacles.
+- Le Facehugger est plus petit ; son bond suit une trajectoire, puis il s’ancre au visage dans une pose repliée.
+- Pendant la gestation, aucun parasite n’est visible : l’hôte se réveille, se déplace et ne s’effondre qu’à la perforation.
+- À maturité, une vue thoracique plein écran montre la pression et la rupture du sternum, puis rend la caméra normale au joueur.
+- Les souris sont de petites entités 3D mobiles : elles doivent être approchées et mordues physiquement.
+- Le cocon est agrandi et animé par pulsations pendant la mue.
+- Les articulations procédurales, projectiles visibles, impacts, traînées, VFX et SFX spatialisés couvrent locomotion et combat.
+- Une reprise de sauvegarde restaure l’acte avec une caste et un hôte cohérents, y compris après implantation.
+
 ## Matrice de contenu
 
 | Domaine | État livré |
 |---|---|
 | Intro et prologue | Menu diégétique, difficulté, reprise, briefing et transition vers l’Ovomorphe |
 | Histoire | Cinq actes, missions suivies, journaux, enjeux de quarantaine et trois fins |
-| Cycle biologique | Étapes explicites, sélection d’hôte, émergence, mue, nursery royale et ovipositeur |
+| Cycle biologique | Œuf fermé, implantation faciale, gestation externe invisible, vue thoracique, émergence, mue, nursery royale et ovipositeur |
 | Castes | Ovomorphe, Facehugger, Chestburster, Drone, Runner, Warrior, Worker, Spitter, Praetorian, Reine |
-| Actions | Capacités contextuelles par forme, chasse, cocon, embuscade et ordres synaptiques |
+| Actions | Capacités contextuelles par forme, chasse physique des proies, cocon pulsant, embuscade et ordres synaptiques |
 | Ennemis | Personnel, gardes, marines, incinérateur, smartgunner, commando, synthétiques et exosquelettes |
 | Boss | Rencontres scénarisées, points faibles et phases de combat |
 | Décors et props | Cloisons, conduites, passerelles, consoles, caisses, barils, générateurs, lumières et résine |
-| Modèles 3D | Géométrie procédurale articulée, silhouettes distinctes, détails de carapace et équipement |
+| Modèles 3D | Géométrie procédurale articulée, animation par pivots, silhouettes redimensionnées, détails de carapace et équipement |
 | Textures | Résine, carapace, panneaux industriels et bump organique, toutes originales et reproductibles |
-| SFX | Synthèse Web Audio pour signaux, impacts, alarmes, ambiance et transformation |
-| VFX | Particules, anneaux, impacts acides, flash de mue, éclairage et post-traitement |
+| SFX | Synthèse Web Audio spatialisée pour pas, armes, impacts, organisme, alarmes et transformation |
+| VFX | Projectiles visibles, flammes, traînées, particules, impacts acides, flash de mue, éclairage et post-traitement |
 | UI/UX | Objectifs, barres d’état, journal, bannière narrative, Codex, pause, réglages et fins |
 | Accessibilité | Focus visible, clavier, tactile, contraste élevé, volume, luminosité et mouvements réduits |
-| Persistance | Sauvegarde locale de l’acte, difficulté, Codex, journaux, réglages et conclusions |
+| Persistance | Sauvegarde locale de l’acte, caste, continuité de l’hôte, difficulté, Codex, journaux, réglages et conclusions |
 
 ## Règles de gameplay validées
 

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Creepster&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="src/css/style.css?v=20260730-1">
+  <link rel="stylesheet" href="src/css/style.css?v=20260730-2">
 
   <!-- Three.js runtime. The game shows a recovery message if the CDN or WebGL is unavailable. -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -176,6 +176,14 @@
       </div>
     </aside>
 
+    <!-- Dedicated controls for the full-screen intra-thoracic sequence. -->
+    <section id="thoracic-controls" class="thoracic-controls hidden" aria-label="Perforation interne" aria-hidden="true">
+      <span>PERCEPTION INTERNE // MATURATION TERMINÉE</span>
+      <strong>PRESSION SOUS-STERNALE</strong>
+      <p id="thoracic-status">Les contractions convergent vers le sternum.</p>
+      <button type="button" id="btn-thoracic-erupt" class="act-btn">PERFORER LE STERNUM [ESPACE]</button>
+    </section>
+
     <!-- Phase Transition Modal Banner -->
     <div id="stage-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title" aria-describedby="modal-description">
       <div class="modal-card">
@@ -308,8 +316,8 @@
 
   <!-- Data, asset factories and systems are loaded before the standalone game. -->
   <script defer src="src/content.js?v=20260730-1"></script>
-  <script defer src="src/models.js?v=20260730-1"></script>
-  <script defer src="src/game-systems.js?v=20260730-1"></script>
-  <script defer src="src/game.js?v=20260730-1"></script>
+  <script defer src="src/models.js?v=20260730-2"></script>
+  <script defer src="src/game-systems.js?v=20260730-2"></script>
+  <script defer src="src/game.js?v=20260730-2"></script>
 </body>
 </html>

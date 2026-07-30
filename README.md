@@ -15,6 +15,17 @@ Jeu de survie et de stratégie biologique en cinq actes, jouable dans un navigat
 
 Le catalogue narratif et les règles biologiques sont centralisés dans `src/content.js`. L’audit de contenu et de cohérence se trouve dans `GAME_AUDIT.md`.
 
+## Cycle biologique jouable
+
+- L’Ovomorphe commence fermé, puis son ouverture est animée après l’arrivée réelle de l’hôte.
+- Le stimulus et les destinations données au clic utilisent une navigation A* pour contourner les cloisons.
+- Le Facehugger, redimensionné, bondit jusqu’au visage, s’ancre sur un point facial et adopte une pose repliée.
+- La gestation reste invisible de l’extérieur : l’hôte se réveille et continue de se déplacer jusqu’à la maturation.
+- La maturation bascule vers une vue thoracique plein écran ; la perforation du sternum est animée avant le retour à la caméra normale.
+- Le juvénile chasse et mord physiquement de petites souris, puis forme un cocon agrandi et pulsant.
+- Les déplacements et attaques utilisent des animations procédurales, des projectiles visibles, des VFX et des SFX spatialisés.
+- La sauvegarde conserve la continuité de l’acte, de la caste et de l’hôte utilisé.
+
 ## Lancement sous Windows
 
 Double-cliquez sur `start.bat`, puis ouvrez `http://localhost:8080/`.

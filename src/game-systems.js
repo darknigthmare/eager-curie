@@ -20,6 +20,15 @@
         campaignStarted: false,
         difficulty: 'survivor',
         expandedLore: true,
+        adultCaste: 'drone',
+        hostProfile: null,
+        campaignCharacters: {
+          asterRho: {
+            alive: true,
+            usedAsHost: false,
+            maskAttachments: 2
+          }
+        },
         unlockedCodex: ['ovomorphe'],
         completedEndings: [],
         updatedAt: null
@@ -36,7 +45,13 @@
           ...this.defaultSave,
           ...parsed,
           unlockedCodex: Array.isArray(parsed.unlockedCodex) ? parsed.unlockedCodex : ['ovomorphe'],
-          completedEndings: Array.isArray(parsed.completedEndings) ? parsed.completedEndings : []
+          completedEndings: Array.isArray(parsed.completedEndings) ? parsed.completedEndings : [],
+          campaignCharacters: parsed.campaignCharacters && typeof parsed.campaignCharacters === 'object'
+            ? {
+              ...this.defaultSave.campaignCharacters,
+              ...parsed.campaignCharacters
+            }
+            : { ...this.defaultSave.campaignCharacters }
         };
       } catch (error) {
         console.warn('[Save] Lecture impossible', error);
@@ -201,11 +216,22 @@
     setReducedMotion(reduced) {
       this.reducedMotion = !!reduced;
       if (!this.reducedMotion || this.effects.length === 0) return;
-      for (const effect of this.effects) {
+      this.clear(true);
+    }
+
+    clear(resolveProjectiles = false) {
+      const effects = this.effects.splice(0, this.effects.length);
+      for (const effect of effects) {
         if (this.removeObject) this.removeObject(effect.group);
         else effect.group.parent?.remove(effect.group);
+        if (
+          resolveProjectiles &&
+          effect.projectile &&
+          typeof effect.onImpact === 'function'
+        ) {
+          effect.onImpact();
+        }
       }
-      this.effects.length = 0;
     }
 
     burst(x, z, color = 0x39ff14, count = 18, scale = 0.15, height = 1.2) {
@@ -251,6 +277,149 @@
       this.effects.push({ group: mesh, age: 0, lifetime: 0.9, ring: true });
     }
 
+    projectile({
+      startX,
+      startY = 2.4,
+      startZ,
+      endX,
+      endY = 1.2,
+      endZ,
+      color = 0x38bdf8,
+      scale = 0.12,
+      speed = 42,
+      acid = false,
+      onImpact = null
+    }) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') {
+        if (typeof onImpact === 'function') onImpact();
+        return;
+      }
+      const start = new THREE.Vector3(startX, startY, startZ);
+      const end = new THREE.Vector3(endX, endY, endZ);
+      const distance = Math.max(0.01, start.distanceTo(end));
+      const group = new THREE.Group();
+      const projectile = acid
+        ? new THREE.Mesh(
+          new THREE.SphereGeometry(scale * 1.8, 10, 10),
+          new THREE.MeshStandardMaterial({
+            color,
+            emissive: color,
+            emissiveIntensity: 1.9,
+            transparent: true,
+            opacity: 0.92,
+            roughness: 0.18
+          })
+        )
+        : new THREE.Mesh(
+          new THREE.CylinderGeometry(scale * 0.38, scale * 0.64, Math.max(0.78, scale * 8), 7),
+          new THREE.MeshBasicMaterial({
+            color,
+            transparent: true,
+            opacity: 0.96,
+            depthWrite: false
+          })
+        );
+      if (!acid) {
+        const direction = end.clone().sub(start).normalize();
+        projectile.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+      }
+      group.add(projectile);
+      if (acid) {
+        const light = new THREE.PointLight(color, 2.1, 7);
+        group.add(light);
+      } else {
+        const tracerLight = new THREE.PointLight(color, 1.25, 4.5);
+        group.add(tracerLight);
+      }
+      group.position.copy(start);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        age: 0,
+        lifetime: Math.max(0.08, distance / Math.max(1, speed)),
+        projectile: true,
+        acid,
+        color,
+        scale,
+        start,
+        end,
+        onImpact
+      });
+    }
+
+    muzzleFlash(x, y, z, color = 0xfbbf24, scale = 0.18) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const flash = new THREE.Mesh(
+        new THREE.SphereGeometry(scale, 7, 7),
+        new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 1,
+          depthWrite: false
+        })
+      );
+      flash.scale.set(0.7, 0.7, 2.8);
+      group.add(flash);
+      const light = new THREE.PointLight(color, 3.4, 8);
+      group.add(light);
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: 0.13, flash: true });
+    }
+
+    flameJet(startX, startY, startZ, endX, endY, endZ) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const start = new THREE.Vector3(startX, startY, startZ);
+      const end = new THREE.Vector3(endX, endY, endZ);
+      const group = new THREE.Group();
+      for (let index = 0; index < 22; index++) {
+        const progress = index / 21;
+        const material = new THREE.MeshBasicMaterial({
+          color: progress < 0.35 ? 0xfff1a8 : (progress < 0.72 ? 0xff8a16 : 0xef2b16),
+          transparent: true,
+          opacity: 0.86 * (1 - progress * 0.45),
+          depthWrite: false
+        });
+        const particle = new THREE.Mesh(
+          new THREE.SphereGeometry(0.12 + progress * 0.24, 7, 7),
+          material
+        );
+        particle.position.lerpVectors(start, end, progress);
+        particle.position.x += (Math.random() - 0.5) * (0.18 + progress * 0.7);
+        particle.position.y += (Math.random() - 0.5) * (0.14 + progress * 0.5);
+        particle.position.z += (Math.random() - 0.5) * (0.18 + progress * 0.7);
+        particle.userData.baseOpacity = material.opacity;
+        group.add(particle);
+      }
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: 0.42, flame: true });
+    }
+
+    organicTrail(startX, startY, startZ, endX, endY, endZ, color = 0xd97706) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const start = new THREE.Vector3(startX, startY, startZ);
+      const end = new THREE.Vector3(endX, endY, endZ);
+      const group = new THREE.Group();
+      for (let index = 0; index < 12; index++) {
+        const progress = index / 11;
+        const particle = new THREE.Mesh(
+          new THREE.SphereGeometry(0.06 + progress * 0.045, 6, 6),
+          new THREE.MeshBasicMaterial({
+            color,
+            transparent: true,
+            opacity: 0.78 * (1 - progress * 0.5),
+            depthWrite: false
+          })
+        );
+        particle.position.lerpVectors(start, end, progress);
+        particle.userData.baseOpacity = particle.material.opacity;
+        group.add(particle);
+      }
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: 0.38, trail: true });
+    }
+
     transformation() {
       if (this.reducedMotion) return;
       const app = document.getElementById('app-container');
@@ -263,9 +432,31 @@
         const effect = this.effects[index];
         effect.age += deltaSeconds;
         const progress = Math.min(1, effect.age / effect.lifetime);
-        if (effect.ring) {
+        if (effect.projectile) {
+          const easedProgress = 1 - Math.pow(1 - progress, 2);
+          effect.group.position.lerpVectors(effect.start, effect.end, easedProgress);
+          if (effect.acid) {
+            const pulse = 0.82 + Math.sin(effect.age * 34) * 0.18;
+            effect.group.scale.setScalar(pulse);
+          }
+        } else if (effect.ring) {
           effect.group.scale.setScalar(1 + progress * 1.8);
           effect.group.material.opacity = 0.8 * (1 - progress);
+        } else if (effect.flash) {
+          effect.group.scale.setScalar(1 + progress * 1.8);
+          effect.group.children.forEach((child) => {
+            if (child.material) child.material.opacity = 1 - progress;
+            if (child.isLight) child.intensity = 3.4 * (1 - progress);
+          });
+        } else if (effect.flame || effect.trail) {
+          effect.group.children.forEach((particle) => {
+            if (!particle.material) return;
+            particle.material.opacity = (particle.userData.baseOpacity || 0.8) * (1 - progress);
+            if (effect.flame) {
+              particle.position.y += deltaSeconds * (0.35 + progress);
+              particle.scale.setScalar(1 + progress * 0.7);
+            }
+          });
         } else {
           for (const particle of effect.group.children) {
             particle.position.addScaledVector(particle.userData.velocity, deltaSeconds);
@@ -274,9 +465,29 @@
           }
         }
         if (progress < 1) continue;
+        const impact = effect.projectile
+          ? {
+            x: effect.end.x,
+            z: effect.end.z,
+            color: effect.color,
+            scale: effect.scale,
+            acid: effect.acid
+          }
+          : null;
         if (this.removeObject) this.removeObject(effect.group);
         else effect.group.parent?.remove(effect.group);
         this.effects.splice(index, 1);
+        if (impact) {
+          this.burst(
+            impact.x,
+            impact.z,
+            impact.color,
+            impact.acid ? 12 : 6,
+            impact.acid ? impact.scale * 0.72 : impact.scale * 0.38,
+            effect.end.y
+          );
+          if (typeof effect.onImpact === 'function') effect.onImpact();
+        }
       }
     }
   }
@@ -661,9 +872,9 @@
       if (missionProgress) missionProgress.textContent = `${Math.min(completed, playableTotal)} / ${playableTotal}`;
     }
 
-    checkpoint(stage, unlockIds = []) {
+    checkpoint(stage, unlockIds = [], additions = {}) {
       if (unlockIds.length) this.saveManager.unlock(unlockIds);
-      this.saveManager.checkpoint(stage);
+      this.saveManager.checkpoint(stage, additions);
       this.setMission(stage, 0);
       this.renderCodex(this.activeCodexCategory);
     }
@@ -922,8 +1133,8 @@
     updateObjective(stage, completed, objective) {
       ui.updateObjective(stage, completed, objective);
     },
-    checkpoint(stage, unlockIds) {
-      ui.checkpoint(stage, unlockIds);
+    checkpoint(stage, unlockIds, additions) {
+      ui.checkpoint(stage, unlockIds, additions);
     },
     narrative(speaker, line, duration) {
       ui.narrative(speaker, line, duration);

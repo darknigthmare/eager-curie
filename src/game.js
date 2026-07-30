@@ -39,9 +39,27 @@
       }
     }
 
-    connect(node) {
+    connect(node, x = null, z = null, radius = 58) {
       if (!node || !this.ctx) return;
-      node.connect(this.masterGain || this.ctx.destination);
+      if (!Number.isFinite(x) || !Number.isFinite(z)) {
+        node.connect(this.masterGain || this.ctx.destination);
+        return;
+      }
+      const listenerX = rendererEngine?.camera?.position?.x ?? playerCreature?.x ?? 0;
+      const listenerZ = playerCreature?.z ?? rendererEngine?.camera?.position?.z ?? 0;
+      const distance = Math.hypot(x - listenerX, z - listenerZ);
+      const attenuation = Math.max(0.12, 1 - distance / Math.max(1, radius));
+      const distanceGain = this.ctx.createGain();
+      distanceGain.gain.value = attenuation;
+      node.connect(distanceGain);
+      if (this.ctx.createStereoPanner) {
+        const panner = this.ctx.createStereoPanner();
+        panner.pan.value = Math.max(-0.92, Math.min(0.92, (x - listenerX) / Math.max(1, radius * 0.55)));
+        distanceGain.connect(panner);
+        panner.connect(this.masterGain || this.ctx.destination);
+      } else {
+        distanceGain.connect(this.masterGain || this.ctx.destination);
+      }
     }
 
     setVolume(value) {
@@ -109,7 +127,7 @@
       osc.start(now); osc.stop(now + 0.08);
     }
 
-    playFlamethrowerWhoosh() {
+    playFlamethrowerWhoosh(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const now = this.ctx.currentTime;
@@ -127,7 +145,7 @@
       gain.gain.setValueAtTime(0.6, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
       noise.connect(filter); filter.connect(gain);
-      this.connect(gain);
+      this.connect(gain, x, z, 68);
       noise.start(now);
     }
 
@@ -255,7 +273,7 @@
       noise.start(now);
     }
 
-    playPulseRifleFire() {
+    playPulseRifleFire(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const now = this.ctx.currentTime;
@@ -266,7 +284,7 @@
       osc.frequency.exponentialRampToValueAtTime(60, now + 0.1);
       gain.gain.setValueAtTime(0.5, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
-      osc.connect(gain); this.connect(gain);
+      osc.connect(gain); this.connect(gain, x, z, 72);
       osc.start(now); osc.stop(now + 0.12);
     }
 
@@ -306,6 +324,183 @@
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
       osc.connect(gain); this.connect(gain);
       osc.start(now); osc.stop(now + 0.8);
+    }
+
+    playFootstep(type = 'human', x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const heavy = ['powerloader', 'exosuit'].includes(type);
+      osc.type = heavy ? 'square' : 'triangle';
+      osc.frequency.setValueAtTime(heavy ? 54 : 105, now);
+      osc.frequency.exponentialRampToValueAtTime(heavy ? 24 : 62, now + 0.1);
+      gain.gain.setValueAtTime(heavy ? 0.38 : 0.11, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain);
+      this.connect(gain, x, z, 48);
+      osc.start(now);
+      osc.stop(now + 0.13);
+    }
+
+    playHostCough(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.24);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let index = 0; index < bufferSize; index++) {
+        const envelope = Math.sin(Math.min(1, index / (bufferSize * 0.12)) * Math.PI / 2) *
+          Math.exp(-index / (bufferSize * 0.3));
+        data[index] = (Math.random() * 2 - 1) * envelope;
+      }
+      const source = this.ctx.createBufferSource();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+      source.buffer = buffer;
+      filter.type = 'bandpass';
+      filter.frequency.value = 420;
+      filter.Q.value = 0.8;
+      gain.gain.value = 0.22;
+      source.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 45);
+      source.start(now);
+    }
+
+    playFacehuggerGrip(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(170, now);
+      osc.frequency.exponentialRampToValueAtTime(52, now + 0.34);
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      osc.connect(gain);
+      this.connect(gain, x, z, 44);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+
+    playMetalImpact(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      for (const frequency of [920, 1430]) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = frequency;
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(gain);
+        this.connect(gain, x, z, 52);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      }
+    }
+
+    playInternalHeartbeat() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      [0, 0.18].forEach((offset, index) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(index === 0 ? 62 : 54, now + offset);
+        osc.frequency.exponentialRampToValueAtTime(28, now + offset + 0.18);
+        gain.gain.setValueAtTime(index === 0 ? 0.52 : 0.36, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.2);
+        osc.connect(gain);
+        this.connect(gain);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.22);
+      });
+    }
+
+    playSternumPressure() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(34, now);
+      osc.frequency.linearRampToValueAtTime(76, now + 0.7);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+      osc.connect(gain);
+      this.connect(gain);
+      osc.start(now);
+      osc.stop(now + 0.78);
+    }
+
+    playWetImpact(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(125, now);
+      osc.frequency.exponentialRampToValueAtTime(31, now + 0.28);
+      gain.gain.setValueAtTime(0.42, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      osc.connect(gain);
+      this.connect(gain, x, z, 55);
+      osc.start(now);
+      osc.stop(now + 0.34);
+    }
+
+    playRodentSqueak(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1650, now);
+      osc.frequency.linearRampToValueAtTime(2350, now + 0.08);
+      osc.frequency.exponentialRampToValueAtTime(980, now + 0.17);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(gain);
+      this.connect(gain, x, z, 35);
+      osc.start(now);
+      osc.stop(now + 0.19);
+    }
+
+    playJuvenileBite(x = null, z = null) {
+      this.playWetImpact(x, z);
+      this.playBoneCrunch();
+    }
+
+    playCocoonWeave(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(210, now);
+      osc.frequency.linearRampToValueAtTime(95, now + 0.65);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+      osc.connect(gain);
+      this.connect(gain, x, z, 48);
+      osc.start(now);
+      osc.stop(now + 0.72);
+    }
+
+    playCocoonPulse(x = null, z = null) {
+      this.playHeartbeat(0.72);
+      this.playWetImpact(x, z);
     }
   }
 
@@ -525,6 +720,10 @@
         this.camera.fov = desiredFov;
         this.camera.updateProjectionMatrix();
       }
+      if (this.camera.near !== 0.1) {
+        this.camera.near = 0.1;
+        this.camera.updateProjectionMatrix();
+      }
       if (this.scene?.fog) this.scene.fog.density = isRTS ? 0.0045 : 0.012;
       if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.34 : 1.05;
       // La vue de commandement cadre toute la station afin que les trois relais
@@ -538,6 +737,35 @@
       this.camera.position.y += (targetY - this.camera.position.y) * smoothing;
 
       this.camera.lookAt(x, isRTS ? 0 : 1.2, z);
+    }
+
+    setCinematicCamera({ position, target, fov = 72, near = 0.025, exposure = 1.18 }, deltaSeconds = 1 / 60) {
+      if (!position || !target) return;
+      let projectionChanged = false;
+      if (this.camera.fov !== fov) {
+        this.camera.fov = fov;
+        projectionChanged = true;
+      }
+      if (this.camera.near !== near) {
+        this.camera.near = near;
+        projectionChanged = true;
+      }
+      if (projectionChanged) this.camera.updateProjectionMatrix();
+      if (this.scene?.fog) this.scene.fog.density = 0;
+      if (this.renderer) this.renderer.toneMappingExposure = exposure;
+      const smoothing = 1 - Math.pow(0.78, Math.max(0, deltaSeconds) * 60);
+      this.camera.position.x += (position.x - this.camera.position.x) * smoothing;
+      this.camera.position.y += (position.y - this.camera.position.y) * smoothing;
+      this.camera.position.z += (position.z - this.camera.position.z) * smoothing;
+      this.camera.lookAt(target.x, target.y, target.z);
+    }
+
+    snapCameraTarget(x, z, heightOffset = 0, isRTS = false) {
+      this.setCameraTarget(x, z, heightOffset, isRTS, 4);
+    }
+
+    snapCinematicCamera(override) {
+      this.setCinematicCamera(override, 4);
     }
 
     screenToGround(screenX, screenY) {
@@ -971,13 +1199,178 @@
       ));
     }
 
-    checkCollision(nextX, nextZ) {
+    checkCollision(nextX, nextZ, padding = 0) {
       for (const col of this.colliders) {
-        if (nextX > col.minX && nextX < col.maxX && nextZ > col.minZ && nextZ < col.maxZ) {
+        if (
+          nextX > col.minX - padding &&
+          nextX < col.maxX + padding &&
+          nextZ > col.minZ - padding &&
+          nextZ < col.maxZ + padding
+        ) {
           return true;
         }
       }
       return false;
+    }
+
+    findPath(startX, startZ, endX, endZ, {
+      step = 2.5,
+      padding = 0.72,
+      min = -70,
+      max = 70
+    } = {}) {
+      const destination = { x: endX, z: endZ };
+      if (
+        !this.checkCollision(endX, endZ, padding) &&
+        this.hasLineOfSight(startX, startZ, endX, endZ, padding)
+      ) {
+        return [destination];
+      }
+
+      const gridSize = Math.floor((max - min) / step) + 1;
+      const keyOf = (ix, iz) => `${ix}:${iz}`;
+      const pointOf = (ix, iz) => ({
+        x: min + ix * step,
+        z: min + iz * step
+      });
+      const clampIndex = (value) => Math.max(0, Math.min(gridSize - 1, value));
+      const indexOf = (value) => clampIndex(Math.round((value - min) / step));
+
+      const nearestFreeNode = (worldX, worldZ) => {
+        const centerX = indexOf(worldX);
+        const centerZ = indexOf(worldZ);
+        for (let radius = 0; radius < gridSize; radius++) {
+          let best = null;
+          for (let offsetX = -radius; offsetX <= radius; offsetX++) {
+            for (let offsetZ = -radius; offsetZ <= radius; offsetZ++) {
+              if (Math.max(Math.abs(offsetX), Math.abs(offsetZ)) !== radius) continue;
+              const ix = centerX + offsetX;
+              const iz = centerZ + offsetZ;
+              if (ix < 0 || iz < 0 || ix >= gridSize || iz >= gridSize) continue;
+              const point = pointOf(ix, iz);
+              if (this.checkCollision(point.x, point.z, padding)) continue;
+              const distance = Math.hypot(point.x - worldX, point.z - worldZ);
+              if (!best || distance < best.distance) best = { ix, iz, point, distance };
+            }
+          }
+          if (best) return best;
+        }
+        return null;
+      };
+
+      const startNode = nearestFreeNode(startX, startZ);
+      const goalNode = nearestFreeNode(endX, endZ);
+      if (!startNode || !goalNode) return [];
+
+      const directions = [
+        [-1, 0, 1], [1, 0, 1], [0, -1, 1], [0, 1, 1],
+        [-1, -1, Math.SQRT2], [-1, 1, Math.SQRT2],
+        [1, -1, Math.SQRT2], [1, 1, Math.SQRT2]
+      ];
+      const open = [];
+      const records = new Map();
+      const closed = new Set();
+      const startKey = keyOf(startNode.ix, startNode.iz);
+      const goalKey = keyOf(goalNode.ix, goalNode.iz);
+      const heuristic = (ix, iz) => Math.hypot(ix - goalNode.ix, iz - goalNode.iz);
+      records.set(startKey, {
+        ix: startNode.ix,
+        iz: startNode.iz,
+        g: 0,
+        f: heuristic(startNode.ix, startNode.iz),
+        parent: null
+      });
+      open.push(startKey);
+
+      while (open.length > 0 && closed.size < gridSize * gridSize) {
+        open.sort((leftKey, rightKey) => records.get(leftKey).f - records.get(rightKey).f);
+        const currentKey = open.shift();
+        if (currentKey === goalKey) break;
+        if (closed.has(currentKey)) continue;
+        closed.add(currentKey);
+        const current = records.get(currentKey);
+        const currentPoint = pointOf(current.ix, current.iz);
+
+        for (const [offsetX, offsetZ, movementCost] of directions) {
+          const ix = current.ix + offsetX;
+          const iz = current.iz + offsetZ;
+          if (ix < 0 || iz < 0 || ix >= gridSize || iz >= gridSize) continue;
+          const neighborKey = keyOf(ix, iz);
+          if (closed.has(neighborKey)) continue;
+          const neighborPoint = pointOf(ix, iz);
+          if (this.checkCollision(neighborPoint.x, neighborPoint.z, padding)) continue;
+          if (
+            offsetX !== 0 &&
+            offsetZ !== 0 &&
+            (
+              this.checkCollision(pointOf(current.ix + offsetX, current.iz).x, currentPoint.z, padding) ||
+              this.checkCollision(currentPoint.x, pointOf(current.ix, current.iz + offsetZ).z, padding)
+            )
+          ) {
+            continue;
+          }
+
+          const tentativeG = current.g + movementCost;
+          const existing = records.get(neighborKey);
+          if (existing && tentativeG >= existing.g) continue;
+          records.set(neighborKey, {
+            ix,
+            iz,
+            g: tentativeG,
+            f: tentativeG + heuristic(ix, iz),
+            parent: currentKey
+          });
+          if (!open.includes(neighborKey)) open.push(neighborKey);
+        }
+      }
+
+      if (!records.has(goalKey)) return [];
+      const rawPath = [];
+      let cursorKey = goalKey;
+      while (cursorKey && cursorKey !== startKey) {
+        const record = records.get(cursorKey);
+        rawPath.unshift(pointOf(record.ix, record.iz));
+        cursorKey = record.parent;
+      }
+      const finalPathPoint = rawPath[rawPath.length - 1] || {
+        x: startX,
+        z: startZ
+      };
+      if (
+        !this.checkCollision(destination.x, destination.z, padding) &&
+        this.hasLineOfSight(
+          finalPathPoint.x,
+          finalPathPoint.z,
+          destination.x,
+          destination.z,
+          padding
+        )
+      ) {
+        rawPath.push(destination);
+      }
+
+      const smoothed = [];
+      let anchor = { x: startX, z: startZ };
+      let cursor = 0;
+      while (cursor < rawPath.length) {
+        let farthest = cursor;
+        for (let candidate = rawPath.length - 1; candidate >= cursor; candidate--) {
+          if (this.hasLineOfSight(
+            anchor.x,
+            anchor.z,
+            rawPath[candidate].x,
+            rawPath[candidate].z,
+            padding
+          )) {
+            farthest = candidate;
+            break;
+          }
+        }
+        smoothed.push(rawPath[farthest]);
+        anchor = rawPath[farthest];
+        cursor = farthest + 1;
+      }
+      return smoothed;
     }
   }
 
@@ -1082,6 +1475,61 @@
     toastTimer = window.setTimeout(() => toast.classList.add('hidden'), duration);
   }
 
+  function getAnimationModel(container) {
+    let model = null;
+    container?.traverse((child) => {
+      if (!model && child.userData?.animationRig) model = child;
+    });
+    return model;
+  }
+
+  function animateProceduralModel(container, {
+    phase = 0,
+    movement = 0,
+    attack = 0,
+    crouch = 0,
+    pulse = 0
+  } = {}) {
+    const model = getAnimationModel(container);
+    const rig = model?.userData?.animationRig;
+    if (!rig) return;
+    if (!model.userData.runtimeBasePose) {
+      model.userData.runtimeBasePose = {
+        position: model.position.clone(),
+        quaternion: model.quaternion.clone(),
+        scale: model.scale.clone()
+      };
+    }
+    const basePose = model.userData.runtimeBasePose;
+    model.position.copy(basePose.position);
+    model.quaternion.copy(basePose.quaternion);
+    model.scale.copy(basePose.scale);
+    rig.resetPose?.();
+
+    const locomotion = Array.isArray(rig.roles?.locomotion) ? rig.roles.locomotion : [];
+    locomotion.forEach((joint, index) => {
+      const alternating = index % 2 === 0 ? 1 : -1;
+      joint.rotation.x += Math.sin(phase + index * 0.7) * 0.42 * movement * alternating;
+      joint.rotation.z += Math.cos(phase * 0.5 + index) * 0.08 * movement;
+    });
+
+    const attackJoints = Array.isArray(rig.roles?.attack) ? rig.roles.attack : [];
+    attackJoints.forEach((joint, index) => {
+      const envelope = Math.sin(Math.min(1, Math.max(0, attack)) * Math.PI);
+      joint.rotation.x -= envelope * (0.24 + index % 3 * 0.05);
+      joint.rotation.z += envelope * (index % 2 === 0 ? 0.18 : -0.18);
+    });
+
+    if (crouch > 0) {
+      model.position.y -= Math.sin(Math.min(1, crouch) * Math.PI) * 0.22;
+      model.rotation.x += Math.sin(Math.min(1, crouch) * Math.PI) * 0.12;
+    }
+    if (pulse > 0) {
+      const pulseScale = 1 + Math.sin(phase * 1.7) * 0.025 * pulse;
+      model.scale.copy(basePose.scale).multiplyScalar(pulseScale);
+    }
+  }
+
   function setHudBar(kind, label, value, displayValue = null) {
     const normalizedValue = Math.max(0, Math.min(100, Number(value) || 0));
     const labelElement = document.getElementById(`stat-${kind}-label`);
@@ -1144,13 +1592,27 @@
       this.z = -35;
       this.speed = 0.25;
       this.mesh = null;
+      this.detailedModel = null;
       this.eggIsOpen = false;
+      this.eggOpeningProgress = 1;
       this.isLeaping = false;
+      this.leapElapsed = 0;
+      this.leapDuration = 0.62;
+      this.leapArcHeight = 3.6;
+      this.leapUsesFaceAnchor = true;
+      this.leapStart = null;
+      this.leapHost = null;
+      this.leapComplete = null;
+      this.leapTrailCooldown = 0;
+      this.attachedHost = null;
       this.isChrysalis = false;
+      this.actionAnimation = 0;
+      this.actionType = '';
       this.maxHealth = 100;
       this.health = 100;
       this.isDefeated = false;
       this.moveTarget = null;
+      this.moveWaypoints = [];
       this.adultCaste = 'drone';
     }
 
@@ -1171,6 +1633,9 @@
         rendererEngine.removeObject(this.mesh);
         this.mesh = null;
       }
+      if (this.attachedHost) this.attachedHost.isRestrained = false;
+      this.attachedHost = null;
+      this.detailedModel = null;
     }
 
     createMesh() {
@@ -1185,8 +1650,14 @@
         else if (this.form === 'drone') detailedModel = factory.createAdult?.(this.adultCaste || 'drone');
       }
       if (detailedModel) {
-        detailedModel.scale.setScalar(this.form === 'drone' ? 1.14 : 1.24);
+        const modelScale = this.form === 'drone'
+          ? 1.14
+          : (this.form === 'facehugger'
+            ? 0.92
+            : (this.form === 'chestburster' ? (this.isChrysalis ? 1.55 : 0.94) : 1.05));
+        detailedModel.scale.setScalar(modelScale);
         group.add(detailedModel);
+        this.detailedModel = detailedModel;
         const lightColors = {
           egg: this.eggIsOpen ? 0xf59e0b : 0x39ff14,
           facehugger: 0xf59e0b,
@@ -1314,9 +1785,16 @@
     setForm(form) {
       this.form = form;
       this.isLeaping = false;
+      this.leapHost = null;
+      this.leapComplete = null;
       this.isChrysalis = false;
       this.isDefeated = false;
       this.moveTarget = null;
+      this.moveWaypoints = [];
+      if (form === 'egg') {
+        this.eggIsOpen = false;
+        this.eggOpeningProgress = 1;
+      }
       if (form === 'facehugger') {
         this.maxHealth = 100;
         this.speed = 0.50;
@@ -1333,12 +1811,15 @@
     }
 
     takeDamage(amount) {
-      if (this.isDefeated || this.form !== 'drone') return;
+      if (this.isDefeated || this.form === 'egg' || !this.mesh?.visible) return;
       this.health = Math.max(0, this.health - Math.max(0, amount));
       const profile = this.getAdultProfile();
+      const formLabel = this.form === 'facehugger'
+        ? 'FACEHUGGER'
+        : (this.form === 'chestburster' ? 'CHESTBURSTER' : profile.label);
       setHudBar(
         'vital',
-        `INTÉGRITÉ DU ${profile.label}`,
+        `INTÉGRITÉ DU ${formLabel}`,
         (this.health / this.maxHealth) * 100,
         `${Math.ceil(this.health)}/${this.maxHealth}`
       );
@@ -1346,7 +1827,7 @@
         this.isDefeated = true;
         if (window.gameInstance) {
           window.gameInstance.showEndModal(
-            `${profile.label} NEUTRALISÉ`,
+            `${formLabel} NEUTRALISÉ`,
             'Les forces de sécurité ont contenu l\'infestation. Recommencez le cycle pour adapter votre stratégie.'
           );
         }
@@ -1354,8 +1835,15 @@
     }
 
     setMoveTarget(x, z) {
-      if (this.form === 'egg' || this.isLeaping || this.isChrysalis) return;
-      this.moveTarget = { x, z };
+      if (this.form === 'egg' || this.isLeaping || this.attachedHost || this.isChrysalis) return;
+      const padding = this.form === 'drone' ? 0.88 : (this.form === 'facehugger' ? 0.34 : 0.28);
+      const path = stationMap.findPath(this.x, this.z, x, z, {
+        step: 2.5,
+        padding
+      });
+      this.moveWaypoints = path.slice();
+      this.moveTarget = this.moveWaypoints.shift() || null;
+      if (!this.moveTarget) showToast('Aucun passage accessible vers ce point.');
     }
 
     setChrysalis(state) {
@@ -1366,26 +1854,164 @@
     openEgg() {
       this.eggIsOpen = true;
       this.createMesh();
+      this.eggOpeningProgress = 0;
+      this.detailedModel?.userData?.setOpenProgress?.(0);
+    }
+
+    startLeapTo(host, onComplete, {
+      duration = 0.62,
+      arcHeight = 3.6,
+      useFaceAnchor = true
+    } = {}) {
+      if (!host || !this.mesh || this.isLeaping) return false;
+      this.moveTarget = null;
+      this.isLeaping = true;
+      this.leapElapsed = 0;
+      this.leapDuration = Math.max(0.12, duration);
+      this.leapArcHeight = Math.max(0, arcHeight);
+      this.leapUsesFaceAnchor = useFaceAnchor;
+      this.leapTrailCooldown = 0;
+      this.leapStart = {
+        x: this.x,
+        y: this.mesh.position.y,
+        z: this.z
+      };
+      this.leapHost = host;
+      this.leapComplete = onComplete;
+      return true;
+    }
+
+    attachToFace(host) {
+      if (!host?.faceAnchor || !this.mesh) return false;
+      this.isLeaping = false;
+      this.x = host.x;
+      this.z = host.z;
+      this.mesh.parent?.remove(this.mesh);
+      host.faceAnchor.add(this.mesh);
+      this.mesh.position.set(0, 0, 0);
+      this.mesh.rotation.set(Math.PI / 2, 0, Math.PI);
+      this.detailedModel?.userData?.setFoldedPose?.(true);
+      this.attachedHost = host;
+      host.isRestrained = true;
+      animateProceduralModel(this.mesh, { phase: 0, attack: 0.75, crouch: 0.5 });
+      return true;
+    }
+
+    detachFromHost({ releaseHost = true, hide = false } = {}) {
+      if (!this.mesh) return;
+      const host = this.attachedHost;
+      const worldPosition = new THREE.Vector3();
+      this.mesh.getWorldPosition(worldPosition);
+      this.mesh.parent?.remove(this.mesh);
+      rendererEngine.scene.add(this.mesh);
+      this.mesh.position.copy(worldPosition);
+      this.mesh.rotation.set(0, 0, 0);
+      this.detailedModel?.userData?.setFoldedPose?.(false);
+      if (releaseHost && host) host.isRestrained = false;
+      this.attachedHost = null;
+      this.mesh.visible = !hide;
+    }
+
+    triggerAttack(type = 'melee') {
+      this.actionType = type;
+      this.actionAnimation = 1;
     }
 
     update(deltaSeconds = 1 / 60) {
       if (!this.mesh) return;
+      const safeDelta = Math.max(0, deltaSeconds);
+      this.actionAnimation = Math.max(0, this.actionAnimation - safeDelta * 3.4);
+
+      if (this.form === 'egg') {
+        if (this.eggIsOpen && this.eggOpeningProgress < 1) {
+          this.eggOpeningProgress = Math.min(1, this.eggOpeningProgress + safeDelta / 0.9);
+          const eased = 1 - Math.pow(1 - this.eggOpeningProgress, 3);
+          this.detailedModel?.userData?.setOpenProgress?.(eased);
+        }
+        return;
+      }
+
+      if (this.isLeaping && this.leapHost) {
+        this.leapElapsed = Math.min(this.leapDuration, this.leapElapsed + safeDelta);
+        const progress = Math.min(1, this.leapElapsed / this.leapDuration);
+        const eased = progress * progress * (3 - 2 * progress);
+        const facePosition = this.leapUsesFaceAnchor
+          ? this.leapHost.faceAnchor?.getWorldPosition?.(new THREE.Vector3())
+          : null;
+        const targetX = facePosition?.x ?? this.leapHost.x;
+        const targetY = facePosition?.y ?? 0;
+        const targetZ = facePosition?.z ?? this.leapHost.z;
+        this.x = this.leapStart.x + (targetX - this.leapStart.x) * eased;
+        this.z = this.leapStart.z + (targetZ - this.leapStart.z) * eased;
+        const baseHeight = this.leapStart.y + (targetY - this.leapStart.y) * eased;
+        const arcHeight = baseHeight + Math.sin(progress * Math.PI) * this.leapArcHeight;
+        this.mesh.position.set(this.x, arcHeight, this.z);
+        this.mesh.rotation.x = Math.sin(progress * Math.PI) * -0.35;
+        this.mesh.rotation.y = Math.atan2(targetX - this.leapStart.x, targetZ - this.leapStart.z);
+        animateProceduralModel(this.mesh, {
+          phase: progress * Math.PI * 5,
+          movement: 1,
+          attack: progress
+        });
+        this.leapTrailCooldown -= safeDelta;
+        if (this.leapTrailCooldown <= 0) {
+          this.leapTrailCooldown = 0.09;
+          window.HiveSystems?.vfx?.organicTrail(
+            this.x,
+            arcHeight + 0.4,
+            this.z,
+            this.leapStart.x,
+            0.45,
+            this.leapStart.z,
+            0xd97706
+          );
+        }
+        if (progress >= 1) {
+          const callback = this.leapComplete;
+          this.leapComplete = null;
+          this.leapHost = null;
+          callback?.();
+        }
+        return;
+      }
+
+      if (this.attachedHost) {
+        this.x = this.attachedHost.x;
+        this.z = this.attachedHost.z;
+        animateProceduralModel(this.mesh, {
+          phase: Date.now() * 0.01,
+          attack: 0.72 + Math.sin(Date.now() * 0.012) * 0.16,
+          crouch: 0.45
+        });
+        this.detailedModel?.userData?.setFoldedPose?.(true);
+        const gripPulse = 1 + Math.sin(Date.now() * 0.014) * 0.018;
+        const attachmentScale = 0.92 * gripPulse;
+        this.detailedModel?.scale.setScalar(attachmentScale);
+        if (this.mesh) this.mesh.rotation.y = Math.sin(Date.now() * 0.01) * 0.018;
+        return;
+      }
+
       if (this.form !== 'egg' && !this.isLeaping && !this.isChrysalis) {
         let { dx, dy } = inputManager.getMovementVector();
         let remainingDistance = Infinity;
         if (dx !== 0 || dy !== 0) {
           this.moveTarget = null;
+          this.moveWaypoints = [];
         } else if (this.moveTarget) {
-          const targetDistance = Math.hypot(this.moveTarget.x - this.x, this.moveTarget.z - this.z);
+          let targetDistance = Math.hypot(this.moveTarget.x - this.x, this.moveTarget.z - this.z);
           if (targetDistance <= 0.5) {
-            this.moveTarget = null;
-          } else {
+            this.moveTarget = this.moveWaypoints.shift() || null;
+            if (this.moveTarget) {
+              targetDistance = Math.hypot(this.moveTarget.x - this.x, this.moveTarget.z - this.z);
+            }
+          }
+          if (this.moveTarget && targetDistance > 0.5) {
             remainingDistance = targetDistance;
             dx = (this.moveTarget.x - this.x) / targetDistance;
             dy = (this.moveTarget.z - this.z) / targetDistance;
           }
         }
-        const frameScale = Math.max(0, deltaSeconds) * 60;
+        const frameScale = safeDelta * 60;
         const movementStep = Math.min(this.speed * frameScale, remainingDistance);
         const nextX = this.x + dx * movementStep;
         const nextZ = this.z + dy * movementStep;
@@ -1396,11 +2022,23 @@
           this.mesh.position.set(this.x, 0, this.z);
         } else if (this.moveTarget) {
           this.moveTarget = null;
+          this.moveWaypoints = [];
         }
 
         if (dx !== 0 || dy !== 0) {
           this.mesh.rotation.y = Math.atan2(dx, dy);
         }
+        animateProceduralModel(this.mesh, {
+          phase: Date.now() * (this.form === 'facehugger' ? 0.014 : 0.009),
+          movement: dx !== 0 || dy !== 0 ? 1 : 0.08,
+          attack: this.actionAnimation,
+          pulse: this.form === 'chestburster' ? 0.4 : 0
+        });
+      } else if (this.isChrysalis) {
+        animateProceduralModel(this.mesh, {
+          phase: Date.now() * 0.006,
+          pulse: 1
+        });
       }
     }
   }
@@ -1425,6 +2063,8 @@
       this.isLured = false;
       this.isBursting = false;
       this.isInfected = false;
+      this.infectionState = 'NONE';
+      this.isRestrained = false;
       this.isCocooned = false;
       this.isIncapacitated = false;
       this.shootCooldown = 0;
@@ -1439,6 +2079,15 @@
       this.bossId = null;
       this.bossPhase = 0;
       this.bossShield = 0;
+      this.faceAnchor = null;
+      this.navigationGoal = null;
+      this.pathWaypoints = [];
+      this.navigationRepathTimer = 0;
+      this.stuckTimer = 0;
+      this.animationPhase = Math.random() * Math.PI * 2;
+      this.attackAnimation = 0;
+      this.footstepCooldown = 0;
+      this.infectionCoughCooldown = 1.2 + Math.random() * 1.5;
       this.choosePatrolWaypoint();
     }
 
@@ -1469,6 +2118,7 @@
       const detailedModel = window.HiveModelFactory?.createHuman?.(this.type);
       if (detailedModel) {
         group.add(detailedModel);
+        this.addFaceAnchor(group);
         group.position.set(this.x, 0, this.z);
         group.traverse((child) => {
           if (!child.isMesh) return;
@@ -1516,9 +2166,32 @@
         group.add(headMesh);
       }
 
+      this.addFaceAnchor(group);
       group.position.set(this.x, 0, this.z);
       rendererEngine.scene.add(group);
       this.mesh = group;
+    }
+
+    addFaceAnchor(group) {
+      const anchor = new THREE.Group();
+      anchor.name = 'face_attachment_anchor';
+      const helmetJoint = group.getObjectByName('helmet_and_comms');
+      const labhoundHead = group.getObjectByName('labhound_head');
+      const rodentHead = group.getObjectByName('rodent_head');
+      if (helmetJoint) {
+        anchor.position.set(0, 0, 0.43);
+        helmetJoint.add(anchor);
+      } else if (labhoundHead) {
+        anchor.position.set(0, -0.02, 0.52);
+        labhoundHead.add(anchor);
+      } else if (rodentHead) {
+        anchor.position.set(0, 0, 0.2);
+        rodentHead.add(anchor);
+      } else {
+        anchor.position.set(0, 3.95, 0.43);
+        group.add(anchor);
+      }
+      this.faceAnchor = anchor;
     }
 
     destroy() {
@@ -1601,7 +2274,37 @@
     lureTowards(tx, tz) {
       this.isLured = true;
       this.aiState = 'LURED';
-      this.targetPos = { x: tx, z: tz };
+      this.planNavigation(tx, tz, true);
+    }
+
+    planNavigation(tx, tz, force = false) {
+      if (
+        !force &&
+        this.navigationGoal &&
+        Math.hypot(this.navigationGoal.x - tx, this.navigationGoal.z - tz) < 1
+      ) {
+        return;
+      }
+      this.navigationGoal = { x: tx, z: tz };
+      this.pathWaypoints = stationMap.findPath(this.x, this.z, tx, tz);
+      this.targetPos = this.pathWaypoints[0] || this.navigationGoal;
+      this.navigationRepathTimer = 0.8;
+      this.stuckTimer = 0;
+    }
+
+    updateNavigation(deltaSeconds) {
+      if (!this.navigationGoal) return;
+      this.navigationRepathTimer -= deltaSeconds;
+      while (
+        this.pathWaypoints.length > 0 &&
+        Math.hypot(
+          this.pathWaypoints[0].x - this.x,
+          this.pathWaypoints[0].z - this.z
+        ) < 0.8
+      ) {
+        this.pathWaypoints.shift();
+      }
+      this.targetPos = this.pathWaypoints[0] || this.navigationGoal;
     }
 
     collapseForBurst() {
@@ -1615,7 +2318,21 @@
     }
 
     update(deltaSeconds = 1 / 60) {
-      if (!this.mesh || this.isBursting || this.isInfected || this.isCocooned || this.isIncapacitated) return;
+      if (!this.mesh || this.isBursting || this.isCocooned || this.isIncapacitated) return;
+      const safeDelta = Math.max(0, deltaSeconds);
+      this.attackAnimation = Math.max(0, this.attackAnimation - safeDelta * 2.8);
+      if (this.isRestrained) {
+        this.animationPhase += safeDelta * 7;
+        const struggle = (Math.sin(this.animationPhase * 1.7) + 1) * 0.5;
+        animateProceduralModel(this.mesh, {
+          phase: this.animationPhase,
+          attack: 0.18 + struggle * 0.62,
+          crouch: 0.42 + (1 - struggle) * 0.4
+        });
+        return;
+      }
+
+      if (this.isLured) this.updateNavigation(safeDelta);
 
       let combatTarget = playerCreature;
       if (window.gameInstance?.currentStageIndex === 4) {
@@ -1643,42 +2360,93 @@
         combatTarget.z
       );
 
-      this.motionPingCooldown -= deltaSeconds;
-      if (distToPlayer < 20 && this.motionPingCooldown <= 0) {
+      const isCombatant = !this.isInfected && [
+        'guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator',
+        'commando', 'android', 'synthetic', 'powerloader', 'exosuit'
+      ].includes(this.type);
+      const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
+      const currentStageStep = window.gameInstance?.currentStage?.step;
+      const biologicalTargetDetectable = currentStageIndex !== 3 ||
+        currentStageStep === 'HUNT_FAUNA' ||
+        currentStageStep === 'CHRYSALIS';
+
+      this.motionPingCooldown -= safeDelta;
+      if (biologicalTargetDetectable && distToPlayer < 20 && this.motionPingCooldown <= 0) {
         if (this.type !== 'scientist') audioManager.playMotionTrackerPing(distToPlayer);
         this.motionPingCooldown = 1.0 + Math.random() * 1.5;
       }
 
-      const isCombatant = [
-        'guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator',
-        'commando', 'android', 'synthetic', 'powerloader', 'exosuit'
-      ].includes(this.type);
-
       // Lures have narrative priority. Otherwise armed humans investigate and
       // pursue a detected biological target while civilians keep patrolling.
-      if (!this.isLured && isCombatant && distToPlayer <= 26) {
+      if (!this.isLured && isCombatant && biologicalTargetDetectable && distToPlayer <= 26) {
         this.aiState = hasLineOfSight && distToPlayer <= 12 ? 'ATTACK' : 'CHASE';
         this.targetPos = { x: combatTarget.x, z: combatTarget.z };
       } else if (!this.isLured && (this.aiState === 'CHASE' || this.aiState === 'ATTACK')) {
         this.choosePatrolWaypoint();
       }
 
-      this.shootCooldown -= deltaSeconds;
-      if (isCombatant && distToPlayer < 14 && hasLineOfSight && this.shootCooldown <= 0) {
+      this.shootCooldown -= safeDelta;
+      if (
+        isCombatant &&
+        biologicalTargetDetectable &&
+        distToPlayer < 14 &&
+        hasLineOfSight &&
+        this.shootCooldown <= 0
+      ) {
+          const applyWeaponDamage = () => {
+            const stageIndex = window.gameInstance?.currentStageIndex;
+            if ([2, 3, 4].includes(stageIndex)) {
+              const baseDamage = ['powerloader', 'exosuit'].includes(this.type)
+                ? 18
+                : (['cleaner', 'incinerator'].includes(this.type)
+                  ? 12
+                  : (stageIndex === 4 ? 8 : 6));
+              const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
+              targetReceiver.takeDamage(baseDamage * window.gameInstance.getDifficultyDamageModifier());
+            } else if (window.gameInstance?.currentStageIndex === 5 && combatTarget?.takeDamage) {
+              const baseDamage = ['powerloader', 'exosuit'].includes(this.type) ? 25 : 11;
+              combatTarget.takeDamage(baseDamage * window.gameInstance.getDifficultyDamageModifier());
+            }
+          };
           this.shootCooldown = ['cleaner', 'incinerator'].includes(this.type)
             ? 2.4
             : (['powerloader', 'exosuit'].includes(this.type) ? 1.9 : 1.6);
-          if (['cleaner', 'incinerator'].includes(this.type)) audioManager.playFlamethrowerWhoosh();
-          else audioManager.playPulseRifleFire();
-          if (window.gameInstance && window.gameInstance.currentStageIndex === 4) {
-            const baseDamage = ['powerloader', 'exosuit'].includes(this.type)
-              ? 18
-              : (['cleaner', 'incinerator'].includes(this.type) ? 12 : 8);
-            const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
-            targetReceiver.takeDamage(baseDamage * window.gameInstance.getDifficultyDamageModifier());
-          } else if (window.gameInstance?.currentStageIndex === 5 && combatTarget?.takeDamage) {
-            const baseDamage = ['powerloader', 'exosuit'].includes(this.type) ? 25 : 11;
-            combatTarget.takeDamage(baseDamage * window.gameInstance.getDifficultyDamageModifier());
+          this.attackAnimation = 1;
+          if (['cleaner', 'incinerator'].includes(this.type)) {
+            audioManager.playFlamethrowerWhoosh(this.x, this.z);
+            window.HiveSystems?.vfx?.muzzleFlash(this.x, 2.7, this.z, 0xff8a16, 0.25);
+            window.HiveSystems?.vfx?.flameJet(
+              this.x,
+              2.65,
+              this.z,
+              combatTarget.x,
+              combatTarget.caste === 'queen' ? 3.5 : 1.5,
+              combatTarget.z
+            );
+            applyWeaponDamage();
+          } else {
+            audioManager.playPulseRifleFire(this.x, this.z);
+            const projectileColor = this.bossId === 'MANTIS_4'
+              ? (this.bossPhase >= 3 ? 0xef4444 : 0x38bdf8)
+              : 0xfbbf24;
+            window.HiveSystems?.vfx?.muzzleFlash(this.x, 2.75, this.z, projectileColor, 0.18);
+            const projectileVfx = window.HiveSystems?.vfx;
+            if (projectileVfx?.projectile) {
+              projectileVfx.projectile({
+                startX: this.x,
+                startY: 2.72,
+                startZ: this.z,
+                endX: combatTarget.x,
+                endY: combatTarget.caste === 'queen' ? 3.6 : 1.3,
+                endZ: combatTarget.z,
+                color: projectileColor,
+                scale: this.bossId === 'MANTIS_4' ? 0.2 : 0.14,
+                speed: this.bossId === 'MANTIS_4' ? 28 : 34,
+                onImpact: applyWeaponDamage
+              });
+            } else {
+              applyWeaponDamage();
+            }
           }
       }
 
@@ -1686,7 +2454,7 @@
       const shouldHoldAttackPosition = this.aiState === 'ATTACK' && hasLineOfSight && distToPlayer <= 12;
       if (dist > 0.5 && !shouldHoldAttackPosition) {
         const speed = this.isLured ? 0.12 : (this.type === 'powerloader' ? 0.06 : 0.08);
-        const frameScale = Math.max(0, deltaSeconds) * 60;
+        const frameScale = safeDelta * 60;
         const directionX = (this.targetPos.x - this.x) / dist;
         const directionZ = (this.targetPos.z - this.z) / dist;
         const nextX = this.x + directionX * speed * frameScale;
@@ -1698,10 +2466,10 @@
         } else {
           // Axis sliding, then a perpendicular sidestep, keeps pursuit from
           // freezing against the station's rectangular colliders.
-          if (!stationMap.checkCollision(nextX, this.z)) {
+          if (Math.abs(directionX) > 1e-4 && !stationMap.checkCollision(nextX, this.z)) {
             this.x = nextX;
             moved = true;
-          } else if (!stationMap.checkCollision(this.x, nextZ)) {
+          } else if (Math.abs(directionZ) > 1e-4 && !stationMap.checkCollision(this.x, nextZ)) {
             this.z = nextZ;
             moved = true;
           } else {
@@ -1717,19 +2485,52 @@
               moved = true;
             }
           }
-          if (!moved && this.aiState === 'PATROL') this.choosePatrolWaypoint();
+          if (!moved) {
+            this.stuckTimer += safeDelta;
+            if (
+              this.navigationGoal &&
+              this.stuckTimer >= 0.35 &&
+              this.navigationRepathTimer <= 0
+            ) {
+              this.planNavigation(this.navigationGoal.x, this.navigationGoal.z, true);
+            } else if (this.aiState === 'PATROL') {
+              this.choosePatrolWaypoint();
+            }
+          }
         }
         if (moved) {
+          this.stuckTimer = 0;
           this.mesh.position.set(this.x, 0, this.z);
           this.mesh.rotation.y = Math.atan2(directionX, directionZ);
+          this.animationPhase += safeDelta * (this.type === 'labrodent' ? 17 : 8);
+          this.footstepCooldown -= safeDelta;
+          if (this.footstepCooldown <= 0 && this.type !== 'labrodent') {
+            this.footstepCooldown = ['powerloader', 'exosuit'].includes(this.type) ? 0.62 : 0.38;
+            audioManager.playFootstep?.(this.type, this.x, this.z);
+          }
         }
       } else if (dist <= 0.5 && this.aiState === 'PATROL') {
-        this.patrolWait -= deltaSeconds;
+        this.patrolWait -= safeDelta;
         if (this.patrolWait <= 0) {
           this.patrolWait = 0.6 + Math.random() * 1.4;
           this.targetPos = this.findFreeWaypoint(20);
         }
       }
+
+      if (this.isInfected && this.infectionState !== 'BURST') {
+        this.infectionCoughCooldown -= safeDelta;
+        if (this.infectionCoughCooldown <= 0) {
+          this.infectionCoughCooldown = 1.7 + Math.random() * 2.2;
+          audioManager.playHostCough?.(this.x, this.z);
+          this.attackAnimation = Math.max(this.attackAnimation, 0.55);
+        }
+      }
+      animateProceduralModel(this.mesh, {
+        phase: this.animationPhase,
+        movement: dist > 0.5 ? (this.type === 'labrodent' ? 1 : 0.78) : 0.06,
+        attack: this.attackAnimation,
+        crouch: this.isInfected ? 0.18 : 0
+      });
     }
   }
 
@@ -1756,6 +2557,9 @@
       this.mesh = null;
       this.attackCooldown = 0;
       this.supportCooldown = 0;
+      this.animationPhase = Math.random() * Math.PI * 2;
+      this.attackAnimation = 0;
+      this.movementBlend = 0;
       this.isDestroyed = false;
       this.attachedToOvipositor = caste === 'queen';
     }
@@ -1818,7 +2622,16 @@
     }
 
     moveDirect(dx, dy, deltaSeconds = 1 / 60, maxDistance = Infinity, speedMultiplier = 1) {
-      if (!this.mesh || this.caste === 'queen' || this.isDestroyed) return;
+      if (!this.mesh || this.caste === 'queen' || this.isDestroyed) return false;
+      if (Math.hypot(dx, dy) <= 1e-4 || maxDistance <= 1e-4) {
+        this.movementBlend = 0;
+        animateProceduralModel(this.mesh, {
+          phase: this.animationPhase,
+          movement: 0.08,
+          attack: this.attackAnimation
+        });
+        return false;
+      }
       const frameScale = Math.max(0, deltaSeconds) * 60;
       const movementStep = Math.min(this.speed * Math.max(0, speedMultiplier) * frameScale, maxDistance);
       const nextX = this.x + dx * movementStep;
@@ -1831,8 +2644,8 @@
       } else {
         // Glissement sur les obstacles AABB : les unités contournent les
         // cloisons au lieu de rester bloquées sur une trajectoire diagonale.
-        const canSlideX = !stationMap.checkCollision(nextX, this.z);
-        const canSlideZ = !stationMap.checkCollision(this.x, nextZ);
+        const canSlideX = Math.abs(dx) > 1e-4 && !stationMap.checkCollision(nextX, this.z);
+        const canSlideZ = Math.abs(dy) > 1e-4 && !stationMap.checkCollision(this.x, nextZ);
         if (canSlideX && (!canSlideZ || Math.abs(dx) >= Math.abs(dy))) {
           this.x = nextX;
           moved = true;
@@ -1841,14 +2654,26 @@
           moved = true;
         }
       }
-      if (moved) this.mesh.position.set(this.x, 0, this.z);
+      if (moved) {
+        this.mesh.position.set(this.x, 0, this.z);
+        this.animationPhase += Math.max(0, deltaSeconds) * (this.caste === 'runner' ? 13 : 8);
+        this.movementBlend = 1;
+        animateProceduralModel(this.mesh, {
+          phase: this.animationPhase,
+          movement: 1,
+          attack: this.attackAnimation
+        });
+      }
       if (dx !== 0 || dy !== 0) this.mesh.rotation.y = Math.atan2(dx, dy);
+      return moved;
     }
 
     update(deltaSeconds = 1 / 60, humans = []) {
       if (!this.mesh || this.isDestroyed) return;
       this.attackCooldown -= deltaSeconds;
       this.supportCooldown -= deltaSeconds;
+      this.attackAnimation = Math.max(0, this.attackAnimation - Math.max(0, deltaSeconds) * 3);
+      this.movementBlend = Math.max(0, this.movementBlend - Math.max(0, deltaSeconds) * 4.5);
 
       if (this.caste === 'queen') {
         const nearbyThreat = humans.find((human) => (
@@ -1858,9 +2683,25 @@
         ));
         if (nearbyThreat && this.attackCooldown <= 0) {
           this.attackCooldown = 1.35;
+          this.attackAnimation = 1;
           nearbyThreat.takeDamage(this.damage);
+          audioManager.playWetImpact?.(nearbyThreat.x, nearbyThreat.z);
+          window.HiveSystems?.vfx?.organicTrail(
+            this.x,
+            3.3,
+            this.z,
+            nearbyThreat.x,
+            1.2,
+            nearbyThreat.z,
+            0xa855f7
+          );
           window.HiveSystems?.vfx?.burst(nearbyThreat.x, nearbyThreat.z, 0xa855f7, 14, 0.12, 1.4);
         }
+        animateProceduralModel(this.mesh, {
+          phase: this.animationPhase += Math.max(0, deltaSeconds) * 2.2,
+          attack: this.attackAnimation,
+          pulse: 0.45
+        });
         return;
       }
 
@@ -1912,20 +2753,71 @@
           } else if (isAttackOrder) {
             if (this.attackCooldown <= 0) {
               this.attackCooldown = this.caste === 'runner' ? 0.62 : (this.caste === 'spitter' ? 1.45 : 0.86);
-              target.human.takeDamage(this.damage);
+              this.attackAnimation = 1;
               const color = this.caste === 'spitter' ? 0xa3e635 : 0x39ff14;
-              window.HiveSystems?.vfx?.burst(target.human.x, target.human.z, color, this.caste === 'praetorian' ? 18 : 10, 0.1, 1.2);
-              if (this.caste === 'spitter') audioManager.playAcidSizzle();
+              if (this.caste === 'spitter') {
+                const applyAcidHit = () => {
+                  target.human?.takeDamage(this.damage);
+                  audioManager.playAcidSizzle();
+                };
+                const projectileVfx = window.HiveSystems?.vfx;
+                if (projectileVfx?.projectile) {
+                  projectileVfx.projectile({
+                    startX: this.x,
+                    startY: 1.55,
+                    startZ: this.z,
+                    endX: target.human.x,
+                    endY: 1.1,
+                    endZ: target.human.z,
+                    color,
+                    scale: 0.2,
+                    speed: 17,
+                    acid: true,
+                    onImpact: applyAcidHit
+                  });
+                } else {
+                  applyAcidHit();
+                }
+              } else {
+                target.human.takeDamage(this.damage);
+                window.HiveSystems?.vfx?.organicTrail(
+                  this.x,
+                  this.caste === 'praetorian' ? 2.8 : 1.4,
+                  this.z,
+                  target.human.x,
+                  1.1,
+                  target.human.z,
+                  color
+                );
+                window.HiveSystems?.vfx?.burst(
+                  target.human.x,
+                  target.human.z,
+                  color,
+                  this.caste === 'praetorian' ? 18 : 10,
+                  0.1,
+                  1.2
+                );
+                audioManager.playWetImpact?.(target.human.x, target.human.z);
+              }
             }
           }
         } else if (activeZone.command === 'INFEST' && this.caste === 'worker' && this.supportCooldown <= 0) {
           this.supportCooldown = 3.2;
+          this.attackAnimation = 0.65;
           resinGrid.addResinPatch(this.x, this.z, 3.4);
+          audioManager.playCocoonWeave?.(this.x, this.z);
+          window.HiveSystems?.vfx?.ring(this.x, this.z, 0x9d4edd, 2.4);
           const activeCycle = window.gameInstance?.currentStage?.incubationCycles
             ?.find((cycle) => cycle.isActive && Math.hypot(cycle.x - this.x, cycle.z - this.z) <= 8);
           activeCycle?.reinforce?.(8);
         }
       }
+      animateProceduralModel(this.mesh, {
+        phase: this.animationPhase += Math.max(0, deltaSeconds) * 2.5,
+        movement: Math.max(0.08, this.movementBlend),
+        attack: this.attackAnimation,
+        pulse: this.caste === 'praetorian' ? 0.25 : 0
+      });
     }
   }
 
@@ -2085,6 +2977,251 @@
   }
 
   // -------------------------------------------------------------
+  // CINÉMATIQUE 3D — VUE INTRA-THORACIQUE DU CHESTBURSTER
+  // -------------------------------------------------------------
+  class ThoracicView {
+    constructor() {
+      this.group = null;
+      this.tissue = null;
+      this.heartLight = null;
+      this.sternumPlates = [];
+      this.fluidParticles = [];
+      this.bumpTexture = null;
+      this.x = 0;
+      this.z = 0;
+      this.hostX = 0;
+      this.hostZ = 0;
+      this.time = 0;
+      this.burstProgress = 0;
+      this.heartbeatSoundCooldown = 0;
+    }
+
+    createTube(material, points, radius = 0.08) {
+      const curve = new THREE.CatmullRomCurve3(points);
+      return new THREE.Mesh(new THREE.TubeGeometry(curve, 20, radius, 7, false), material);
+    }
+
+    activate(x, z) {
+      this.deactivate();
+      this.hostX = x;
+      this.hostZ = z;
+      // The anatomical set is staged outside the playable station so no wall,
+      // prop or actor can intersect the full-screen internal camera.
+      this.x = 0;
+      this.z = 280;
+      this.time = 0;
+      this.burstProgress = 0;
+      this.heartbeatSoundCooldown = 0;
+      const group = new THREE.Group();
+      group.name = 'intra_thoracic_view';
+      group.position.set(this.x, 0, this.z);
+
+      const loader = new THREE.TextureLoader();
+      const bump = loader.load('assets/textures/organic-bump.png', undefined, undefined, () => {});
+      this.bumpTexture = bump;
+      bump.wrapS = THREE.RepeatWrapping;
+      bump.wrapT = THREE.RepeatWrapping;
+      bump.repeat.set(3, 2);
+
+      const tissueMaterial = new THREE.MeshStandardMaterial({
+        color: 0x3d0811,
+        emissive: 0x130104,
+        emissiveIntensity: 0.42,
+        bumpMap: bump,
+        bumpScale: 0.31,
+        roughness: 0.74,
+        metalness: 0.02,
+        side: THREE.BackSide
+      });
+      const wetMaterial = new THREE.MeshStandardMaterial({
+        color: 0x651120,
+        emissive: 0x26030a,
+        emissiveIntensity: 0.42,
+        roughness: 0.16,
+        metalness: 0.06
+      });
+      const boneMaterial = new THREE.MeshStandardMaterial({
+        color: 0x685647,
+        emissive: 0x160907,
+        emissiveIntensity: 0.12,
+        roughness: 0.82
+      });
+      const fractureMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff293f,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false
+      });
+
+      this.tissue = new THREE.Mesh(new THREE.SphereGeometry(3.35, 36, 28), tissueMaterial);
+      this.tissue.position.set(0, 2.6, 0.9);
+      this.tissue.scale.set(1.05, 0.82, 1.34);
+      group.add(this.tissue);
+
+      for (let ribIndex = 0; ribIndex < 7; ribIndex++) {
+        const y = 1.35 + ribIndex * 0.42;
+        const zDepth = 1.5 + Math.abs(3 - ribIndex) * 0.08;
+        for (const side of [-1, 1]) {
+          const rib = this.createTube(
+            boneMaterial,
+            [
+              new THREE.Vector3(side * 2.45, y, 0.15),
+              new THREE.Vector3(side * 2.08, y + 0.02, 1.08),
+              new THREE.Vector3(side * 1.34, y - 0.02, zDepth),
+              new THREE.Vector3(side * 0.54, y, 2.18),
+              new THREE.Vector3(side * 0.28, y, 2.46)
+            ],
+            0.047 + ribIndex * 0.002
+          );
+          rib.name = `inner_rib_${ribIndex}_${side < 0 ? 'left' : 'right'}`;
+          group.add(rib);
+        }
+      }
+
+      for (let plateIndex = 0; plateIndex < 7; plateIndex++) {
+        const plate = new THREE.Mesh(
+          new THREE.BoxGeometry(0.54, 0.34, 0.2),
+          boneMaterial
+        );
+        plate.name = `sternum_plate_${plateIndex}`;
+        plate.position.set(0, 1.36 + plateIndex * 0.42, 2.5);
+        plate.rotation.z = (plateIndex % 2 === 0 ? -1 : 1) * 0.035;
+        plate.userData.basePosition = plate.position.clone();
+        group.add(plate);
+        this.sternumPlates.push(plate);
+
+        const fracture = new THREE.Mesh(
+          new THREE.BoxGeometry(0.035, 0.26, 0.025),
+          fractureMaterial
+        );
+        fracture.position.set(
+          plateIndex % 2 === 0 ? -0.08 : 0.08,
+          0,
+          -0.12
+        );
+        fracture.rotation.z = (plateIndex % 2 === 0 ? -1 : 1) * 0.32;
+        plate.add(fracture);
+      }
+
+      for (let veinIndex = 0; veinIndex < 12; veinIndex++) {
+        const side = veinIndex % 2 === 0 ? -1 : 1;
+        const y = 0.8 + (veinIndex % 6) * 0.62;
+        const vein = this.createTube(
+          wetMaterial,
+          [
+            new THREE.Vector3(side * 2.75, y, -0.3),
+            new THREE.Vector3(side * 2.55, y + 0.25, 0.7),
+            new THREE.Vector3(side * 2.72, y - 0.12, 1.65),
+            new THREE.Vector3(side * 2.45, y + 0.18, 2.45)
+          ],
+          0.045 + (veinIndex % 3) * 0.012
+        );
+        vein.name = `thoracic_vessel_${veinIndex}`;
+        group.add(vein);
+      }
+
+      for (let particleIndex = 0; particleIndex < 34; particleIndex++) {
+        const particle = new THREE.Mesh(
+          new THREE.SphereGeometry(0.025 + Math.random() * 0.035, 6, 6),
+          new THREE.MeshBasicMaterial({
+            color: particleIndex % 3 === 0 ? 0xff8b77 : 0xb91c36,
+            transparent: true,
+            opacity: 0.52
+          })
+        );
+        particle.position.set(
+          (Math.random() - 0.5) * 4.5,
+          0.7 + Math.random() * 3.8,
+          -0.35 + Math.random() * 3
+        );
+        particle.userData.baseY = particle.position.y;
+        particle.userData.speed = 0.25 + Math.random() * 0.55;
+        group.add(particle);
+        this.fluidParticles.push(particle);
+      }
+
+      this.heartLight = new THREE.PointLight(0xd9163b, 2.6, 8);
+      this.heartLight.position.set(0, 2.7, 0.45);
+      group.add(this.heartLight);
+      const fillLight = new THREE.PointLight(0xff735c, 0.82, 7);
+      fillLight.position.set(0, 2.2, 2.25);
+      group.add(fillLight);
+
+      rendererEngine.scene.add(group);
+      this.group = group;
+      audioManager.playInternalHeartbeat?.();
+    }
+
+    setBurstProgress(progress) {
+      this.burstProgress = Math.max(0, Math.min(1, progress));
+      const opening = Math.pow(this.burstProgress, 1.7);
+      this.sternumPlates.forEach((plate, index) => {
+        const side = index % 2 === 0 ? -1 : 1;
+        plate.position.copy(plate.userData.basePosition);
+        plate.position.x += side * opening * (0.18 + index * 0.025);
+        plate.position.z += opening * 0.22;
+        plate.rotation.y = side * opening * 0.24;
+      });
+    }
+
+    update(deltaSeconds) {
+      if (!this.group) return;
+      this.time += Math.max(0, deltaSeconds);
+      this.heartbeatSoundCooldown -= Math.max(0, deltaSeconds);
+      const heartbeat = Math.pow(Math.max(0, Math.sin(this.time * 7.8)), 8);
+      const tissuePulse = 1 + heartbeat * 0.025 + this.burstProgress * 0.045;
+      this.tissue?.scale.set(
+        1.05 * tissuePulse,
+        0.82 * tissuePulse,
+        1.34 * tissuePulse
+      );
+      if (this.heartLight) this.heartLight.intensity = 1.7 + heartbeat * 3.6;
+      this.fluidParticles.forEach((particle, index) => {
+        particle.position.y = particle.userData.baseY + Math.sin(
+          this.time * particle.userData.speed * 4 + index
+        ) * 0.12;
+        particle.material.opacity = 0.35 + heartbeat * 0.32;
+      });
+      if (heartbeat > 0.82 && this.heartbeatSoundCooldown <= 0) {
+        this.heartbeatSoundCooldown = 0.72;
+        audioManager.playInternalHeartbeat?.();
+      }
+    }
+
+    getCameraOverride() {
+      if (!this.group) return null;
+      const shake = rendererEngine.reduceMotion ? 0 : Math.sin(this.time * 19) * 0.012;
+      const push = this.burstProgress * 0.5;
+      return {
+        position: {
+          x: this.x + shake,
+          y: 2.58 + shake,
+          z: this.z - 1.48 + push
+        },
+        target: {
+          x: this.x,
+          y: 2.57,
+          z: this.z + 2.5
+        },
+        fov: 70 + this.burstProgress * 8,
+        near: 0.02,
+        exposure: 0.92
+      };
+    }
+
+    deactivate() {
+      if (this.group) rendererEngine.removeObject(this.group);
+      this.bumpTexture?.dispose?.();
+      this.group = null;
+      this.tissue = null;
+      this.heartLight = null;
+      this.sternumPlates = [];
+      this.fluidParticles = [];
+      this.bumpTexture = null;
+    }
+  }
+
+  // -------------------------------------------------------------
   // STAGES LOGIC WITH GUARANTEED ATTACKS & TRANSITIONS
   // -------------------------------------------------------------
   class StageEgg {
@@ -2092,6 +3229,7 @@
       this.step = 'CLOSED';
       this.senseCalibrations = 0;
       this.luredScientist = false;
+      this.hostArrived = false;
       this.isCompleted = false;
     }
     init() {
@@ -2115,7 +3253,7 @@
         actionsContainer.innerHTML = `
           <button type="button" id="btn-calibrate-senses" class="act-btn" ${this.senseCalibrations >= 3 ? 'disabled' : ''}>1. CALIBRER LES SENS — ${this.senseCalibrations}/3</button>
           <button type="button" id="btn-lure" class="act-btn" ${this.senseCalibrations < 3 || this.luredScientist ? 'disabled' : ''}>2. ÉMETTRE UN STIMULUS DE PROXIMITÉ</button>
-          <button type="button" id="btn-open-egg" class="act-btn" ${!this.luredScientist ? 'disabled' : ''}>3. ENTROUVRIR LES PÉTALES</button>
+          <button type="button" id="btn-open-egg" class="act-btn" ${!this.hostArrived ? 'disabled' : ''}>3. ENTROUVRIR LES PÉTALES</button>
         `;
         document.getElementById('btn-calibrate-senses').onclick = () => {
           if (this.senseCalibrations >= 3) return;
@@ -2129,15 +3267,17 @@
           if (this.luredScientist || this.senseCalibrations < 3) return;
           audioManager.playHeartbeat();
           this.luredScientist = true;
+          this.hostArrived = false;
           this.log('[STIMULUS] La xénobiologiste Imani Kade s’approche de l’incubateur.');
-          if (window.gameInstance && window.gameInstance.humans[0]) window.gameInstance.humans[0].lureTowards(-20, -32);
+          if (window.gameInstance && window.gameInstance.humans[0]) {
+            window.gameInstance.humans[0].lureTowards(playerCreature.x, playerCreature.z + 1.2);
+          }
           window.HiveSystems?.updateObjective(1, 2, 'Attendre que la cible entre dans la fenêtre d’éclosion.');
           window.HiveSystems?.narrative('IMANI KADE', 'Le capteur détecte un changement de pression. Je vais vérifier la chambre.');
           this.updateHUD();
-          requestAnimationFrame(() => document.getElementById('btn-open-egg')?.focus({ preventScroll: true }));
         };
         document.getElementById('btn-open-egg').onclick = () => {
-          if (!this.luredScientist || this.step !== 'CLOSED') return;
+          if (!this.hostArrived || this.step !== 'CLOSED') return;
           audioManager.playEggOpen();
           this.step = 'OPENED';
           playerCreature.openEgg();
@@ -2160,7 +3300,26 @@
       }
     }
     log(msg) { appendSensorLog(msg, 'bio'); }
-    update() {}
+    update() {
+      if (!this.luredScientist || this.hostArrived || this.step !== 'CLOSED') return;
+      const host = window.gameInstance?.humans.find((human) => human.type === 'scientist');
+      if (!host) return;
+      const distance = Math.hypot(host.x - playerCreature.x, host.z - playerCreature.z);
+      if (
+        distance <= 4.2 &&
+        stationMap.hasLineOfSight(host.x, host.z, playerCreature.x, playerCreature.z, 0.12)
+      ) {
+        this.hostArrived = true;
+        host.isLured = false;
+        host.navigationGoal = null;
+        host.pathWaypoints = [];
+        host.targetPos = { x: host.x, z: host.z };
+        this.log('[PROXIMITÉ] Hôte dans la fenêtre d’éclosion. Les pétales peuvent s’entrouvrir.');
+        window.HiveSystems?.updateObjective(1, 2, 'Entrouvrir les pétales pendant que l’hôte observe l’incubateur.');
+        this.updateHUD();
+        requestAnimationFrame(() => document.getElementById('btn-open-egg')?.focus({ preventScroll: true }));
+      }
+    }
   }
 
   class StageFacehugger {
@@ -2169,6 +3328,7 @@
       this.isCompleted = false;
       this.targetHost = null;
       this.isAttacking = false;
+      this.isBonding = false;
       this.implantProgress = 0;
       this.lastImplantPercent = -1;
     }
@@ -2204,23 +3364,34 @@
     updateHUD() {
       document.getElementById('stage-badge').textContent = 'PHASE 2 : FACEHUGGER (ACTION RÉELLE)';
       document.getElementById('bio-title').textContent = 'STATUT DU FACEHUGGER — RECHERCHE D\'HÔTE';
-      setHudBar('vital', 'VIABILITÉ DU PARASITE', 100);
-      setHudBar('sec', this.isAttacking ? 'IMPLANTATION' : 'RÉSERVE DE BOND', this.isAttacking ? this.implantProgress : 100);
+      setHudBar(
+        'vital',
+        'VIABILITÉ DU PARASITE',
+        (playerCreature.health / playerCreature.maxHealth) * 100,
+        `${Math.ceil(playerCreature.health)}/${playerCreature.maxHealth}`
+      );
+      setHudBar(
+        'sec',
+        this.isAttacking ? 'IMPLANTATION' : (this.isBonding ? 'TRAJECTOIRE DU BOND' : 'RÉSERVE DE BOND'),
+        this.isAttacking ? this.implantProgress : (this.isBonding ? 55 : 100)
+      );
       const aster = window.gameInstance?.humans.find((human) => human.characterKey === 'asterRho');
       const maskStatus = aster
         ? `${aster.maskAttachments}/2 attaches intactes`
         : 'indisponible dans cette continuité';
       document.getElementById('stage-instructions').innerHTML = this.isAttacking
-        ? '<strong>Lutte :</strong><br><br>• Pressez Espace ou le bouton pour resserrer doigts et queue.<br>• Maintenez l’agrippement jusqu’à implantation complète.'
-        : `<strong>Choix d’hôte :</strong><br><br>• Imani Kade produit un Drone polyvalent.<br>• L’animal de service produit un Runner quadrupède.<br>• Un commando blindé produit un Warrior.<br>• Masque d’Aster Rho : ${maskStatus}. Chaque bond arrache une attache avant toute implantation.<br>• Déplacez-vous puis bondissez à courte portée.`;
+        ? '<strong>Lutte :</strong><br><br>• Le parasite est replié sur le visage et sa queue verrouille la nuque.<br>• Pressez Espace ou le bouton pour resserrer l’étreinte.<br>• Maintenez l’agrippement jusqu’à implantation complète.'
+        : (this.isBonding
+          ? '<strong>Bond en cours :</strong><br><br>• Trajectoire verrouillée sur le visage de l’hôte.'
+          : `<strong>Choix d’hôte :</strong><br><br>• Imani Kade produit un Drone polyvalent.<br>• L’animal de service produit un Runner quadrupède.<br>• Un commando blindé produit un Warrior.<br>• Masque d’Aster Rho : ${maskStatus}. Chaque bond arrache une attache avant toute implantation.<br>• Déplacez-vous puis bondissez à courte portée.`);
       const actionsContainer = document.getElementById('action-buttons-container');
       actionsContainer.innerHTML = this.isAttacking
         ? `<button type="button" id="btn-action-leap" class="act-btn" style="border-color: #f59e0b;">RESSERRER L’ÉTREINTE — ${Math.round(this.implantProgress)}% [ESPACE]</button>`
-        : '<button type="button" id="btn-action-leap" class="act-btn" style="border-color: #39ff14;">BONDIR SUR LE VISAGE [ESPACE]</button>';
+        : `<button type="button" id="btn-action-leap" class="act-btn" ${this.isBonding ? 'disabled' : ''} style="border-color: #39ff14;">${this.isBonding ? 'BOND EN COURS…' : 'BONDIR SUR LE VISAGE [ESPACE]'}</button>`;
       document.getElementById('btn-action-leap').onclick = () => this.isAttacking ? this.tightenGrip() : this.attemptLeap();
     }
     attemptLeap() {
-      if (this.isAttacking || this.isCompleted) return;
+      if (this.isAttacking || this.isBonding || this.isCompleted) return;
       const humans = window.gameInstance ? window.gameInstance.humans : [];
       let closestHost = null;
       let closestDistance = Infinity;
@@ -2241,20 +3412,28 @@
 
       // Le masque d'Aster doit perdre ses deux attaches avant de rendre le visage viable.
       if (closestHost.hostEligibility === 'protected' && closestHost.maskAttachments > 0) {
-        closestHost.maskAttachments--;
-        playerCreature.x = closestHost.x;
-        playerCreature.z = closestHost.z;
-        playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
+        this.isBonding = true;
         audioManager.playFacehuggerLeap();
-        window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0x38bdf8, 14, 0.1, 1.4);
-        if (closestHost.maskAttachments <= 0) {
-          closestHost.hostEligibility = 'viable';
-          appendSensorLog('[MASQUE] Deuxième attache arrachée : Aster est désormais implantable.', 'alert');
-        } else {
-          appendSensorLog('[MASQUE] Première attache arrachée : une fixation protège encore Aster.', 'bio');
-        }
-        window.gameInstance?.syncCampaignCharacter?.(closestHost);
         this.updateHUD();
+        playerCreature.startLeapTo(closestHost, () => {
+          closestHost.maskAttachments--;
+          playerCreature.x = closestHost.x + 2.4;
+          playerCreature.z = closestHost.z + 1.4;
+          playerCreature.mesh?.position.set(playerCreature.x, 0.35, playerCreature.z);
+          playerCreature.mesh?.rotation.set(0, 0, 0);
+          playerCreature.isLeaping = false;
+          this.isBonding = false;
+          audioManager.playMetalImpact?.(closestHost.x, closestHost.z);
+          window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0x38bdf8, 14, 0.1, 1.4);
+          if (closestHost.maskAttachments <= 0) {
+            closestHost.hostEligibility = 'viable';
+            appendSensorLog('[MASQUE] Deuxième attache arrachée : Aster est désormais implantable.', 'alert');
+          } else {
+            appendSensorLog('[MASQUE] Première attache arrachée : une fixation protège encore Aster.', 'bio');
+          }
+          window.gameInstance?.syncCampaignCharacter?.(closestHost);
+          this.updateHUD();
+        });
         return;
       }
 
@@ -2267,16 +3446,20 @@
           : (armoredHostTypes.includes(closestHost.type) ? 'warrior' : 'drone');
         playerCreature.setAdultCaste(adultCaste);
       }
-      this.isAttacking = true;
-      playerCreature.isLeaping = true;
-      this.implantProgress = 15;
+      this.isBonding = true;
+      this.implantProgress = 0;
       audioManager.playFacehuggerLeap();
-      playerCreature.x = closestHost.x;
-      playerCreature.z = closestHost.z;
-      if (playerCreature.mesh) playerCreature.mesh.position.set(playerCreature.x, 0, playerCreature.z);
-      window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0xd97706, 16, 0.11, 1.6);
-      window.HiveSystems?.updateObjective(2, 1, 'Maintenir l’agrippement jusqu’à implantation complète.');
       this.updateHUD();
+      playerCreature.startLeapTo(closestHost, () => {
+        if (this.isCompleted || this.targetHost !== closestHost) return;
+        this.isBonding = false;
+        this.isAttacking = playerCreature.attachToFace(closestHost);
+        this.implantProgress = this.isAttacking ? 15 : 0;
+        audioManager.playFacehuggerGrip?.(closestHost.x, closestHost.z);
+        window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0xd97706, 16, 0.11, 2.4);
+        window.HiveSystems?.updateObjective(2, 1, 'Maintenir l’agrippement jusqu’à implantation complète.');
+        this.updateHUD();
+      });
     }
 
     tightenGrip() {
@@ -2290,12 +3473,11 @@
     finishImplantationIfReady() {
       if (this.implantProgress < 100 || this.isCompleted || !this.targetHost) return;
       this.targetHost.isInfected = true;
+      this.targetHost.infectionState = 'RECOVERING';
       this.targetHost.usedAsHost = true;
-      if (this.targetHost.characterKey === 'asterRho') {
-        this.targetHost.isConsumedByCycle = true;
-        window.gameInstance?.syncCampaignCharacter?.(this.targetHost, { alive: false });
-      }
-      playerCreature.isLeaping = false;
+      this.targetHost.isRestrained = false;
+      window.gameInstance?.syncCampaignCharacter?.(this.targetHost, { alive: true });
+      playerCreature.detachFromHost({ releaseHost: true, hide: true });
       this.isCompleted = true;
       window.HiveSystems?.updateObjective(2, 2);
       window.HiveSystems?.narrative('PALIMPSESTE', 'Organisme implanté. Les protocoles humains passent en quarantaine totale.');
@@ -2306,9 +3488,11 @@
     handleKeyDown(key) {
       if (key !== ' ') return;
       if (this.isAttacking) this.tightenGrip();
-      else this.attemptLeap();
+      else if (!this.isBonding) this.attemptLeap();
     }
-    destroy() {}
+    destroy() {
+      if (playerCreature.attachedHost) playerCreature.detachFromHost({ releaseHost: true, hide: true });
+    }
     update(deltaSeconds = 1 / 60) {
       if (!this.isAttacking || this.isCompleted) return;
       this.implantProgress = Math.min(100, this.implantProgress + (6 / 0.42) * Math.max(0, deltaSeconds));
@@ -2324,60 +3508,137 @@
   class StageChestburster {
     constructor() {
       this.step = 'INTERNAL_GESTATION';
+      this.gestationProgress = 0;
+      this.recoveryElapsed = 0;
+      this.burstTimer = 0;
+      this.burstCrackStage = 0;
       this.biomassHunted = 0;
       this.chrysalisTimer = 0;
       this.lastDisplayedPercent = -1;
       this.isCompleted = false;
+      this.infectedHost = null;
+      this.rodents = [];
+      this.biteCooldown = 0;
+      this.biteTarget = null;
+      this.huntedRodentTarget = null;
+      this.huntRepathCooldown = 0;
+      this.thoracicView = new ThoracicView();
     }
+
+    setInternalViewUI(active, bursting = false) {
+      const app = document.getElementById('app-container');
+      const controls = document.getElementById('thoracic-controls');
+      const button = document.getElementById('btn-thoracic-erupt');
+      const status = document.getElementById('thoracic-status');
+      app?.classList.toggle('is-internal-view', active);
+      controls?.classList.toggle('hidden', !active);
+      controls?.setAttribute('aria-hidden', String(!active));
+      if (status) {
+        status.textContent = bursting
+          ? 'Les plaques sternales cèdent sous la poussée.'
+          : 'Les contractions convergent vers le sternum.';
+      }
+      if (button) {
+        button.disabled = bursting;
+        button.textContent = bursting ? 'RUPTURE DU STERNUM…' : 'PERFORER LE STERNUM [ESPACE]';
+        button.onclick = active && !bursting ? () => this.perforateSternum() : null;
+      }
+    }
+
     init() {
+      this.setInternalViewUI(false);
       playerCreature.setForm('chestburster');
+      if (playerCreature.mesh) playerCreature.mesh.visible = false;
       alarmSystem.setLevel(2);
-      const infectedHost = window.gameInstance?.humans.find((human) => human.isInfected && human.usedAsHost);
-      infectedHost?.collapseForBurst();
+      this.infectedHost = window.gameInstance?.humans.find((human) => human.isInfected && human.usedAsHost) || null;
+      if (!this.infectedHost && window.gameInstance) {
+        const savedAster = window.gameInstance.campaignCharacters.asterRho;
+        const restoredType = savedAster.usedAsHost
+          ? 'commando'
+          : (window.gameInstance.hostProfile || 'scientist');
+        const restoredName = savedAster.usedAsHost ? 'Surveillante Aster Rho' : 'Hôte de quarantaine';
+        this.infectedHost = new HumanAI(31, restoredType, playerCreature.x, playerCreature.z, restoredName);
+        if (savedAster.usedAsHost) {
+          this.infectedHost.characterKey = 'asterRho';
+          this.infectedHost.maskAttachments = savedAster.maskAttachments;
+        }
+        this.infectedHost.isInfected = true;
+        this.infectedHost.usedAsHost = true;
+        this.infectedHost.infectionState = 'RECOVERING';
+        this.infectedHost.createMesh();
+        window.gameInstance.humans.push(this.infectedHost);
+      }
+      if (this.infectedHost) {
+        this.infectedHost.isRestrained = false;
+        this.infectedHost.isBursting = false;
+        this.infectedHost.infectionState = 'RECOVERING';
+        this.infectedHost.aiState = 'PATROL';
+        this.infectedHost.choosePatrolWaypoint();
+        playerCreature.x = this.infectedHost.x;
+        playerCreature.z = this.infectedHost.z;
+        playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
+      }
       this.updateHUD();
-      window.HiveSystems?.setMission(3, 0, 'Émerger de l’hôte avant l’arrivée du confinement.');
+      appendSensorLog('[GESTATION] L’hôte reprend connaissance. La croissance demeure entièrement interne.', 'bio');
+      window.HiveSystems?.setMission(3, 0, 'Maturer sans révéler la présence du parasite à l’extérieur.');
+      window.HiveSystems?.narrative('IMANI KADE', 'Je… je vais bien. Le sédatif doit se dissiper.');
     }
+
     updateHUD() {
       document.getElementById('stage-badge').textContent = 'PHASE 3 : CHESTBURSTER & CHRYSALIDE';
-      document.getElementById('bio-title').textContent = 'CROISSANCE DU CHESTBURSTER';
-      setHudBar('vital', 'VITALITÉ DU JUVÉNILE', 100);
-      setHudBar('sec', 'MATURATION', this.step === 'CHRYSALIS' ? this.chrysalisTimer : 0);
+      document.getElementById('bio-title').textContent = this.step === 'INTERNAL_GESTATION'
+        ? 'TUMEUR INTERNE — INDÉTECTABLE'
+        : (this.step === 'READY_TO_BURST' || this.step === 'BURST_SEQUENCE'
+          ? 'PRESSION SOUS-STERNALE'
+          : 'CROISSANCE DU CHESTBURSTER');
+      setHudBar(
+        'vital',
+        this.step === 'INTERNAL_GESTATION' ? 'STABILITÉ DE L’HÔTE' : 'VITALITÉ DU JUVÉNILE',
+        this.step === 'INTERNAL_GESTATION' || this.step === 'READY_TO_BURST' || this.step === 'BURST_SEQUENCE'
+          ? 100
+          : (playerCreature.health / playerCreature.maxHealth) * 100,
+        this.step === 'INTERNAL_GESTATION' || this.step === 'READY_TO_BURST' || this.step === 'BURST_SEQUENCE'
+          ? '100%'
+          : `${Math.ceil(playerCreature.health)}/${playerCreature.maxHealth}`
+      );
+      setHudBar(
+        'sec',
+        this.step === 'CHRYSALIS'
+          ? 'MATURATION'
+          : (this.step === 'HUNT_FAUNA' ? 'BIOMASSE ASSIMILÉE' : 'GESTATION INTERNE'),
+        this.step === 'CHRYSALIS'
+          ? this.chrysalisTimer
+          : (this.step === 'HUNT_FAUNA' ? (this.biomassHunted / 3) * 100 : this.gestationProgress)
+      );
       const actionsContainer = document.getElementById('action-buttons-container');
       const instructions = document.getElementById('stage-instructions');
       if (this.step === 'INTERNAL_GESTATION') {
-        instructions.innerHTML = '<strong>Gestation terminée :</strong><br><br>• Émergez de l\'hôte infecté.';
-        actionsContainer.innerHTML = '<button type="button" id="btn-erupt-now" class="act-btn" style="border-color: #ef4444;">PERFORER LE STERNUM</button>';
-        document.getElementById('btn-erupt-now').onclick = () => {
-          audioManager.playBoneCrunch();
-          audioManager.playChestburstScreech();
-          this.step = 'HUNT_FAUNA';
-          window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0xef4444, 24, 0.14, 1);
-          window.HiveSystems?.updateObjective(3, 1, 'Trouver trois réserves organiques puis gagner un refuge.');
-          window.HiveSystems?.narrative('ELIAN TORV', 'Confinement KAPPA au bloc médical. Purge thermique dans quatre minutes.');
-          this.updateHUD();
-        };
+        instructions.innerHTML = '<strong>Incubation silencieuse :</strong><br><br>• Aucun organisme n’est visible sur l’hôte.<br>• L’hôte se réveille et recommence à circuler.<br>• À maturité, la perception basculera dans sa cage thoracique.';
+        actionsContainer.innerHTML = `<button type="button" class="act-btn" disabled>GESTATION INTERNE — ${Math.floor(this.gestationProgress)}%</button>`;
+      } else if (this.step === 'READY_TO_BURST') {
+        instructions.innerHTML = '<strong>Vue intra-thoracique :</strong><br><br>• Le sternum remplit le champ de vision.<br>• Déclenchez la poussée lorsque les contractions culminent.';
+        actionsContainer.innerHTML = '<button type="button" id="btn-erupt-now" class="act-btn" style="border-color: #ef4444;">PERFORER LE STERNUM [ESPACE]</button>';
+        document.getElementById('btn-erupt-now').onclick = () => this.perforateSternum();
+      } else if (this.step === 'BURST_SEQUENCE') {
+        instructions.innerHTML = '<strong>Perforation :</strong><br><br>• La poussée fracture progressivement les plaques sternales.';
+        actionsContainer.innerHTML = '<button type="button" class="act-btn" disabled>RUPTURE DU STERNUM…</button>';
       } else if (this.step === 'HUNT_FAUNA') {
         const fed = this.biomassHunted >= 3;
-        instructions.innerHTML = '<strong>Croissance accélérée :</strong><br><br>• Consommez des réserves organiques.<br>• Rejoignez ensuite un échangeur sombre pour muer.';
+        const livingRodents = this.rodents.filter((rodent) => !rodent.isIncapacitated && rodent.mesh).length;
+        instructions.innerHTML = `<strong>Chasse réelle :</strong><br><br>• ${livingRodents} rongeur${livingRodents > 1 ? 's' : ''} encore en mouvement dans le laboratoire.<br>• Verrouillez une proie : le juvénile la poursuit puis bondit au contact.<br>• Le compteur ne progresse qu’après une morsure réussie.`;
         actionsContainer.innerHTML = `
-          <button type="button" id="btn-feed-juvenile" class="act-btn" ${fed ? 'disabled' : ''}>INGÉRER UNE RÉSERVE ORGANIQUE — ${this.biomassHunted}/3</button>
+          <button type="button" id="btn-bite-rodent" class="act-btn" ${fed ? 'disabled' : ''}>TRAQUER / MORDRE UNE SOURIS [ESPACE] — ${this.biomassHunted}/3</button>
           <button type="button" id="btn-start-chrysalis" class="act-btn" ${!fed ? 'disabled' : ''} style="border-color: #9d4edd;">TISSER UN COCON DE MUE</button>
         `;
-        document.getElementById('btn-feed-juvenile').onclick = () => {
-          if (this.biomassHunted >= 3) return;
-          this.biomassHunted++;
-          audioManager.playBoneCrunch();
-          setHudBar('sec', 'CROISSANCE', (this.biomassHunted / 3) * 45);
-          this.log?.(`[CROISSANCE] Réserve organique ${this.biomassHunted}/3 assimilée.`);
-          window.HiveSystems?.updateObjective(3, this.biomassHunted >= 3 ? 2 : 1);
-          this.updateHUD();
-        };
+        document.getElementById('btn-bite-rodent').onclick = () => this.attackNearbyRodent();
         document.getElementById('btn-start-chrysalis').onclick = () => {
           if (!fed) return;
           this.step = 'CHRYSALIS';
           this.chrysalisTimer = 0;
           playerCreature.setChrysalis(true);
+          audioManager.playCocoonWeave?.(playerCreature.x, playerCreature.z);
           window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0xa855f7, 3.5);
+          window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0x9d4edd, 30, 0.09, 1.2);
           window.HiveSystems?.updateObjective(3, 2, 'Achever la mue sans être découvert.');
           this.updateHUD();
         };
@@ -2389,6 +3650,179 @@
         if (isMature) document.getElementById('btn-emerge-drone').onclick = () => this.emergeAdultForm();
       }
     }
+
+    perforateSternum() {
+      if (this.step !== 'READY_TO_BURST') return;
+      this.step = 'BURST_SEQUENCE';
+      this.burstTimer = 0;
+      this.burstCrackStage = 0;
+      this.setInternalViewUI(true, true);
+      audioManager.playSternumPressure?.();
+      this.updateHUD();
+    }
+
+    finishBurstSequence() {
+      if (this.step !== 'BURST_SEQUENCE') return;
+      this.thoracicView.deactivate();
+      this.setInternalViewUI(false);
+      if (this.infectedHost) {
+        this.infectedHost.infectionState = 'BURST';
+        this.infectedHost.isConsumedByCycle = true;
+        this.infectedHost.isRestrained = false;
+        this.infectedHost.collapseForBurst();
+        if (this.infectedHost.characterKey === 'asterRho') {
+          window.gameInstance?.syncCampaignCharacter?.(this.infectedHost, { alive: false });
+        }
+        playerCreature.x = this.infectedHost.x;
+        playerCreature.z = this.infectedHost.z;
+      }
+      if (playerCreature.mesh) {
+        playerCreature.mesh.visible = true;
+        playerCreature.mesh.position.set(playerCreature.x, 0, playerCreature.z);
+        playerCreature.mesh.rotation.set(0, 0, 0);
+      }
+      this.step = 'HUNT_FAUNA';
+      rendererEngine.snapCameraTarget(playerCreature.x, playerCreature.z);
+      audioManager.playBoneCrunch();
+      audioManager.playChestburstScreech();
+      audioManager.playWetImpact?.(playerCreature.x, playerCreature.z);
+      window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0xef334f, 34, 0.16, 1.2);
+      window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0xef334f, 2.2);
+      this.spawnRodents();
+      window.HiveSystems?.updateObjective(3, 1, 'Traquer et mordre directement trois rongeurs de laboratoire.');
+      window.HiveSystems?.narrative('ELIAN TORV', 'Rupture biologique au bloc médical. Confinement KAPPA immédiat.');
+      this.updateHUD();
+      document.getElementById('game-canvas')?.focus({ preventScroll: true });
+    }
+
+    spawnRodents() {
+      if (!window.gameInstance || this.rodents.length > 0) return;
+      const offsets = [
+        [-7, -4], [8, -5], [-10, 6], [6, 9], [12, 3]
+      ];
+      offsets.forEach(([offsetX, offsetZ], index) => {
+        const spawn = this.findRodentSpawn(
+          playerCreature.x + offsetX,
+          playerCreature.z + offsetZ,
+          index
+        );
+        const { x, z } = spawn;
+        const rodent = new HumanAI(330 + index, 'labrodent', x, z, `Rongeur de laboratoire ${index + 1}`);
+        rodent.hp = rodent.maxHp = 1;
+        rodent.hostEligibility = 'none';
+        rodent.patrolOrigin = { x, z };
+        rodent.createMesh();
+        rodent.mesh?.scale.setScalar(0.72);
+        rodent.targetPos = rodent.findFreeWaypoint(8);
+        this.rodents.push(rodent);
+        window.gameInstance.humans.push(rodent);
+      });
+      audioManager.playRodentSqueak?.(playerCreature.x + 5, playerCreature.z);
+      appendSensorLog('[FAUNE] Cinq petits rongeurs fuient entre les équipements du bloc médical.', 'bio');
+    }
+
+    findRodentSpawn(preferredX, preferredZ, index) {
+      const clamp = (value) => Math.max(-68, Math.min(68, value));
+      for (let attempt = 0; attempt < 36; attempt++) {
+        const radius = attempt === 0 ? 0 : 1.2 + Math.floor((attempt - 1) / 8) * 1.6;
+        const angle = (attempt * 2.399) + index * 0.83;
+        const x = clamp(preferredX + Math.cos(angle) * radius);
+        const z = clamp(preferredZ + Math.sin(angle) * radius);
+        if (
+          Math.hypot(x - playerCreature.x, z - playerCreature.z) >= 4 &&
+          !stationMap.checkCollision(x, z, 0.18)
+        ) {
+          return { x, z };
+        }
+      }
+      return {
+        x: clamp(playerCreature.x + 4 + index * 1.4),
+        z: clamp(playerCreature.z + 4 + (index % 2) * 1.8)
+      };
+    }
+
+    attackNearbyRodent() {
+      if (
+        this.step !== 'HUNT_FAUNA' ||
+        this.biteCooldown > 0 ||
+        this.biteTarget ||
+        this.biomassHunted >= 3
+      ) return;
+      const closest = this.rodents
+        .filter((rodent) => !rodent.isIncapacitated && rodent.mesh)
+        .reduce((nearest, rodent) => {
+          const distance = Math.hypot(rodent.x - playerCreature.x, rodent.z - playerCreature.z);
+          return !nearest || distance < nearest.distance ? { rodent, distance } : nearest;
+        }, null);
+      if (!closest || closest.distance > 3.2) {
+        if (closest) {
+          this.huntedRodentTarget = closest.rodent;
+          this.huntRepathCooldown = 0;
+          playerCreature.setMoveTarget(closest.rodent.x, closest.rodent.z);
+          showToast('Proie verrouillée : poursuite du rongeur en mouvement.');
+          audioManager.playRodentSqueak?.(closest.rodent.x, closest.rodent.z);
+          window.HiveSystems?.vfx?.ring(closest.rodent.x, closest.rodent.z, 0xf59e0b, 0.65);
+        } else {
+          showToast('Aucun rongeur vivant détecté dans le secteur.');
+        }
+        return;
+      }
+
+      this.beginRodentBite(closest.rodent);
+    }
+
+    beginRodentBite(rodent) {
+      if (
+        !rodent?.mesh ||
+        rodent.isIncapacitated ||
+        this.biteCooldown > 0 ||
+        this.biteTarget
+      ) return;
+      this.biteCooldown = 0.52;
+      this.huntedRodentTarget = null;
+      this.biteTarget = rodent;
+      playerCreature.triggerAttack?.('bite');
+      audioManager.playJuvenileBite?.(playerCreature.x, playerCreature.z);
+      const started = playerCreature.startLeapTo(
+        rodent,
+        () => this.finishRodentBite(rodent),
+        { duration: 0.28, arcHeight: 0.48, useFaceAnchor: true }
+      );
+      if (!started) {
+        this.biteTarget = null;
+        this.biteCooldown = 0;
+      }
+    }
+
+    finishRodentBite(rodent) {
+      playerCreature.isLeaping = false;
+      playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
+      this.biteTarget = null;
+      if (
+        this.step !== 'HUNT_FAUNA' ||
+        !rodent ||
+        rodent.isIncapacitated ||
+        !rodent.mesh
+      ) return;
+      audioManager.playRodentSqueak?.(rodent.x, rodent.z);
+      window.HiveSystems?.vfx?.organicTrail(
+        playerCreature.x,
+        0.55,
+        playerCreature.z,
+        rodent.x,
+        0.24,
+        rodent.z,
+        0xef4444
+      );
+      window.HiveSystems?.vfx?.burst(rodent.x, rodent.z, 0xb91c1c, 10, 0.055, 0.24);
+      rodent.isIncapacitated = true;
+      rodent.destroy();
+      this.biomassHunted++;
+      this.log(`[CROISSANCE] Rongeur ${this.biomassHunted}/3 capturé et assimilé.`);
+      window.HiveSystems?.updateObjective(3, this.biomassHunted >= 3 ? 2 : 1);
+      this.updateHUD();
+    }
+
     emergeAdultForm() {
       if (this.isCompleted) return;
       this.isCompleted = true;
@@ -2398,13 +3832,102 @@
       audioManager.playXenoRoar();
     }
     handleKeyDown(key) {
-      if (key === ' ' && this.step === 'CHRYSALIS' && this.chrysalisTimer >= 100) this.emergeAdultForm();
+      if (key !== ' ') return;
+      if (this.step === 'READY_TO_BURST') this.perforateSternum();
+      else if (this.step === 'HUNT_FAUNA') this.attackNearbyRodent();
+      else if (this.step === 'CHRYSALIS' && this.chrysalisTimer >= 100) this.emergeAdultForm();
     }
     log(message) { appendSensorLog(message, 'bio'); }
-    destroy() {}
+    getCameraTarget() {
+      if (
+        this.infectedHost &&
+        (this.step === 'INTERNAL_GESTATION' || this.step === 'READY_TO_BURST' || this.step === 'BURST_SEQUENCE')
+      ) {
+        return this.infectedHost;
+      }
+      return playerCreature;
+    }
+    getCameraOverride() {
+      return (this.step === 'READY_TO_BURST' || this.step === 'BURST_SEQUENCE')
+        ? this.thoracicView.getCameraOverride()
+        : null;
+    }
+    destroy() {
+      this.setInternalViewUI(false);
+      this.thoracicView.deactivate();
+      for (const rodent of this.rodents) {
+        if (rodent.mesh) rodent.destroy();
+      }
+    }
     update(deltaSeconds = 1 / 60) {
-      if (this.step === 'CHRYSALIS' && this.chrysalisTimer < 100) {
-        this.chrysalisTimer = Math.min(100, this.chrysalisTimer + Math.max(0, deltaSeconds) * 25);
+      const safeDelta = Math.max(0, deltaSeconds);
+      this.biteCooldown = Math.max(0, this.biteCooldown - safeDelta);
+      this.huntRepathCooldown = Math.max(0, this.huntRepathCooldown - safeDelta);
+
+      if (this.step === 'HUNT_FAUNA' && this.huntedRodentTarget && !this.biteTarget) {
+        const target = this.huntedRodentTarget;
+        if (!target.mesh || target.isIncapacitated) {
+          this.huntedRodentTarget = null;
+        } else {
+          const huntDistance = Math.hypot(target.x - playerCreature.x, target.z - playerCreature.z);
+          if (huntDistance <= 3.2 && this.biteCooldown <= 0) {
+            this.beginRodentBite(target);
+          } else if (this.huntRepathCooldown <= 0 && !playerCreature.isLeaping) {
+            this.huntRepathCooldown = 0.42;
+            playerCreature.setMoveTarget(target.x, target.z);
+          }
+        }
+      }
+
+      if (this.step === 'INTERNAL_GESTATION') {
+        this.recoveryElapsed += safeDelta;
+        if (this.infectedHost) {
+          playerCreature.x = this.infectedHost.x;
+          playerCreature.z = this.infectedHost.z;
+          if (this.recoveryElapsed >= 1.4 && this.infectedHost.infectionState === 'RECOVERING') {
+            this.infectedHost.infectionState = 'GESTATING';
+            appendSensorLog('[HÔTE] Motricité revenue. Respiration irrégulière, aucune masse externe visible.', 'bio');
+          }
+        }
+        this.gestationProgress = Math.min(100, this.gestationProgress + safeDelta * 12.5);
+        const displayedPercent = Math.min(100, Math.floor(this.gestationProgress));
+        if (displayedPercent !== this.lastDisplayedPercent) {
+          this.lastDisplayedPercent = displayedPercent;
+          const progressButton = document.querySelector('#action-buttons-container .act-btn');
+          if (progressButton) progressButton.textContent = `GESTATION INTERNE — ${displayedPercent}%`;
+          setHudBar('sec', 'GESTATION INTERNE', this.gestationProgress);
+        }
+        if (this.gestationProgress >= 100) {
+          this.step = 'READY_TO_BURST';
+          if (this.infectedHost) {
+            this.infectedHost.isRestrained = true;
+            this.thoracicView.activate(this.infectedHost.x, this.infectedHost.z);
+          } else {
+            this.thoracicView.activate(playerCreature.x, playerCreature.z);
+          }
+          const internalCamera = this.thoracicView.getCameraOverride();
+          if (internalCamera) rendererEngine.snapCinematicCamera(internalCamera);
+          this.setInternalViewUI(true);
+          audioManager.playSternumPressure?.();
+          window.HiveSystems?.updateObjective(3, 1, 'Perforer le sternum depuis la vue intra-thoracique.');
+          this.updateHUD();
+        }
+      } else if (this.step === 'READY_TO_BURST') {
+        this.thoracicView.update(safeDelta);
+      } else if (this.step === 'BURST_SEQUENCE') {
+        this.burstTimer += safeDelta;
+        const progress = Math.min(1, this.burstTimer / 1.25);
+        this.thoracicView.setBurstProgress(progress);
+        this.thoracicView.update(safeDelta);
+        const crackStage = Math.min(3, Math.floor(progress * 4));
+        if (crackStage > this.burstCrackStage) {
+          this.burstCrackStage = crackStage;
+          audioManager.playBoneCrunch();
+          window.HiveSystems?.vfx?.transformation();
+        }
+        if (progress >= 1) this.finishBurstSequence();
+      } else if (this.step === 'CHRYSALIS' && this.chrysalisTimer < 100) {
+        this.chrysalisTimer = Math.min(100, this.chrysalisTimer + safeDelta * 25);
         const displayedPercent = this.chrysalisTimer >= 100 ? 100 : Math.min(99, Math.floor(this.chrysalisTimer));
         if (displayedPercent !== this.lastDisplayedPercent) {
           this.lastDisplayedPercent = displayedPercent;
@@ -2419,6 +3942,10 @@
             if (isMature) emergeButton.onclick = () => this.emergeAdultForm();
           }
           setHudBar('sec', 'MATURATION', this.chrysalisTimer);
+          if (displayedPercent > 0 && displayedPercent % 25 === 0) {
+            audioManager.playCocoonPulse?.(playerCreature.x, playerCreature.z);
+            window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0xa855f7, 2.7);
+          }
         }
       }
     }
@@ -2574,13 +4101,20 @@
       if (!this.canUseAbility('ambush', 950)) return;
 
       this.huntReserve -= profile.huntCost;
-      playerCreature.x = landing.x;
-      playerCreature.z = landing.z;
-      playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
-      target.takeDamage(profile.huntDamage);
       audioManager.playXenoRoar();
-      window.HiveSystems?.vfx?.ring(target.x, target.z, 0x39ff14, 2.4);
-      this.log(`[${profile.huntAction}] ${target.name} désorienté — ${Math.max(0, target.hp)} PV.`);
+      playerCreature.triggerAttack('ambush');
+      playerCreature.startLeapTo({ x: landing.x, z: landing.z }, () => {
+        playerCreature.isLeaping = false;
+        playerCreature.x = landing.x;
+        playerCreature.z = landing.z;
+        playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
+        target.takeDamage(profile.huntDamage);
+        audioManager.playWetImpact?.(target.x, target.z);
+        window.HiveSystems?.vfx?.ring(target.x, target.z, 0x39ff14, 2.4);
+        window.HiveSystems?.vfx?.burst(target.x, target.z, 0x39ff14, 18, 0.1, 1.4);
+        this.log(`[${profile.huntAction}] ${target.name} désorienté — ${Math.max(0, target.hp)} PV.`);
+        this.updateRoyalButton();
+      });
       this.updateRoyalButton();
       this.updateReserveUI();
     }
@@ -2593,8 +4127,19 @@
         this.log('[MÂCHOIRE] Cible hors de portée. Utilisez une embuscade ou approchez-vous.');
         return;
       }
+      playerCreature.triggerAttack('inner-jaw');
       target.takeDamage(profile.jawDamage);
       audioManager.playBoneCrunch();
+      audioManager.playWetImpact?.(target.x, target.z);
+      window.HiveSystems?.vfx?.organicTrail(
+        playerCreature.x,
+        2.6,
+        playerCreature.z,
+        target.x,
+        1.7,
+        target.z,
+        0x39ff14
+      );
       window.HiveSystems?.vfx?.burst(target.x, target.z, 0x39ff14, 12, 0.1, 1.7);
       this.log(`[MÂCHOIRE INTERNE] Impact sur ${target.name} — ${Math.max(0, target.hp)} PV.`);
       this.updateRoyalButton();
@@ -2608,8 +4153,19 @@
         this.log('[QUEUE] Cible hors de portée.');
         return;
       }
+      playerCreature.triggerAttack('tail');
       target.takeDamage(profile.tailDamage);
       audioManager.playBoneCrunch();
+      audioManager.playWetImpact?.(target.x, target.z);
+      window.HiveSystems?.vfx?.organicTrail(
+        playerCreature.x,
+        1.5,
+        playerCreature.z,
+        target.x,
+        1.2,
+        target.z,
+        0xa855f7
+      );
       window.HiveSystems?.vfx?.burst(target.x, target.z, 0xa855f7, 14, 0.1, 1.2);
       this.log(`[FRAPPE DE QUEUE] ${target.name} touché — ${Math.max(0, target.hp)} PV.`);
       this.updateRoyalButton();
@@ -2628,8 +4184,10 @@
         this.capturedHosts++;
         document.getElementById('hive-hosts').textContent = this.capturedHosts;
         resinGrid.addResinPatch(target.x, target.z);
-        audioManager.playHeartbeat();
+        playerCreature.triggerAttack('cocoon');
+        audioManager.playCocoonWeave?.(target.x, target.z);
         window.HiveSystems?.vfx?.ring(target.x, target.z, 0xa855f7, 3);
+        window.HiveSystems?.vfx?.burst(target.x, target.z, 0x9d4edd, 22, 0.08, 1.5);
         this.log(`[NURSERIE] ${target.name} sécurisé dans la résine (${this.capturedHosts}/2).`);
         window.HiveSystems?.updateObjective(4, Math.min(2, this.capturedHosts), 'Neutraliser les menaces puis engager un véritable cycle royal.');
         this.updateRoyalButton();
@@ -3427,7 +4985,9 @@
       this.campaignActive = false;
       this.campaignConfig = {
         difficulty: 'survivor',
-        expandedLore: true
+        expandedLore: true,
+        adultCaste: 'drone',
+        hostProfile: null
       };
       this.campaignCharacters = {
         asterRho: {
@@ -3584,7 +5144,13 @@
         4: ['drone', 'runner', 'security_agent', 'thermal_operator', 'gyro_gunner', 'journal_05'],
         5: ['worker', 'warrior', 'spitter', 'praetorian', 'queen', 'argos_synthetic', 'capture_commando', 'journal_06', 'journal_07', 'journal_08']
       };
-      window.HiveSystems?.checkpoint(nextStage, unlocksByStage[nextStage] || []);
+      window.HiveSystems?.checkpoint(nextStage, unlocksByStage[nextStage] || [], {
+        adultCaste: playerCreature.adultCaste,
+        hostProfile: this.hostProfile,
+        campaignCharacters: Object.fromEntries(
+          Object.entries(this.campaignCharacters).map(([key, value]) => [key, { ...value }])
+        )
+      });
       window.HiveSystems?.vfx?.transformation();
       const act = window.HIVE_CONTENT?.narrative?.acts?.[nextStage - 1];
       if (act?.summary) window.HiveSystems?.narrative(`ACTE ${nextStage}`, act.summary, 6500);
@@ -3595,18 +5161,23 @@
     // CAMPAIGN SESSION, DIFFICULTY AND SYSTEM PAUSE
     // -----------------------------------------------------------
     configureCampaign(save) {
+      const savedCaste = ADULT_CASTE_PROFILES[save?.adultCaste] ? save.adultCaste : 'drone';
+      const savedHostProfile = typeof save?.hostProfile === 'string' ? save.hostProfile : null;
       this.campaignConfig = {
         difficulty: save?.difficulty || 'survivor',
-        expandedLore: save?.expandedLore !== false
+        expandedLore: save?.expandedLore !== false,
+        adultCaste: savedCaste,
+        hostProfile: savedHostProfile
       };
       const savedAster = save?.campaignCharacters?.asterRho;
-      if (savedAster) {
-        this.campaignCharacters.asterRho = {
-          alive: savedAster.alive !== false,
-          usedAsHost: Boolean(savedAster.usedAsHost),
-          maskAttachments: Math.max(0, Math.min(2, Number(savedAster.maskAttachments) || 0))
-        };
-      }
+      const savedAttachments = Number(savedAster?.maskAttachments);
+      this.campaignCharacters.asterRho = {
+        alive: savedAster?.alive !== false,
+        usedAsHost: Boolean(savedAster?.usedAsHost),
+        maskAttachments: Number.isFinite(savedAttachments)
+          ? Math.max(0, Math.min(2, savedAttachments))
+          : 2
+      };
     }
 
     resetWorldState() {
@@ -3616,6 +5187,7 @@
       resinGrid.reset();
       pheromoneSystem.reset();
       inputManager.reset();
+      window.HiveSystems?.vfx?.clear?.(false);
 
       playerCreature.clearMesh();
       playerCreature.form = 'egg';
@@ -3629,6 +5201,7 @@
       playerCreature.health = 100;
       playerCreature.isDefeated = false;
       playerCreature.moveTarget = null;
+      playerCreature.moveWaypoints = [];
       playerCreature.adultCaste = 'drone';
       this.hostProfile = null;
       this.lastTimestamp = null;
@@ -3655,6 +5228,9 @@
       this.resetWorldState();
       if (targetStage === 1) {
         this.resetCampaignCharacters();
+      } else {
+        playerCreature.setAdultCaste(this.campaignConfig.adultCaste || 'drone');
+        this.hostProfile = this.campaignConfig.hostProfile || null;
       }
       this.campaignActive = true;
       this.isRunning = true;
@@ -3788,10 +5364,21 @@
         if (!this.isRunning) return;
       }
 
-      const cameraTarget = this.currentStageIndex === 5 && this.currentStage && this.currentStage.getCameraTarget
-        ? this.currentStage.getCameraTarget()
-        : playerCreature;
-      rendererEngine.setCameraTarget(cameraTarget.x, cameraTarget.z, 0, this.currentStageIndex === 5, deltaSeconds);
+      const cameraOverride = this.currentStage?.getCameraOverride?.() || null;
+      if (cameraOverride) {
+        rendererEngine.setCinematicCamera(cameraOverride, deltaSeconds);
+      } else {
+        const cameraTarget = this.currentStage?.getCameraTarget
+          ? this.currentStage.getCameraTarget()
+          : playerCreature;
+        rendererEngine.setCameraTarget(
+          cameraTarget.x,
+          cameraTarget.z,
+          0,
+          this.currentStageIndex === 5,
+          deltaSeconds
+        );
+      }
       rendererEngine.render();
       requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
     }

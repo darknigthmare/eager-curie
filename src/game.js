@@ -116,15 +116,25 @@
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      const freq = Math.max(400, 2200 - dist * 100);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now);
-      gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-      osc.connect(gain); this.connect(gain);
-      osc.start(now); osc.stop(now + 0.08);
+      const freq = Math.max(550, 2450 - dist * 95);
+
+      const emitPing = (timeOffset) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + timeOffset);
+        gain.gain.setValueAtTime(0.38, now + timeOffset);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.068);
+        osc.connect(gain);
+        this.connect(gain);
+        osc.start(now + timeOffset);
+        osc.stop(now + timeOffset + 0.068);
+      };
+
+      emitPing(0);
+      if (dist < 4.5) {
+        emitPing(0.082); // Double-bip d'alerte frénétique Weyland-Yutani M314
+      }
     }
 
     playFlamethrowerWhoosh(x = null, z = null) {
@@ -308,6 +318,51 @@
       this.connect(gain);
       osc1.start(now); osc2.start(now);
       osc1.stop(now + 0.7); osc2.stop(now + 0.7);
+    }
+
+    playQueenRoar() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const sub = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(380, now);
+      filter.frequency.linearRampToValueAtTime(1350, now + 0.35);
+      filter.frequency.exponentialRampToValueAtTime(110, now + 1.25);
+
+      osc1.type = 'sawtooth';
+      osc2.type = 'square';
+      sub.type = 'sine';
+
+      // Modulations de fréquence gutturales et menaçantes (Lore Aliens 1986)
+      osc1.frequency.setValueAtTime(80, now);
+      osc1.frequency.linearRampToValueAtTime(430, now + 0.3);
+      osc1.frequency.exponentialRampToValueAtTime(42, now + 1.2);
+
+      osc2.frequency.setValueAtTime(86, now);
+      osc2.frequency.linearRampToValueAtTime(445, now + 0.3);
+      osc2.frequency.exponentialRampToValueAtTime(45, now + 1.2);
+
+      sub.frequency.setValueAtTime(50, now);
+      sub.frequency.linearRampToValueAtTime(70, now + 0.25);
+      sub.frequency.exponentialRampToValueAtTime(24, now + 1.2);
+
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 1.25);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      sub.connect(gain);
+      filter.connect(gain);
+      this.connect(gain);
+
+      osc1.start(now); osc2.start(now); sub.start(now);
+      osc1.stop(now + 1.25); osc2.stop(now + 1.25); sub.stop(now + 1.25);
     }
 
     playAlarmSiren() {
@@ -1850,7 +1905,33 @@
 
     takeDamage(amount) {
       if (this.isDefeated || this.form === 'egg' || !this.mesh?.visible) return;
-      this.health = Math.max(0, this.health - Math.max(0, amount));
+      const actualDmg = Math.max(0, amount);
+      this.health = Math.max(0, this.health - actualDmg);
+
+      // Feedback d'impact viscéral
+      audioManager.playAcidSizzle?.();
+      audioManager.playBoneCrunch?.();
+      rendererEngine.addScreenShake?.(0.24, 0.15);
+      window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, 18, 0.14, 1.25);
+      window.HiveSystems?.vfx?.floatingText?.(this.x, 2.0, this.z, `-${Math.ceil(actualDmg)}`, '#ef4444', false);
+
+      // Canon 1:1 Lore — Projection de sang acide pressurisé sur les assaillants proches
+      const nearbyHumans = (window.gameInstance?.humans || []).filter((h) => (
+        !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 4.0
+      ));
+      nearbyHumans.forEach((human) => {
+        const acidDamage = Math.round(Math.max(12, actualDmg * 0.95));
+        human.takeDamage(acidDamage, this);
+        human.staggerTimer = 0.45;
+        window.HiveSystems?.vfx?.floatingText?.(human.x, 2.4, human.z, `-${acidDamage} ACIDE`, '#39ff14', true);
+        window.HiveSystems?.vfx?.burst(human.x, human.z, 0x39ff14, 12, 0.12, 1.0);
+        if (human.type === 'synthetic' || human.type === 'android') {
+          showToast(`Châssis synthétique de ${human.name} corrodé par le sang acide.`);
+        } else {
+          showToast(`PROJECTION D'ACIDE ! ${human.name} est aspergé de sang moléculaire !`);
+        }
+      });
+
       const profile = this.getAdultProfile();
       const formLabel = this.form === 'facehugger'
         ? 'FACEHUGGER'
@@ -2469,9 +2550,13 @@
         currentStageStep === 'CHRYSALIS';
 
       this.motionPingCooldown -= safeDelta;
-      if (biologicalTargetDetectable && distToPlayer < 20 && this.motionPingCooldown <= 0) {
-        if (this.type !== 'scientist') audioManager.playMotionTrackerPing(distToPlayer);
-        this.motionPingCooldown = 1.0 + Math.random() * 1.5;
+      if (biologicalTargetDetectable && distToPlayer < 24 && this.motionPingCooldown <= 0) {
+        if (this.type !== 'scientist' && this.type !== 'labhound' && this.type !== 'labrodent') {
+          audioManager.playMotionTrackerPing(distToPlayer);
+        }
+        // Cadence dynamique fidèle au tracker M314 (Aliens / Isolation)
+        const pingInterval = distToPlayer < 4.5 ? 0.35 : (distToPlayer < 8.5 ? 0.65 : (distToPlayer < 14 ? 1.05 : 1.75));
+        this.motionPingCooldown = pingInterval + Math.random() * 0.12;
       }
 
       // Lures have narrative priority. Otherwise armed humans investigate and
@@ -2704,13 +2789,35 @@
 
     takeDamage(amount) {
       if (this.isDestroyed) return;
-      this.hp = Math.max(0, this.hp - Math.max(0, amount));
-      window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, 8, 0.09, this.caste === 'queen' ? 2.8 : 1.2);
-      if (this.caste === 'queen') {
+      const actualDmg = Math.max(0, amount);
+      this.hp = Math.max(0, this.hp - actualDmg);
+
+      audioManager.playAcidSizzle?.();
+      const isQueen = this.caste === 'queen';
+      const splashRadius = isQueen ? 6.2 : 3.8;
+      const burstCount = isQueen ? 26 : 12;
+
+      window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, burstCount, 0.12, isQueen ? 2.8 : 1.2);
+      window.HiveSystems?.vfx?.floatingText?.(this.x, isQueen ? 3.8 : 2.0, this.z, `-${Math.ceil(actualDmg)}`, '#ef4444', false);
+
+      if (isQueen) {
         setHudBar('vital', 'INTÉGRITÉ REINE', (this.hp / this.maxHp) * 100);
       }
+
+      // Canon 1:1 Lore — Projection de sang acide pressurisé sur les cibles humaines proches
+      const nearbyHumans = (window.gameInstance?.humans || []).filter((h) => (
+        !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= splashRadius
+      ));
+      nearbyHumans.forEach((human) => {
+        const acidDmg = isQueen ? 35 : 14;
+        human.takeDamage(acidDmg, this);
+        human.staggerTimer = 0.45;
+        window.HiveSystems?.vfx?.floatingText?.(human.x, 2.4, human.z, `-${acidDmg} SANG ACIDE`, '#39ff14', true);
+        window.HiveSystems?.vfx?.burst(human.x, human.z, 0x39ff14, 10, 0.1, 1.0);
+      });
+
       if (this.hp > 0) return;
-      if (this.caste === 'queen' && window.gameInstance) {
+      if (isQueen && window.gameInstance) {
         window.gameInstance.showEndModal(
           'LIGNÉE ROYALE ÉTEINTE',
           'La dernière Reine a été détruite avant la sécurisation de MNEMOSYNE.'
@@ -2720,7 +2827,7 @@
     }
 
     moveDirect(dx, dy, deltaSeconds = 1 / 60, maxDistance = Infinity, speedMultiplier = 1) {
-      if (!this.mesh || this.caste === 'queen' || this.isDestroyed) return false;
+      if (!this.mesh || (this.caste === 'queen' && this.attachedToOvipositor) || this.isDestroyed) return false;
       if (Math.hypot(dx, dy) <= 1e-4 || maxDistance <= 1e-4) {
         this.movementBlend = 0;
         animateProceduralModel(this.mesh, {
@@ -2754,7 +2861,7 @@
       }
       if (moved) {
         this.mesh.position.set(this.x, 0, this.z);
-        this.animationPhase += Math.max(0, deltaSeconds) * (this.caste === 'runner' ? 13 : 8);
+        this.animationPhase += Math.max(0, deltaSeconds) * (this.caste === 'queen' ? 5.5 : (this.caste === 'runner' ? 13 : 8));
         this.movementBlend = 1;
         animateProceduralModel(this.mesh, {
           phase: this.animationPhase,
@@ -2774,16 +2881,31 @@
       this.movementBlend = Math.max(0, this.movementBlend - Math.max(0, deltaSeconds) * 4.5);
 
       if (this.caste === 'queen') {
-        const nearbyThreat = humans.find((human) => (
+        const reach = this.attachedToOvipositor ? this.attackRange : 6.5;
+        const nearbyThreats = humans.filter((human) => (
           !human.isCocooned &&
           !human.isIncapacitated &&
-          Math.hypot(human.x - this.x, human.z - this.z) <= this.attackRange
+          Math.hypot(human.x - this.x, human.z - this.z) <= reach
         ));
+        const nearbyThreat = nearbyThreats[0] || null;
+
         if (nearbyThreat && this.attackCooldown <= 0) {
-          this.attackCooldown = 1.35;
+          this.attackCooldown = this.attachedToOvipositor ? 1.35 : 0.95;
           this.attackAnimation = 1;
-          nearbyThreat.takeDamage(this.damage);
+          const queenDmg = this.attachedToOvipositor ? this.damage : 180;
+
+          // Balayage royal dévastateur touchant l'ensemble des cibles proches
+          nearbyThreats.forEach((threat) => {
+            threat.takeDamage(queenDmg, this);
+            threat.staggerTimer = 0.55;
+            window.HiveSystems?.vfx?.burst(threat.x, threat.z, 0xa855f7, 16, 0.14, 1.5);
+            window.HiveSystems?.vfx?.floatingText?.(threat.x, 2.5, threat.z, `-${queenDmg} IMPACT ROYAL`, '#a855f7', true);
+          });
+
+          audioManager.playQueenRoar?.();
+          audioManager.playBoneCrunch?.();
           audioManager.playWetImpact?.(nearbyThreat.x, nearbyThreat.z);
+          rendererEngine.addScreenShake?.(0.35, 0.22);
           window.HiveSystems?.vfx?.organicTrail(
             this.x,
             3.3,
@@ -2793,11 +2915,35 @@
             nearbyThreat.z,
             0xa855f7
           );
-          window.HiveSystems?.vfx?.burst(nearbyThreat.x, nearbyThreat.z, 0xa855f7, 14, 0.12, 1.4);
         }
+
+        // Si la Reine est détachée et non possédée directement, elle progresse vers les ordres phéromonaux ou les menaces
+        const stageRts = window.gameInstance?.currentStage;
+        if (!this.attachedToOvipositor && stageRts?.possessedUnit !== this) {
+          const activeZone = pheromoneSystem.commandZones[pheromoneSystem.commandZones.length - 1];
+          let targetX = null;
+          let targetZ = null;
+          if (activeZone) {
+            targetX = activeZone.x;
+            targetZ = activeZone.z;
+          } else if (nearbyThreat) {
+            targetX = nearbyThreat.x;
+            targetZ = nearbyThreat.z;
+          }
+          if (targetX !== null) {
+            const dist = Math.hypot(targetX - this.x, targetZ - this.z);
+            if (dist > 3.0) {
+              const dirX = (targetX - this.x) / dist;
+              const dirZ = (targetZ - this.z) / dist;
+              this.moveDirect(dirX, dirZ, deltaSeconds);
+            }
+          }
+        }
+
         animateProceduralModel(this.mesh, {
-          phase: this.animationPhase += Math.max(0, deltaSeconds) * 2.2,
+          phase: this.animationPhase += Math.max(0, deltaSeconds) * (this.attachedToOvipositor ? 2.2 : 5.0),
           attack: this.attackAnimation,
+          movement: this.attachedToOvipositor ? 0.08 : this.movementBlend,
           pulse: 0.45
         });
         return;
@@ -4643,6 +4789,7 @@
 
     createOvipositor() {
       if (!this.queen) return;
+      this.ovipositorPos = { x: this.queen.x, z: this.queen.z };
       const group = new THREE.Group();
       const sac = new THREE.Mesh(
         new THREE.SphereGeometry(2.3, 16, 16),
@@ -4661,6 +4808,7 @@
           new THREE.CylinderGeometry(0.16, 0.24, 5.2, 8),
           new THREE.MeshStandardMaterial({ color: 0x26132d, emissive: 0x3b0764, emissiveIntensity: 0.55 })
         );
+        tendon.name = `ovipositor-tendon-${index}`;
         tendon.rotation.x = Math.PI / 2.6;
         tendon.rotation.z = (index - 1.5) * 0.13;
         tendon.position.set((index - 1.5) * 0.7, 2.25, -2.15);
@@ -4671,6 +4819,106 @@
       rendererEngine.scene.add(group);
       this.ovipositorMesh = group;
       this.queen.attachedToOvipositor = true;
+    }
+
+    toggleQueenOvipositor() {
+      if (!this.queen || this.queen.isDestroyed) {
+        showToast('La Reine n\'est pas disponible.');
+        return;
+      }
+      if (this.queen.attachedToOvipositor) {
+        // DÉTACHEMENT DE L'OVIPOSITEUR (Climax Aliens 1986 / Romulus)
+        this.queen.attachedToOvipositor = false;
+        this.queen.speed = 0.38;
+        if (this.ovipositorMesh) {
+          this.ovipositorMesh.traverse((child) => {
+            if (child.name?.startsWith('ovipositor-tendon-')) child.visible = false;
+          });
+        }
+        window.HiveSystems?.vfx?.burst(this.queen.x, this.queen.z, 0x3b0764, 28, 0.22, 2.8);
+        window.HiveSystems?.vfx?.burst(this.queen.x, this.queen.z, 0x39ff14, 18, 0.16, 1.8);
+        window.HiveSystems?.vfx?.floatingText?.(this.queen.x, 3.8, this.queen.z, 'OVIPOSITEUR SECTIONNÉ !', '#a855f7', true);
+        audioManager.playQueenRoar?.();
+        audioManager.playWetImpact?.(this.queen.x, this.queen.z);
+        rendererEngine.addScreenShake?.(0.65, 0.45);
+        showToast('RUPTURE DE L\'OVIPOSITEUR ! La Reine est libre et mène l\'assaut direct [X/P] !');
+        this.log('[REINE DE GUERRE] L\'ovipositeur a été sectionné. La Reine participe directement au massacre.');
+        this.updateHUD();
+        this.updateStats();
+      } else {
+        // RÉARRIMAGE À L'OVIPOSITEUR
+        const oviPos = this.ovipositorPos || { x: 55, z: 45 };
+        const dist = Math.hypot(this.queen.x - oviPos.x, this.queen.z - oviPos.z);
+        if (dist > 6.5) {
+          showToast(`Trop loin de l'ovipositeur (${dist.toFixed(1)}m / 6.5m requis). Rapprochez la Reine du sac d'œufs.`);
+          return;
+        }
+        this.queen.x = oviPos.x;
+        this.queen.z = oviPos.z;
+        this.queen.mesh?.position.set(this.queen.x, 0, this.queen.z);
+        this.queen.attachedToOvipositor = true;
+        this.queen.speed = 0;
+        if (this.possessedUnit === this.queen) this.possessedUnit = null;
+        if (this.ovipositorMesh) {
+          this.ovipositorMesh.traverse((child) => {
+            if (child.name?.startsWith('ovipositor-tendon-')) child.visible = true;
+          });
+        }
+        window.HiveSystems?.vfx?.burst(this.queen.x, this.queen.z, 0x7e22ce, 18, 0.14, 2.0);
+        window.HiveSystems?.vfx?.floatingText?.(this.queen.x, 3.8, this.queen.z, 'ANCRAGE ROYAL RÉTABLI', '#39ff14', false);
+        audioManager.playAcidSizzle?.();
+        showToast('La Reine est réancrée à son ovipositeur. Les pontes et cycles peuvent reprendre.');
+        this.log('[NURSERIE] Réarrimage terminé. Cycles de la ruche réactivés.');
+        this.updateHUD();
+        this.updateStats();
+      }
+    }
+
+    executePossessedAttack(targetEnemy = null) {
+      if (!this.possessedUnit || this.possessedUnit.isDestroyed) return;
+      const humans = window.gameInstance?.humans || [];
+      const unit = this.possessedUnit;
+      const isQueen = unit.caste === 'queen';
+      const maxReach = isQueen ? 7.5 : (unit.attackRange + 2.5);
+
+      let target = targetEnemy;
+      if (!target) {
+        target = humans
+          .filter((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - unit.x, h.z - unit.z) <= maxReach)
+          .sort((a, b) => Math.hypot(a.x - unit.x, a.z - unit.z) - Math.hypot(b.x - unit.x, b.z - unit.z))[0] || null;
+      }
+
+      if (!target) {
+        showToast('Aucune menace vivante à portée d\'attaque.');
+        return;
+      }
+
+      unit.attackCooldown = isQueen ? 0.95 : 0.6;
+      unit.attackAnimation = 1;
+
+      if (isQueen) {
+        audioManager.playQueenRoar?.();
+        audioManager.playBoneCrunch?.();
+        audioManager.playWetImpact?.(unit.x, unit.z);
+        rendererEngine.addScreenShake?.(0.4, 0.28);
+        const cleaveVictims = humans.filter((h) => (
+          !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - unit.x, h.z - unit.z) <= 7.0
+        ));
+        cleaveVictims.forEach((victim) => {
+          victim.takeDamage(180, unit);
+          victim.staggerTimer = 0.6;
+          window.HiveSystems?.vfx?.burst(victim.x, victim.z, 0xb91c1c, 18, 0.16, 1.6);
+          window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, '-180 BROYAGE ROYAL', '#a855f7', true);
+        });
+        showToast('BALAYAGE ROYAL DÉVASTATEUR !');
+      } else {
+        audioManager.playBoneCrunch?.();
+        audioManager.playWetImpact?.(target.x, target.z);
+        target.takeDamage(unit.damage, unit);
+        target.staggerTimer = 0.45;
+        window.HiveSystems?.vfx?.burst(target.x, target.z, 0xef4444, 14, 0.12, 1.4);
+        window.HiveSystems?.vfx?.floatingText?.(target.x, 2.2, target.z, `-${unit.damage}`, '#ef4444', false);
+      }
     }
 
     decorateMantisBoss() {
@@ -4834,11 +5082,23 @@
 
     updateHUD() {
       document.getElementById('stage-badge').textContent = 'PHASE 5 : REINE — GUERRE DE LA RUCHE';
-      document.getElementById('bio-title').textContent = 'RÉSEAU SYNAPTIQUE — REINE LIÉE À L’OVIPOSITEUR';
-      document.getElementById('stage-instructions').innerHTML = '<strong>Commandement :</strong><br><br>• Q/W/E/R sélectionnent chasse, capture, défense et infestation.<br>• La Reine doit rester attachée à l’ovipositeur pour lancer un cycle.<br>• Drone, Runner et Warrior exigent un hôte biologiquement compatible.<br>• Worker, Spitter et Praetorian proviennent d’une spécialisation/mue d’un adulte existant.<br>• Chaque cycle est visible, attaquable et peut échouer.<br>• P active la synchronisation synaptique directe.';
-      setHudBar('vital', 'INTÉGRITÉ REINE', 100);
+      const isAttached = Boolean(this.queen?.attachedToOvipositor);
+      document.getElementById('bio-title').textContent = isAttached
+        ? 'RÉSEAU SYNAPTIQUE — REINE ANCRÉE À L’OVIPOSITEUR'
+        : 'RÉSEAU SYNAPTIQUE — REINE DE GUERRE DÉTACHÉE (COMBAT DIRECT)';
+      document.getElementById('stage-instructions').innerHTML = '<strong>Commandement de la Ruche :</strong><br><br>• <strong>Q / W / E / R</strong> : ordres phéromonaux (Chasser, Capturer, Défendre, Infester).<br>• <strong>X</strong> : détacher / réarrimer la Reine de son ovipositeur (Aliens 1986).<br>• <strong>P</strong> : synchronisation synaptique directe (ZQSD + ESPACE pour attaquer).<br>• La Reine doit être ancrée à l’ovipositeur pour féconder les cocons.<br>• Détachée, la Reine devient un béhémoth de guerre (180 dégâts de zone).';
+      setHudBar('vital', 'INTÉGRITÉ REINE', this.queen ? (this.queen.hp / this.queen.maxHp) * 100 : 100);
       const actionsContainer = document.getElementById('action-buttons-container');
+      const oviBtnLabel = isAttached
+        ? 'DÉTACHER LA REINE DE L’OVIPOSITEUR [X]'
+        : 'RÉARRIMER LA REINE À L’OVIPOSITEUR [X]';
+      const oviBtnBg = isAttached
+        ? 'rgba(168,85,247,0.24)'
+        : 'rgba(57,255,20,0.24)';
+      const oviBtnBorder = isAttached ? '#a855f7' : '#39ff14';
+
       actionsContainer.innerHTML = `
+        <button type="button" id="btn-toggle-ovipositor" class="act-btn" style="border-color: ${oviBtnBorder}; background: ${oviBtnBg}; font-weight: bold;">${oviBtnLabel}</button>
         <button type="button" id="btn-spawn-drone" class="act-btn">CYCLE DRONE — HÔTE HUMANOÏDE STANDARD (30 Bio)</button>
         <button type="button" id="btn-spawn-runner" class="act-btn">CYCLE RUNNER — HÔTE QUADRUPÈDE (30 Bio)</button>
         <button type="button" id="btn-spawn-warrior" class="act-btn">CYCLE WARRIOR — HÔTE COMMANDO/BLINDÉ (45 Bio)</button>
@@ -4848,6 +5108,7 @@
         <button type="button" id="btn-final-conquest" class="act-btn" disabled style="border-color: #39ff14; background: rgba(57,255,20,0.24);">ISOLER PALIMPSESTE ET CHOISIR UNE FIN</button>
       `;
 
+      document.getElementById('btn-toggle-ovipositor').onclick = () => this.toggleQueenOvipositor();
       document.getElementById('btn-spawn-drone').onclick = () => this.spawnUnit('drone', 30);
       document.getElementById('btn-spawn-worker').onclick = () => this.spawnUnit('worker', 25);
       document.getElementById('btn-spawn-runner').onclick = () => this.spawnUnit('runner', 30);
@@ -4996,6 +5257,15 @@
       const spitterButton = document.getElementById('btn-spawn-spitter');
       const praetorianButton = document.getElementById('btn-spawn-praetorian');
       const conquestButton = document.getElementById('btn-final-conquest');
+      const oviButton = document.getElementById('btn-toggle-ovipositor');
+      if (oviButton) {
+        const isAttached = Boolean(this.queen?.attachedToOvipositor);
+        oviButton.textContent = isAttached
+          ? 'DÉTACHER LA REINE DE L’OVIPOSITEUR [X]'
+          : 'RÉARRIMER LA REINE À L’OVIPOSITEUR [X]';
+        oviButton.style.borderColor = isAttached ? '#a855f7' : '#39ff14';
+        oviButton.style.background = isAttached ? 'rgba(168,85,247,0.24)' : 'rgba(57,255,20,0.24)';
+      }
       if (droneButton) droneButton.disabled = !this.canBeginCycle('drone', 30);
       if (workerButton) workerButton.disabled = !this.canBeginCycle('worker', 25);
       if (runnerButton) runnerButton.disabled = !this.canBeginCycle('runner', 30);
@@ -5025,6 +5295,14 @@
       if (pheromoneSystem.possessionMode && ['w', 'a', 'z', 'q', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
         return;
       }
+      if (key === 'x') {
+        this.toggleQueenOvipositor();
+        return;
+      }
+      if (key === ' ' && pheromoneSystem.possessionMode && this.possessedUnit) {
+        this.executePossessedAttack();
+        return;
+      }
       const commandByKey = { q: 'HUNT', w: 'CAPTURE', e: 'DEFEND', r: 'INFEST' };
       if (commandByKey[key]) {
         this.possessedUnit = null;
@@ -5039,26 +5317,39 @@
       if (!worldPoint) return;
 
       if (pheromoneSystem.possessionMode) {
+        // En mode possession, un clic direct sur une menace active déclenche une attaque immédiate
+        if (this.possessedUnit) {
+          const clickedTarget = (window.gameInstance?.humans || []).find((h) => (
+            !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - worldPoint.x, h.z - worldPoint.z) <= 3.2
+          ));
+          if (clickedTarget) {
+            this.executePossessedAttack(clickedTarget);
+            return;
+          }
+        }
+
         let closestUnit = null;
         let closestDistance = Infinity;
         for (const unit of this.rtsUnits) {
-          if (unit.caste === 'queen' || unit.isDestroyed) continue;
+          if (unit.isDestroyed) continue;
+          if (unit.caste === 'queen' && unit.attachedToOvipositor) continue; // La Reine ne peut être incarnée que si détachée
           const distance = Math.hypot(unit.x - worldPoint.x, unit.z - worldPoint.z);
           if (distance < closestDistance) {
             closestUnit = unit;
             closestDistance = distance;
           }
         }
-        if (closestUnit && closestDistance <= 8) {
+        if (closestUnit && closestDistance <= 8.5) {
           this.possessedUnit = closestUnit;
           this.possessedMoveTarget = null;
-          this.log(`[SYNAPSE] Contrôle direct du ${closestUnit.caste.toUpperCase()} #${closestUnit.id}.`);
-          showToast('Contrôle synaptique actif : déplacement ZQSD / flèches.');
+          const unitTitle = closestUnit.caste === 'queen' ? 'REINE DE GUERRE DÉTACHÉE' : closestUnit.caste.toUpperCase();
+          this.log(`[SYNAPSE] Contrôle direct du ${unitTitle} #${closestUnit.id}.`);
+          showToast(`Contrôle synaptique actif : ${unitTitle} [ZQSD / ESPACE pour attaquer].`);
         } else if (this.possessedUnit) {
           this.possessedMoveTarget = worldPoint;
           showToast('Destination de l\'unité synchronisée mise à jour.');
         } else {
-          showToast('Aucune unité à proximité du point sélectionné.');
+          showToast('Aucune unité sélectionnable à proximité du point cliqué.');
         }
         return;
       }

@@ -309,6 +309,31 @@
       </div>
     </div>
 
+    <!-- M314 Motion Tracker CRT Device (Aliens 1986 / Alien: Isolation) -->
+    <div id="m314-tracker" class="tracker-device" aria-label="Détecteur de mouvements M314" tabindex="0">
+      <div class="tracker-bezel">
+        <div class="tracker-header">
+          <span class="tracker-label">M314 MOTION TRACKER</span>
+          <span id="tracker-status" class="tracker-status-tag">STANDBY</span>
+        </div>
+        <div class="tracker-screen-container">
+          <canvas id="tracker-canvas" width="160" height="160"></canvas>
+          <div class="tracker-crt-lines"></div>
+        </div>
+        <div class="tracker-footer">
+          <div class="tracker-readout">
+            <span class="tracker-label-sub">DIST</span>
+            <span id="tracker-range-val" class="tracker-val">--.- M</span>
+          </div>
+          <div class="tracker-readout">
+            <span class="tracker-label-sub">CIBLE</span>
+            <span id="tracker-contacts-val" class="tracker-val">0</span>
+          </div>
+          <button type="button" id="btn-toggle-tracker" class="tracker-toggle-btn" title="Afficher / Masquer (Touche M)">[M]</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Bottom Notification Toast -->
     <div id="toast-message" class="toast hidden" role="status" aria-live="polite"></div>
     <noscript><div class="fatal-message">JavaScript doit être activé pour lancer HIVE ASCENSION.</div></noscript>

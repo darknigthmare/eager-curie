@@ -599,6 +599,120 @@
   const audioManager = new AudioManager();
 
   // -------------------------------------------------------------
+  // RETRO-FUTURISTIC WEYLAND-YUTANI M314 MOTION TRACKER (Aliens / Isolation)
+  // -------------------------------------------------------------
+  class MotionTrackerDisplay {
+    constructor() {
+      this.canvas = document.getElementById('tracker-canvas');
+      this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
+      this.deviceEl = document.getElementById('m314-tracker');
+      this.rangeValEl = document.getElementById('tracker-range-val');
+      this.contactsValEl = document.getElementById('tracker-contacts-val');
+      this.statusEl = document.getElementById('tracker-status');
+      this.toggleBtn = document.getElementById('btn-toggle-tracker');
+      this.sweepAngle = 0;
+      this.isCollapsed = false;
+
+      if (this.toggleBtn) {
+        this.toggleBtn.onclick = () => this.toggleCollapse();
+      }
+    }
+
+    toggleCollapse() {
+      this.isCollapsed = !this.isCollapsed;
+      if (this.deviceEl) {
+        this.deviceEl.classList.toggle('collapsed', this.isCollapsed);
+      }
+      showToast(this.isCollapsed ? 'M314 Replié [Touche M]' : 'M314 Déployé [Touche M]');
+    }
+
+    update(deltaSeconds, player, humans) {
+      if (!this.ctx || !player) return;
+      const ctx = this.ctx;
+      const w = this.canvas.width;
+      const h = this.canvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxRange = 22.0;
+      const radius = (w / 2) - 6;
+
+      ctx.fillStyle = 'rgba(2, 26, 8, 0.42)';
+      ctx.fillRect(0, 0, w, h);
+
+      this.sweepAngle = (this.sweepAngle + deltaSeconds * 2.8) % (Math.PI * 2);
+
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.28)';
+      ctx.lineWidth = 1;
+      for (let r = 0.25; r <= 1.0; r += 0.25) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - radius);
+      ctx.lineTo(cx, cy + radius);
+      ctx.moveTo(cx - radius, cy);
+      ctx.lineTo(cx + radius, cy);
+      ctx.stroke();
+
+      const sweepGradient = ctx.createRadialGradient(cx, cy, 2, cx, cy, radius);
+      sweepGradient.addColorStop(0, 'rgba(57, 255, 20, 0.55)');
+      sweepGradient.addColorStop(1, 'rgba(34, 197, 94, 0.0)');
+      ctx.fillStyle = sweepGradient;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius, this.sweepAngle - 0.52, this.sweepAngle);
+      ctx.closePath();
+      ctx.fill();
+
+      const activeHumans = (humans || []).filter((human) => !human.isIncapacitated && !human.isCocooned);
+      let closestDistance = Infinity;
+      let contactCount = 0;
+
+      const playerFacing = player.mesh ? player.mesh.rotation.y : 0;
+
+      for (const human of activeHumans) {
+        const dx = human.x - player.x;
+        const dz = human.z - player.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > maxRange) continue;
+
+        contactCount++;
+        if (dist < closestDistance) closestDistance = dist;
+
+        const worldAngle = Math.atan2(dx, dz);
+        const relAngle = worldAngle - playerFacing;
+        const normDist = (dist / maxRange) * radius;
+        const bx = cx + Math.sin(relAngle) * normDist;
+        const by = cy - Math.cos(relAngle) * normDist;
+
+        const angleDiff = Math.abs((relAngle + Math.PI * 2) % (Math.PI * 2) - this.sweepAngle);
+        const isHit = angleDiff < 0.28;
+
+        ctx.fillStyle = isHit ? '#ffffff' : '#39ff14';
+        ctx.shadowColor = '#39ff14';
+        ctx.shadowBlur = isHit ? 12 : 6;
+        ctx.beginPath();
+        ctx.arc(bx, by, isHit ? 4.2 : 3.0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      if (this.rangeValEl) {
+        this.rangeValEl.textContent = closestDistance < Infinity ? `${closestDistance.toFixed(1)} M` : '--.- M';
+      }
+      if (this.contactsValEl) {
+        this.contactsValEl.textContent = String(contactCount);
+      }
+      if (this.statusEl) {
+        this.statusEl.textContent = contactCount > 0 ? (closestDistance < 6 ? 'CRITIQUE' : 'TRACKING') : 'STANDBY';
+        this.statusEl.style.color = closestDistance < 6 ? '#ef4444' : '#39ff14';
+      }
+    }
+  }
+
+  // -------------------------------------------------------------
   // 2. INPUT MANAGER
   // -------------------------------------------------------------
   class InputManager {
@@ -1766,6 +1880,30 @@
       this.isInVent = false;
       this.currentVent = null;
       this.salivaTimer = 0;
+      this.isProwling = false;
+    }
+
+    toggleProwlStance() {
+      if (this.form !== 'drone') return;
+      this.isProwling = !this.isProwling;
+      const profile = this.getAdultProfile();
+      if (this.isProwling) {
+        this.speed = profile.speed * 1.25;
+        if (this.detailedModel) {
+          this.detailedModel.rotation.x = 0.42;
+          this.detailedModel.position.y = -0.35;
+        }
+        showToast('TRAQUE AU SOL ACTIVE [Z] : Silhouette basse, vitesse +25%, détection réduite.');
+        appendSensorLog('[POSTURE] Passage en traque quadrupède furtive.', 'bio');
+      } else {
+        this.speed = profile.speed;
+        if (this.detailedModel) {
+          this.detailedModel.rotation.x = 0;
+          this.detailedModel.position.y = 0;
+        }
+        showToast('POSTURE BIPÈDE REDRESSÉE [Z]');
+        appendSensorLog('[POSTURE] Retour en posture bipède redressée.', 'bio');
+      }
     }
 
     getAdultProfile() {
@@ -1813,6 +1951,10 @@
         detailedModel.scale.setScalar(modelScale);
         group.add(detailedModel);
         this.detailedModel = detailedModel;
+        if (this.isProwling && this.form === 'drone') {
+          detailedModel.rotation.x = 0.42;
+          detailedModel.position.y = -0.35;
+        }
         const lightColors = {
           egg: this.eggIsOpen ? 0xf59e0b : 0x39ff14,
           facehugger: 0xf59e0b,
@@ -1975,6 +2117,7 @@
       audioManager.playBoneCrunch?.();
       rendererEngine.addScreenShake?.(0.24, 0.15);
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, 18, 0.14, 1.25);
+      window.HiveSystems?.vfx?.spawnAcidPool?.(this.x, this.z, 1.45, 9.0);
       window.HiveSystems?.vfx?.floatingText?.(this.x, 2.0, this.z, `-${Math.ceil(actualDmg)}`, '#ef4444', false);
 
       // Canon 1:1 Lore — Projection de sang acide pressurisé sur les assaillants proches
@@ -2701,8 +2844,13 @@
 
       // Lures have narrative priority. Otherwise armed humans investigate and
       // pursue a detected biological target while civilians keep patrolling.
-      if (!this.isLured && isCombatant && biologicalTargetDetectable && distToPlayer <= 26) {
-        this.aiState = hasLineOfSight && distToPlayer <= 12 ? 'ATTACK' : 'CHASE';
+      const isPlayerProwling = combatTarget === playerCreature && playerCreature.isProwling;
+      const maxDetectionDist = isPlayerProwling ? 14 : 26;
+      const attackRangeDist = isPlayerProwling ? 7.5 : 12;
+      const shootDist = isPlayerProwling ? 9.5 : 14;
+
+      if (!this.isLured && isCombatant && biologicalTargetDetectable && distToPlayer <= maxDetectionDist) {
+        this.aiState = hasLineOfSight && distToPlayer <= attackRangeDist ? 'ATTACK' : 'CHASE';
         this.targetPos = { x: combatTarget.x, z: combatTarget.z };
       } else if (!this.isLured && (this.aiState === 'CHASE' || this.aiState === 'ATTACK')) {
         this.choosePatrolWaypoint();
@@ -2712,7 +2860,7 @@
       if (
         isCombatant &&
         biologicalTargetDetectable &&
-        distToPlayer < 14 &&
+        distToPlayer < shootDist &&
         hasLineOfSight &&
         this.shootCooldown <= 0
       ) {
@@ -2938,6 +3086,7 @@
       const burstCount = isQueen ? 26 : 12;
 
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, burstCount, 0.12, isQueen ? 2.8 : 1.2);
+      window.HiveSystems?.vfx?.spawnAcidPool?.(this.x, this.z, isQueen ? 2.4 : 1.45, isQueen ? 12 : 8);
       window.HiveSystems?.vfx?.floatingText?.(this.x, isQueen ? 3.8 : 2.0, this.z, `-${Math.ceil(actualDmg)}`, '#ef4444', false);
 
       if (isQueen) {
@@ -4474,15 +4623,17 @@
       }
       document.getElementById('stage-instructions').innerHTML = this.royalCycle?.isActive
         ? `<strong>Défense du cycle royal :</strong><br><br>• Étape visible : ${this.royalCycle.state}.<br>• Les tirs peuvent détruire la forme royale.<br>• Neutralisez la vague KAPPA avant la fin de la mue.<br>• Le ${adultLabel} conserve ses actions propres à sa caste.`
-        : `<strong>Prédateur ${adultLabel} :</strong><br><br>• ${profile.huntAction} consomme ${profile.huntCost} points de chasse.<br>• [C] Infiltration / Embûche dans les conduits de ventilation.<br>• Les synthétiques ne sont pas des hôtes.<br>• Coconisez deux cibles viables ; l’une sera consommée par le cycle royal.`;
+        : `<strong>Prédateur ${adultLabel} :</strong><br><br>• ${profile.huntAction} consomme ${profile.huntCost} points de chasse.<br>• [C] Infiltration / Embûche dans les conduits.<br>• [Z] Posture basse / Traque au sol furtive.<br>• [G] Ovomorphing : métamorphoser un hôte en œuf vivant.<br>• Coconisez deux hôtes viables pour la lignée royale.`;
       const actionsContainer = document.getElementById('action-buttons-container');
       actionsContainer.innerHTML = `
         <button type="button" id="btn-drone-ambush" class="act-btn">1. ${profile.huntAction} [1 / E]</button>
         <button type="button" id="btn-inner-jaw" class="act-btn">2. ${actionLabels.jaw} [2 / R]</button>
         <button type="button" id="btn-tail-impale" class="act-btn">3. ${actionLabels.tail} [3 / T]</button>
         <button type="button" id="btn-claw-swipe" class="act-btn">★ GRIFFES [ESPACE]</button>
+        <button type="button" id="btn-drone-prowl" class="act-btn">★ POSTURE BASSE [Z]</button>
         <button type="button" id="btn-drone-vent" class="act-btn">5. CONDUITS [C]</button>
-        <button type="button" id="btn-cocoon-host" class="act-btn">4. COCOONISER UNE CIBLE [4 / F]</button>
+        <button type="button" id="btn-cocoon-host" class="act-btn">4. COCOONISER UN HÔTE [4 / F]</button>
+        <button type="button" id="btn-eggmorph" class="act-btn">6. OVOMORPHE [G]</button>
         <button type="button" id="btn-found-queen-hive" class="act-btn" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
       `;
 
@@ -4490,8 +4641,10 @@
       document.getElementById('btn-inner-jaw').onclick = () => this.executeInnerJaw();
       document.getElementById('btn-tail-impale').onclick = () => this.executeTailImpale();
       document.getElementById('btn-claw-swipe').onclick = () => this.executeClawSwipe();
+      document.getElementById('btn-drone-prowl').onclick = () => playerCreature.toggleProwlStance();
       document.getElementById('btn-drone-vent').onclick = () => this.toggleVentInfiltration();
       document.getElementById('btn-cocoon-host').onclick = () => this.executeCocoonHost();
+      document.getElementById('btn-eggmorph').onclick = () => this.executeEggmorph();
       document.getElementById('btn-found-queen-hive').onclick = () => this.foundRoyalNursery();
       this.updateRoyalButton();
     }
@@ -4511,6 +4664,8 @@
 
     handleKeyDown(key) {
       if (key === 'c') this.toggleVentInfiltration();
+      if (key === 'z') playerCreature.toggleProwlStance();
+      if (key === 'g') this.executeEggmorph();
       if (key === '1' || key === 'e') this.executeAmbush();
       if (key === '2' || key === 'r') this.executeInnerJaw();
       if (key === '3' || key === 't') this.executeTailImpale();
@@ -4748,6 +4903,50 @@
       }
     }
 
+    executeEggmorph() {
+      if (!this.canUseAbility('cocoon', 500)) return;
+      const { human: target, distance } = this.findClosestHuman((human) => (
+        human.isCocooned &&
+        !human.isEggmorphed &&
+        !human.usedAsHost
+      ));
+
+      if (!target || distance > 5.5) {
+        showToast('Approchez-vous d’un hôte en cocon pour l’ovomorpher [G].');
+        this.log('[OVOMORPHING] Aucun hôte en cocon à portée.');
+        return;
+      }
+
+      target.isEggmorphed = true;
+      target.usedAsHost = true;
+      if (target.mesh) target.mesh.visible = false;
+
+      if (window.HiveModelFactory?.createEgg) {
+        const eggMesh = window.HiveModelFactory.createEgg(false);
+        eggMesh.position.set(target.x, 0, target.z);
+        eggMesh.scale.setScalar(1.2);
+        rendererEngine.propsGroup.add(eggMesh);
+
+        this.ovomorphs = this.ovomorphs || [];
+        this.ovomorphs.push({
+          x: target.x,
+          z: target.z,
+          mesh: eggMesh,
+          isOpen: false,
+          hostName: target.name
+        });
+      }
+
+      audioManager.playCocoonWeave?.(target.x, target.z);
+      audioManager.playBoneCrunch?.();
+      window.HiveSystems?.vfx?.ring(target.x, target.z, 0x39ff14, 3.8);
+      window.HiveSystems?.vfx?.burst(target.x, target.z, 0x39ff14, 26, 0.16, 1.4);
+      window.HiveSystems?.vfx?.floatingText(target.x, 2.5, target.z, 'OVOMORPHE CRÉÉ', '#39ff14', true);
+      this.log(`[OVOMORPHING GIGER] Tissus de ${target.name} digérés en ovomorphe prêt à féconder.`);
+      showToast('Hôte métamorphosé en Œuf vivant [Eggmorphing 1979] !');
+      this.updateRoyalButton();
+    }
+
     foundRoyalNursery() {
       if (this.isCompleted || this.royalCycle?.isActive) return;
       if (!this.canFoundHive()) {
@@ -4938,11 +5137,50 @@
           `${Math.ceil(this.royalCycle.integrity)}/${this.royalCycle.maxIntegrity}`
         );
       }
+
+      // Canon 1:1 Lore — Détection et éclosion des ovomorphs issus de l'eggmorphing
+      if (this.ovomorphs && window.gameInstance?.humans) {
+        for (const egg of this.ovomorphs) {
+          if (egg.isOpen) continue;
+          const intruder = window.gameInstance.humans.find((h) => (
+            !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - egg.x, h.z - egg.z) <= 4.2
+          ));
+          if (intruder) {
+            egg.isOpen = true;
+            audioManager.playEggHatch?.(egg.x, egg.z);
+            audioManager.playFacehuggerLeap?.();
+            window.HiveSystems?.vfx?.burst(egg.x, egg.z, 0xf59e0b, 20, 0.15, 1.2);
+            window.HiveSystems?.vfx?.projectile({
+              startX: egg.x,
+              startY: 0.8,
+              startZ: egg.z,
+              endX: intruder.x,
+              endY: 1.5,
+              endZ: intruder.z,
+              color: 0xf59e0b,
+              scale: 0.22,
+              onImpact: () => {
+                intruder.takeDamage(45);
+                intruder.staggerTimer = 1.2;
+                window.HiveSystems?.vfx?.floatingText(intruder.x, 2.8, intruder.z, 'FACEHUGGER SAUVAGE !', '#f59e0b', true);
+              }
+            });
+            appendSensorLog(`[ÉCLOSION PÉRIMÉTRIQUE] L'ovomorphe issu de ${egg.hostName} a éclos et bondi sur ${intruder.name} !`, 'bio');
+          }
+        }
+      }
+
       this.updateRoyalButton();
     }
 
     destroy() {
       this.royalCycle?.destroy();
+      if (this.ovomorphs) {
+        for (const egg of this.ovomorphs) {
+          if (egg.mesh) rendererEngine.removeObject(egg.mesh);
+        }
+        this.ovomorphs = [];
+      }
     }
 
     updateReserveUI() {
@@ -5810,6 +6048,7 @@
       window.gameInstance = this;
       const canvas = document.getElementById('game-canvas');
       this.setupResponsiveHud();
+      this.motionTracker = new MotionTrackerDisplay();
       rendererEngine.init(canvas); inputManager.init(canvas); audioManager.init(); visionSystem.init(); alarmSystem.init(); pheromoneSystem.init();
       window.HiveModelFactory?.loadTextures?.();
       window.HiveSystems?.init(this, {
@@ -5865,6 +6104,10 @@
 
     handleKeyDown(key) {
       if (this.isSystemPaused) return;
+      if (key === 'm') {
+        this.motionTracker?.toggleCollapse();
+        return;
+      }
       const visionByKey = { f1: 'normal', f2: 'thermal', f3: 'acoustic' };
       if (visionByKey[key]) {
         visionSystem.setMode(visionByKey[key]);
@@ -6123,6 +6366,7 @@
           }
         }
         window.HiveSystems?.update(deltaSeconds);
+        this.motionTracker?.update(deltaSeconds, playerCreature, this.humans);
         if (!this.isRunning) return;
       }
 

@@ -511,6 +511,65 @@
       this.effects.push({ group, age: 0, lifetime: 0.72, drip: true, startY: y });
     }
 
+    spawnAcidPool(x, z, radius = 1.5, duration = 8.5) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const poolGeo = new THREE.CircleGeometry(radius, 24);
+      const poolMat = new THREE.MeshBasicMaterial({
+        color: 0x39ff14,
+        transparent: true,
+        opacity: 0.68,
+        depthWrite: false
+      });
+      const poolMesh = new THREE.Mesh(poolGeo, poolMat);
+      poolMesh.rotation.x = -Math.PI / 2;
+      poolMesh.position.y = 0.032;
+      group.add(poolMesh);
+
+      const bubbles = [];
+      for (let i = 0; i < 6; i++) {
+        const bGeo = new THREE.SphereGeometry(0.07 + Math.random() * 0.07, 6, 6);
+        const bMat = new THREE.MeshBasicMaterial({
+          color: 0xa3e635,
+          transparent: true,
+          opacity: 0.85
+        });
+        const b = new THREE.Mesh(bGeo, bMat);
+        const ang = Math.random() * Math.PI * 2;
+        const dist = Math.random() * (radius * 0.75);
+        b.position.set(Math.cos(ang) * dist, 0.04, Math.sin(ang) * dist);
+        b.userData.phase = Math.random() * Math.PI * 2;
+        bubbles.push(b);
+        group.add(b);
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const sGeo = new THREE.SphereGeometry(0.12, 5, 5);
+        const sMat = new THREE.MeshBasicMaterial({
+          color: 0x84cc16,
+          transparent: true,
+          opacity: 0.42,
+          depthWrite: false
+        });
+        const s = new THREE.Mesh(sGeo, sMat);
+        s.position.set((Math.random() - 0.5) * radius * 0.8, 0.2 + Math.random() * 0.25, (Math.random() - 0.5) * radius * 0.8);
+        group.add(s);
+      }
+
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        age: 0,
+        lifetime: duration,
+        acidPool: true,
+        radius,
+        x,
+        z,
+        bubbles
+      });
+    }
+
     transformation() {
       if (this.reducedMotion) return;
       const app = document.getElementById('app-container');
@@ -562,6 +621,30 @@
             }
             if (drop.material) drop.material.opacity = 0.82 * (1 - progress);
           });
+        } else if (effect.acidPool) {
+          if (effect.bubbles) {
+            effect.bubbles.forEach((b) => {
+              b.userData.phase += deltaSeconds * 6;
+              const scaleY = 0.8 + Math.sin(b.userData.phase) * 0.5;
+              b.scale.set(1, Math.max(0.2, scaleY), 1);
+            });
+          }
+          if (effect.group.children[0]?.material) {
+            effect.group.children[0].material.opacity = Math.max(0, 0.68 * (1 - Math.pow(progress, 2)));
+          }
+          effect.damageTimer = (effect.damageTimer || 0) + deltaSeconds;
+          if (effect.damageTimer >= 0.48 && window.gameInstance?.humans) {
+            effect.damageTimer = 0;
+            for (const h of window.gameInstance.humans) {
+              if (h.isIncapacitated || h.isCocooned) continue;
+              const d = Math.hypot(h.x - effect.x, h.z - effect.z);
+              if (d <= effect.radius) {
+                h.takeDamage?.(12);
+                window.HiveSystems?.vfx?.floatingText?.(h.x, 2.2, h.z, '-12 ACIDE', '#39ff14');
+                window.audioManager?.playAcidSizzle?.();
+              }
+            }
+          }
         } else {
           for (const particle of effect.group.children) {
             particle.position.addScaledVector(particle.userData.velocity, deltaSeconds);

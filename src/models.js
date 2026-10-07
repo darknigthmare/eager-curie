@@ -2157,61 +2157,217 @@
       const bone = this._material('bone', { color: 0xd6c58b });
 
       if (chrysalis) {
+        // --- COCON / CHRYSALIDE BIOMÉCANIQUE ALIEN: ROMULUS ---
+        const romulusResin = this._material('resin', {
+          color: 0x220c2a,
+          roughness: 0.18,
+          metalness: 0.38,
+          emissive: 0x4a1268,
+          emissiveIntensity: 0.55,
+          transparent: true,
+          opacity: 0.92
+        });
+        const romulusChitin = this._material('chitin', {
+          color: 0x120d18,
+          roughness: 0.22,
+          metalness: 0.72
+        });
+        const romulusFlesh = this._material('chitinWarm', {
+          color: 0x4c1424,
+          roughness: 0.38,
+          emissive: 0x831843,
+          emissiveIntensity: 0.52
+        });
+        const romulusAmniotic = this._material('resin', {
+          color: 0x1f0833,
+          roughness: 0.12,
+          emissive: 0x9333ea,
+          emissiveIntensity: 0.75,
+          transparent: true,
+          opacity: 0.58
+        });
+
+        // 1. Membrane externe du cocon (capsule asymétrique et charnue)
         root.add(this._ellipsoid(
-          resin,
-          { x: 1.18, y: 1.72, z: 1.0 },
-          { x: 0, y: 1.42, z: 0 },
+          romulusResin,
+          { x: 1.24, y: 1.82, z: 1.08 },
+          { x: 0, y: 1.48, z: 0 },
           'pod_membrane',
-          24
+          28
         ));
-        for (let band = 0; band < 8; band++) {
-          const y = 0.35 + band * 0.32;
-          root.add(this._ring(
-            chitin,
-            1.02 - Math.abs(3.5 - band) * 0.07,
-            0.065,
-            { x: 0, y, z: 0 },
-            { x: Math.PI / 2, y: 0, z: 0 },
-            `pod_band_${band}`
+
+        // 2. Coeur amniotique interne pulsant
+        root.add(this._ellipsoid(
+          romulusAmniotic,
+          { x: 0.88, y: 1.42, z: 0.72 },
+          { x: 0, y: 1.5, z: 0.05 },
+          'amniotic_core',
+          20
+        ));
+
+        // 3. Silhouette en gestation de l'adulte (dôme crânien et colonne incurvée)
+        root.add(this._ellipsoid(
+          this._material('darkMetal', { color: 0x050810, roughness: 0.14, metalness: 0.95, emissive: 0x15803d, emissiveIntensity: 0.35 }),
+          { x: 0.42, y: 0.46, z: 0.98 },
+          { x: 0, y: 1.82, z: 0.1 },
+          'developing_cranial_dome',
+          20
+        ));
+        root.add(this._ellipsoid(
+          romulusChitin,
+          { x: 0.36, y: 0.72, z: 0.38 },
+          { x: 0, y: 1.25, z: -0.12 },
+          'developing_torso',
+          14
+        ));
+
+        // 4. Suture longitudinale d'émergence (fissure centrale emblématique de Romulus)
+        root.add(this._tube(
+          romulusFlesh,
+          [
+            { x: -0.06, y: 2.35, z: 0.94 },
+            { x: -0.1, y: 1.52, z: 1.08 },
+            { x: -0.05, y: 0.65, z: 0.9 }
+          ],
+          0.065,
+          'suture_lip_left',
+          18,
+          8
+        ));
+        root.add(this._tube(
+          romulusFlesh,
+          [
+            { x: 0.06, y: 2.35, z: 0.94 },
+            { x: 0.1, y: 1.52, z: 1.08 },
+            { x: 0.05, y: 0.65, z: 0.9 }
+          ],
+          0.065,
+          'suture_lip_right',
+          18,
+          8
+        ));
+
+        // Ligaments fibreux transversaux retenant la suture
+        for (let s = 0; s < 5; s++) {
+          const sy = 0.85 + s * 0.32;
+          const sz = 0.98 + Math.sin((s / 4) * Math.PI) * 0.09;
+          root.add(this._segment(
+            bone,
+            this._vector(-0.11, sy, sz),
+            this._vector(0.11, sy, sz),
+            0.024,
+            0.024,
+            `suture_ligament_${s}`,
+            6
           ));
         }
-        for (let rootIndex = 0; rootIndex < 7; rootIndex++) {
-          const angle = rootIndex / 7 * Math.PI * 2;
+
+        // 5. Arches costales biomécaniques enserrant le cocon (côtes squelettiques Romulus)
+        for (let rib = 0; rib < 6; rib++) {
+          const ribY = 0.62 + rib * 0.32;
+          const ribScale = 1.06 - Math.abs(2.8 - rib) * 0.07;
+          // Côte gauche
           root.add(this._tube(
-            resin,
+            romulusChitin,
             [
-              { x: Math.cos(angle) * 0.45, y: 0.44, z: Math.sin(angle) * 0.45 },
-              { x: Math.cos(angle) * 1.0, y: 0.12, z: Math.sin(angle) * 1.0 },
-              { x: Math.cos(angle) * 1.5, y: 0.04, z: Math.sin(angle) * 1.5 }
+              { x: 0, y: ribY, z: -0.95 * ribScale },
+              { x: -1.15 * ribScale, y: ribY + 0.08, z: -0.2 * ribScale },
+              { x: -0.92 * ribScale, y: ribY - 0.04, z: 0.72 * ribScale }
             ],
-            0.07,
+            0.055,
+            `romulus_rib_left_${rib}`,
+            14,
+            7
+          ));
+          // Côte droite
+          root.add(this._tube(
+            romulusChitin,
+            [
+              { x: 0, y: ribY, z: -0.95 * ribScale },
+              { x: 1.15 * ribScale, y: ribY + 0.08, z: -0.2 * ribScale },
+              { x: 0.92 * ribScale, y: ribY - 0.04, z: 0.72 * ribScale }
+            ],
+            0.055,
+            `romulus_rib_right_${rib}`,
+            14,
+            7
+          ));
+        }
+
+        // Colonne vertébrale postérieure consolidant les côtes
+        root.add(this._tube(
+          romulusChitin,
+          [
+            { x: 0, y: 0.45, z: -0.85 },
+            { x: 0, y: 1.5, z: -1.02 },
+            { x: 0, y: 2.5, z: -0.78 }
+          ],
+          0.095,
+          'posterior_spine_column',
+          18,
+          8
+        ));
+
+        // 6. Vrilles et racines d'ancrage aux parois et au sol
+        for (let rootIndex = 0; rootIndex < 8; rootIndex++) {
+          const angle = (rootIndex / 8) * Math.PI * 2;
+          const reach = 1.35 + (rootIndex % 3) * 0.28;
+          root.add(this._tube(
+            romulusResin,
+            [
+              { x: Math.cos(angle) * 0.52, y: 0.45, z: Math.sin(angle) * 0.52 },
+              { x: Math.cos(angle) * (reach * 0.65), y: 0.14, z: Math.sin(angle) * (reach * 0.65) },
+              { x: Math.cos(angle) * reach, y: 0.02, z: Math.sin(angle) * reach }
+            ],
+            0.065,
             `anchoring_root_${rootIndex}`,
             14,
             7
           ));
         }
-        root.add(this._ellipsoid(
-          this._material('emissiveGreen', { emissiveIntensity: 0.42, transparent: true, opacity: 0.34 }),
-          { x: 0.62, y: 1.12, z: 0.5 },
-          { x: 0, y: 1.48, z: 0.03 },
-          'developing_silhouette',
-          18
+
+        // Disque de résine visqueuse au sol
+        root.add(this._ring(
+          romulusResin,
+          1.15,
+          0.22,
+          { x: 0, y: 0.03, z: 0 },
+          { x: Math.PI / 2, y: 0, z: 0 },
+          'ground_resin_pool'
         ));
+
+        // 7. Gouttes et stalactites de sécrétion visqueuse
+        const dripOffsets = [
+          [-0.45, 0.55, 0.4], [0.45, 0.55, 0.4],
+          [-0.3, 0.42, -0.4], [0.3, 0.42, -0.4]
+        ];
+        dripOffsets.forEach(([dx, dy, dz], idx) => {
+          root.add(this._coneAlong(
+            romulusResin,
+            { x: dx, y: dy, z: dz },
+            { x: 0, y: -1, z: 0 },
+            0.05,
+            0.28,
+            `resin_drip_${idx}`
+          ));
+        });
+
         return this._finalize(root, {
           modelType: 'chestburster',
           chrysalis: true,
-          height: 3.15,
+          height: 3.25,
           animationJoints: [
             'pod_membrane',
-            'pod_band_0',
-            'pod_band_1',
-            'pod_band_2',
-            'pod_band_3',
-            'pod_band_4',
-            'pod_band_5',
-            'pod_band_6',
-            'pod_band_7',
-            'developing_silhouette'
+            'amniotic_core',
+            'developing_cranial_dome',
+            'suture_lip_left',
+            'suture_lip_right',
+            'romulus_rib_left_0',
+            'romulus_rib_right_0',
+            'romulus_rib_left_2',
+            'romulus_rib_right_2',
+            'romulus_rib_left_4',
+            'romulus_rib_right_4'
           ]
         });
       }

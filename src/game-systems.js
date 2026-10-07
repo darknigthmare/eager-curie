@@ -222,6 +222,8 @@
     clear(resolveProjectiles = false) {
       const effects = this.effects.splice(0, this.effects.length);
       for (const effect of effects) {
+        if (effect.texture) effect.texture.dispose();
+        if (effect.group?.material?.dispose) effect.group.material.dispose();
         if (this.removeObject) this.removeObject(effect.group);
         else effect.group.parent?.remove(effect.group);
         if (
@@ -420,6 +422,69 @@
       this.effects.push({ group, age: 0, lifetime: 0.38, trail: true });
     }
 
+    floatingText(x, y, z, text, color = '#ef4444', isCrit = false) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 96;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.font = isCrit ? '900 48px monospace' : '700 38px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#020617';
+      ctx.lineWidth = 6;
+      ctx.strokeText(text, 128, 48);
+      ctx.fillStyle = color;
+      ctx.fillText(text, 128, 48);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 1.0,
+        depthTest: false
+      });
+      const sprite = new THREE.Sprite(spriteMat);
+      const scale = isCrit ? 3.4 : 2.6;
+      sprite.scale.set(scale, scale * 0.38, 1);
+      sprite.position.set(x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4);
+      this.scene.add(sprite);
+      this.effects.push({
+        group: sprite,
+        sprite: true,
+        texture,
+        age: 0,
+        lifetime: 0.92,
+        speedY: isCrit ? 2.8 : 2.2
+      });
+    }
+
+    fleshImpact(x, z, color = 0xb91c1c, count = 16) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      for (let i = 0; i < count; i++) {
+        const geo = new THREE.SphereGeometry(0.12 * (0.6 + Math.random()), 5, 5);
+        const mat = new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.95,
+          depthWrite: false
+        });
+        const p = new THREE.Mesh(geo, mat);
+        p.position.set(0, 1.6 + Math.random() * 0.6, 0);
+        p.userData.velocity = new THREE.Vector3(
+          (Math.random() - 0.5) * 9,
+          2.0 + Math.random() * 4,
+          (Math.random() - 0.5) * 9
+        );
+        group.add(p);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: 0.65 });
+    }
+
     transformation() {
       if (this.reducedMotion) return;
       const app = document.getElementById('app-container');
@@ -438,6 +503,11 @@
           if (effect.acid) {
             const pulse = 0.82 + Math.sin(effect.age * 34) * 0.18;
             effect.group.scale.setScalar(pulse);
+          }
+        } else if (effect.sprite) {
+          effect.group.position.y += (effect.speedY || 2.2) * deltaSeconds;
+          if (effect.group.material) {
+            effect.group.material.opacity = Math.max(0, 1 - Math.pow(progress, 1.6));
           }
         } else if (effect.ring) {
           effect.group.scale.setScalar(1 + progress * 1.8);
@@ -474,6 +544,8 @@
             acid: effect.acid
           }
           : null;
+        if (effect.texture) effect.texture.dispose();
+        if (effect.group?.material?.dispose) effect.group.material.dispose();
         if (this.removeObject) this.removeObject(effect.group);
         else effect.group.parent?.remove(effect.group);
         this.effects.splice(index, 1);

@@ -2167,6 +2167,23 @@
       return husk;
     }
 
+    createRoyalFacehugger() {
+      const hugger = this.createFacehugger();
+      hugger.name = 'royal_superfacehugger';
+      hugger.scale.setScalar(1.28);
+      const royalArmorMat = this._material('chitin', {
+        color: 0x3b1d11,
+        roughness: 0.35,
+        metalness: 0.4
+      });
+      hugger.traverse((child) => {
+        if (child.isMesh && child.name.includes('body')) {
+          child.material = royalArmorMat;
+        }
+      });
+      return hugger;
+    }
+
     createDiscardedExuvia() {
       const T = this._three();
       const root = new T.Group();
@@ -2536,6 +2553,7 @@
     createAdult(caste) {
       const normalizedCaste = String(caste || 'drone').toLowerCase();
       if (normalizedCaste === 'runner') return this._createRunner();
+      if (normalizedCaste === 'crusher') return this._createCrusher();
       return this._createUprightAdult(normalizedCaste);
     }
 
@@ -2544,21 +2562,37 @@
       const root = new T.Group();
       root.name = `adult_${caste}`;
       const royal = caste === 'queen';
+      const palatine = caste === 'palatine';
       const guardian = caste === 'praetorian';
       const warrior = caste === 'warrior';
-      const scale = royal ? 1.42 : (guardian ? 1.18 : (warrior ? 1.06 : 1));
+      const prowler = caste === 'prowler';
+      const spitter = caste === 'spitter';
+      const burster = caste === 'burster';
+      const offspring = caste === 'offspring';
+
+      const scale = royal ? 1.42 : (palatine ? 1.28 : (guardian ? 1.18 : (warrior ? 1.06 : (offspring ? 1.15 : (burster ? 0.96 : 1)))));
+      let chitinColor = 0x0b1518;
+      if (royal) chitinColor = 0x221033;
+      else if (palatine) chitinColor = 0x1f0b29;
+      else if (guardian) chitinColor = 0x2d163d;
+      else if (warrior) chitinColor = 0x111827;
+      else if (prowler) chitinColor = 0x3d0c0c;
+      else if (spitter) chitinColor = 0x1a2e05;
+      else if (burster) chitinColor = 0x3a3804;
+      else if (offspring) chitinColor = 0xd4d4d8;
+
       const primary = this._material('chitin', {
-        color: royal ? 0x221033 : (guardian ? 0x2d163d : (warrior ? 0x111827 : 0x0b1518)),
-        roughness: royal ? 0.22 : 0.28,
-        metalness: 0.46
+        color: chitinColor,
+        roughness: royal || palatine ? 0.22 : (offspring ? 0.55 : 0.28),
+        metalness: offspring ? 0.15 : 0.46
       });
       const secondary = this._material('resin', {
-        color: royal ? 0x4a214f : 0x263238,
+        color: royal || palatine ? 0x4a214f : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238))),
         opacity: 0.96
       });
-      const bone = this._material('bone', { color: royal ? 0xc8b6d8 : 0xb9c6a5 });
-      const sensory = this._material(royal ? 'emissiveRed' : 'emissiveGreen', {
-        emissiveIntensity: royal ? 0.42 : 0.32
+      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (offspring ? 0xf4f4f5 : 0xb9c6a5) });
+      const sensory = this._material(royal || palatine ? 'emissiveRed' : (spitter || burster ? 'emissiveGreen' : 'emissiveGreen'), {
+        emissiveIntensity: royal || palatine ? 0.42 : (burster ? 0.65 : 0.32)
       });
 
       root.add(this._ellipsoid(
@@ -2784,6 +2818,79 @@
         caste: 'runner',
         height: 2.55,
         animationJoints: Array.from({ length: 4 }, (_, index) => `runner_leg_${index}`)
+      });
+    }
+
+    _createCrusher() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_crusher';
+      const scale = 1.45;
+      const primary = this._material('chitin', { color: 0x18181b, roughness: 0.4, metalness: 0.52 });
+      const secondary = this._material('chitinWarm', { color: 0x27272a });
+      const bone = this._material('bone', { color: 0xa1a1aa });
+
+      // Massive armored quadruped thorax
+      root.add(this._ellipsoid(
+        primary,
+        { x: 0.95 * scale, y: 0.85 * scale, z: 1.85 * scale },
+        { x: 0, y: 1.8 * scale, z: -0.2 * scale },
+        'crusher_thorax',
+        20
+      ));
+      // Heavy head with ramming crest
+      root.add(this._ellipsoid(
+        primary,
+        { x: 0.75 * scale, y: 0.58 * scale, z: 1.2 * scale },
+        { x: 0, y: 1.95 * scale, z: 1.65 * scale },
+        'crusher_head',
+        20
+      ));
+
+      // Triangular bullet-proof cranial shield (Ramming Shield)
+      const shieldGeo = new T.ConeGeometry(1.4 * scale, 2.0 * scale, 4);
+      const shieldMesh = new T.Mesh(shieldGeo, primary);
+      shieldMesh.rotation.x = Math.PI / 3;
+      shieldMesh.rotation.y = Math.PI / 4;
+      shieldMesh.position.set(0, 2.3 * scale, 1.35 * scale);
+      shieldMesh.scale.set(1.3, 0.45, 1.15);
+      root.add(shieldMesh);
+
+      this._addJaw(root, primary, bone, { x: 0, y: 1.5 * scale, z: 2.6 * scale }, 0.95 * scale, true);
+      this._addRibCage(root, secondary, 2.1 * scale, 0.9 * scale, 0.7 * scale, 6);
+
+      for (let legIndex = 0; legIndex < 4; legIndex++) {
+        const side = legIndex % 2 === 0 ? -1 : 1;
+        const front = legIndex < 2;
+        const z = front ? 0.95 * scale : -1.05 * scale;
+        this._addSegmentedLimb(
+          root,
+          primary,
+          secondary,
+          [
+            { x: side * 0.75 * scale, y: 1.85 * scale, z },
+            { x: side * 1.2 * scale, y: 1.0 * scale, z: z + (front ? 0.3 : -0.25) * scale },
+            { x: side * 0.98 * scale, y: 0.15 * scale, z: z + (front ? 0.6 : -0.48) * scale }
+          ],
+          [0.34 * scale, 0.26 * scale, 0.18 * scale],
+          `crusher_leg_${legIndex}`,
+          {
+            material: primary,
+            clawMaterial: bone,
+            side,
+            isFoot: true,
+            scale: 1.15 * scale,
+            rotationY: side < 0 ? -0.1 : 0.1
+          }
+        );
+      }
+      this._addTail(root, primary, bone, { x: 0, y: 1.8 * scale, z: -1.8 * scale }, 6.2 * scale, 0.5 * scale, 0.65 * scale, 0.16 * scale);
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'crusher',
+        height: 3.8 * scale,
+        animationJoints: Array.from({ length: 4 }, (_, index) => `crusher_leg_${index}`)
       });
     }
 

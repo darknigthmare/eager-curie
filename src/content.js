@@ -1050,6 +1050,210 @@
         strengths: ["Production d'œufs", "Commandement global", "Puissance de boss lorsqu'elle est mobile"],
         weaknesses: ["Ovipositeur immobile", "Perte catastrophique pour la colonie", "Grande cible"],
         counters: ["Exosquelette industriel", "Autodestruction", "Attaque coordonnée sur l'ovipositeur"]
+      },
+      royal_facehugger: {
+        id: "royal_facehugger",
+        name: "Superfacehugger Royal",
+        priority: "P1",
+        loreStatus: "FILM_CORE",
+        role: "Parasite royal blindé transportant la lignée royale",
+        evolutionFrom: ["queen_ovipositor_royal_cycle"],
+        evolvesTo: ["queenburster", "praetorian"],
+        evolutionCondition: "Ponte spécialisée d'une Reine mature ou infusion de Gelée Royale.",
+        profile: { mobility: 5, stealth: 3, resilience: 3, control: 5, support: 2, range: 2 },
+        actions: [
+          {
+            id: "armored_skitter",
+            name: "Course blindée",
+            type: "movement",
+            description: "Plaques dorsales épaissies absorbant les tirs de petit calibre."
+          },
+          {
+            id: "webbed_strangle",
+            name: "Étreinte palmée",
+            type: "attack",
+            description: "Doigts palmés et queue renforcée empêchant tout retrait chirurgical."
+          },
+          {
+            id: "royal_implantation",
+            name: "Implantation royale double",
+            type: "channel",
+            description: "Dépose un embryon de Reine et un embryon de garde prétorien."
+          }
+        ],
+        strengths: ["Résistance balistique accrue", "Implantation irréversible", "Fonde une nouvelle dynastie"],
+        weaknesses: ["Plus grand et visible", "Très rare"],
+        counters: ["Lance-flammes lourd", "Cryogénisation immédiate"]
+      },
+      prowler: {
+        id: "prowler",
+        name: "Prowler",
+        priority: "P1",
+        loreStatus: "EXPANDED_COMPATIBLE",
+        role: "Prédateur d'embuscade et de plafond ultra-rapide",
+        evolutionFrom: ["drone_specialization"],
+        evolvesTo: ["praetorian"],
+        evolutionCondition: "Drone spécialisé dans la traque en hauteur et les attaques surprise isolées (40 Bio).",
+        profile: { mobility: 5, stealth: 5, resilience: 3, control: 4, support: 1, range: 1 },
+        actions: [
+          {
+            id: "ceiling_pounce",
+            name: "Bond du plafond",
+            type: "attack",
+            description: "Surgit depuis un angle mort élevé et cloue la cible au sol."
+          },
+          {
+            id: "pinning_shred",
+            name: "Déchiquetage au sol",
+            type: "control",
+            description: "Immobilise et lacère la victime en l'empêchant d'utiliser ses armes."
+          },
+          {
+            id: "shadow_veil",
+            name: "Voile d'ombre",
+            type: "defense",
+            description: "Reste indétectable aux détecteurs inertiels tant qu'il ne bouge pas."
+          }
+        ],
+        strengths: ["Dégâts de surprise dévastateurs", "Contrôle individuel absolu", "Furtivité maximale"],
+        weaknesses: ["Vulnérable aux attaques de groupe", "Carapace plus légère que le Warrior"],
+        counters: ["Éclairage de zone", "Tir de couverture en escouade", "Balise thermique"]
+      },
+      burster: {
+        id: "burster",
+        name: "Burster",
+        priority: "P1",
+        loreStatus: "EXPANDED_COMPATIBLE",
+        role: "Bombe d'acide vivante et percée kamikaze",
+        evolutionFrom: ["runner_mutation", "drone_mutation"],
+        evolvesTo: [],
+        evolutionCondition: "Mutation volontaire d'un Runner ou Drone en bio-détonateur acide (35 Bio).",
+        profile: { mobility: 5, stealth: 2, resilience: 2, control: 5, support: 3, range: 2 },
+        actions: [
+          {
+            id: "volatile_sprint",
+            name: "Course instable",
+            type: "movement",
+            description: "Sprint frénétique au détriment de l'intégrité tissulaire."
+          },
+          {
+            id: "acid_cataclysm",
+            name: "Détonation acide",
+            type: "area",
+            description: "Fait exploser sa carapace en projetant un nuage d'acide corrosif létal."
+          },
+          {
+            id: "rupture_spray",
+            name: "Giclée de rupture",
+            type: "passive",
+            description: "Tout tir reçu projette des jets d'acide sous pression vers les assaillants."
+          }
+        ],
+        strengths: ["Dégâts de zone colossaux", "Détruit groupes et armures", "Retaliation mortelle"],
+        weaknesses: ["Détruit à l'usage", "Ne capture pas d'hôtes", "Très instable"],
+        counters: ["Élimination à longue distance", "Barricades hermétiques"]
+      },
+      crusher: {
+        id: "crusher",
+        name: "Crusher",
+        priority: "P1",
+        loreStatus: "EXPANDED_COMPATIBLE",
+        role: "Mastodonte quadrupède et bélier anti-blindage",
+        evolutionFrom: ["runner_heavy_molt", "warrior_mutation"],
+        evolvesTo: [],
+        evolutionCondition: "Hôte quadrupède lourd ou exo-armure assimilée avec mue de carapace frontale (75 Bio).",
+        profile: { mobility: 4, stealth: 0, resilience: 5, control: 5, support: 2, range: 0 },
+        actions: [
+          {
+            id: "battering_ram",
+            name: "Charge de bélier",
+            type: "attack",
+            description: "Charge frontale irrésistible qui brise barricades, portes blindées et mechs."
+          },
+          {
+            id: "armored_crest_deflect",
+            name: "Crête pare-balles",
+            type: "defense",
+            description: "La crête frontale dévie 90% des tirs cinétiques de face."
+          },
+          {
+            id: "ground_tremor",
+            name: "Onde de choc",
+            type: "control",
+            description: "Frappe le sol et renverse toutes les cibles sur 6 mètres."
+          }
+        ],
+        strengths: ["Immunité frontale quasi-totale", "Briseur de défenses et de mechs", "Énorme réserve de PV"],
+        weaknesses: ["Flancs et arrière vulnérables", "Incapable de manœuvrer dans les conduits", "Cible prioritaire"],
+        counters: ["Tirs dans le dos", "Lance-roquettes", "Pièges à acide ou cryogéniques"]
+      },
+      palatine: {
+        id: "palatine",
+        name: "Palatine (Garde Royal Suprême)",
+        priority: "P1",
+        loreStatus: "EXPANDED_COMPATIBLE",
+        role: "Protecteur ultime de la Reine et commandant de ruche",
+        evolutionFrom: ["praetorian_royal_jelly"],
+        evolvesTo: ["queen"],
+        evolutionCondition: "Praetorian nourri à la Gelée Royale au cœur de la chambre royale (110 Bio).",
+        profile: { mobility: 3, stealth: 1, resilience: 5, control: 5, support: 5, range: 0 },
+        actions: [
+          {
+            id: "queens_aegis",
+            name: "Égide de la Reine",
+            type: "defense",
+            description: "Redirige vers lui 50% de tous les dégâts infligés à la Reine à proximité."
+          },
+          {
+            id: "palatine_execution",
+            name: "Exécution palatine",
+            type: "attack",
+            description: "Frappe de griffes et crête infligeant 140 dégâts immédiats."
+          },
+          {
+            id: "royal_dominance",
+            name: "Présence royale",
+            type: "buff",
+            description: "Confère +40% de vitesse et de résistance à toutes les créatures alliées proches."
+          }
+        ],
+        strengths: ["Résistance inégalée", "Garantie de survie pour la Reine", "Aura de combat suprême"],
+        weaknesses: ["Coût biologique le plus élevé", "Ne quitte jamais le secteur de la Reine"],
+        counters: ["Artillerie lourde concentrée", "Frappe orbitale", "Autodestruction"]
+      },
+      offspring: {
+        id: "offspring",
+        name: "Offspring (Hybride Z-01)",
+        priority: "P1",
+        loreStatus: "FILM_CORE",
+        role: "Hybride recombinant biomécanique issu du Mutagène Noir",
+        evolutionFrom: ["chemical_mutation_z01"],
+        evolvesTo: [],
+        evolutionCondition: "Exposition d'un embryon ou cocon au Composé Z-01 / Mutagène Noir Prometheus (95 Bio).",
+        profile: { mobility: 4, stealth: 2, resilience: 5, control: 4, support: 1, range: 0 },
+        actions: [
+          {
+            id: "brute_crush",
+            name: "Écrasement brutal",
+            type: "attack",
+            description: "Saisit et broie l'armure d'une cible avec une puissance biomécanique anormale."
+          },
+          {
+            id: "acid_immunity",
+            name: "Chair résistante à l'acide",
+            type: "passive",
+            description: "Immunisé aux brûlures de son propre sang et des fluides corrosifs."
+          },
+          {
+            id: "grotesque_screech",
+            name: "Cri grotesque",
+            type: "control",
+            description: "Émet un cri humanoïde-insectoïde glaçant qui terrorise l'équipage."
+          }
+        ],
+        strengths: ["Force brute colossale", "Immunité acide", "Effroi psychologique maximal"],
+        weaknesses: ["Morphologie non standard", "Ne communique pas par phéromones pures"],
+        counters: ["Tirs perforants lourds", "Décompression spatiale", "Incinération totale"]
       }
     },
 

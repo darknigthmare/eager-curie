@@ -1845,6 +1845,90 @@
       huntDamage: 118,
       jawDamage: 168,
       tailDamage: 132
+    }),
+    prowler: Object.freeze({
+      key: 'prowler',
+      label: 'PROWLER',
+      maxHealth: 175,
+      speed: 0.52,
+      huntAction: 'BOND D’ÉPOUVANTE',
+      huntCost: 25,
+      huntRange: 75,
+      huntDamage: 94,
+      jawDamage: 162,
+      tailDamage: 112
+    }),
+    spitter: Object.freeze({
+      key: 'spitter',
+      label: 'SPITTER',
+      maxHealth: 160,
+      speed: 0.40,
+      huntAction: 'SALVE CORROSIVE',
+      huntCost: 25,
+      huntRange: 80,
+      huntDamage: 88,
+      jawDamage: 118,
+      tailDamage: 92
+    }),
+    burster: Object.freeze({
+      key: 'burster',
+      label: 'BURSTER',
+      maxHealth: 135,
+      speed: 0.55,
+      huntAction: 'EXPLOSION ACIDE',
+      huntCost: 30,
+      huntRange: 65,
+      huntDamage: 155,
+      jawDamage: 95,
+      tailDamage: 80
+    }),
+    crusher: Object.freeze({
+      key: 'crusher',
+      label: 'CRUSHER',
+      maxHealth: 380,
+      speed: 0.38,
+      huntAction: 'CHARGE DE BÉLIER',
+      huntCost: 40,
+      huntRange: 60,
+      huntDamage: 175,
+      jawDamage: 195,
+      tailDamage: 155
+    }),
+    praetorian: Object.freeze({
+      key: 'praetorian',
+      label: 'PRAETORIAN',
+      maxHealth: 340,
+      speed: 0.34,
+      huntAction: 'CHARGE ROYALE',
+      huntCost: 35,
+      huntRange: 65,
+      huntDamage: 155,
+      jawDamage: 210,
+      tailDamage: 170
+    }),
+    palatine: Object.freeze({
+      key: 'palatine',
+      label: 'PALATINE',
+      maxHealth: 420,
+      speed: 0.35,
+      huntAction: 'ÉGIDE DE LA REINE',
+      huntCost: 40,
+      huntRange: 70,
+      huntDamage: 180,
+      jawDamage: 230,
+      tailDamage: 190
+    }),
+    offspring: Object.freeze({
+      key: 'offspring',
+      label: 'OFFSPRING (Z-01)',
+      maxHealth: 310,
+      speed: 0.46,
+      huntAction: 'ÉCRASEMENT HYBRIDE',
+      huntCost: 30,
+      huntRange: 65,
+      huntDamage: 140,
+      jawDamage: 220,
+      tailDamage: 130
     })
   });
 
@@ -3012,12 +3096,17 @@
       this.x = x; this.z = z;
       const profiles = {
         queen: { hp: 1000, speed: 0, damage: 90, range: 5 },
+        palatine: { hp: 580, speed: 0.32, damage: 110, range: 2.4 },
         praetorian: { hp: 460, speed: 0.28, damage: 85, range: 2.2 },
+        crusher: { hp: 520, speed: 0.36, damage: 95, range: 2.2 },
         warrior: { hp: 230, speed: 0.37, damage: 48, range: 1.8 },
+        prowler: { hp: 175, speed: 0.52, damage: 55, range: 2.0 },
         runner: { hp: 145, speed: 0.54, damage: 32, range: 1.8 },
-        worker: { hp: 120, speed: 0.34, damage: 14, range: 1.6 },
+        burster: { hp: 135, speed: 0.55, damage: 70, range: 2.0 },
+        offspring: { hp: 420, speed: 0.44, damage: 92, range: 2.2 },
         spitter: { hp: 150, speed: 0.31, damage: 36, range: 13 },
-        drone: { hp: 190, speed: 0.4, damage: 42, range: 1.8 }
+        drone: { hp: 190, speed: 0.4, damage: 42, range: 1.8 },
+        worker: { hp: 120, speed: 0.34, damage: 14, range: 1.6 }
       };
       const profile = profiles[caste] || profiles.drone;
       this.maxHp = profile.hp;
@@ -3050,13 +3139,18 @@
         this.mesh = group;
         return;
       }
-      let geo = new THREE.SphereGeometry(this.caste === 'queen' ? 2.5 : (this.caste === 'praetorian' ? 1.6 : 1.0), 12, 12);
+      let geo = new THREE.SphereGeometry(this.caste === 'queen' ? 2.5 : (['praetorian', 'palatine', 'crusher'].includes(this.caste) ? 1.6 : 1.0), 12, 12);
       let color = 0x0f172a;
       if (this.caste === 'runner') color = 0x7c2d12;
       if (this.caste === 'warrior') color = 0x1e1b4b;
       if (this.caste === 'worker') color = 0x14532d;
       if (this.caste === 'spitter') color = 0x365314;
+      if (this.caste === 'prowler') color = 0x450a0a;
+      if (this.caste === 'burster') color = 0x422006;
+      if (this.caste === 'crusher') color = 0x27272a;
       if (this.caste === 'praetorian') color = 0x581c87;
+      if (this.caste === 'palatine') color = 0x3b0764;
+      if (this.caste === 'offspring') color = 0xd4d4d8;
       if (this.caste === 'queen') color = 0x3b0764;
 
       const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.1, metalness: 0.9, emissive: 0x2e1065 });
@@ -3082,7 +3176,7 @@
 
       audioManager.playAcidSizzle?.();
       const isQueen = this.caste === 'queen';
-      const splashRadius = isQueen ? 6.2 : 3.8;
+      const splashRadius = isQueen ? 6.2 : (this.caste === 'burster' ? 5.5 : 3.8);
       const burstCount = isQueen ? 26 : 12;
 
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, burstCount, 0.12, isQueen ? 2.8 : 1.2);
@@ -3106,6 +3200,22 @@
       });
 
       if (this.hp > 0) return;
+
+      // Détonation cataclysmique du Burster à la mort
+      if (this.caste === 'burster') {
+        window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, 38, 0.22, 1.4);
+        window.HiveSystems?.vfx?.spawnAcidPool?.(this.x, this.z, 3.8, 12);
+        audioManager.playChestburstScreech?.();
+        const blastHumans = (window.gameInstance?.humans || []).filter((h) => (
+          !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 5.8
+        ));
+        blastHumans.forEach((human) => {
+          human.takeDamage(95, this);
+          human.staggerTimer = 1.2;
+          window.HiveSystems?.vfx?.floatingText?.(human.x, 2.6, human.z, '-95 CATACLYSME', '#39ff14', true);
+        });
+      }
+
       if (isQueen && window.gameInstance) {
         window.gameInstance.showEndModal(
           'LIGNÉE ROYALE ÉTEINTE',
@@ -5556,12 +5666,17 @@
 
       actionsContainer.innerHTML = `
         <button type="button" id="btn-toggle-ovipositor" class="act-btn" style="border-color: ${oviBtnBorder}; background: ${oviBtnBg}; font-weight: bold;">${oviBtnLabel}</button>
-        <button type="button" id="btn-spawn-drone" class="act-btn">CYCLE DRONE — HÔTE HUMANOÏDE STANDARD (30 Bio)</button>
+        <button type="button" id="btn-spawn-drone" class="act-btn">CYCLE DRONE — HÔTE STANDARD (30 Bio)</button>
         <button type="button" id="btn-spawn-runner" class="act-btn">CYCLE RUNNER — HÔTE QUADRUPÈDE (30 Bio)</button>
         <button type="button" id="btn-spawn-warrior" class="act-btn">CYCLE WARRIOR — HÔTE COMMANDO/BLINDÉ (45 Bio)</button>
-        <button type="button" id="btn-spawn-worker" class="act-btn">SPÉCIALISER UN DRONE EN WORKER (25 Bio)</button>
-        <button type="button" id="btn-spawn-spitter" class="act-btn">SPÉCIALISER UN DRONE EN SPITTER (50 Bio)</button>
+        <button type="button" id="btn-spawn-worker" class="act-btn">SPÉCIALISER DRONE EN WORKER (25 Bio)</button>
+        <button type="button" id="btn-spawn-prowler" class="act-btn">SPÉCIALISER DRONE EN PROWLER (40 Bio)</button>
+        <button type="button" id="btn-spawn-spitter" class="act-btn">SPÉCIALISER DRONE EN SPITTER (50 Bio)</button>
+        <button type="button" id="btn-spawn-burster" class="act-btn">MUTER RUNNER/DRONE EN BURSTER ACIDE (35 Bio)</button>
+        <button type="button" id="btn-spawn-crusher" class="act-btn">MUTER RUNNER/WARRIOR EN CRUSHER (75 Bio)</button>
         <button type="button" id="btn-spawn-praetorian" class="act-btn">MUE D’UN WARRIOR EN PRAETORIAN (80 Bio)</button>
+        <button type="button" id="btn-spawn-palatine" class="act-btn">GÉLÉE ROYALE : ÉLITE PALATINE (110 Bio)</button>
+        <button type="button" id="btn-spawn-offspring" class="act-btn">MUTAGÈNE Z-01 : OFFSPRING (95 Bio)</button>
         <button type="button" id="btn-final-conquest" class="act-btn" disabled style="border-color: #39ff14; background: rgba(57,255,20,0.24);">ISOLER PALIMPSESTE ET CHOISIR UNE FIN</button>
       `;
 
@@ -5570,12 +5685,14 @@
       document.getElementById('btn-spawn-worker').onclick = () => this.spawnUnit('worker', 25);
       document.getElementById('btn-spawn-runner').onclick = () => this.spawnUnit('runner', 30);
       document.getElementById('btn-spawn-warrior').onclick = () => this.spawnUnit('warrior', 45);
+      document.getElementById('btn-spawn-prowler').onclick = () => this.spawnUnit('prowler', 40);
       document.getElementById('btn-spawn-spitter').onclick = () => this.spawnUnit('spitter', 50);
+      document.getElementById('btn-spawn-burster').onclick = () => this.spawnUnit('burster', 35);
+      document.getElementById('btn-spawn-crusher').onclick = () => this.spawnUnit('crusher', 75);
       document.getElementById('btn-spawn-praetorian').onclick = () => this.spawnUnit('praetorian', 80);
+      document.getElementById('btn-spawn-palatine').onclick = () => this.spawnUnit('palatine', 110);
+      document.getElementById('btn-spawn-offspring').onclick = () => this.spawnUnit('offspring', 95);
       document.getElementById('btn-final-conquest').onclick = () => this.completeConquest();
-      const expandedLore = window.gameInstance?.campaignConfig?.expandedLore !== false;
-      document.getElementById('btn-spawn-spitter').hidden = !expandedLore;
-      document.getElementById('btn-spawn-praetorian').hidden = !expandedLore;
     }
 
     isArmoredHost(host) {
@@ -5587,16 +5704,25 @@
         if (!host.isCocooned || host.usedAsHost || host.hostEligibility !== 'viable') return false;
         if (caste === 'runner') return host.type === 'labhound';
         if (caste === 'warrior') return this.isArmoredHost(host);
+        if (caste === 'offspring') return true;
         if (caste === 'drone') return host.type !== 'labhound' && !this.isArmoredHost(host);
         return false;
       }) || null;
     }
 
     findSpecializationPrecursor(caste) {
-      const precursorCaste = caste === 'praetorian' ? 'warrior' : 'drone';
+      const precursorMap = {
+        worker: ['drone'],
+        prowler: ['drone'],
+        spitter: ['drone'],
+        burster: ['runner', 'drone'],
+        crusher: ['warrior', 'runner'],
+        praetorian: ['warrior'],
+        palatine: ['praetorian']
+      };
+      const allowed = precursorMap[caste] || ['drone'];
       return this.rtsUnits.find((unit) => (
-        !unit.isDestroyed &&
-        unit.caste === precursorCaste
+        !unit.isDestroyed && allowed.includes(unit.caste)
       )) || null;
     }
 
@@ -5607,7 +5733,7 @@
         !this.queen?.attachedToOvipositor ||
         this.incubationCycles.filter((cycle) => cycle.isActive).length >= 3
       ) return false;
-      if (['drone', 'runner', 'warrior'].includes(caste)) return Boolean(this.findCompatibleHost(caste));
+      if (['drone', 'runner', 'warrior', 'offspring'].includes(caste)) return Boolean(this.findCompatibleHost(caste));
       return Boolean(this.findSpecializationPrecursor(caste));
     }
 
@@ -5625,19 +5751,29 @@
         return;
       }
 
-      const usesHost = ['drone', 'runner', 'warrior'].includes(caste);
+      const usesHost = ['drone', 'runner', 'warrior', 'offspring'].includes(caste);
       const host = usesHost ? this.findCompatibleHost(caste) : null;
       const precursor = usesHost ? null : this.findSpecializationPrecursor(caste);
       if (usesHost && !host) {
         const requirement = caste === 'runner'
           ? 'un quadrupède'
-          : (caste === 'warrior' ? 'un commando ou soldat blindé' : 'un humanoïde standard');
+          : (caste === 'warrior'
+            ? 'un commando ou soldat blindé'
+            : (caste === 'offspring' ? 'n’importe quel hôte viable pour infusion Z-01' : 'un humanoïde standard'));
         showToast(`Cycle ${caste.toUpperCase()} impossible : ${requirement} cocoonisé est requis.`);
         return;
       }
       if (!usesHost && !precursor) {
-        const requiredCaste = caste === 'praetorian' ? 'WARRIOR' : 'DRONE';
-        showToast(`Spécialisation impossible : aucun ${requiredCaste} mature disponible.`);
+        const precursorReq = {
+          worker: 'DRONE',
+          prowler: 'DRONE',
+          spitter: 'DRONE',
+          burster: 'RUNNER ou DRONE',
+          crusher: 'WARRIOR ou RUNNER',
+          praetorian: 'WARRIOR',
+          palatine: 'PRAETORIAN'
+        };
+        showToast(`Spécialisation impossible : précurseur mature (${precursorReq[caste] || 'DRONE'}) requis.`);
         return;
       }
 
@@ -5655,18 +5791,31 @@
         originX = host.x;
         originZ = host.z;
         sourceName = host.name;
-        states = ['OVOMORPHE', 'FACEHUGGER', 'IMPLANTATION', 'CHESTBURSTER', 'MUE ADULTE'];
-        this.log(`[CYCLE ${caste.toUpperCase()}] Ovomorphe pondu ; ${host.name} est réservé et consommé.`);
+        states = caste === 'offspring'
+          ? ['INFUSION Z-01', 'MUTATION RECOMBINANTE', 'ÉMERGENCE HYBRIDE']
+          : ['OVOMORPHE', 'FACEHUGGER', 'IMPLANTATION', 'CHESTBURSTER', 'MUE ADULTE'];
+        this.log(`[CYCLE ${caste.toUpperCase()}] Cycle engagé ; ${host.name} est réservé et consommé.`);
       } else {
         originX = precursor.x;
         originZ = precursor.z;
         sourceName = `${precursor.caste.toUpperCase()} #${precursor.id}`;
         precursor.destroy();
-        states = ['COCON DE SPÉCIALISATION', 'RESTRUCTURATION', 'MUE ADULTE'];
+        this.rtsUnits = this.rtsUnits.filter((u) => u !== precursor);
+        states = ['COCON DE SPÉCIALISATION', 'MUE AVANCÉE', `ÉMERGENCE DU ${caste.toUpperCase()}`];
         this.log(`[SPÉCIALISATION ${caste.toUpperCase()}] ${sourceName} entre dans une mue irréversible.`);
       }
 
-      const durations = { drone: 14, runner: 12, warrior: 17, worker: 10, spitter: 14, praetorian: 20 };
+      const durations = {
+        drone: 14, runner: 12, warrior: 17, worker: 10,
+        prowler: 12, spitter: 14, burster: 11, crusher: 20,
+        praetorian: 20, palatine: 24, offspring: 22
+      };
+      const maxIntegrities = {
+        drone: 150, runner: 140, warrior: 190, worker: 120,
+        prowler: 160, spitter: 150, burster: 130, crusher: 260,
+        praetorian: 240, palatine: 300, offspring: 250
+      };
+
       const cycle = new BiologicalCycleEntity({
         id: `cycle-${Date.now()}-${this.incubationCycles.length}`,
         x: originX,
@@ -5674,7 +5823,7 @@
         caste,
         hostName: sourceName,
         duration: durations[caste] || 14,
-        maxIntegrity: caste === 'praetorian' ? 240 : (caste === 'warrior' ? 190 : 150),
+        maxIntegrity: maxIntegrities[caste] || 160,
         states,
         onStateChange: (activeCycle) => {
           this.log(`[CYCLE ${caste.toUpperCase()}] ${activeCycle.state} — ${Math.floor(activeCycle.progress)}%.`);
@@ -5686,11 +5835,11 @@
           unit.createMesh();
           this.rtsUnits.push(unit);
           this.updateStats();
-          window.HiveSystems?.vfx?.burst(spawn.x, spawn.z, 0x39ff14, 22, 0.12, 1.4);
+          window.HiveSystems?.vfx?.burst(spawn.x, spawn.z, 0x39ff14, 24, 0.14, 1.5);
           this.log(`[NAISSANCE] ${caste.toUpperCase()} mature ; le cycle exposé a survécu.`);
         },
         onFail: (failedCycle) => {
-          this.log(`[ÉCHEC BIOLOGIQUE] ${caste.toUpperCase()} détruit pendant ${failedCycle.state}. Hôte ou précurseur perdu.`);
+          this.log(`[ÉCHEC BIOLOGIQUE] ${caste.toUpperCase()} détruit pendant ${failedCycle.state}.`);
           this.updateStats();
         }
       });

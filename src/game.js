@@ -365,6 +365,43 @@
       osc1.stop(now + 1.25); osc2.stop(now + 1.25); sub.stop(now + 1.25);
     }
 
+    playVentEnter() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(190, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.32);
+      gain.gain.setValueAtTime(0.55, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc.connect(gain); this.connect(gain);
+      osc.start(now); osc.stop(now + 0.35);
+    }
+
+    playVentExit() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = this.ctx.sampleRate * 0.32;
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.22));
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(650, now);
+      filter.frequency.linearRampToValueAtTime(170, now + 0.28);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.65, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
+      noise.connect(filter); filter.connect(gain);
+      this.connect(gain);
+      noise.start(now);
+    }
+
     playAlarmSiren() {
       if (!this.initialized || this.isMuted) return;
       this.resume();
@@ -1231,9 +1268,31 @@
       addProp(58, 55, 4, 7, 4, 0x475569, 0x000000, 'barrel');
       addProp(-58, 55, 6, 2.5, 3, 0x334155, 0x000000, 'crate');
       addProp(18, 58, 3, 4, 3, 0x334155, 0x0284c7, 'console');
-      addProp(-18, 58, 3, 4, 3, 0x334155, 0x0284c7, 'console');
       addProp(61, 12, 3, 7, 3, 0x334155, 0x000000, 'vent');
       addProp(-61, -12, 3, 7, 3, 0x334155, 0x000000, 'vent');
+      addProp(-18, -48, 3, 7, 3, 0x334155, 0x000000, 'vent');
+      addProp(22, 48, 3, 7, 3, 0x334155, 0x000000, 'vent');
+
+      this.vents = [
+        { id: 'vent_nord', name: 'Conduit Cryo-Nord', x: -18, z: -48 },
+        { id: 'vent_ouest', name: 'Conduit Ouest (Fret)', x: -61, z: -12 },
+        { id: 'vent_est', name: 'Conduit Est (Sécurité)', x: 61, z: 12 },
+        { id: 'vent_sud', name: 'Conduit Sud (Raffinerie)', x: 22, z: 48 }
+      ];
+    }
+
+    findClosestVent(x, z) {
+      if (!this.vents || !this.vents.length) return null;
+      let closest = null;
+      let minDistance = Infinity;
+      for (const vent of this.vents) {
+        const dist = Math.hypot(vent.x - x, vent.z - z);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = { ...vent, distance: dist };
+        }
+      }
+      return closest;
     }
 
     segmentIntersectsCollider(startX, startZ, endX, endZ, collider, padding = 0) {
@@ -1704,6 +1763,9 @@
       this.moveTarget = null;
       this.moveWaypoints = [];
       this.adultCaste = 'drone';
+      this.isInVent = false;
+      this.currentVent = null;
+      this.salivaTimer = 0;
     }
 
     getAdultProfile() {
@@ -1965,6 +2027,65 @@
       if (!this.moveTarget) showToast('Aucun passage accessible vers ce point.');
     }
 
+    enterVent(vent) {
+      if (this.isInVent || !vent) return;
+      this.isInVent = true;
+      this.currentVent = vent;
+      audioManager.playVentEnter?.();
+      window.HiveSystems?.vfx?.burst(this.x, this.z, 0x64748b, 12, 0.1, 1.2);
+      if (this.mesh) {
+        this.mesh.traverse((c) => {
+          if (c.isMesh && c.material) {
+            c.userData.origOpacity = c.material.opacity !== undefined ? c.material.opacity : 1.0;
+            c.userData.origTrans = Boolean(c.material.transparent);
+            c.material.transparent = true;
+            c.material.opacity = 0.22;
+          }
+        });
+      }
+      showToast(`INFILTRATION DANS LE CONDUIT [${vent.name}] : Furtivité totale active ! Déplacez-vous à travers la station [C pour émerger].`);
+      appendSensorLog(`[CONDUIT] Le xénomorphe a disparu dans le réseau de ventilation via ${vent.name}. Furtivité absolue.`, 'stealth');
+      window.HiveSystems?.vfx?.floatingText?.(this.x, 2.5, this.z, 'FURTIVITÉ CONDUIT [C]', '#38bdf8', true);
+    }
+
+    exitVent(vent) {
+      if (!this.isInVent) return;
+      this.isInVent = false;
+      this.x = vent.x;
+      this.z = vent.z;
+      this.mesh?.position.set(this.x, 0, this.z);
+      if (this.mesh) {
+        this.mesh.traverse((c) => {
+          if (c.isMesh && c.material) {
+            c.material.opacity = c.userData.origOpacity !== undefined ? c.userData.origOpacity : 1.0;
+            c.material.transparent = c.userData.origTrans !== undefined ? c.userData.origTrans : false;
+          }
+        });
+      }
+      audioManager.playVentExit?.();
+      rendererEngine.addScreenShake?.(0.35, 0.22);
+      window.HiveSystems?.vfx?.burst(this.x, this.z, 0x94a3b8, 16, 0.14, 1.4);
+      appendSensorLog(`[CONDUIT] Émergence brutale via ${vent.name} !`, 'alert');
+
+      // Embuscade surprise sur les cibles humaines à proximité de la bouche d'aération
+      const nearbyHumans = (window.gameInstance?.humans || []).filter((h) => (
+        !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 5.5
+      ));
+      if (nearbyHumans.length > 0) {
+        audioManager.playXenoRoar?.();
+        nearbyHumans.forEach((human) => {
+          human.staggerTimer = 0.85; // Étourdissement de terreur
+          const ambushDmg = this.form === 'drone' ? 75 : 30;
+          human.takeDamage(ambushDmg, this);
+          window.HiveSystems?.vfx?.floatingText?.(human.x, 2.5, human.z, `-${ambushDmg} EMBUSCADE CONDUIT !`, '#ef4444', true);
+          window.HiveSystems?.vfx?.burst(human.x, human.z, 0xb91c1c, 14, 0.12, 1.4);
+        });
+        showToast('EMBUSCADE DU CONDUIT RÉUSSIE ! Ennemis terrifiés et lourdement blessés !');
+      } else {
+        showToast(`Émergence via ${vent.name}. Vous êtes de nouveau sur le pont de la station.`);
+      }
+    }
+
     setChrysalis(state) {
       this.isChrysalis = state;
       this.createMesh();
@@ -2131,7 +2252,8 @@
           }
         }
         const frameScale = safeDelta * 60;
-        const movementStep = Math.min(this.speed * frameScale, remainingDistance);
+        const currentSpeed = this.speed * (this.isInVent ? 1.45 : 1.0);
+        const movementStep = Math.min(currentSpeed * frameScale, remainingDistance);
         const nextX = this.x + dx * movementStep;
         const nextZ = this.z + dy * movementStep;
 
@@ -2147,6 +2269,16 @@
         if (dx !== 0 || dy !== 0) {
           this.mesh.rotation.y = Math.atan2(dx, dy);
         }
+
+        // Canon H.R. Giger — Sécrétions de salive visqueuse perlant des mâchoires
+        if (this.form === 'drone' && !this.isInVent) {
+          this.salivaTimer = (this.salivaTimer || 0) - safeDelta;
+          if (this.salivaTimer <= 0) {
+            this.salivaTimer = 1.3 + Math.random() * 1.5;
+            window.HiveSystems?.vfx?.salivaDrip(this.x, 2.7, this.z, 2);
+          }
+        }
+
         animateProceduralModel(this.mesh, {
           phase: Date.now() * (this.form === 'facehugger' ? 0.014 : 0.009),
           movement: dx !== 0 || dy !== 0 ? 1 : 0.08,
@@ -2545,9 +2677,10 @@
       ].includes(this.type);
       const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
       const currentStageStep = window.gameInstance?.currentStage?.step;
-      const biologicalTargetDetectable = currentStageIndex !== 3 ||
+      const inVentStealth = combatTarget === playerCreature && playerCreature.isInVent;
+      const biologicalTargetDetectable = (currentStageIndex !== 3 ||
         currentStageStep === 'HUNT_FAUNA' ||
-        currentStageStep === 'CHRYSALIS';
+        currentStageStep === 'CHRYSALIS') && !inVentStealth;
 
       this.motionPingCooldown -= safeDelta;
       if (biologicalTargetDetectable && distToPlayer < 24 && this.motionPingCooldown <= 0) {
@@ -2557,6 +2690,13 @@
         // Cadence dynamique fidèle au tracker M314 (Aliens / Isolation)
         const pingInterval = distToPlayer < 4.5 ? 0.35 : (distToPlayer < 8.5 ? 0.65 : (distToPlayer < 14 ? 1.05 : 1.75));
         this.motionPingCooldown = pingInterval + Math.random() * 0.12;
+      }
+
+      // Canon 1:1 Lore — Directive 937 : Les synthétiques protègent le spécimen biologique au détriment de l'équipage
+      if (isCombatant && ['synthetic', 'android'].includes(this.type) && hasLineOfSight && distToPlayer <= 16 && !this.saidOrder937) {
+        this.saidOrder937 = true;
+        showToast(`${this.name} : [ORDRE SPÉCIAL 937] Confinement de l'organisme engagé. Équipage sacrifiable.`);
+        appendSensorLog(`[SYNTHÉTIQUE] ${this.name} applique la Directive 937 : la préservation du spécimen surpasse toute vie humaine.`, 'alert');
       }
 
       // Lures have narrative priority. Otherwise armed humans investigate and
@@ -2879,6 +3019,16 @@
       this.supportCooldown -= deltaSeconds;
       this.attackAnimation = Math.max(0, this.attackAnimation - Math.max(0, deltaSeconds) * 3);
       this.movementBlend = Math.max(0, this.movementBlend - Math.max(0, deltaSeconds) * 4.5);
+
+      // Canon Giger — Salive visqueuse perlant continuellement des mâchoires
+      if ((this.caste === 'queen' || this.caste === 'praetorian' || this.caste === 'warrior') && !this.isDestroyed) {
+        this.salivaTimer = (this.salivaTimer || 0) - deltaSeconds;
+        if (this.salivaTimer <= 0) {
+          this.salivaTimer = (this.caste === 'queen' ? 0.95 : 1.7) + Math.random() * 1.5;
+          const jawY = this.caste === 'queen' ? 4.2 : 2.5;
+          window.HiveSystems?.vfx?.salivaDrip(this.x, jawY, this.z, this.caste === 'queen' ? 3 : 2);
+        }
+      }
 
       if (this.caste === 'queen') {
         const reach = this.attachedToOvipositor ? this.attackRange : 6.5;
@@ -3722,6 +3872,14 @@
       this.targetHost.isRestrained = false;
       window.gameInstance?.syncCampaignCharacter?.(this.targetHost, { alive: true });
       playerCreature.detachFromHost({ releaseHost: true, hide: true });
+
+      // Canon 1:1 Lore — Le Facehugger se détache, meurt et son cadavre desséché reste au sol (Alien 1979 / Medlab)
+      const deadHusk = window.HiveModelFactory?.createDeadFacehuggerHusk?.();
+      if (deadHusk) {
+        deadHusk.position.set(this.targetHost.x + 0.7, 0.04, this.targetHost.z + 0.5);
+        rendererEngine.propsGroup.add(deadHusk);
+      }
+
       this.isCompleted = true;
       window.HiveSystems?.updateObjective(2, 2);
       window.HiveSystems?.narrative('PALIMPSESTE', 'Organisme implanté. Les protocoles humains passent en quarantaine totale.');
@@ -3730,6 +3888,21 @@
     }
 
     handleKeyDown(key) {
+      if (key === 'c') {
+        const vent = stationMap.findClosestVent(playerCreature.x, playerCreature.z);
+        if (vent) {
+          if (!playerCreature.isInVent && vent.distance <= 4.5) {
+            playerCreature.enterVent(vent);
+            return;
+          } else if (playerCreature.isInVent && vent.distance <= 5.5) {
+            playerCreature.exitVent(vent);
+            return;
+          }
+        }
+        if (playerCreature.isInVent) showToast('Rapprochez-vous d\'une grille pour émerger du conduit.');
+        else showToast(vent ? `Approchez-vous du ${vent.name} (${vent.distance.toFixed(1)}m) pour vous infiltrer [C].` : 'Aucun conduit à proximité.');
+        return;
+      }
       if (key !== ' ') return;
       if (this.isAttacking) this.tightenGrip();
       else if (!this.isBonding) this.attemptLeap();
@@ -4079,10 +4252,31 @@
       window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0x39ff14, 3.8);
       window.HiveSystems?.vfx?.transformation();
       rendererEngine.addScreenShake?.(0.35);
-      appendSensorLog('[MUE ROMULUS] La chrysalide se déchire le long de la suture centrale. Le prédateur adulte émerge des fluides amniotiques.', 'bio');
+
+      if (window.HiveModelFactory?.createDiscardedExuvia) {
+        const exuvia = window.HiveModelFactory.createDiscardedExuvia();
+        exuvia.position.set(playerCreature.x, 0.02, playerCreature.z);
+        exuvia.rotation.y = playerCreature.mesh ? playerCreature.mesh.rotation.y : 0;
+        rendererEngine.propsGroup.add(exuvia);
+      }
+
+      appendSensorLog('[MUE ROMULUS] La chrysalide se déchire le long de la suture centrale. Le prédateur adulte émerge des fluides amniotiques en laissant son exuvie vide.', 'bio');
       if (window.gameInstance) window.gameInstance.advanceStage(this);
     }
     handleKeyDown(key) {
+      if (key === 'c') {
+        const closestVent = stationMap?.findClosestVent?.(playerCreature.x, playerCreature.z);
+        if (closestVent) {
+          if (playerCreature.isInVent) {
+            playerCreature.exitVent(closestVent.vent);
+          } else if (closestVent.distance <= 4.8) {
+            playerCreature.enterVent(closestVent.vent);
+          } else {
+            showToast(`Conduit trop éloigné (${Math.round(closestVent.distance)}m) pour infiltration [C].`);
+          }
+        }
+        return;
+      }
       if (key !== ' ') return;
       if (this.step === 'READY_TO_BURST') this.perforateSternum();
       else if (this.step === 'HUNT_FAUNA') this.attackNearbyRodent();
@@ -4240,6 +4434,15 @@
       this.log(`[${adultLabel}] Embusquez les équipes KAPPA et préservez au moins deux hôtes.`);
       window.HiveSystems?.setMission(4, 0, 'Saboter l’équipe de confinement sans gaspiller les hôtes viables.');
       window.HiveSystems?.narrative('ELIAN TORV', 'Équipe KAPPA, je veux l’échantillon intact — brûlez tout le reste.');
+
+      // Directive Weyland-Yutani Special Order 937
+      setTimeout(() => {
+        window.HiveSystems?.narrative(
+          'ORDRE SPÉCIAL 937',
+          'Priorité 1 : Assurer la capture de l’organisme pour analyse. Toute autre considération secondaire. Équipage sacrifiable.'
+        );
+        audioManager.playRadioChatter?.();
+      }, 3500);
     }
 
     updateHUD() {
@@ -4271,13 +4474,14 @@
       }
       document.getElementById('stage-instructions').innerHTML = this.royalCycle?.isActive
         ? `<strong>Défense du cycle royal :</strong><br><br>• Étape visible : ${this.royalCycle.state}.<br>• Les tirs peuvent détruire la forme royale.<br>• Neutralisez la vague KAPPA avant la fin de la mue.<br>• Le ${adultLabel} conserve ses actions propres à sa caste.`
-        : `<strong>Prédateur ${adultLabel} :</strong><br><br>• ${profile.huntAction} consomme ${profile.huntCost} points de chasse.<br>• Les attaques rapprochées varient selon la morphologie adulte.<br>• Les synthétiques ne sont pas des hôtes.<br>• Coconisez deux cibles viables ; l’une sera consommée par le cycle royal.`;
+        : `<strong>Prédateur ${adultLabel} :</strong><br><br>• ${profile.huntAction} consomme ${profile.huntCost} points de chasse.<br>• [C] Infiltration / Embûche dans les conduits de ventilation.<br>• Les synthétiques ne sont pas des hôtes.<br>• Coconisez deux cibles viables ; l’une sera consommée par le cycle royal.`;
       const actionsContainer = document.getElementById('action-buttons-container');
       actionsContainer.innerHTML = `
         <button type="button" id="btn-drone-ambush" class="act-btn">1. ${profile.huntAction} [1 / E]</button>
         <button type="button" id="btn-inner-jaw" class="act-btn">2. ${actionLabels.jaw} [2 / R]</button>
         <button type="button" id="btn-tail-impale" class="act-btn">3. ${actionLabels.tail} [3 / T]</button>
         <button type="button" id="btn-claw-swipe" class="act-btn">★ GRIFFES [ESPACE]</button>
+        <button type="button" id="btn-drone-vent" class="act-btn">5. CONDUITS [C]</button>
         <button type="button" id="btn-cocoon-host" class="act-btn">4. COCOONISER UNE CIBLE [4 / F]</button>
         <button type="button" id="btn-found-queen-hive" class="act-btn" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
       `;
@@ -4286,12 +4490,27 @@
       document.getElementById('btn-inner-jaw').onclick = () => this.executeInnerJaw();
       document.getElementById('btn-tail-impale').onclick = () => this.executeTailImpale();
       document.getElementById('btn-claw-swipe').onclick = () => this.executeClawSwipe();
+      document.getElementById('btn-drone-vent').onclick = () => this.toggleVentInfiltration();
       document.getElementById('btn-cocoon-host').onclick = () => this.executeCocoonHost();
       document.getElementById('btn-found-queen-hive').onclick = () => this.foundRoyalNursery();
       this.updateRoyalButton();
     }
 
+    toggleVentInfiltration() {
+      const closestVent = stationMap?.findClosestVent?.(playerCreature.x, playerCreature.z);
+      if (closestVent) {
+        if (playerCreature.isInVent) {
+          playerCreature.exitVent(closestVent.vent);
+        } else if (closestVent.distance <= 5.2) {
+          playerCreature.enterVent(closestVent.vent);
+        } else {
+          showToast(`Conduit trop éloigné (${Math.round(closestVent.distance)}m) pour infiltration [C].`);
+        }
+      }
+    }
+
     handleKeyDown(key) {
+      if (key === 'c') this.toggleVentInfiltration();
       if (key === '1' || key === 'e') this.executeAmbush();
       if (key === '2' || key === 'r') this.executeInnerJaw();
       if (key === '3' || key === 't') this.executeTailImpale();

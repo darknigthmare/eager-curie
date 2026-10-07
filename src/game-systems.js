@@ -485,6 +485,32 @@
       this.effects.push({ group, age: 0, lifetime: 0.65 });
     }
 
+    salivaDrip(x, y, z, count = 2) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      for (let index = 0; index < count; index++) {
+        const dropGeo = new THREE.SphereGeometry(0.045, 6, 6);
+        const dropMat = new THREE.MeshBasicMaterial({
+          color: 0xf1f5f9,
+          transparent: true,
+          opacity: 0.82,
+          depthWrite: false
+        });
+        const drop = new THREE.Mesh(dropGeo, dropMat);
+        drop.scale.set(0.65, 2.2, 0.65);
+        drop.position.set(
+          (Math.random() - 0.5) * 0.14,
+          y - index * 0.12,
+          (Math.random() - 0.5) * 0.14
+        );
+        drop.userData.vy = -3.4 - Math.random() * 1.6;
+        group.add(drop);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: 0.72, drip: true, startY: y });
+    }
+
     transformation() {
       if (this.reducedMotion) return;
       const app = document.getElementById('app-container');
@@ -526,6 +552,15 @@
               particle.position.y += deltaSeconds * (0.35 + progress);
               particle.scale.setScalar(1 + progress * 0.7);
             }
+          });
+        } else if (effect.drip) {
+          effect.group.children.forEach((drop) => {
+            drop.position.y += drop.userData.vy * deltaSeconds;
+            if (drop.position.y <= 0.04) {
+              drop.position.y = 0.04;
+              drop.scale.set(1.6, 0.08, 1.6);
+            }
+            if (drop.material) drop.material.opacity = 0.82 * (1 - progress);
           });
         } else {
           for (const particle of effect.group.children) {

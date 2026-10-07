@@ -2140,6 +2140,114 @@
       return facehugger;
     }
 
+    createDeadFacehuggerHusk() {
+      const T = this._three();
+      const husk = this.createFacehugger();
+      husk.name = 'dead_facehugger_husk';
+      husk.userData.modelType = 'deadFacehuggerHusk';
+      husk.userData.setFoldedPose?.(true);
+
+      const deadMaterial = this._material('chitinWarm', {
+        color: 0x8a7765,
+        roughness: 0.94,
+        metalness: 0.04
+      });
+
+      husk.traverse((child) => {
+        if (child.isMesh) {
+          child.material = deadMaterial;
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      // Posture inversée / recroquevillée comme un cadavre d'arachnide desséché (Alien 1979)
+      husk.rotation.x = Math.PI * 0.92;
+      husk.rotation.z = 0.15;
+      husk.position.y = 0.08;
+      return husk;
+    }
+
+    createDiscardedExuvia() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'discarded_xeno_exuvia';
+      root.userData.modelType = 'discardedExuvia';
+
+      const moltMaterial = new T.MeshStandardMaterial({
+        color: 0x64748b,
+        emissive: 0x1e293b,
+        emissiveIntensity: 0.25,
+        roughness: 0.18,
+        metalness: 0.12,
+        transparent: true,
+        opacity: 0.48,
+        side: T.DoubleSide
+      });
+
+      // Dôme crânien translucide creux et fendu
+      const dome = this._ellipsoid(
+        moltMaterial,
+        { x: 0.42, y: 0.26, z: 0.88 },
+        { x: 0, y: 0.32, z: 0.2 },
+        'exuvia_hollow_dome',
+        18
+      );
+      root.add(dome);
+
+      // Fissure spinale dorsale par laquelle l'adulte a émergé
+      const slit = this._box(
+        moltMaterial,
+        { x: 0.1, y: 0.28, z: 1.1 },
+        { x: 0, y: 0.42, z: -0.1 },
+        'exuvia_dorsal_emergence_slit'
+      );
+      root.add(slit);
+
+      // Cage thoracique affaissée
+      for (let rib = 0; rib < 5; rib++) {
+        for (const side of [-1, 1]) {
+          const ribMesh = this._segment(
+            moltMaterial,
+            new T.Vector3(0, 0.3 - rib * 0.04, -0.2 - rib * 0.22),
+            new T.Vector3(side * 0.36, 0.05, -0.25 - rib * 0.22),
+            0.045,
+            0.025,
+            `exuvia_rib_${rib}_${side}`,
+            8
+          );
+          root.add(ribMesh);
+        }
+      }
+
+      // Queue serpentine flasque repliée au sol
+      const tailPoints = [
+        new T.Vector3(0, 0.12, -1.2),
+        new T.Vector3(0.25, 0.04, -1.7),
+        new T.Vector3(0.55, 0.02, -2.1),
+        new T.Vector3(0.35, 0.02, -2.5),
+        new T.Vector3(0.05, 0.02, -2.8)
+      ];
+      root.add(this._tube(moltMaterial, tailPoints, 0.065, 'exuvia_flaccid_tail', 18, 6));
+
+      // Flaque de mucus résiduel séché
+      const puddle = new T.Mesh(
+        new T.CircleGeometry(1.6, 20),
+        new T.MeshStandardMaterial({
+          color: 0x1e1b4b,
+          roughness: 0.1,
+          metalness: 0.6,
+          transparent: true,
+          opacity: 0.62
+        })
+      );
+      puddle.rotation.x = -Math.PI / 2;
+      puddle.position.y = 0.01;
+      root.add(puddle);
+
+      this.placeOnGround(root, 0);
+      return root;
+    }
+
     // -------------------------------------------------------------------------
     // 9. PUBLIC MODEL: JUVENILE / METAMORPHIC POD
     // -------------------------------------------------------------------------

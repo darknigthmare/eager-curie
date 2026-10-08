@@ -1148,6 +1148,7 @@
       banner.classList.remove('hidden');
       window.clearTimeout(this.narrativeTimer);
       this.narrativeTimer = window.setTimeout(() => banner.classList.add('hidden'), duration);
+      window.audioManager?.playMotherChime?.();
     }
 
     renderCodex(category) {

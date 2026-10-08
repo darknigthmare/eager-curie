@@ -17,6 +17,7 @@
       this.initialized = false;
       this.volume = 0.7;
       this.ambienceNodes = null;
+      window.audioManager = this;
     }
 
     init() {
@@ -185,6 +186,29 @@
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
       osc.connect(gain); this.connect(gain);
       osc.start(now); osc.stop(now + 0.2);
+    }
+
+    playMotherChime() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const gain1 = this.ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(659.25, now);
+      gain1.gain.setValueAtTime(0.24, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      osc1.connect(gain1); this.connect(gain1);
+      osc1.start(now); osc1.stop(now + 0.55);
+
+      const osc2 = this.ctx.createOscillator();
+      const gain2 = this.ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(440, now + 0.22);
+      gain2.gain.setValueAtTime(0.28, now + 0.22);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+      osc2.connect(gain2); this.connect(gain2);
+      osc2.start(now + 0.22); osc2.stop(now + 0.85);
     }
 
     playEggOpen() {
@@ -1414,9 +1438,15 @@
       this.updateUI();
     }
     setLevel(level) {
+      const prevLevel = this.level;
       this.level = Math.max(0, Math.min(5, level));
       this.updateUI();
-      if (this.level >= 3) audioManager.playAlarmSiren();
+      if (this.level >= 3 && prevLevel < 3) {
+        audioManager.playMotherChime?.();
+        audioManager.playAlarmSiren();
+      } else if (this.level >= 3) {
+        audioManager.playAlarmSiren();
+      }
     }
     updateUI() {
       if (!this.alertTextElement) return;
@@ -1426,6 +1456,7 @@
   }
 
   const alarmSystem = new AlarmSystem();
+  window.alarmSystem = alarmSystem;
 
   // -------------------------------------------------------------
   // 6. PHEROMONE SYSTEM
@@ -1435,6 +1466,7 @@
       this.activeCommand = 'HUNT';
       this.commandZones = [];
       this.possessionMode = false;
+      window.pheromoneSystem = this;
     }
     init() {
       const buttons = document.querySelectorAll('.rts-cmd-btn:not(.possess-btn)');
@@ -1450,11 +1482,16 @@
       this.updateUI();
     }
     setCommand(cmd) {
-      if (!['HUNT', 'CAPTURE', 'DEFEND', 'INFEST'].includes(cmd)) return;
+      if (!['HUNT', 'CAPTURE', 'DEFEND', 'INFEST', 'RUSH'].includes(cmd)) return;
       this.activeCommand = cmd;
       this.possessionMode = false;
       this.updateUI();
-      audioManager.playHeartbeat();
+      if (cmd === 'RUSH') {
+        audioManager.playXenoHiss();
+        audioManager.playHeartbeat(1.4);
+      } else {
+        audioManager.playHeartbeat();
+      }
     }
     togglePossessionMode() {
       this.possessionMode = !this.possessionMode;
@@ -2518,29 +2555,38 @@
       if (this.form !== 'drone') return;
       this.isProwling = !this.isProwling;
       const profile = this.getAdultProfile();
+      const isRunner = this.adultCaste === 'runner';
       if (this.isProwling) {
-        this.speed = profile.speed * 1.25;
+        this.speed = profile.speed * (isRunner ? 1.35 : 1.25);
         if (this.detailedModel) {
-          this.detailedModel.rotation.x = 0.42;
-          this.detailedModel.position.y = -0.35;
+          this.detailedModel.rotation.x = isRunner ? 0.08 : 0.42;
+          this.detailedModel.position.y = isRunner ? -0.15 : -0.35;
         }
-        showToast('TRAQUE AU SOL ACTIVE [Z] : Silhouette basse, vitesse +25%, détection réduite.');
-        appendSensorLog('[POSTURE] Passage en traque quadrupède furtive.', 'bio');
+        showToast(isRunner
+          ? 'SPRINT QUADRUPÈDE RUNNER ACTIF [Z] : Vitesse maximale (Alien 3), portée de bond 10.5m [K] !'
+          : 'TRAQUE AU SOL ACTIVE [Z] : Silhouette basse, vitesse +25%, détection réduite.');
+        appendSensorLog(isRunner
+          ? '[POSTURE RUNNER] Galop quadrupède ras du sol déclenché.'
+          : '[POSTURE] Passage en traque quadrupède furtive.', 'bio');
       } else {
         this.speed = profile.speed;
         if (this.detailedModel) {
           this.detailedModel.rotation.x = 0;
           this.detailedModel.position.y = 0;
         }
-        showToast('POSTURE BIPÈDE REDRESSÉE [Z]');
-        appendSensorLog('[POSTURE] Retour en posture bipède redressée.', 'bio');
+        showToast(isRunner ? 'ALLURE DE TRAQUE STANDARD [Z]' : 'POSTURE BIPÈDE REDRESSÉE [Z]');
+        appendSensorLog('[POSTURE] Retour en posture de déplacement standard.', 'bio');
       }
     }
 
     executeProwlLeap(target = null) {
       if (this.form !== 'drone') return false;
+      const isRunner = this.adultCaste === 'runner';
+      const isWarrior = this.adultCaste === 'warrior';
+      const isProwler = this.adultCaste === 'prowler';
+
+      const leapDist = isRunner ? 10.5 : (isProwler ? 9.0 : (isWarrior ? 6.5 : 7.5));
       const angle = this.mesh ? this.mesh.rotation.y : 0;
-      const leapDist = 7.5;
       const destX = target ? target.x : (this.x + Math.sin(angle) * leapDist);
       const destZ = target ? target.z : (this.z + Math.cos(angle) * leapDist);
       if (stationMap.checkCollision(destX, destZ)) {
@@ -2548,7 +2594,7 @@
         return false;
       }
       audioManager.playXenoRoar?.();
-      rendererEngine.addScreenShake?.(0.28, 0.18);
+      rendererEngine.addScreenShake?.(isWarrior ? 0.42 : 0.28, 0.2);
       window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x39ff14, 16, 0.12, 1.2);
       this.triggerAttack('leap');
 
@@ -2557,23 +2603,32 @@
       this.z = destZ;
       this.mesh?.position.set(destX, 0, destZ);
 
-      window.HiveSystems?.vfx?.organicTrail?.(startPos.x, 1.5, startPos.z, destX, 1.5, destZ, 0x39ff14);
-      window.HiveSystems?.vfx?.burst?.(destX, destZ, 0xef4444, 22, 0.16, 1.6);
-      window.HiveSystems?.vfx?.ring?.(destX, destZ, 0x39ff14, 3.8);
+      window.HiveSystems?.vfx?.organicTrail?.(startPos.x, 1.5, startPos.z, destX, 1.5, destZ, isRunner ? 0xf59e0b : 0x39ff14);
+      window.HiveSystems?.vfx?.burst?.(destX, destZ, 0xef4444, 24, 0.18, 1.8);
+      window.HiveSystems?.vfx?.ring?.(destX, destZ, isRunner ? 0xf59e0b : 0x39ff14, 4.2);
 
       const hitHumans = (window.gameInstance?.humans || []).filter((h) => (
-        !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - destX, h.z - destZ) <= 3.4
+        !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - destX, h.z - destZ) <= (isWarrior ? 4.2 : 3.4)
       ));
-      hitHumans.forEach((victim) => {
-        const pDmg = 85;
-        victim.takeDamage(pDmg, this);
-        victim.staggerTimer = 1.25;
+      if (hitHumans.length > 0) {
         audioManager.playBoneCrunch?.();
-        audioManager.playWetImpact?.(victim.x, victim.z);
-        window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, `-${pDmg} BOND PRÉDATEUR !`, '#ef4444', true);
-      });
-      showToast('BOND DE TRAQUE FOUDROYANT [K] !');
-      appendSensorLog('[BOND PRÉDATEUR] Rupture brutale de posture. Projection cinétique sur la cible.', 'bio');
+        audioManager.playWetImpact?.(destX, destZ);
+        hitHumans.forEach((victim) => {
+          const pDmg = isWarrior ? 130 : (isRunner ? 110 : (isProwler ? 100 : 85));
+          victim.takeDamage(pDmg, this);
+          victim.staggerTimer = isWarrior ? 2.0 : (isRunner ? 1.5 : 1.25);
+          const leapLabel = isRunner ? 'BOND QUADRUPÈDE' : (isWarrior ? 'CHARGE BRUTALE' : 'BOND PRÉDATEUR');
+          window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, `-${pDmg} ${leapLabel} !`, '#ef4444', true);
+        });
+        showToast(isRunner
+          ? `BOND FOUDROYANT RUNNER [K] ! ${hitHumans[0].name} plaqué et renversé au sol !`
+          : (isWarrior
+            ? `CHARGE D'ASSAUT GUERRIER [K] ! ${hitHumans[0].name} broyé sous l'impact !`
+            : `BOND DE TRAQUE FOUDROYANT [K] ! ${hitHumans[0].name} fauché par surprise !`));
+        appendSensorLog(`[BOND PRÉDATEUR] Rupture brutale de posture. Projection cinétique sur ${hitHumans.map(h => h.name).join(', ')}.`, 'bio');
+      } else {
+        showToast(isRunner ? 'Bond quadrupède longue portée réussi [K].' : 'Bond de traque réussi [K].');
+      }
       return true;
     }
 
@@ -2590,6 +2645,7 @@
       this.maxHealth = profile.maxHealth;
       this.speed = profile.speed;
       if (restoreHealth) this.health = this.maxHealth;
+      if (this.mesh) this.createMesh();
     }
 
     clearMesh() {
@@ -4073,7 +4129,7 @@
           }, null);
 
         let target = activeZone;
-        if (activeZone.command === 'HUNT') {
+        if (activeZone.command === 'HUNT' || activeZone.command === 'RUSH') {
           target = nearestInZone((human) => !human.isCocooned && !human.isIncapacitated) || activeZone;
         } else if (activeZone.command === 'CAPTURE') {
           target = nearestInZone((human) => (
@@ -4086,12 +4142,13 @@
         }
 
         const dist = Math.hypot(target.x - this.x, target.z - this.z);
-        const isAttackOrder = activeZone.command === 'HUNT' || activeZone.command === 'DEFEND';
+        const isRush = activeZone.command === 'RUSH';
+        const isAttackOrder = activeZone.command === 'HUNT' || activeZone.command === 'DEFEND' || isRush;
         const stopRadius = target.human && isAttackOrder
           ? this.attackRange
           : (activeZone.command === 'DEFEND' ? 4 : (activeZone.command === 'CAPTURE' ? 1.5 : 2));
         if (dist > stopRadius) {
-          const speedMultiplier = activeZone.command === 'HUNT' ? 1.15 : (activeZone.command === 'DEFEND' ? 0.75 : 1);
+          const speedMultiplier = isRush ? 1.45 : (activeZone.command === 'HUNT' ? 1.15 : (activeZone.command === 'DEFEND' ? 0.75 : 1));
           this.moveDirect(
             (target.x - this.x) / dist,
             (target.z - this.z) / dist,
@@ -4104,12 +4161,14 @@
             if (target.human.cocoonInResin()) resinGrid.addResinPatch(target.human.x, target.human.z);
           } else if (isAttackOrder) {
             if (this.attackCooldown <= 0) {
-              this.attackCooldown = this.caste === 'runner' ? 0.62 : (this.caste === 'spitter' ? 1.45 : 0.86);
+              const baseCooldown = this.caste === 'runner' ? 0.62 : (this.caste === 'spitter' ? 1.45 : 0.86);
+              this.attackCooldown = isRush ? baseCooldown * 0.68 : baseCooldown;
               this.attackAnimation = 1;
-              const color = this.caste === 'spitter' ? 0xa3e635 : 0x39ff14;
+              const bonusDmg = isRush ? Math.round(this.damage * 1.35) : this.damage;
+              const color = this.caste === 'spitter' ? 0xa3e635 : (isRush ? 0xdc2626 : 0x39ff14);
               if (this.caste === 'spitter') {
                 const applyAcidHit = () => {
-                  target.human?.takeDamage(this.damage);
+                  target.human?.takeDamage(bonusDmg, this);
                   audioManager.playAcidSizzle();
                 };
                 const projectileVfx = window.HiveSystems?.vfx;
@@ -4131,7 +4190,7 @@
                   applyAcidHit();
                 }
               } else {
-                target.human.takeDamage(this.damage);
+                target.human.takeDamage(bonusDmg, this);
                 window.HiveSystems?.vfx?.organicTrail(
                   this.x,
                   this.caste === 'praetorian' ? 2.8 : 1.4,
@@ -4149,6 +4208,10 @@
                   0.1,
                   1.2
                 );
+                if (isRush) {
+                  window.HiveSystems?.vfx?.floatingText?.(target.human.x, 2.5, target.human.z, `-${bonusDmg} RUSH ESSAIM !`, '#dc2626', true);
+                  window.HiveSystems?.vfx?.ring?.(target.human.x, target.human.z, 0xdc2626, 3.2);
+                }
                 audioManager.playWetImpact?.(target.human.x, target.human.z);
               }
             }
@@ -4797,6 +4860,19 @@
           closestHost = human;
           closestDistance = distance;
         }
+      }
+
+      // Canon 1:1 Lore — Détection et rejet absolu des androïdes / synthétiques (fluide blanc / pas d'appareil respiratoire)
+      const nearbySynth = humans.find((h) => (
+        ['synthetic', 'android'].includes(h.type) &&
+        !h.isIncapacitated &&
+        Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 7.0
+      ));
+      if (nearbySynth && (!closestHost || closestDistance > 7.0)) {
+        audioManager.playSyntheticGlitchedVoice?.(nearbySynth.x, nearbySynth.z);
+        showToast(`HÔTE REJETÉ : ${nearbySynth.name} est un synthétique (fluide blanc). Absence de voies respiratoires !`);
+        appendSensorLog(`[CHÉMORÉCEPTION] Polymères froids et fluide blanc détectés sur ${nearbySynth.name}. Le parasite rejette les androïdes.`, 'alert');
+        return;
       }
 
       if (!closestHost || closestDistance > 16) {
@@ -6827,7 +6903,18 @@
         this.executePossessedAttack();
         return;
       }
-      const commandByKey = { q: 'HUNT', w: 'CAPTURE', e: 'DEFEND', r: 'INFEST' };
+      const commandByKey = {
+        q: 'HUNT',
+        w: 'CAPTURE',
+        e: 'DEFEND',
+        r: 'INFEST',
+        t: 'RUSH',
+        '1': 'HUNT',
+        '2': 'CAPTURE',
+        '3': 'DEFEND',
+        '4': 'INFEST',
+        '5': 'RUSH'
+      };
       if (commandByKey[key]) {
         this.possessedUnit = null;
         pheromoneSystem.setCommand(commandByKey[key]);
@@ -6878,7 +6965,7 @@
         return;
       }
 
-      const colors = { HUNT: 0xef4444, CAPTURE: 0xa855f7, DEFEND: 0x38bdf8, INFEST: 0x39ff14 };
+      const colors = { HUNT: 0xef4444, CAPTURE: 0xa855f7, DEFEND: 0x38bdf8, INFEST: 0x39ff14, RUSH: 0xdc2626 };
       const command = pheromoneSystem.activeCommand;
       const marker = new THREE.Mesh(
         new THREE.RingGeometry(1.6, 2.6, 24),

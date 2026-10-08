@@ -365,6 +365,116 @@
       osc1.stop(now + 1.25); osc2.stop(now + 1.25); sub.stop(now + 1.25);
     }
 
+    playXenoHiss(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.85);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        const env = Math.sin(Math.min(1, i / (bufferSize * 0.15)) * Math.PI / 2) * Math.exp(-i / (bufferSize * 0.45));
+        data[i] = (Math.random() * 2 - 1) * env;
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const bq = this.ctx.createBiquadFilter();
+      bq.type = 'bandpass';
+      bq.frequency.setValueAtTime(3400, now);
+      bq.Q.setValueAtTime(4.2, now);
+      bq.frequency.linearRampToValueAtTime(1800, now + 0.65);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.8, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.82);
+
+      const osc = this.ctx.createOscillator();
+      const oscGain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.linearRampToValueAtTime(42, now + 0.55);
+      oscGain.gain.setValueAtTime(0.4, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+      osc.connect(oscGain);
+      oscGain.connect(gain);
+      osc.start(now); osc.stop(now + 0.55);
+
+      noise.connect(bq); bq.connect(gain);
+      this.connect(gain, x, z, 72);
+      noise.start(now);
+    }
+
+    playInnerJawSnap(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(340, now);
+      osc.frequency.exponentialRampToValueAtTime(32, now + 0.15);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.17);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now); osc.stop(now + 0.17);
+    }
+
+    playTailWhip(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(920, now);
+      osc.frequency.exponentialRampToValueAtTime(75, now + 0.18);
+      gain.gain.setValueAtTime(0.72, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now); osc.stop(now + 0.2);
+    }
+
+    playSteamVentHiss(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.45);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(2600, now);
+      filter.frequency.linearRampToValueAtTime(750, now + 0.42);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.42, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+      noise.connect(filter); filter.connect(gain);
+      this.connect(gain, x, z, 58);
+      noise.start(now);
+    }
+
+    playSyntheticGlitchedVoice(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.setValueAtTime(220, now + 0.08);
+      osc.frequency.setValueAtTime(880, now + 0.16);
+      osc.frequency.setValueAtTime(110, now + 0.24);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      this.connect(gain, x, z, 55);
+      osc.start(now); osc.stop(now + 0.4);
+    }
+
     playVentEnter() {
       if (!this.initialized || this.isMuted) return;
       this.resume();
@@ -910,6 +1020,20 @@
       this.scene.add(this.propsGroup);
       this.scene.add(this.resinGroup);
 
+      // Gyrophare rotatif d'alarme industrielle Weyland-Yutani (Alien 1979 / Aliens 1986)
+      const beaconPivot = new THREE.Group();
+      beaconPivot.position.set(0, 8.5, 0);
+      const beaconSpot = new THREE.SpotLight(0xf59e0b, 0, 48, Math.PI / 4, 0.45, 1.2);
+      beaconSpot.position.set(0, 0, 0);
+      const beaconTarget = new THREE.Object3D();
+      beaconTarget.position.set(22, -8.5, 0);
+      beaconPivot.add(beaconSpot);
+      beaconPivot.add(beaconTarget);
+      beaconSpot.target = beaconTarget;
+      this.scene.add(beaconPivot);
+      this.beaconPivot = beaconPivot;
+      this.beaconSpot = beaconSpot;
+
       window.addEventListener('resize', () => this.onWindowResize());
     }
 
@@ -922,6 +1046,14 @@
     }
 
     setCameraTarget(x, z, heightOffset = 0, isRTS = false, deltaSeconds = 1 / 60) {
+      if (this.beaconPivot && this.beaconSpot) {
+        const isAlarmActive = (window.alarmSystem?.level || 0) >= 2;
+        this.beaconSpot.intensity = isAlarmActive ? 4.5 : 0;
+        if (isAlarmActive) {
+          this.beaconPivot.rotation.y += Math.max(0, deltaSeconds) * 4.2;
+        }
+      }
+
       const desiredFov = isRTS ? 54 : 40;
       if (this.camera.fov !== desiredFov) {
         this.camera.fov = desiredFov;
@@ -1393,6 +1525,27 @@
         { id: 'vent_est', name: 'Conduit Est (Sécurité)', x: 61, z: 12 },
         { id: 'vent_sud', name: 'Conduit Sud (Raffinerie)', x: 22, z: 48 }
       ];
+
+      this.steamVents = [
+        { x: -15, z: -18, timer: 1.5 },
+        { x: 32, z: -10, timer: 4.8 },
+        { x: -38, z: 24, timer: 3.2 },
+        { x: 26, z: 32, timer: 6.0 },
+        { x: 0, z: 5, timer: 2.2 }
+      ];
+    }
+
+    updateSteamVents(deltaSeconds) {
+      if (!this.steamVents) return;
+      const safeDelta = Math.max(0, deltaSeconds);
+      for (const sv of this.steamVents) {
+        sv.timer -= safeDelta;
+        if (sv.timer <= 0) {
+          sv.timer = 5.2 + Math.random() * 4.0;
+          window.HiveSystems?.vfx?.spawnSteamCloud?.(sv.x, 2.2, sv.z, 3.8);
+          audioManager.playSteamVentHiss?.(sv.x, sv.z);
+        }
+      }
     }
 
     findClosestVent(x, z) {
@@ -1435,10 +1588,29 @@
         entry <= 1;
     }
 
+    distPointToSegment(px, pz, x1, z1, x2, z2) {
+      const l2 = (x2 - x1) * (x2 - x1) + (z2 - z1) * (z2 - z1);
+      if (l2 === 0) return Math.hypot(px - x1, pz - z1);
+      let t = ((px - x1) * (x2 - x1) + (pz - z1) * (z2 - z1)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(px - (x1 + t * (x2 - x1)), pz - (z1 + t * (z2 - z1)));
+    }
+
     hasLineOfSight(startX, startZ, endX, endZ, padding = 0.08) {
-      return !this.colliders.some((collider) => (
+      const collidesWall = this.colliders.some((collider) => (
         this.segmentIntersectsCollider(startX, startZ, endX, endZ, collider, padding)
       ));
+      if (collidesWall) return false;
+
+      // Masquage thermique et visuel par les geysers de vapeur (Alien Isolation 1:1)
+      const vfxEffects = window.HiveSystems?.vfx?.effects || [];
+      for (const eff of vfxEffects) {
+        if (eff.steamCloud && eff.age < eff.lifetime * 0.85) {
+          const distToLine = this.distPointToSegment(eff.x, eff.z, startX, startZ, endX, endZ);
+          if (distToLine < (eff.radius || 2.5)) return false;
+        }
+      }
+      return true;
     }
 
     checkCollision(nextX, nextZ, padding = 0) {
@@ -1965,6 +2137,130 @@
       this.currentVent = null;
       this.salivaTimer = 0;
       this.isProwling = false;
+      this.isCeilingProwling = false;
+      this.draggedHost = null;
+    }
+
+    toggleCeilingProwl() {
+      if (this.form !== 'drone') return;
+      if (this.isInVent) {
+        showToast('Impossible de grimper au plafond depuis un conduit.');
+        return;
+      }
+      this.isCeilingProwling = !this.isCeilingProwling;
+      if (this.isCeilingProwling) {
+        this.mesh?.position.set(this.x, 5.85, this.z);
+        if (this.detailedModel) {
+          this.detailedModel.rotation.x = Math.PI; // Tête en bas agrippé aux poutres métalliques
+          this.detailedModel.position.y = 0;
+        }
+        audioManager.playVentEnter?.();
+        rendererEngine.addScreenShake?.(0.12, 0.1);
+        window.HiveSystems?.vfx?.burst(this.x, this.z, 0x64748b, 10, 0.08, 1.0);
+        showToast('PAROI & PLAFOND ACTIF [Q] : Suspendu aux superstructures ! Chute mortelle prête [ESPACE].');
+        appendSensorLog('[TRAQUE 3D] Escalade aux poutrelles du plafond. Angle mort total des patrouilles.', 'stealth');
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 6.2, this.z, 'SUSPENDU AU PLAFOND [Q]', '#38bdf8', true);
+      } else {
+        this.mesh?.position.set(this.x, 0, this.z);
+        if (this.detailedModel) {
+          this.detailedModel.rotation.x = this.isProwling ? 0.42 : 0;
+          this.detailedModel.position.y = this.isProwling ? -0.35 : 0;
+        }
+        audioManager.playWetImpact?.(this.x, this.z);
+        showToast('DESCENTE AU SOL [Q] : Posture au sol rétablie.');
+        appendSensorLog('[TRAQUE 3D] Descente furtive sur le pont.', 'bio');
+      }
+    }
+
+    dropFromCeiling(target = null) {
+      if (!this.isCeilingProwling) return false;
+      this.isCeilingProwling = false;
+      this.mesh?.position.set(this.x, 0, this.z);
+      if (this.detailedModel) {
+        this.detailedModel.rotation.x = this.isProwling ? 0.42 : 0;
+        this.detailedModel.position.y = this.isProwling ? -0.35 : 0;
+      }
+      audioManager.playBoneCrunch?.();
+      audioManager.playXenoRoar?.();
+      rendererEngine.addScreenShake?.(0.48, 0.28);
+      window.HiveSystems?.vfx?.burst(this.x, this.z, 0xef4444, 22, 0.18, 1.8);
+      window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0xef4444, 5.5);
+
+      if (target) {
+        const dropDmg = 120;
+        target.takeDamage(dropDmg, this);
+        target.staggerTimer = 1.3;
+        window.HiveSystems?.vfx?.floatingText?.(target.x, 2.5, target.z, `-${dropDmg} CHUTE MORTELLE !`, '#ef4444', true);
+        showToast(`CHUTE MORTELLE DU PLAFOND ! ${target.name} broyé sous l'impact !`);
+        appendSensorLog(`[AMBUSH VERTICALE] Plongeon foudroyant sur ${target.name}. Dommages critiques.`, 'alert');
+      } else {
+        showToast('Atterrissage lourd sur le pont.');
+      }
+      return true;
+    }
+
+    toggleDragHost() {
+      if (this.draggedHost) {
+        showToast(`Hôte ${this.draggedHost.name} relâché au sol.`);
+        this.draggedHost = null;
+        return;
+      }
+      const humans = window.gameInstance?.humans || [];
+      const incapacitated = humans.filter((h) => (
+        (h.isIncapacitated || h.hp <= 0) && !h.isCocooned && !h.isConsumedByCycle &&
+        Math.hypot(h.x - this.x, h.z - this.z) <= 4.0
+      )).sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z))[0];
+
+      if (!incapacitated) {
+        showToast('Aucun corps neutralisé à portée (4.0m) à traîner [V].');
+        return;
+      }
+      this.draggedHost = incapacitated;
+      showToast(`CORPS SAISI [V] : Vous traînez ${incapacitated.name}. Approchez d'une paroi pour l'emmurer [V ou F].`);
+      appendSensorLog(`[CAPTURE] Proie ${incapacitated.name} saisie par les griffes. Transport vers le nid.`, 'bio');
+    }
+
+    wallCocoonDraggedHost() {
+      if (!this.draggedHost) return false;
+      const host = this.draggedHost;
+      host.cocoonInResin();
+      host.isCocooned = true;
+      host.isIncapacitated = true;
+      if (host.mesh) {
+        host.mesh.rotation.set(0, 0, 0);
+        host.mesh.position.y = 1.25;
+      }
+      window.HiveSystems?.vfx?.spawnWallCocoon?.(host.x, 0, host.z);
+      window.HiveSystems?.vfx?.burst(host.x, host.z, 0x9d4edd, 20, 0.16, 1.6);
+      audioManager.playWetImpact?.(host.x, host.z);
+      audioManager.playAcidSizzle?.();
+      showToast(`HÔTE EMMURÉ DANS LA RÉSINE ! ${host.name} fixé à la paroi (Biomasse +25) !`);
+      appendSensorLog(`[HÔTE ENCHÂSSÉ] Sujet ${host.name} emmuré dans les sécrétions murales (Hadley's Hope 1:1).`, 'bio');
+      this.draggedHost = null;
+      return true;
+    }
+
+    executeTerrifyingHiss() {
+      if (this.form !== 'drone') return;
+      audioManager.playXenoHiss(this.x, this.z);
+      audioManager.playInnerJawSnap(this.x, this.z);
+      rendererEngine.addScreenShake?.(0.32, 0.22);
+      window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0x39ff14, 13);
+      window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, 20, 0.15, 1.5);
+      window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'SIFFLEMENT TERRIFIANT [H]', '#39ff14', true);
+
+      const humans = window.gameInstance?.humans || [];
+      const affected = humans.filter((h) => !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 13.5);
+      affected.forEach((h) => {
+        h.staggerTimer = 2.8;
+        if (h.type === 'synthetic' || h.type === 'android') {
+          showToast(`Synthétique ${h.name} : Traitement des capteurs sonores saturé par le sifflement !`);
+        } else {
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.5, h.z, 'TERREUR INTENSE !', '#ef4444', true);
+        }
+      });
+      showToast(`SIFFLEMENT DÉCLENCHÉ ! ${affected.length} patrouilles paralysées de terreur !`);
+      appendSensorLog(`[TERREUR ACOUSTIQUE] Sifflement bio-acoustique émis. Panique aiguë infligée aux patrouilles.`, 'alert');
     }
 
     toggleProwlStance() {
@@ -2487,7 +2783,7 @@
         if (!stationMap.checkCollision(nextX, nextZ)) {
           this.x = nextX;
           this.z = nextZ;
-          this.mesh.position.set(this.x, 0, this.z);
+          this.mesh.position.set(this.x, this.isCeilingProwling ? 5.85 : 0, this.z);
         } else if (this.moveTarget) {
           this.moveTarget = null;
           this.moveWaypoints = [];
@@ -2497,8 +2793,24 @@
           this.mesh.rotation.y = Math.atan2(dx, dy);
         }
 
+        // Suivi et traînée physique du corps de l'hôte capturé (Hadley's Hope 1:1)
+        if (this.draggedHost && this.draggedHost.mesh) {
+          const rotY = this.mesh.rotation.y;
+          const dragDist = 1.6;
+          const hostX = this.x - Math.sin(rotY) * dragDist;
+          const hostZ = this.z - Math.cos(rotY) * dragDist;
+          this.draggedHost.x = hostX;
+          this.draggedHost.z = hostZ;
+          this.draggedHost.mesh.position.set(hostX, 0.22, hostZ);
+          this.draggedHost.mesh.rotation.z = Math.PI / 2;
+        }
+
+        if (this.isCeilingProwling) {
+          this.mesh.position.y = 5.85;
+        }
+
         // Canon H.R. Giger — Sécrétions de salive visqueuse perlant des mâchoires
-        if (this.form === 'drone' && !this.isInVent) {
+        if (this.form === 'drone' && !this.isInVent && !this.isCeilingProwling) {
           this.salivaTimer = (this.salivaTimer || 0) - safeDelta;
           if (this.salivaTimer <= 0) {
             this.salivaTimer = 1.3 + Math.random() * 1.5;
@@ -2778,6 +3090,26 @@
     incapacitate() {
       if (this.isIncapacitated) return;
       this.isIncapacitated = true;
+      const isSynth = this.type === 'synthetic' || this.type === 'android';
+      if (isSynth) {
+        if (this.mesh) {
+          this.mesh.rotation.z = Math.PI / 2;
+          this.mesh.position.y = 0.22;
+          this.mesh.scale.y = 0.65;
+        }
+        audioManager.playSyntheticGlitchedVoice?.(this.x, this.z);
+        window.HiveSystems?.vfx?.burst(this.x, this.z, 0xf8fafc, 24, 0.16, 1.6);
+        const synthQuotes = [
+          "Rook-7 : Admiration pour sa pureté... Organisme parfait...",
+          "Rook-7 : Ordre Spécial 937... Toute autre considération secondaire...",
+          "Rook-7 : Vous ne comprenez toujours pas à quoi vous avez affaire..."
+        ];
+        const quote = synthQuotes[Math.floor(Math.random() * synthQuotes.length)];
+        window.HiveSystems?.narrative('ROOK-7 (DÉFAILLANT)', quote, 5000);
+        showToast('SYNTHÉTIQUE SECTIONNÉ : Fuite de fluide blanc laiteux. Incompatible avec Facehuggers.');
+        appendSensorLog(`[SYNTHÉTIQUE] ${this.name} démembré. Châssis inerte, fluide de synthèse au sol.`, 'bio');
+        return;
+      }
       if (this.mesh) {
         this.mesh.rotation.z = Math.PI / 2;
         this.mesh.position.y = 0.3;
@@ -2905,9 +3237,10 @@
       const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
       const currentStageStep = window.gameInstance?.currentStage?.step;
       const inVentStealth = combatTarget === playerCreature && playerCreature.isInVent;
+      const inCeilingStealth = combatTarget === playerCreature && playerCreature.isCeilingProwling;
       const biologicalTargetDetectable = (currentStageIndex !== 3 ||
         currentStageStep === 'HUNT_FAUNA' ||
-        currentStageStep === 'CHRYSALIS') && !inVentStealth;
+        currentStageStep === 'CHRYSALIS') && !inVentStealth && !inCeilingStealth;
 
       this.motionPingCooldown -= safeDelta;
       if (biologicalTargetDetectable && distToPlayer < 24 && this.motionPingCooldown <= 0) {
@@ -4740,8 +5073,11 @@
         <button type="button" id="btn-inner-jaw" class="act-btn">2. ${actionLabels.jaw} [2 / R]</button>
         <button type="button" id="btn-tail-impale" class="act-btn">3. ${actionLabels.tail} [3 / T]</button>
         <button type="button" id="btn-claw-swipe" class="act-btn">★ GRIFFES [ESPACE]</button>
+        <button type="button" id="btn-drone-hiss" class="act-btn" style="border-color: #39ff14;">★ SIFFLEMENT [H / 5]</button>
+        <button type="button" id="btn-drone-ceiling" class="act-btn" style="border-color: #38bdf8;">★ PAROI & PLAFOND [Q]</button>
         <button type="button" id="btn-drone-prowl" class="act-btn">★ POSTURE BASSE [Z]</button>
         <button type="button" id="btn-drone-vent" class="act-btn">5. CONDUITS [C]</button>
+        <button type="button" id="btn-drag-host" class="act-btn" style="border-color: #f59e0b;">★ TRAÎNER / COCON MURAL [V]</button>
         <button type="button" id="btn-cocoon-host" class="act-btn">4. COCOONISER UN HÔTE [4 / F]</button>
         <button type="button" id="btn-eggmorph" class="act-btn">6. OVOMORPHE [G]</button>
         <button type="button" id="btn-found-queen-hive" class="act-btn" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
@@ -4751,12 +5087,48 @@
       document.getElementById('btn-inner-jaw').onclick = () => this.executeInnerJaw();
       document.getElementById('btn-tail-impale').onclick = () => this.executeTailImpale();
       document.getElementById('btn-claw-swipe').onclick = () => this.executeClawSwipe();
+      document.getElementById('btn-drone-hiss').onclick = () => this.executeTerrifyingHiss();
+      document.getElementById('btn-drone-ceiling').onclick = () => this.toggleCeilingProwl();
       document.getElementById('btn-drone-prowl').onclick = () => playerCreature.toggleProwlStance();
       document.getElementById('btn-drone-vent').onclick = () => this.toggleVentInfiltration();
+      document.getElementById('btn-drag-host').onclick = () => this.executeDragOrWallCocoon();
       document.getElementById('btn-cocoon-host').onclick = () => this.executeCocoonHost();
       document.getElementById('btn-eggmorph').onclick = () => this.executeEggmorph();
       document.getElementById('btn-found-queen-hive').onclick = () => this.foundRoyalNursery();
       this.updateRoyalButton();
+    }
+
+    executeTerrifyingHiss() {
+      if (!this.canUseAbility('hiss', 1400)) return;
+      playerCreature.executeTerrifyingHiss();
+    }
+
+    toggleCeilingProwl() {
+      playerCreature.toggleCeilingProwl();
+    }
+
+    executeDragOrWallCocoon() {
+      if (playerCreature.draggedHost) {
+        let nearWall = false;
+        for (const col of stationMap.colliders) {
+          if (
+            playerCreature.x >= col.minX - 3.2 && playerCreature.x <= col.maxX + 3.2 &&
+            playerCreature.z >= col.minZ - 3.2 && playerCreature.z <= col.maxZ + 3.2
+          ) {
+            nearWall = true; break;
+          }
+        }
+        if (nearWall) {
+          playerCreature.wallCocoonDraggedHost();
+          this.capturedHosts++;
+          this.updateRoyalButton();
+        } else {
+          showToast('Approchez le corps d\'un mur pour l\'emmurer dans la résine [V], ou pressez V pour relâcher.');
+          playerCreature.toggleDragHost();
+        }
+      } else {
+        playerCreature.toggleDragHost();
+      }
     }
 
     toggleVentInfiltration() {
@@ -4775,6 +5147,9 @@
     handleKeyDown(key) {
       if (key === 'c') this.toggleVentInfiltration();
       if (key === 'z') playerCreature.toggleProwlStance();
+      if (key === 'q') this.toggleCeilingProwl();
+      if (key === 'h' || key === '5') this.executeTerrifyingHiss();
+      if (key === 'v') this.executeDragOrWallCocoon();
       if (key === 'g') this.executeEggmorph();
       if (key === '1' || key === 'e') this.executeAmbush();
       if (key === '2' || key === 'r') this.executeInnerJaw();
@@ -4859,6 +5234,12 @@
     }
 
     executeClawSwipe() {
+      if (playerCreature.isCeilingProwling) {
+        const { human: target } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated && Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= 7.5);
+        playerCreature.dropFromCeiling(target);
+        this.updateRoyalButton();
+        return;
+      }
       if (!this.canUseAbility('claw', 380)) return;
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 6.5) {
@@ -4915,6 +5296,7 @@
       }
       playerCreature.triggerAttack('inner-jaw');
       target.takeDamage(profile.jawDamage, playerCreature);
+      audioManager.playInnerJawSnap?.(target.x, target.z);
       audioManager.playBoneCrunch();
       audioManager.playWetImpact?.(target.x, target.z);
       window.HiveSystems?.vfx?.organicTrail(
@@ -4956,6 +5338,7 @@
       }
       playerCreature.triggerAttack('tail');
       target.takeDamage(profile.tailDamage, playerCreature);
+      audioManager.playTailWhip?.(target.x, target.z);
       audioManager.playBoneCrunch();
       audioManager.playWetImpact?.(target.x, target.z);
       window.HiveSystems?.vfx?.organicTrail(
@@ -6515,6 +6898,7 @@
           }
         }
         window.HiveSystems?.update(deltaSeconds);
+        stationMap.updateSteamVents?.(deltaSeconds);
         this.motionTracker?.update(deltaSeconds, playerCreature, this.humans);
         if (!this.isRunning) return;
       }

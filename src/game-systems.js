@@ -570,6 +570,63 @@
       });
     }
 
+    spawnSteamCloud(x, y, z, duration = 3.6) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      for (let i = 0; i < 9; i++) {
+        const sGeo = new THREE.SphereGeometry(0.35 + Math.random() * 0.4, 6, 6);
+        const sMat = new THREE.MeshBasicMaterial({
+          color: 0x94a3b8,
+          transparent: true,
+          opacity: 0.38,
+          depthWrite: false
+        });
+        const m = new THREE.Mesh(sGeo, sMat);
+        m.position.set((Math.random() - 0.5) * 1.8, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 1.8);
+        m.userData.vy = 0.6 + Math.random() * 0.8;
+        m.userData.vx = (Math.random() - 0.5) * 0.5;
+        m.userData.vz = (Math.random() - 0.5) * 0.5;
+        group.add(m);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        age: 0,
+        lifetime: duration,
+        steamCloud: true,
+        x,
+        z,
+        radius: 2.8
+      });
+    }
+
+    spawnWallCocoon(x, y, z) {
+      if (!this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const resinMat = new THREE.MeshStandardMaterial({
+        color: 0x2e1065,
+        emissive: 0x581c87,
+        emissiveIntensity: 0.85,
+        roughness: 0.3,
+        metalness: 0.6
+      });
+      const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.48, 2.5, 8), resinMat);
+      pod.position.set(0, 1.35, 0);
+      group.add(pod);
+
+      for (let i = 0; i < 6; i++) {
+        const tendon = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.4, 6), resinMat);
+        const a = (i / 6) * Math.PI * 2;
+        tendon.position.set(Math.cos(a) * 0.72, 1.35, Math.sin(a) * 0.72);
+        tendon.rotation.z = Math.sin(a) * 0.38;
+        group.add(tendon);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      return group;
+    }
+
     transformation() {
       if (this.reducedMotion) return;
       const app = document.getElementById('app-container');
@@ -611,6 +668,14 @@
               particle.position.y += deltaSeconds * (0.35 + progress);
               particle.scale.setScalar(1 + progress * 0.7);
             }
+          });
+        } else if (effect.steamCloud) {
+          effect.group.children.forEach((p) => {
+            p.position.y += p.userData.vy * deltaSeconds;
+            p.position.x += p.userData.vx * deltaSeconds;
+            p.position.z += p.userData.vz * deltaSeconds;
+            p.scale.addScalar(deltaSeconds * 0.55);
+            if (p.material) p.material.opacity = Math.max(0, 0.38 * (1 - progress));
           });
         } else if (effect.drip) {
           effect.group.children.forEach((drop) => {

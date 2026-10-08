@@ -2520,6 +2520,46 @@
       }
     }
 
+    executeProwlLeap(target = null) {
+      if (this.form !== 'drone') return false;
+      const angle = this.mesh ? this.mesh.rotation.y : 0;
+      const leapDist = 7.5;
+      const destX = target ? target.x : (this.x + Math.sin(angle) * leapDist);
+      const destZ = target ? target.z : (this.z + Math.cos(angle) * leapDist);
+      if (stationMap.checkCollision(destX, destZ)) {
+        showToast('Trajectoire de bond bloquée par un obstacle.');
+        return false;
+      }
+      audioManager.playXenoRoar?.();
+      rendererEngine.addScreenShake?.(0.28, 0.18);
+      window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x39ff14, 16, 0.12, 1.2);
+      this.triggerAttack('leap');
+
+      const startPos = { x: this.x, z: this.z };
+      this.x = destX;
+      this.z = destZ;
+      this.mesh?.position.set(destX, 0, destZ);
+
+      window.HiveSystems?.vfx?.organicTrail?.(startPos.x, 1.5, startPos.z, destX, 1.5, destZ, 0x39ff14);
+      window.HiveSystems?.vfx?.burst?.(destX, destZ, 0xef4444, 22, 0.16, 1.6);
+      window.HiveSystems?.vfx?.ring?.(destX, destZ, 0x39ff14, 3.8);
+
+      const hitHumans = (window.gameInstance?.humans || []).filter((h) => (
+        !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - destX, h.z - destZ) <= 3.4
+      ));
+      hitHumans.forEach((victim) => {
+        const pDmg = 85;
+        victim.takeDamage(pDmg, this);
+        victim.staggerTimer = 1.25;
+        audioManager.playBoneCrunch?.();
+        audioManager.playWetImpact?.(victim.x, victim.z);
+        window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, `-${pDmg} BOND PRÉDATEUR !`, '#ef4444', true);
+      });
+      showToast('BOND DE TRAQUE FOUDROYANT [T] !');
+      appendSensorLog('[BOND PRÉDATEUR] Rupture brutale de posture. Projection cinétique sur la cible.', 'bio');
+      return true;
+    }
+
     getAdultProfile() {
       return ADULT_CASTE_PROFILES[this.adultCaste] || ADULT_CASTE_PROFILES.drone;
     }
@@ -5429,6 +5469,7 @@
         <button type="button" id="btn-acid-spit" class="act-btn" style="border-color: #84cc16; background: rgba(132,204,22,0.18);">★ CRACHAT ACIDE [X]</button>
         <button type="button" id="btn-drone-ceiling" class="act-btn" style="border-color: #38bdf8;">★ PAROI & PLAFOND [Q]</button>
         <button type="button" id="btn-drone-prowl" class="act-btn">★ POSTURE BASSE [Z]</button>
+        <button type="button" id="btn-drone-prowl-leap" class="act-btn" style="border-color: #39ff14; background: rgba(57,255,20,0.18);">★ BOND DE TRAQUE [K]</button>
         <button type="button" id="btn-drone-vent" class="act-btn">5. CONDUITS [C]</button>
         <button type="button" id="btn-sabotage-power" class="act-btn" style="border-color: #eab308; background: rgba(234,179,8,0.18);">★ COUPER COURANT [B]</button>
         <button type="button" id="btn-airlock-purge" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);">★ PURGE SAS [Y]</button>
@@ -5446,6 +5487,7 @@
       document.getElementById('btn-acid-spit').onclick = () => this.executeAcidSpit();
       document.getElementById('btn-drone-ceiling').onclick = () => this.toggleCeilingProwl();
       document.getElementById('btn-drone-prowl').onclick = () => playerCreature.toggleProwlStance();
+      document.getElementById('btn-drone-prowl-leap').onclick = () => this.executeProwlLeap();
       document.getElementById('btn-drone-vent').onclick = () => this.toggleVentInfiltration();
       document.getElementById('btn-sabotage-power').onclick = () => this.executeSabotagePower();
       document.getElementById('btn-airlock-purge').onclick = () => this.executeAirlockPurge();
@@ -5550,9 +5592,17 @@
       }
     }
 
+    executeProwlLeap() {
+      if (!this.canUseAbility('prowlLeap', 1200)) return;
+      const { human: target } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated && Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= 9.0);
+      playerCreature.executeProwlLeap(target);
+      this.updateRoyalButton();
+    }
+
     handleKeyDown(key) {
       if (key === 'c') this.toggleVentInfiltration();
       if (key === 'z') playerCreature.toggleProwlStance();
+      if (key === 'k') this.executeProwlLeap();
       if (key === 'q') this.toggleCeilingProwl();
       if (key === 'x') this.executeAcidSpit();
       if (key === 'b') this.executeSabotagePower();

@@ -2572,7 +2572,7 @@
         audioManager.playWetImpact?.(victim.x, victim.z);
         window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, `-${pDmg} BOND PRÉDATEUR !`, '#ef4444', true);
       });
-      showToast('BOND DE TRAQUE FOUDROYANT [T] !');
+      showToast('BOND DE TRAQUE FOUDROYANT [K] !');
       appendSensorLog('[BOND PRÉDATEUR] Rupture brutale de posture. Projection cinétique sur la cible.', 'bio');
       return true;
     }

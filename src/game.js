@@ -2357,9 +2357,56 @@
       window.HiveSystems?.vfx?.burst(host.x, host.z, 0x9d4edd, 20, 0.16, 1.6);
       audioManager.playWetImpact?.(host.x, host.z);
       audioManager.playAcidSizzle?.();
-      showToast(`HÔTE EMMURÉ DANS LA RÉSINE ! ${host.name} fixé à la paroi (Biomasse +25) !`);
-      appendSensorLog(`[HÔTE ENCHÂSSÉ] Sujet ${host.name} emmuré dans les sécrétions murales (Hadley's Hope 1:1).`, 'bio');
       this.draggedHost = null;
+      return true;
+    }
+
+    executeAcidSpit(target = null) {
+      if (this.form !== 'drone') return false;
+      const angle = this.mesh ? this.mesh.rotation.y : 0;
+      const targetPos = target ? { x: target.x, z: target.z } : {
+        x: this.x + Math.sin(angle) * 9.5,
+        z: this.z + Math.cos(angle) * 9.5
+      };
+      audioManager.playAcidSizzle?.();
+      rendererEngine.addScreenShake?.(0.18, 0.12);
+      this.triggerAttack('acid');
+
+      const applyAcidImpact = () => {
+        window.HiveSystems?.vfx?.spawnAcidPool?.(targetPos.x, targetPos.z, 2.2, 9.0);
+        window.HiveSystems?.vfx?.burst(targetPos.x, targetPos.z, 0x39ff14, 22, 0.15, 1.6);
+        audioManager.playAcidSizzle?.();
+        const humans = window.gameInstance?.humans || [];
+        humans.forEach((h) => {
+          if (h.isIncapacitated || h.isCocooned) return;
+          if (Math.hypot(h.x - targetPos.x, h.z - targetPos.z) <= 3.2) {
+            h.takeDamage(42, this);
+            h.staggerTimer = 0.9;
+            window.HiveSystems?.vfx?.floatingText?.(h.x, 2.5, h.z, '-42 JET D\'ACIDE', '#39ff14', true);
+          }
+        });
+      };
+
+      const projectileVfx = window.HiveSystems?.vfx;
+      if (projectileVfx?.projectile) {
+        projectileVfx.projectile({
+          startX: this.x,
+          startY: 2.2,
+          startZ: this.z,
+          endX: targetPos.x,
+          endY: 0.1,
+          endZ: targetPos.z,
+          color: 0x39ff14,
+          scale: 0.26,
+          speed: 24,
+          acid: true,
+          onImpact: applyAcidImpact
+        });
+      } else {
+        applyAcidImpact();
+      }
+      showToast('JET D\'ACIDE CAUSTIQUE [X] : Flaque corrosive créée au point d\'impact !');
+      appendSensorLog('[ACIDE VOLATILE] Glande acide activée. Éjection d\'un jet moléculaire sous pression.', 'bio');
       return true;
     }
 
@@ -5242,6 +5289,7 @@
         <button type="button" id="btn-tail-impale" class="act-btn">3. ${actionLabels.tail} [3 / T]</button>
         <button type="button" id="btn-claw-swipe" class="act-btn">★ GRIFFES [ESPACE]</button>
         <button type="button" id="btn-drone-hiss" class="act-btn" style="border-color: #39ff14;">★ SIFFLEMENT [H / 5]</button>
+        <button type="button" id="btn-acid-spit" class="act-btn" style="border-color: #84cc16; background: rgba(132,204,22,0.18);">★ CRACHAT ACIDE [X]</button>
         <button type="button" id="btn-drone-ceiling" class="act-btn" style="border-color: #38bdf8;">★ PAROI & PLAFOND [Q]</button>
         <button type="button" id="btn-drone-prowl" class="act-btn">★ POSTURE BASSE [Z]</button>
         <button type="button" id="btn-drone-vent" class="act-btn">5. CONDUITS [C]</button>
@@ -5258,6 +5306,7 @@
       document.getElementById('btn-tail-impale').onclick = () => this.executeTailImpale();
       document.getElementById('btn-claw-swipe').onclick = () => this.executeClawSwipe();
       document.getElementById('btn-drone-hiss').onclick = () => this.executeTerrifyingHiss();
+      document.getElementById('btn-acid-spit').onclick = () => this.executeAcidSpit();
       document.getElementById('btn-drone-ceiling').onclick = () => this.toggleCeilingProwl();
       document.getElementById('btn-drone-prowl').onclick = () => playerCreature.toggleProwlStance();
       document.getElementById('btn-drone-vent').onclick = () => this.toggleVentInfiltration();
@@ -5267,6 +5316,13 @@
       document.getElementById('btn-cocoon-host').onclick = () => this.executeCocoonHost();
       document.getElementById('btn-eggmorph').onclick = () => this.executeEggmorph();
       document.getElementById('btn-found-queen-hive').onclick = () => this.foundRoyalNursery();
+      this.updateRoyalButton();
+    }
+
+    executeAcidSpit() {
+      if (!this.canUseAbility('acidSpit', 1100)) return;
+      const { human: target } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated && Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= 15);
+      playerCreature.executeAcidSpit(target);
       this.updateRoyalButton();
     }
 
@@ -5361,6 +5417,7 @@
       if (key === 'c') this.toggleVentInfiltration();
       if (key === 'z') playerCreature.toggleProwlStance();
       if (key === 'q') this.toggleCeilingProwl();
+      if (key === 'x') this.executeAcidSpit();
       if (key === 'b') this.executeSabotagePower();
       if (key === 'y') this.executeAirlockPurge();
       if (key === 'h' || key === '5') this.executeTerrifyingHiss();

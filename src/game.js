@@ -1600,26 +1600,61 @@
         rendererEngine.propsGroup.add(strip);
       };
 
+      // =========================================================================
+      // ARCHITECTURE AVANCÉE MNEMOSYNE — 6 SECTEURS INTERCONNECTÉS + EXTÉRIEUR EVA
+      // =========================================================================
+
+      // 1. Enceinte Principale de Sécurité
       addWall(0, -75, 150, 12, 2);
       addWall(0, 75, 150, 12, 2);
       addWall(-75, 0, 2, 12, 150);
       addWall(75, 0, 2, 12, 150);
 
-      addProp(0, -15, 6, 8, 6, 0x0ea5e9, 0x0284c7, 'generator');
+      // 2. SECTEUR CRYO-STASE & LABORATOIRE MÉDICAL (Nord-Ouest : X -70 à -15, Z -70 à -25)
+      addWall(-45, -25, 48, 10, 2); // Mur Sud Cryo
+      addWall(-15, -48, 2, 10, 44); // Mur Est Cryo
+      // Entrée Cryo : ouverture à X = -32, Z = -25
+      addProp(-50, -50, 5, 3.5, 4, 0x0284c7, 0x0369a1, 'console'); // Sas stase
+      addProp(-32, -58, 6, 2.5, 3, 0x10b981, 0x047857, 'console'); // Caissons cryogéniques
+      addProp(-60, -38, 4, 3, 4, 0x38bdf8, 0x0284c7, 'crate');
 
-      addWall(-30, -30, 35, 10, 2);
-      addWall(-47, -15, 2, 10, 32);
-      addProp(-35, -45, 3, 4, 3, 0x10b981, 0x047857, 'console');
+      // 3. SECTEUR ARMURERIE & SÉCURITÉ WEYLAND-YUTANI (Nord-Est : X 15 à 70, Z -70 à -25)
+      addWall(45, -25, 48, 10, 2); // Mur Sud Armurerie
+      addWall(15, -48, 2, 10, 44); // Mur Ouest Armurerie
+      // Entrée Armurerie : ouverture à X = 32, Z = -25
+      addProp(50, -50, 4, 4, 5, 0xf59e0b, 0xd97706, 'crate'); // Rateliers d'armes
+      addProp(34, -58, 5, 3, 3, 0xef4444, 0xb91c1c, 'console'); // Borne biométrique Kappa
+      addProp(60, -38, 3, 6, 3, 0x475569, 0x000000, 'barrel');
 
-      addWall(30, -30, 35, 10, 2);
-      addWall(47, -15, 2, 10, 32);
-      addProp(35, -45, 4, 2, 6, 0xe2e8f0, 0x94a3b8, 'console');
+      // 4. CORRIDOR CENTRAL & CARREFOUR NORD-SUD (X -15 à 15, Z -70 à 70)
+      // Diviseurs de coursive et piliers porteurs
+      addWall(-15, 0, 2, 10, 36);  // Cloison Ouest corridor
+      addWall(15, 0, 2, 10, 36);   // Cloison Est corridor
+      addProp(0, -15, 6, 8, 6, 0x0ea5e9, 0x0284c7, 'generator'); // Relais de distribution
+      addProp(0, 15, 5, 7, 5, 0x0284c7, 0x0369a1, 'generator');
 
-      addWall(35, 35, 30, 10, 2);
-      addProp(45, 45, 10, 4, 10, 0x581c87, 0x7e22ce, 'generator');
+      // 5. SECTEUR DU RÉACTEUR & RAFFINERIE THERMIQUE (Sud-Ouest : X -70 à -15, Z 25 à 70)
+      addWall(-45, 25, 48, 10, 2); // Mur Nord Réacteur
+      addWall(-15, 48, 2, 10, 44); // Mur Est Réacteur
+      addProp(-45, 45, 10, 7, 10, 0xf59e0b, 0xd97706, 'generator'); // Cœur réacteur Mantis
+      addProp(-60, 56, 4, 6, 4, 0x475569, 0x000000, 'barrel');
+      addProp(-32, 58, 5, 3, 3, 0x334155, 0x000000, 'console');
 
-      addWall(-35, 35, 30, 10, 2);
-      addProp(-45, 45, 8, 8, 8, 0xf59e0b, 0xd97706, 'crate');
+      // 6. NURSERIE DE LA RUCHE & HANGAR BIO-RÉSINE (Sud-Est : X 15 à 70, Z 25 à 70)
+      addWall(45, 25, 48, 10, 2); // Mur Nord Nurserie
+      addWall(15, 48, 2, 10, 44); // Mur Ouest Nurserie
+      addProp(48, 48, 9, 5, 9, 0x581c87, 0x7e22ce, 'generator'); // Chambre de ponte
+      addProp(62, 58, 4, 4, 4, 0x3b0764, 0x581c87, 'crate');
+      addProp(34, 58, 4, 3, 4, 0x2e1065, 0x3b0764, 'crate');
+
+      // 7. SAS DE DÉCOMPRESSION & PASSERELLE EXTÉRIEURE EVA (Est Extrême : X 56 à 74, Z -18 à 18)
+      // Sas pressurisé avec двойные cloisons étanches
+      addWall(56, -18, 20, 10, 2); // Cloison Nord Sas
+      addWall(56, 18, 20, 10, 2);  // Cloison Sud Sas
+      // Décoration passerelle extérieure métallique avec vue sur l'abîme spatial
+      addProp(68, 0, 3, 2, 6, 0x06b6d4, 0x0891b2, 'console'); // Console de pressurisation
+      addProp(71, -10, 2, 5, 2, 0x475569, 0x000000, 'barrel');
+      addProp(71, 10, 2, 5, 2, 0x475569, 0x000000, 'barrel');
 
       // Dense industrial set dressing: beams, pipes, lights, crates, tanks and consoles.
       for (let offset = -60; offset <= 60; offset += 15) {
@@ -1646,7 +1681,8 @@
         { id: 'vent_nord', name: 'Conduit Cryo-Nord', x: -18, z: -48 },
         { id: 'vent_ouest', name: 'Conduit Ouest (Fret)', x: -61, z: -12 },
         { id: 'vent_est', name: 'Conduit Est (Sécurité)', x: 61, z: 12 },
-        { id: 'vent_sud', name: 'Conduit Sud (Raffinerie)', x: 22, z: 48 }
+        { id: 'vent_sud', name: 'Conduit Sud (Raffinerie)', x: 22, z: 48 },
+        { id: 'vent_sas', name: 'Conduit Sas & Dépressurisation', x: 58, z: 0 }
       ];
 
       this.steamVents = [
@@ -1654,7 +1690,8 @@
         { x: 32, z: -10, timer: 4.8 },
         { x: -38, z: 24, timer: 3.2 },
         { x: 26, z: 32, timer: 6.0 },
-        { x: 0, z: 5, timer: 2.2 }
+        { x: 0, z: 5, timer: 2.2 },
+        { x: 60, z: 2, timer: 4.0 }
       ];
     }
 
@@ -3438,6 +3475,7 @@
         currentStageStep === 'CHRYSALIS') && !inVentStealth && !inCeilingStealth;
 
       this.motionPingCooldown -= safeDelta;
+      if (this.radioAlertCooldown > 0) this.radioAlertCooldown -= safeDelta;
       if (biologicalTargetDetectable && distToPlayer < 24 && this.motionPingCooldown <= 0) {
         if (this.type !== 'scientist' && this.type !== 'labhound' && this.type !== 'labrodent') {
           audioManager.playMotionTrackerPing(distToPlayer);
@@ -3483,6 +3521,35 @@
       if (!this.isLured && isCombatant && biologicalTargetDetectable && targetInVisualField && distToPlayer <= maxDetectionDist) {
         this.aiState = hasLineOfSight && distToPlayer <= attackRangeDist ? 'ATTACK' : 'CHASE';
         this.targetPos = { x: combatTarget.x, z: combatTarget.z };
+
+        // 1. TACTIQUE DE RADIO D'ESCOUADE (Aliens 1986 / Isolation)
+        // Lorsqu'un marine repère le prédateur, il alerte ses coéquipiers proches sur la fréquence radio
+        if (!this.radioAlertCooldown || this.radioAlertCooldown <= 0) {
+          this.radioAlertCooldown = 4.5;
+          const allies = (window.gameInstance?.humans || []).filter((h) => (
+            h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
+            ['guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator', 'commando', 'android', 'synthetic'].includes(h.type) &&
+            Math.hypot(h.x - this.x, h.z - this.z) <= 35
+          ));
+          allies.forEach((ally) => {
+            if (ally.aiState === 'PATROL') {
+              ally.aiState = 'CHASE';
+              ally.targetPos = { x: combatTarget.x, z: combatTarget.z };
+              window.HiveSystems?.vfx?.floatingText?.(ally.x, 2.6, ally.z, 'RADIO: ENNEMI EN VUE !', '#f59e0b', false);
+            }
+          });
+        }
+
+        // 2. REPLI TACTIQUE SOUS TIRS / SANTÉ CRITIQUE (< 30% PV)
+        // Les humains blessés reculent tout en tirant pour maintenir la distance
+        if (this.hp < this.maxHp * 0.35 && distToPlayer < 7.5 && this.type !== 'synthetic' && this.type !== 'android') {
+          const retreatAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
+          const backX = this.x + Math.cos(retreatAngle) * 3.5;
+          const backZ = this.z + Math.sin(retreatAngle) * 3.5;
+          if (!stationMap.checkCollision(backX, backZ)) {
+            this.targetPos = { x: backX, z: backZ };
+          }
+        }
       } else if (!this.isLured && (this.aiState === 'CHASE' || this.aiState === 'ATTACK')) {
         this.choosePatrolWaypoint();
       }
@@ -4011,6 +4078,49 @@
           const activeCycle = window.gameInstance?.currentStage?.incubationCycles
             ?.find((cycle) => cycle.isActive && Math.hypot(cycle.x - this.x, cycle.z - this.z) <= 8);
           activeCycle?.reinforce?.(8);
+        }
+      } else {
+        // =========================================================================
+        // IA AUTONOME DE L'ESSAIM (SANS ORDRE PHÉROMONAL ACTIF)
+        // =========================================================================
+        // 1. Interception automatique de toute menace dans un rayon de 14m
+        const localThreat = humans
+          .filter((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 14)
+          .sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z))[0];
+
+        if (localThreat) {
+          const distThreat = Math.hypot(localThreat.x - this.x, localThreat.z - this.z);
+          if (distThreat > this.attackRange) {
+            this.moveDirect(
+              (localThreat.x - this.x) / distThreat,
+              (localThreat.z - this.z) / distThreat,
+              deltaSeconds,
+              distThreat,
+              1.1
+            );
+          } else if (this.attackCooldown <= 0) {
+            this.attackCooldown = this.caste === 'runner' ? 0.65 : 0.9;
+            this.attackAnimation = 1;
+            localThreat.takeDamage(this.damage, this);
+            audioManager.playBoneCrunch?.();
+            audioManager.playWetImpact?.(localThreat.x, localThreat.z);
+            window.HiveSystems?.vfx?.burst(localThreat.x, localThreat.z, 0xef4444, 12, 0.1, 1.2);
+          }
+        } else {
+          // 2. Garde d'élite & ralliement automatique autour de la Reine ou du nid
+          const queenUnit = window.gameInstance?.currentStage?.queen;
+          if (queenUnit && queenUnit !== this && !queenUnit.isDestroyed) {
+            const distToQueen = Math.hypot(queenUnit.x - this.x, queenUnit.z - this.z);
+            if (distToQueen > (['praetorian', 'palatine'].includes(this.caste) ? 6.5 : 12)) {
+              this.moveDirect(
+                (queenUnit.x - this.x) / distToQueen,
+                (queenUnit.z - this.z) / distToQueen,
+                deltaSeconds,
+                distToQueen,
+                0.85
+              );
+            }
+          }
         }
       }
       animateProceduralModel(this.mesh, {

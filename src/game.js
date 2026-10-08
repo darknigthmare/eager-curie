@@ -6076,6 +6076,53 @@
           window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, '-180 BROYAGE ROYAL', '#a855f7', true);
         });
         showToast('BALAYAGE ROYAL DÉVASTATEUR !');
+      } else if (unit.caste === 'spitter') {
+        audioManager.playAcidSizzle?.();
+        const applySpitHit = () => {
+          target.takeDamage(unit.damage, unit);
+          audioManager.playAcidSizzle?.();
+        };
+        const projectileVfx = window.HiveSystems?.vfx;
+        if (projectileVfx?.projectile) {
+          projectileVfx.projectile({
+            startX: unit.x,
+            startY: 1.55,
+            startZ: unit.z,
+            endX: target.x,
+            endY: 1.1,
+            endZ: target.z,
+            color: 0xa3e635,
+            scale: 0.22,
+            speed: 22,
+            acid: true,
+            onImpact: applySpitHit
+          });
+        } else {
+          applySpitHit();
+        }
+        showToast('CRACHAT CAUSTIQUE DU SPITTER [Distance] !');
+      } else if (unit.caste === 'crusher') {
+        audioManager.playBoneCrunch?.();
+        audioManager.playWetImpact?.(unit.x, unit.z);
+        rendererEngine.addScreenShake?.(0.32, 0.22);
+        const chargeTargets = humans.filter((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - unit.x, h.z - unit.z) <= 4.8);
+        chargeTargets.forEach((ct) => {
+          ct.takeDamage(unit.damage, unit);
+          ct.staggerTimer = 1.1;
+          window.HiveSystems?.vfx?.burst(ct.x, ct.z, 0xef4444, 16, 0.14, 1.4);
+          window.HiveSystems?.vfx?.floatingText?.(ct.x, 2.2, ct.z, `-${unit.damage} CHARGE BÉLIER`, '#ef4444', true);
+        });
+        showToast('IMPACT DE CHARGE DU CRUSHER !');
+      } else if (unit.caste === 'praetorian' || unit.caste === 'palatine') {
+        audioManager.playBoneCrunch?.();
+        audioManager.playWetImpact?.(unit.x, unit.z);
+        rendererEngine.addScreenShake?.(0.28, 0.18);
+        target.takeDamage(unit.damage, unit);
+        target.staggerTimer = 0.8;
+        window.HiveSystems?.vfx?.ring?.(unit.x, unit.z, 0xa855f7, 3.8);
+        window.HiveSystems?.vfx?.burst(target.x, target.z, 0xa855f7, 20, 0.15, 1.6);
+        window.HiveSystems?.vfx?.floatingText?.(target.x, 2.6, target.z, `-${unit.damage} CHOC ROYAL`, '#a855f7', true);
+        showToast(`FRAPPE ROYALE DE ${unit.caste.toUpperCase()} !`);
       } else {
         audioManager.playBoneCrunch?.();
         audioManager.playWetImpact?.(target.x, target.z);
@@ -6460,6 +6507,11 @@
       const warriorButton = document.getElementById('btn-spawn-warrior');
       const spitterButton = document.getElementById('btn-spawn-spitter');
       const praetorianButton = document.getElementById('btn-spawn-praetorian');
+      const prowlerButton = document.getElementById('btn-spawn-prowler');
+      const bursterButton = document.getElementById('btn-spawn-burster');
+      const crusherButton = document.getElementById('btn-spawn-crusher');
+      const palatineButton = document.getElementById('btn-spawn-palatine');
+      const offspringButton = document.getElementById('btn-spawn-offspring');
       const conquestButton = document.getElementById('btn-final-conquest');
       const oviButton = document.getElementById('btn-toggle-ovipositor');
       if (oviButton) {
@@ -6474,8 +6526,13 @@
       if (workerButton) workerButton.disabled = !this.canBeginCycle('worker', 25);
       if (runnerButton) runnerButton.disabled = !this.canBeginCycle('runner', 30);
       if (warriorButton) warriorButton.disabled = !this.canBeginCycle('warrior', 45);
+      if (prowlerButton) prowlerButton.disabled = !this.canBeginCycle('prowler', 40);
       if (spitterButton) spitterButton.disabled = !this.canBeginCycle('spitter', 50);
+      if (bursterButton) bursterButton.disabled = !this.canBeginCycle('burster', 35);
+      if (crusherButton) crusherButton.disabled = !this.canBeginCycle('crusher', 75);
       if (praetorianButton) praetorianButton.disabled = !this.canBeginCycle('praetorian', 80);
+      if (palatineButton) palatineButton.disabled = !this.canBeginCycle('palatine', 110);
+      if (offspringButton) offspringButton.disabled = !this.canBeginCycle('offspring', 95);
       if (conquestButton) {
         conquestButton.disabled = !this.canCompleteConquest();
         const activeThreats = (window.gameInstance?.humans || []).filter((human) => !human.isCocooned && !human.isIncapacitated).length;

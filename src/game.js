@@ -141,22 +141,35 @@
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const now = this.ctx.currentTime;
-      const bufferSize = this.ctx.sampleRate * 0.4;
+      // 1. Souffle de combustion lourde (napalm / hydrocarbures Nostromo 1979)
+      const bufferSize = this.ctx.sampleRate * 0.55;
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
       const noise = this.ctx.createBufferSource();
       noise.buffer = buffer;
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(600, now);
-      filter.frequency.linearRampToValueAtTime(250, now + 0.4);
+      filter.frequency.setValueAtTime(800, now);
+      filter.frequency.linearRampToValueAtTime(320, now + 0.5);
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.6, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      gain.gain.setValueAtTime(0.75, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
       noise.connect(filter); filter.connect(gain);
-      this.connect(gain, x, z, 68);
+      this.connect(gain, x, z, 70);
       noise.start(now);
+
+      // 2. Sifflement de gaz pressurisé et allumage de torche pilote
+      const gasOsc = this.ctx.createOscillator();
+      const gasGain = this.ctx.createGain();
+      gasOsc.type = 'sawtooth';
+      gasOsc.frequency.setValueAtTime(320, now);
+      gasOsc.frequency.exponentialRampToValueAtTime(80, now + 0.45);
+      gasGain.gain.setValueAtTime(0.4, now);
+      gasGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      gasOsc.connect(gasGain);
+      this.connect(gasGain, x, z, 70);
+      gasOsc.start(now); gasOsc.stop(now + 0.45);
     }
 
     playHeartbeat(rate = 1.0) {
@@ -287,15 +300,29 @@
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(600, now);
-      osc.frequency.exponentialRampToValueAtTime(60, now + 0.1);
-      gain.gain.setValueAtTime(0.5, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
-      osc.connect(gain); this.connect(gain, x, z, 72);
-      osc.start(now); osc.stop(now + 0.12);
+      // 1. Claquement sec et agressif haute-fréquence du fusil à impulsions M41A (Aliens 1986)
+      const crackOsc = this.ctx.createOscillator();
+      const crackGain = this.ctx.createGain();
+      crackOsc.type = 'sawtooth';
+      crackOsc.frequency.setValueAtTime(1400, now);
+      crackOsc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
+      crackGain.gain.setValueAtTime(0.75, now);
+      crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      crackOsc.connect(crackGain);
+      this.connect(crackGain, x, z, 72);
+      crackOsc.start(now); crackOsc.stop(now + 0.09);
+
+      // 2. Détonation explosive basse-fréquence et résonance mécanique culte
+      const punchOsc = this.ctx.createOscillator();
+      const punchGain = this.ctx.createGain();
+      punchOsc.type = 'square';
+      punchOsc.frequency.setValueAtTime(180, now);
+      punchOsc.frequency.exponentialRampToValueAtTime(35, now + 0.14);
+      punchGain.gain.setValueAtTime(0.65, now);
+      punchGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      punchOsc.connect(punchGain);
+      this.connect(punchGain, x, z, 72);
+      punchOsc.start(now); punchOsc.stop(now + 0.15);
     }
 
     playXenoRoar() {

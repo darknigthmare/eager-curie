@@ -6431,7 +6431,9 @@
           new HumanAI(202, 'incinerator', -24, 34, 'Opératrice thermique Sava Rhee'),
           new HumanAI(204, 'smartgunner', 38, -26, 'Artilleur gyro Kade Mercer'),
           new HumanAI(205, 'marine', -6, 18, 'Fusilier orbital Niko Vale'),
-          new HumanAI(206, 'exosuit', 22, -42, 'MANTIS-4 — exosquelette KAPPA')
+          new HumanAI(206, 'exosuit', 22, -42, 'MANTIS-4 — exosquelette KAPPA'),
+          new HumanAI(207, 'powerloader', -36, 12, 'Élévateur P-5000 Caterpillar — Chef de pont Jansen'),
+          new HumanAI(208, 'marine', 12, -28, 'Tourelle sentinelle UA 571-C (Opérateur Novak)')
         ];
         this.mantisBoss = responseForce[4];
         this.mantisBoss.bossId = 'MANTIS_4';

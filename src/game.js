@@ -916,6 +916,23 @@
         ctx.shadowBlur = 0;
       }
 
+      // Rendu des lignes de balayage cathodique CRT & lueur phosphorescente (Aliens 1986 / Isolation)
+      ctx.strokeStyle = 'rgba(0, 20, 5, 0.35)';
+      ctx.lineWidth = 1;
+      for (let y = 0; y < h; y += 3) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Vignette circulaire d'écran cathodique bombé
+      const crtVignette = ctx.createRadialGradient(cx, cy, radius * 0.7, cx, cy, radius);
+      crtVignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      crtVignette.addColorStop(1, 'rgba(0, 15, 3, 0.55)');
+      ctx.fillStyle = crtVignette;
+      ctx.fillRect(0, 0, w, h);
+
       if (this.rangeValEl) {
         this.rangeValEl.textContent = closestDistance < Infinity ? `${closestDistance.toFixed(1)} M` : '--.- M';
       }

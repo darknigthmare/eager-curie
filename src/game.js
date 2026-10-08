@@ -475,6 +475,86 @@
       osc.start(now); osc.stop(now + 0.4);
     }
 
+    playElectricArc(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.35);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (i % 8 < 4 ? 1 : -0.8) * Math.exp(-i / (bufferSize * 0.25));
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const bq = this.ctx.createBiquadFilter();
+      bq.type = 'highpass';
+      bq.frequency.setValueAtTime(1400, now);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
+      noise.connect(bq); bq.connect(gain);
+      this.connect(gain, x, z, 65);
+      noise.start(now);
+    }
+
+    playSonarPing(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(980, now);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.45);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.48);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now); osc.stop(now + 0.48);
+    }
+
+    playDepressurizationRoar(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 1.2);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.sin(Math.min(1, i / (bufferSize * 0.2)) * Math.PI / 2) * Math.exp(-i / (bufferSize * 0.7));
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(180, now);
+      filter.frequency.linearRampToValueAtTime(1100, now + 0.3);
+      filter.frequency.exponentialRampToValueAtTime(120, now + 1.15);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+      noise.connect(filter); filter.connect(gain);
+      this.connect(gain, x, z, 85);
+      noise.start(now);
+    }
+
+    playGeneratorRestart(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(45, now);
+      osc.frequency.exponentialRampToValueAtTime(260, now + 0.85);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.9);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now); osc.stop(now + 0.9);
+    }
+
     playVentEnter() {
       if (!this.initialized || this.isMuted) return;
       this.resume();
@@ -959,7 +1039,16 @@
       this.raycaster = null;
       this.groundPlane = null;
       this.screenShake = 0;
+      this.powerSabotagedTimer = 0;
       this.reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    sabotagePower(duration = 22) {
+      this.powerSabotagedTimer = duration;
+      audioManager.playElectricArc?.();
+      this.addScreenShake?.(0.38, 0.25);
+      showToast('SABOTAGE DU RÉSEAU ÉLECTRIQUE [B] : Coupure de courant majeure ! La station est plongée dans le noir !');
+      appendSensorLog('[SABOTAGE] Conduits d\'alimentation sectionnés. Extinction de l\'éclairage principal.', 'alert');
     }
 
     init(canvas) {
@@ -1051,6 +1140,23 @@
         this.beaconSpot.intensity = isAlarmActive ? 4.5 : 0;
         if (isAlarmActive) {
           this.beaconPivot.rotation.y += Math.max(0, deltaSeconds) * 4.2;
+        }
+      }
+
+      if (this.powerSabotagedTimer > 0) {
+        this.powerSabotagedTimer -= Math.max(0, deltaSeconds);
+        if (this.lights.dirLight) this.lights.dirLight.intensity = 0.08;
+        if (this.lights.ambient) this.lights.ambient.intensity = 0.12;
+        if (this.lights.hemisphere) this.lights.hemisphere.intensity = 0.08;
+        if (this.renderer) this.renderer.toneMappingExposure = 0.72;
+        if (this.powerSabotagedTimer <= 0) {
+          audioManager.playGeneratorRestart?.();
+          if (this.lights.dirLight) this.lights.dirLight.intensity = 1.2;
+          if (this.lights.ambient) this.lights.ambient.intensity = 1.05;
+          if (this.lights.hemisphere) this.lights.hemisphere.intensity = 0.75;
+          if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.34 : 1.05;
+          showToast('RÉSEAU ÉLECTRIQUE RÉTABLI : Les générateurs de secours ont redémarré.');
+          appendSensorLog('[ÉLECTRICITÉ] Turbines de secours opérationnelles. Éclairage rétabli.', 'system');
         }
       }
 
@@ -1221,6 +1327,23 @@
         btn.classList.toggle('active', isActive);
         btn.setAttribute('aria-pressed', String(isActive));
       });
+    }
+
+    update(deltaSeconds) {
+      if (this.currentMode === 'acoustic') {
+        this.sonarTimer = (this.sonarTimer || 0) - deltaSeconds;
+        if (this.sonarTimer <= 0) {
+          this.sonarTimer = 2.4;
+          audioManager.playSonarPing?.(playerCreature.x, playerCreature.z);
+          window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0x22c55e, 26);
+          const humans = window.gameInstance?.humans || [];
+          humans.forEach((h) => {
+            if (!h.isIncapacitated && h.hp > 0) {
+              window.HiveSystems?.vfx?.ring?.(h.x, h.z, 0x4ade80, 2.5);
+            }
+          });
+        }
+      }
     }
   }
 
@@ -2985,7 +3108,32 @@
       this.faceAnchor = anchor;
     }
 
+    ensureFlashlight(active) {
+      if (!this.mesh) return;
+      if (!this.flashlight) {
+        if (!active) return;
+        const spot = new THREE.SpotLight(0xfff8e7, 3.8, 22, Math.PI / 4.5, 0.45, 1.2);
+        spot.position.set(0.35, 1.9, 0.4);
+        const targetObj = new THREE.Object3D();
+        targetObj.position.set(0.35, 1.2, 12);
+        this.mesh.add(spot);
+        this.mesh.add(targetObj);
+        spot.target = targetObj;
+        this.flashlight = spot;
+      }
+      this.flashlight.intensity = active ? 3.8 : 0;
+    }
+
     destroy() {
+      if (this.flashlight) {
+        if (this.flashlight.target && this.flashlight.target.parent) {
+          this.flashlight.target.parent.remove(this.flashlight.target);
+        }
+        if (this.flashlight.parent) {
+          this.flashlight.parent.remove(this.flashlight);
+        }
+        this.flashlight = null;
+      }
       if (this.mesh) rendererEngine.removeObject(this.mesh);
       this.mesh = null;
     }
@@ -3259,14 +3407,33 @@
         appendSensorLog(`[SYNTHÉTIQUE] ${this.name} applique la Directive 937 : la préservation du spécimen surpasse toute vie humaine.`, 'alert');
       }
 
+      const inDarkness = (rendererEngine?.powerSabotagedTimer || 0) > 0;
+      this.ensureFlashlight(inDarkness && isCombatant);
+
+      let targetInVisualField = true;
+      if (inDarkness) {
+        // Dans le noir complet, l'humain ne peut voir le prédateur que s'il est très proche (≤ 3.2m)
+        // ou s'il est éclairé dans le cône de sa lampe torche portée à l'épaule (~45 degrés, ≤ 14m)
+        if (distToPlayer > 3.2) {
+          const facingAngle = this.mesh ? this.mesh.rotation.y : 0;
+          const toTargetAngle = Math.atan2(combatTarget.x - this.x, combatTarget.z - this.z);
+          let diffAngle = Math.abs(facingAngle - toTargetAngle);
+          while (diffAngle > Math.PI) diffAngle = Math.abs(diffAngle - Math.PI * 2);
+          const inFlashlightCone = diffAngle <= Math.PI / 4 && distToPlayer <= 14;
+          if (!inFlashlightCone) {
+            targetInVisualField = false;
+          }
+        }
+      }
+
       // Lures have narrative priority. Otherwise armed humans investigate and
       // pursue a detected biological target while civilians keep patrolling.
       const isPlayerProwling = combatTarget === playerCreature && playerCreature.isProwling;
-      const maxDetectionDist = isPlayerProwling ? 14 : 26;
-      const attackRangeDist = isPlayerProwling ? 7.5 : 12;
-      const shootDist = isPlayerProwling ? 9.5 : 14;
+      const maxDetectionDist = inDarkness ? (isPlayerProwling ? 8 : 14) : (isPlayerProwling ? 14 : 26);
+      const attackRangeDist = inDarkness ? (isPlayerProwling ? 5.5 : 9) : (isPlayerProwling ? 7.5 : 12);
+      const shootDist = inDarkness ? (isPlayerProwling ? 6.5 : 10) : (isPlayerProwling ? 9.5 : 14);
 
-      if (!this.isLured && isCombatant && biologicalTargetDetectable && distToPlayer <= maxDetectionDist) {
+      if (!this.isLured && isCombatant && biologicalTargetDetectable && targetInVisualField && distToPlayer <= maxDetectionDist) {
         this.aiState = hasLineOfSight && distToPlayer <= attackRangeDist ? 'ATTACK' : 'CHASE';
         this.targetPos = { x: combatTarget.x, z: combatTarget.z };
       } else if (!this.isLured && (this.aiState === 'CHASE' || this.aiState === 'ATTACK')) {
@@ -3277,6 +3444,7 @@
       if (
         isCombatant &&
         biologicalTargetDetectable &&
+        targetInVisualField &&
         distToPlayer < shootDist &&
         hasLineOfSight &&
         this.shootCooldown <= 0
@@ -5077,6 +5245,8 @@
         <button type="button" id="btn-drone-ceiling" class="act-btn" style="border-color: #38bdf8;">★ PAROI & PLAFOND [Q]</button>
         <button type="button" id="btn-drone-prowl" class="act-btn">★ POSTURE BASSE [Z]</button>
         <button type="button" id="btn-drone-vent" class="act-btn">5. CONDUITS [C]</button>
+        <button type="button" id="btn-sabotage-power" class="act-btn" style="border-color: #eab308; background: rgba(234,179,8,0.18);">★ COUPER COURANT [B]</button>
+        <button type="button" id="btn-airlock-purge" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);">★ PURGE SAS [Y]</button>
         <button type="button" id="btn-drag-host" class="act-btn" style="border-color: #f59e0b;">★ TRAÎNER / COCON MURAL [V]</button>
         <button type="button" id="btn-cocoon-host" class="act-btn">4. COCOONISER UN HÔTE [4 / F]</button>
         <button type="button" id="btn-eggmorph" class="act-btn">6. OVOMORPHE [G]</button>
@@ -5091,10 +5261,53 @@
       document.getElementById('btn-drone-ceiling').onclick = () => this.toggleCeilingProwl();
       document.getElementById('btn-drone-prowl').onclick = () => playerCreature.toggleProwlStance();
       document.getElementById('btn-drone-vent').onclick = () => this.toggleVentInfiltration();
+      document.getElementById('btn-sabotage-power').onclick = () => this.executeSabotagePower();
+      document.getElementById('btn-airlock-purge').onclick = () => this.executeAirlockPurge();
       document.getElementById('btn-drag-host').onclick = () => this.executeDragOrWallCocoon();
       document.getElementById('btn-cocoon-host').onclick = () => this.executeCocoonHost();
       document.getElementById('btn-eggmorph').onclick = () => this.executeEggmorph();
       document.getElementById('btn-found-queen-hive').onclick = () => this.foundRoyalNursery();
+      this.updateRoyalButton();
+    }
+
+    executeSabotagePower() {
+      if (rendererEngine.powerSabotagedTimer > 0) {
+        showToast(`Réseau électrique déjà hors service (${Math.ceil(rendererEngine.powerSabotagedTimer)}s restantes).`);
+        return;
+      }
+      if (!this.canUseAbility('power', 16000)) return;
+      rendererEngine.sabotagePower(22);
+      window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0xeab308, 28, 0.22, 2.2);
+    }
+
+    executeAirlockPurge() {
+      if (!this.canUseAbility('purge', 9000)) return;
+      audioManager.playDepressurizationRoar?.(playerCreature.x, playerCreature.z);
+      rendererEngine.addScreenShake?.(0.48, 0.4);
+      showToast('DÉPRESSURISATION D\'URGENCE DU SAS [Y] : Onde de souffle explosive sous vide !');
+      appendSensorLog('[SAS] Décompression explosive du sas de coursive. Éjection et onde de choc.', 'alert');
+      window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0x06b6d4, 18);
+      window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0x38bdf8, 36, 0.35, 3.2);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (h.isIncapacitated || h.isCocooned) return;
+        const dist = Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z);
+        if (dist <= 16) {
+          const pushAngle = Math.atan2(h.z - playerCreature.z, h.x - playerCreature.x);
+          const pushForce = Math.max(1.8, (16 - dist) * 0.45);
+          const targetX = h.x + Math.cos(pushAngle) * pushForce;
+          const targetZ = h.z + Math.sin(pushAngle) * pushForce;
+          if (!stationMap.checkCollision(targetX, targetZ)) {
+            h.x = targetX;
+            h.z = targetZ;
+            h.mesh?.position.set(h.x, 0, h.z);
+          }
+          h.staggerTimer = 1.4;
+          h.takeDamage(32, playerCreature);
+          window.HiveSystems?.vfx?.floatingText(h.x, 3.2, h.z, 'SOUFFLE DU SAS !', '#06b6d4', true);
+        }
+      });
       this.updateRoyalButton();
     }
 
@@ -5148,6 +5361,8 @@
       if (key === 'c') this.toggleVentInfiltration();
       if (key === 'z') playerCreature.toggleProwlStance();
       if (key === 'q') this.toggleCeilingProwl();
+      if (key === 'b') this.executeSabotagePower();
+      if (key === 'y') this.executeAirlockPurge();
       if (key === 'h' || key === '5') this.executeTerrifyingHiss();
       if (key === 'v') this.executeDragOrWallCocoon();
       if (key === 'g') this.executeEggmorph();
@@ -6899,6 +7114,7 @@
         }
         window.HiveSystems?.update(deltaSeconds);
         stationMap.updateSteamVents?.(deltaSeconds);
+        visionSystem.update?.(deltaSeconds);
         this.motionTracker?.update(deltaSeconds, playerCreature, this.humans);
         if (!this.isRunning) return;
       }

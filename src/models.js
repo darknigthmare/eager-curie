@@ -2699,6 +2699,31 @@
       }
 
       if (royal || guardian) this._addCrest(root, primary, (royal ? 1.62 : 1.08) * scale, royal);
+      if (warrior) {
+        // Canon Aliens (1986) James Cameron : Calotte crânienne cannelée aux crêtes osseuses transversales
+        for (let ridge = 0; ridge < 7; ridge++) {
+          const ridgeMesh = this._box(
+            primary,
+            { x: (0.64 - ridge * 0.05) * scale, y: 0.12 * scale, z: 0.14 * scale },
+            { x: 0, y: (4.72 + (ridge % 2) * 0.03) * scale, z: (0.75 - ridge * 0.2) * scale },
+            `warrior_cranial_ridge_${ridge}`,
+            true
+          );
+          root.add(ridgeMesh);
+        }
+      }
+      if (spitter) {
+        // Canon Aliens Fireteam / CM : Poches d'acide pharyngées fluorescentes
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._ellipsoid(
+            sensory,
+            { x: 0.22 * scale, y: 0.16 * scale, z: 0.38 * scale },
+            { x: side * 0.52 * scale, y: 4.38 * scale, z: 0.48 * scale },
+            `spitter_acid_pouch_${side}`,
+            14
+          ));
+        }
+      }
       this._addTail(
         root,
         primary,
@@ -3408,7 +3433,13 @@
         const light = new T.PointLight(0x9dff7a, 1.4, 8);
         light.name = 'optional_prop_light';
         light.position.set(0, -0.12, 0);
-        root.add(light);
+      } else if (normalizedType === 'ration' || normalizedType === 'labration') {
+        // Canon Alien (1979) : Ration nutritive sous blister hermétique stérile Weyland-Yutani
+        const rationPack = this._material('synthetic', { color: 0x94a3b8, roughness: 0.35, metalness: 0.25 });
+        const rationLabel = this._material('emissiveAmber', { emissiveIntensity: 0.85 });
+        root.add(this._box(rationPack, { x: 0.95, y: 0.32, z: 0.65 }, { x: 0, y: 0.16, z: 0 }, 'ration_chassis', true));
+        root.add(this._box(dark, { x: 0.82, y: 0.08, z: 0.52 }, { x: 0, y: 0.34, z: 0 }, 'ration_seal_strip'));
+        root.add(this._box(rationLabel, { x: 0.45, y: 0.02, z: 0.28 }, { x: 0, y: 0.33, z: 0.08 }, 'weyland_yutani_food_label'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {

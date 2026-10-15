@@ -349,6 +349,132 @@
       punchOsc.start(now); punchOsc.stop(now + 0.15);
     }
 
+    playSmartgunBurst(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      // Cadence supersonique lourde M56 Smartgun (Vasquez / Drake)
+      [0, 0.052, 0.104].forEach((offset) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1150, now + offset);
+        osc.frequency.exponentialRampToValueAtTime(80, now + offset + 0.048);
+        gain.gain.setValueAtTime(0.7, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.052);
+        osc.connect(gain);
+        this.connect(gain, x, z, 75);
+        osc.start(now + offset); osc.stop(now + offset + 0.052);
+      });
+    }
+
+    playSmartgunServo(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(420, now);
+      osc.frequency.linearRampToValueAtTime(680, now + 0.12);
+      osc.frequency.linearRampToValueAtTime(380, now + 0.22);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      this.connect(gain, x, z, 55);
+      osc.start(now); osc.stop(now + 0.25);
+    }
+
+    playGrenadeLaunch(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.18);
+      gain.gain.setValueAtTime(0.65, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain);
+      this.connect(gain, x, z, 68);
+      osc.start(now); osc.stop(now + 0.2);
+    }
+
+    playGrenadeExplode(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.7);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.28));
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(450, now);
+      filter.frequency.exponentialRampToValueAtTime(65, now + 0.65);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+      noise.connect(filter); filter.connect(gain);
+      this.connect(gain, x, z, 85);
+      noise.start(now);
+    }
+
+    playPowerloaderBeep(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1150, now);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(gain);
+      this.connect(gain, x, z, 60);
+      osc.start(now); osc.stop(now + 0.2);
+    }
+
+    playRadioSquelch(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.1);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(2200, now);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      noise.connect(filter); filter.connect(gain);
+      this.connect(gain, x, z, 55);
+      noise.start(now);
+    }
+
+    playBlastDoorHydraulics(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(65, now);
+      osc.frequency.linearRampToValueAtTime(110, now + 0.45);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now); osc.stop(now + 0.5);
+    }
+
     playXenoRoar() {
       if (!this.initialized || this.isMuted) return;
       this.resume();
@@ -928,8 +1054,11 @@
         const bx = cx + Math.sin(relAngle) * normDist;
         const by = cy - Math.cos(relAngle) * normDist;
 
-        const angleDiff = Math.abs((relAngle + Math.PI * 2) % (Math.PI * 2) - this.sweepAngle);
-        const isHit = angleDiff < 0.28;
+        // Chantier 8 : Indicateur d'élévation M314 (▲ au-dessus, ▼ en-dessous, ● même plan)
+        const playerY = player.isCeilingProwling ? 5.85 : (player.isInVent ? 3.2 : 0);
+        const humanY = human.mesh?.position?.y || 0;
+        const dy = humanY - playerY;
+        const elevMarker = dy > 1.2 ? '▲' : (dy < -1.2 ? '▼' : '●');
 
         ctx.fillStyle = isHit ? '#ffffff' : '#39ff14';
         ctx.shadowColor = '#39ff14';
@@ -937,7 +1066,29 @@
         ctx.beginPath();
         ctx.arc(bx, by, isHit ? 4.2 : 3.0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.font = '700 9px monospace';
+        ctx.fillText(elevMarker, bx + 5, by + 3);
         ctx.shadowBlur = 0;
+      }
+
+      // Échos fantômes intermittents causés par les évents de vapeur (Aliens 1986 / Isolation)
+      if (stationMap.steamVents) {
+        for (const sv of stationMap.steamVents) {
+          const svDist = Math.hypot(sv.x - player.x, sv.z - player.z);
+          if (svDist <= maxRange && (sv.timer || 0) < 1.2) {
+            const worldAngle = Math.atan2(sv.x - player.x, sv.z - player.z);
+            const relAngle = worldAngle - playerFacing;
+            const normDist = (svDist / maxRange) * radius;
+            const fx = cx + Math.sin(relAngle) * normDist;
+            const fy = cy - Math.cos(relAngle) * normDist;
+            ctx.fillStyle = 'rgba(57, 255, 20, 0.35)';
+            ctx.beginPath();
+            ctx.arc(fx, fy, 2.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.font = '700 8px monospace';
+            ctx.fillText('~', fx + 4, fy + 3);
+          }
+        }
       }
 
       // Rendu des lignes de balayage cathodique CRT & lueur phosphorescente (Aliens 1986 / Isolation)
@@ -1543,6 +1694,11 @@
       this.currentDeck = 'A';
       this.walls = [];
       this.colliders = [];
+      this.blastDoors = [];
+      this.acidCorrosions = [];
+      this.depressurizationTimer = 0;
+      this.evaAirlock = { x: 68, z: 0 };
+      this.lockdownApplied = false;
     }
 
     buildMap() {
@@ -1774,6 +1930,202 @@
         { x: 0, z: 5, timer: 2.2 },
         { x: 60, z: 2, timer: 4.0 }
       ];
+
+      // Chantier 3 : Portes blindées hydrauliques sur les vraies jonctions de secteur
+      // (ouvertes par défaut ; verrouillage de quarantaine KAPPA pendant l'Acte IV).
+      this.blastDoors = [
+        { id: 'door_cryo', name: 'Porte étanche Cryo-Stase', x: -18, z: -25, width: 5.6, height: 8, depth: 1.6 },
+        { id: 'door_armory', name: 'Blindage Armurerie KAPPA', x: 18, z: -25, width: 5.6, height: 8, depth: 1.6 },
+        { id: 'door_reactor', name: 'Écluse Réacteur', x: -18, z: 25, width: 5.6, height: 8, depth: 1.6 },
+        { id: 'door_nursery', name: 'Porte Hangar Sud-Est', x: 18, z: 25, width: 5.6, height: 8, depth: 1.6 }
+      ];
+      this.blastDoors.forEach((door) => {
+        const doorMat = new THREE.MeshStandardMaterial({
+          color: 0x3f4a5c,
+          emissive: 0xf59e0b,
+          emissiveIntensity: 0.18,
+          roughness: 0.42,
+          metalness: 0.86
+        });
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(door.width, door.height, door.depth), doorMat);
+        // Bandes de danger jaune/noir Weyland-Yutani
+        for (let stripe = 0; stripe < 3; stripe++) {
+          const band = new THREE.Mesh(
+            new THREE.BoxGeometry(door.width * 0.98, 0.35, door.depth + 0.04),
+            new THREE.MeshStandardMaterial({ color: stripe % 2 ? 0x111111 : 0xeab308, roughness: 0.6 })
+          );
+          band.position.y = -door.height / 2 + 0.6 + stripe * 0.35;
+          mesh.add(band);
+        }
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        rendererEngine.mapGroup.add(mesh);
+        door.mesh = mesh;
+        door.isOpen = true;
+        door.collider = {
+          minX: door.x - door.width / 2 - 0.5,
+          maxX: door.x + door.width / 2 + 0.5,
+          minZ: door.z - door.depth / 2 - 0.5,
+          maxZ: door.z + door.depth / 2 + 0.5
+        };
+        mesh.position.set(door.x, -door.height + 0.3, door.z);
+      });
+      this.lockdownApplied = false;
+    }
+
+    setBlastDoorState(door, open, silent = false) {
+      if (!door || door.isOpen === open) return false;
+      if (!open) {
+        // Ne jamais refermer une porte sur une entité (évite tout blocage dans le collider).
+        const entities = [playerCreature, ...(window.gameInstance?.humans || []), ...(window.gameInstance?.currentStage?.rtsUnits || [])];
+        const blocked = entities.some((ent) => ent && !ent.isDestroyed && Math.hypot(ent.x - door.x, ent.z - door.z) < 3.4);
+        if (blocked) return false;
+      }
+      door.isOpen = open;
+      if (door.mesh) door.mesh.position.y = open ? -door.height + 0.3 : door.height / 2;
+      const idx = this.colliders.indexOf(door.collider);
+      if (open && idx >= 0) this.colliders.splice(idx, 1);
+      if (!open && idx < 0) this.colliders.push(door.collider);
+      if (!silent) audioManager.playBlastDoorHydraulics?.(door.x, door.z);
+      return true;
+    }
+
+    findClosestBlastDoor(x, z, maxDistance = 6) {
+      let best = null;
+      for (const door of this.blastDoors) {
+        const distance = Math.hypot(door.x - x, door.z - z);
+        if (distance <= maxDistance && (!best || distance < best.distance)) best = { door, distance };
+      }
+      return best;
+    }
+
+    // Canon Alien: Isolation / Alien 3 — le Xénomorphe force les portes à la seule force des griffes.
+    pryBlastDoor(x, z) {
+      const found = this.findClosestBlastDoor(x, z, 6);
+      if (!found) {
+        showToast('Aucune porte blindée à portée (6 m) [J].');
+        return false;
+      }
+      const { door } = found;
+      if (door.isOpen) {
+        showToast(`${door.name} déjà ouverte.`);
+        return false;
+      }
+      this.setBlastDoorState(door, true);
+      audioManager.playMetalImpact?.(door.x, door.z);
+      rendererEngine.addScreenShake?.(0.3, 0.2);
+      window.HiveSystems?.vfx?.burst?.(door.x, door.z, 0xf59e0b, 22, 0.14, 1.6);
+      window.HiveSystems?.vfx?.floatingText?.(door.x, 4.2, door.z, 'PORTE FORCÉE', '#f59e0b', true);
+      showToast(`${door.name} arrachée de ses vérins par les griffes du prédateur [J] !`);
+      appendSensorLog(`[BRÈCHE] ${door.name} : vérins hydrauliques forcés. Confinement rompu.`, 'alert');
+      return true;
+    }
+
+    // Chantier 5 : Le sang acide perce le pont (Alien 1979 — Kane / Ash percent trois ponts).
+    addAcidCorrosion(x, z, radius = 1.8, duration = 12.0) {
+      // Fusionne les impacts rapprochés pour éviter l'accumulation de maillages.
+      const existing = this.acidCorrosions.find((corr) => Math.hypot(corr.x - x, corr.z - z) < corr.radius);
+      if (existing) {
+        existing.timer = Math.max(existing.timer, duration);
+        return;
+      }
+      if (this.acidCorrosions.length >= 14) {
+        const oldest = this.acidCorrosions.shift();
+        if (oldest?.mesh) rendererEngine.removeObject(oldest.mesh);
+      }
+      const mesh = new THREE.Mesh(
+        new THREE.RingGeometry(0.15, radius, 18),
+        new THREE.MeshBasicMaterial({ color: 0x1a0f05, transparent: true, opacity: 0.78, side: THREE.DoubleSide })
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(x, 0.035, z);
+      rendererEngine.propsGroup.add(mesh);
+      this.acidCorrosions.push({ x, z, radius, timer: duration, maxTimer: duration, tick: 0, mesh });
+    }
+
+    // Chantier 3 : Décompression réelle du sas EVA (Alien 1979 navette / Resurrection).
+    triggerDecompression(duration = 9.0) {
+      this.depressurizationTimer = duration;
+      audioManager.playBlastDoorHydraulics?.(this.evaAirlock.x, this.evaAirlock.z);
+      showToast('DÉCOMPRESSION DU SAS EVA : l’atmosphère est aspirée vers le vide spatial !');
+      appendSensorLog('[SÉCURITÉ ORBITALE] Sas EVA ouvert sur le vide. Dégazage atmosphérique à haute vélocité.', 'alert');
+    }
+
+    toggleBlastDoor(doorId) {
+      const door = this.blastDoors.find((d) => d.id === doorId);
+      if (!door) return;
+      this.setBlastDoorState(door, !door.isOpen);
+      showToast(`${door.name} : Sas ${door.isOpen ? 'ouvert [Dérivation hydraulique]' : 'verrouillé'}.`);
+    }
+
+    update(deltaSeconds = 1 / 60) {
+      const safeDelta = Math.max(0, deltaSeconds);
+      this.updateSteamVents(safeDelta);
+
+      // Verrouillage de quarantaine KAPPA : les portes se scellent pendant l'Acte IV (alerte >= 3).
+      const stageIndex = window.gameInstance?.currentStageIndex || 0;
+      const lockdownWanted = stageIndex === 4 && (window.alarmSystem?.level || 0) >= 3;
+      if (lockdownWanted && !this.lockdownApplied) {
+        let sealed = 0;
+        this.blastDoors.forEach((door) => { if (this.setBlastDoorState(door, false, true)) sealed++; });
+        if (sealed > 0) {
+          this.lockdownApplied = true;
+          audioManager.playBlastDoorHydraulics?.();
+          showToast(`VERROUILLAGE DE QUARANTAINE : ${sealed} portes blindées scellées. Forcez-les avec [J].`);
+          appendSensorLog('[KAPPA] Protocole de confinement : portes de secteur verrouillées.', 'alert');
+        }
+      } else if (!lockdownWanted && this.lockdownApplied) {
+        this.lockdownApplied = false;
+        this.blastDoors.forEach((door) => this.setBlastDoorState(door, true, true));
+      }
+
+      // Décompression : aspiration vers le sas, éjection unique dans le vide.
+      if (this.depressurizationTimer > 0) {
+        this.depressurizationTimer -= safeDelta;
+        const sas = this.evaAirlock;
+        (window.gameInstance?.humans || []).forEach((ent) => {
+          if (!ent || ent.isIncapacitated || ent.isCocooned || ent.ejectedIntoVoid) return;
+          if (['powerloader', 'exosuit'].includes(ent.type)) return; // trop lourds / bottes magnétiques
+          const dist = Math.hypot(sas.x - ent.x, sas.z - ent.z);
+          if (dist > 24 || dist < 0.01) return;
+          const pull = (1 - dist / 24) * safeDelta * 9;
+          const nextX = ent.x + ((sas.x - ent.x) / dist) * pull;
+          const nextZ = ent.z + ((sas.z - ent.z) / dist) * pull;
+          if (!this.checkCollision(nextX, nextZ)) {
+            ent.x = nextX;
+            ent.z = nextZ;
+            ent.mesh?.position?.set(ent.x, 0, ent.z);
+          }
+          if (dist <= 4) {
+            ent.ejectedIntoVoid = true;
+            ent.takeDamage?.(ent.hp + 1);
+            window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.5, ent.z, 'ÉJECTÉ DANS LE VIDE', '#38bdf8', true);
+            appendSensorLog(`[VIDE SPATIAL] ${ent.name} aspiré hors du sas EVA.`, 'alert');
+          }
+        });
+        if (Math.random() < 0.2) window.HiveSystems?.vfx?.spawnSteamCloud?.(sas.x - 4, 1.8, sas.z, 3.2);
+      }
+
+      // Corrosion acide : brûlure par impulsions (0,5 s) sans figer les victimes.
+      for (let i = this.acidCorrosions.length - 1; i >= 0; i--) {
+        const corr = this.acidCorrosions[i];
+        corr.timer -= safeDelta;
+        corr.tick -= safeDelta;
+        if (corr.mesh) corr.mesh.material.opacity = Math.max(0.08, (corr.timer / corr.maxTimer) * 0.78);
+        if (corr.tick <= 0) {
+          corr.tick = 0.5;
+          (window.gameInstance?.humans || []).forEach((h) => {
+            if (h.isIncapacitated || h.isCocooned || h.type === 'labrodent') return;
+            if (Math.hypot(h.x - corr.x, h.z - corr.z) > corr.radius) return;
+            h.takeDamage?.(8);
+            window.HiveSystems?.vfx?.floatingText?.(h.x, 2.2, h.z, '-8 ACIDE AU SOL', '#39ff14', false);
+          });
+        }
+        if (corr.timer <= 0) {
+          if (corr.mesh) rendererEngine.removeObject(corr.mesh);
+          this.acidCorrosions.splice(i, 1);
+        }
+      }
     }
 
     updateSteamVents(deltaSeconds) {
@@ -2845,6 +3197,7 @@
       rendererEngine.addScreenShake?.(0.24, 0.15);
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, 18, 0.14, 1.25);
       window.HiveSystems?.vfx?.spawnAcidPool?.(this.x, this.z, 1.45, 9.0);
+      stationMap.addAcidCorrosion?.(this.x, this.z, 1.8, 12.0);
       window.HiveSystems?.vfx?.floatingText?.(this.x, 2.0, this.z, `-${Math.ceil(actualDmg)}`, '#ef4444', false);
 
       // Canon 1:1 Lore — Projection de sang acide pressurisé sur les assaillants proches
@@ -3122,7 +3475,8 @@
           }
         }
         const frameScale = safeDelta * 60;
-        const currentSpeed = this.speed * (this.isInVent ? 1.45 : 1.0);
+        const resinBonus = (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0) ? 1.25 : 1.0;
+        const currentSpeed = this.speed * (this.isInVent ? 1.45 : 1.0) * resinBonus;
         const movementStep = Math.min(currentSpeed * frameScale, remainingDistance);
         const nextX = this.x + dx * movementStep;
         const nextZ = this.z + dy * movementStep;
@@ -3163,6 +3517,11 @@
             this.salivaTimer = 1.3 + Math.random() * 1.5;
             window.HiveSystems?.vfx?.salivaDrip(this.x, 2.7, this.z, 2);
           }
+        }
+
+        // Chantier 7 : Régénération biologique passive sur la bio-résine de la ruche
+        if (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0) {
+          this.health = Math.min(this.maxHealth, this.health + 6 * safeDelta);
         }
 
         animateProceduralModel(this.mesh, {
@@ -3226,6 +3585,11 @@
       this.staggerTimer = 0;
       this.footstepCooldown = 0;
       this.infectionCoughCooldown = 1.2 + Math.random() * 1.5;
+      this.stress = 0; // Chantier 6 : Jauge de stress 0-100 & IA de Terreur
+      this.panicTimer = 0;
+      this.lastStressQuoteTime = 0;
+      this.grenadeCooldown = 5.0 + Math.random() * 5.0; // Chantier 4 : Grenades M40 30mm commando
+      this.powerloaderBeepTimer = 1.0 + Math.random() * 2.0; // Chantier 10 : Avertisseur P-5000
       this.choosePatrolWaypoint();
     }
 
@@ -3666,6 +4030,7 @@
         // Lorsqu'un marine repère le prédateur, il alerte ses coéquipiers proches sur la fréquence radio
         if (!this.radioAlertCooldown || this.radioAlertCooldown <= 0) {
           this.radioAlertCooldown = 4.5;
+          audioManager.playRadioSquelch?.(this.x, this.z);
           const allies = (window.gameInstance?.humans || []).filter((h) => (
             h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
             ['guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator', 'commando', 'android', 'synthetic'].includes(h.type) &&
@@ -3694,7 +4059,52 @@
         this.choosePatrolWaypoint();
       }
 
+      // Chantier 6 : Jauge de Stress Humaine 0 - 100 & IA de Terreur (Aliens 1986 / Isolation)
+      if (this.type !== 'synthetic' && this.type !== 'android' && this.type !== 'labrodent') {
+        let stressDelta = -3.5 * safeDelta;
+        if (inDarkness) stressDelta += 6.5 * safeDelta;
+        if (distToPlayer < 14) stressDelta += (1 - distToPlayer / 14) * 28 * safeDelta;
+        if (this.hp < this.maxHp * 0.45) stressDelta += 14 * safeDelta;
+
+        this.stress = Math.max(0, Math.min(100, (this.stress || 0) + stressDelta));
+
+        if (this.stress >= 75) {
+          const now = Date.now();
+          if (now - (this.lastStressQuoteTime || 0) > 8000 && Math.random() < 0.35) {
+            this.lastStressQuoteTime = now;
+            const panicQuotes = [
+              'Ils sont dans les murs !',
+              'Game over, man ! Game over !',
+              'C’est un cauchemar ! Tirez !',
+              'Je veux sortir d’ici !',
+              'Confinement rompu, il arrive !'
+            ];
+            const quote = panicQuotes[Math.floor(Math.random() * panicQuotes.length)];
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, quote, '#ef4444', true);
+            appendSensorLog(`[TERREUR] ${this.name} : « ${quote} »`, 'alert');
+          }
+          if (this.stress >= 85 && distToPlayer < 10) {
+            const panicAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
+            const fleeX = this.x + Math.cos(panicAngle) * 4;
+            const fleeZ = this.z + Math.sin(panicAngle) * 4;
+            if (!stationMap.checkCollision(fleeX, fleeZ)) {
+              this.targetPos = { x: fleeX, z: fleeZ };
+            }
+          }
+        }
+      }
+
+      // Chantier 10 : Avertisseur de recul industriel Caterpillar P-5000 (Aliens 1986)
+      if (this.type === 'powerloader' || this.type === 'exosuit') {
+        this.powerloaderBeepTimer = (this.powerloaderBeepTimer || 0) - safeDelta;
+        if (this.powerloaderBeepTimer <= 0) {
+          this.powerloaderBeepTimer = 2.2 + Math.random() * 0.4;
+          audioManager.playPowerloaderBeep?.(this.x, this.z);
+        }
+      }
+
       this.shootCooldown -= safeDelta;
+      this.grenadeCooldown -= safeDelta;
       if (
         isCombatant &&
         biologicalTargetDetectable &&
@@ -3703,7 +4113,7 @@
         hasLineOfSight &&
         this.shootCooldown <= 0
       ) {
-          const applyWeaponDamage = () => {
+          const applyWeaponDamage = (multiplier = 1) => {
             const stageIndex = window.gameInstance?.currentStageIndex;
             if ([2, 3, 4].includes(stageIndex)) {
               const baseDamage = ['powerloader', 'exosuit'].includes(this.type)
@@ -3712,17 +4122,54 @@
                   ? 12
                   : (stageIndex === 4 ? 8 : 6));
               const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
-              targetReceiver.takeDamage(baseDamage * window.gameInstance.getDifficultyDamageModifier());
+              targetReceiver.takeDamage(baseDamage * multiplier * window.gameInstance.getDifficultyDamageModifier());
             } else if (window.gameInstance?.currentStageIndex === 5 && combatTarget?.takeDamage) {
               const baseDamage = ['powerloader', 'exosuit'].includes(this.type) ? 25 : 11;
-              combatTarget.takeDamage(baseDamage * window.gameInstance.getDifficultyDamageModifier());
+              combatTarget.takeDamage(baseDamage * multiplier * window.gameInstance.getDifficultyDamageModifier());
             }
           };
-          this.shootCooldown = ['cleaner', 'incinerator'].includes(this.type)
-            ? 2.4
-            : (['powerloader', 'exosuit'].includes(this.type) ? 1.9 : 1.6);
+
           this.attackAnimation = 1;
-          if (['cleaner', 'incinerator'].includes(this.type)) {
+
+          // Chantier 4 : Grenades M40 30mm à shrapnel du Commando (Aliens 1986)
+          if (this.type === 'commando' && this.grenadeCooldown <= 0 && distToPlayer >= 5.5 && distToPlayer <= 22) {
+            this.grenadeCooldown = 9.5;
+            this.shootCooldown = 1.9;
+            audioManager.playGrenadeLaunch?.(this.x, this.z);
+            window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf97316, 0.3);
+            const projectileVfx = window.HiveSystems?.vfx;
+            const onGrenadeImpact = () => {
+              audioManager.playGrenadeExplode?.(combatTarget.x, combatTarget.z);
+              rendererEngine.addScreenShake?.(0.35, 0.2);
+              window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 28, 0.18, 2.2);
+              applyWeaponDamage(1.75);
+            };
+            if (projectileVfx?.projectile) {
+              projectileVfx.projectile({
+                startX: this.x,
+                startY: 2.7,
+                startZ: this.z,
+                endX: combatTarget.x,
+                endY: 1.0,
+                endZ: combatTarget.z,
+                color: 0xf97316,
+                scale: 0.28,
+                speed: 22,
+                onImpact: onGrenadeImpact
+              });
+            } else {
+              onGrenadeImpact();
+            }
+          } else if (['powerloader', 'exosuit'].includes(this.type) && distToPlayer <= 3.8) {
+            // Chantier 10 : Broyage hydraulique au corps-à-corps par les pinces P-5000 (Ripley vs Queen)
+            this.shootCooldown = 2.1;
+            audioManager.playMetalImpact?.(this.x, this.z);
+            rendererEngine.addScreenShake?.(0.32, 0.18);
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf59e0b, 18, 0.12, 1.4);
+            window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 2.8, combatTarget.z, 'BROYAGE HYDRAULIQUE P-5000', '#f59e0b', true);
+            applyWeaponDamage(1.8);
+          } else if (['cleaner', 'incinerator'].includes(this.type)) {
+            this.shootCooldown = 2.4;
             audioManager.playFlamethrowerWhoosh(this.x, this.z);
             window.HiveSystems?.vfx?.muzzleFlash(this.x, 2.7, this.z, 0xff8a16, 0.25);
             window.HiveSystems?.vfx?.flameJet(
@@ -3734,7 +4181,32 @@
               combatTarget.z
             );
             applyWeaponDamage();
+          } else if (['smartgunner', 'gyro'].includes(this.type)) {
+            // Chantier 4 : M56 Smartgun gyro-stabilisé à haute cadence (Vasquez / Drake)
+            this.shootCooldown = 0.85;
+            audioManager.playSmartgunBurst?.(this.x, this.z);
+            if (Math.random() < 0.45) audioManager.playSmartgunServo?.(this.x, this.z);
+            window.HiveSystems?.vfx?.muzzleFlash(this.x, 2.75, this.z, 0xf59e0b, 0.24);
+            const projectileVfx = window.HiveSystems?.vfx;
+            if (projectileVfx?.projectile) {
+              projectileVfx.projectile({
+                startX: this.x,
+                startY: 2.72,
+                startZ: this.z,
+                endX: combatTarget.x,
+                endY: combatTarget.caste === 'queen' ? 3.6 : 1.3,
+                endZ: combatTarget.z,
+                color: 0xf59e0b,
+                scale: 0.18,
+                speed: 38,
+                onImpact: () => applyWeaponDamage(0.9)
+              });
+            } else {
+              applyWeaponDamage(0.9);
+            }
           } else {
+            // Fusil à impulsion M41A Marine standard
+            this.shootCooldown = ['powerloader', 'exosuit'].includes(this.type) ? 1.9 : 1.6;
             audioManager.playPulseRifleFire(this.x, this.z);
             const projectileColor = this.bossId === 'MANTIS_4'
               ? (this.bossPhase >= 3 ? 0xef4444 : 0x38bdf8)
@@ -3992,7 +4464,8 @@
         return false;
       }
       const frameScale = Math.max(0, deltaSeconds) * 60;
-      const movementStep = Math.min(this.speed * Math.max(0, speedMultiplier) * frameScale, maxDistance);
+      const resinBonus = (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0) ? 1.25 : 1.0;
+      const movementStep = Math.min(this.speed * Math.max(0, speedMultiplier) * resinBonus * frameScale, maxDistance);
       const nextX = this.x + dx * movementStep;
       const nextZ = this.z + dy * movementStep;
       let moved = false;
@@ -4033,6 +4506,11 @@
       this.supportCooldown -= deltaSeconds;
       this.attackAnimation = Math.max(0, this.attackAnimation - Math.max(0, deltaSeconds) * 3);
       this.movementBlend = Math.max(0, this.movementBlend - Math.max(0, deltaSeconds) * 4.5);
+
+      // Chantier 7 : Régénération biologique passive sur la bio-résine de la ruche
+      if (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0) {
+        this.health = Math.min(this.maxHealth, this.health + 6 * Math.max(0, deltaSeconds));
+      }
 
       // Canon Giger — Salive visqueuse perlant continuellement des mâchoires
       if ((this.caste === 'queen' || this.caste === 'praetorian' || this.caste === 'warrior') && !this.isDestroyed) {
@@ -5016,6 +5494,7 @@
       this.biteTarget = null;
       this.huntedRodentTarget = null;
       this.huntRepathCooldown = 0;
+      this.rations = [];
       this.thoracicView = new ThoracicView();
     }
 
@@ -5213,6 +5692,20 @@
       });
       audioManager.playRodentSqueak?.(playerCreature.x + 5, playerCreature.z);
       appendSensorLog('[FAUNE] Cinq petits rongeurs fuient entre les équipements du bloc médical.', 'bio');
+
+      // Chantier 1 : Rations nutritives de laboratoire (Alien 1979)
+      const rationOffsets = [[-4, 5], [5, -4]];
+      rationOffsets.forEach(([roX, roZ], rIdx) => {
+        const rx = playerCreature.x + roX;
+        const rz = playerCreature.z + roZ;
+        const mesh = window.HiveModelFactory?.createIndustrialProp?.('ration');
+        if (mesh) {
+          mesh.position.set(rx, 0.05, rz);
+          rendererEngine.propsGroup.add(mesh);
+          this.rations.push({ x: rx, z: rz, mesh, id: rIdx });
+        }
+      });
+      appendSensorLog('[NUTRITION] Deux packs de rations stériles de laboratoire Weyland-Yutani détectés au sol.', 'bio');
     }
 
     findRodentSpawn(preferredX, preferredZ, index) {
@@ -5242,6 +5735,23 @@
         this.biteTarget ||
         this.biomassHunted >= 3
       ) return;
+
+      // Chantier 1 : Consommation de rations de laboratoire (Alien 1979)
+      const closestRation = this.rations.find((r) => Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 3.2);
+      if (closestRation) {
+        if (closestRation.mesh) rendererEngine.removeObject(closestRation.mesh);
+        this.rations = this.rations.filter((r) => r !== closestRation);
+        audioManager.playWetImpact?.(playerCreature.x, playerCreature.z);
+        audioManager.playBoneCrunch?.();
+        window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0xf59e0b, 16, 0.12, 1.2);
+        window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.2, playerCreature.z, '+1 BIOMASSE (RATION)', '#39ff14', true);
+        this.biomassHunted++;
+        showToast('Ration nutritive de laboratoire dévorée par le juvénile !');
+        this.log(`[CROISSANCE] Ration nutritive ${this.biomassHunted}/3 consommée et assimilée.`);
+        window.HiveSystems?.updateObjective(3, this.biomassHunted >= 3 ? 2 : 1);
+        this.updateHUD();
+        return;
+      }
       const closest = this.rodents
         .filter((rodent) => !rodent.isIncapacitated && rodent.mesh)
         .reduce((nearest, rodent) => {
@@ -5337,6 +5847,8 @@
         rendererEngine.propsGroup.add(exuvia);
       }
 
+      const adultProfile = playerCreature.getAdultProfile();
+      appendSensorLog(`[RÉFLEXE ADN 1:1] Métamorphose achevée selon le génome de l'hôte : émergence d'un ${adultProfile.label}.`, 'bio');
       appendSensorLog('[MUE ROMULUS] La chrysalide se déchire le long de la suture centrale. Le prédateur adulte émerge des fluides amniotiques en laissant son exuvie vide.', 'bio');
       if (window.gameInstance) window.gameInstance.advanceStage(this);
     }
@@ -5380,6 +5892,10 @@
       for (const rodent of this.rodents) {
         if (rodent.mesh) rodent.destroy();
       }
+      for (const ration of this.rations) {
+        if (ration.mesh) rendererEngine.removeObject(ration.mesh);
+      }
+      this.rations = [];
     }
     update(deltaSeconds = 1 / 60) {
       const safeDelta = Math.max(0, deltaSeconds);
@@ -7520,7 +8036,7 @@
           }
         }
         window.HiveSystems?.update(deltaSeconds);
-        stationMap.updateSteamVents?.(deltaSeconds);
+        stationMap.update?.(deltaSeconds);
         visionSystem.update?.(deltaSeconds);
         this.motionTracker?.update(deltaSeconds, playerCreature, this.humans);
         if (!this.isRunning) return;

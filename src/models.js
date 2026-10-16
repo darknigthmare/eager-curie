@@ -2575,12 +2575,14 @@
       const spitter = caste === 'spitter';
       const burster = caste === 'burster';
       const offspring = caste === 'offspring';
+      const predalien = caste === 'predalien';
 
-      const scale = royal ? 1.42 : (palatine ? 1.28 : (guardian ? 1.18 : (warrior ? 1.06 : (offspring ? 1.15 : (burster ? 0.96 : 1)))));
+      const scale = royal ? 1.42 : (palatine ? 1.28 : (guardian ? 1.18 : (predalien ? 1.32 : (warrior ? 1.06 : (offspring ? 1.15 : (burster ? 0.96 : 1))))));
       let chitinColor = 0x0b1518;
       if (royal) chitinColor = 0x221033;
       else if (palatine) chitinColor = 0x1f0b29;
       else if (guardian) chitinColor = 0x2d163d;
+      else if (predalien) chitinColor = 0x2e291e; // Bronze sombre métallique Yautja
       else if (warrior) chitinColor = 0x111827;
       else if (prowler) chitinColor = 0x3d0c0c;
       else if (spitter) chitinColor = 0x1a2e05;
@@ -2589,14 +2591,14 @@
 
       const primary = this._material('chitin', {
         color: chitinColor,
-        roughness: royal || palatine ? 0.22 : (offspring ? 0.55 : 0.28),
-        metalness: offspring ? 0.15 : 0.46
+        roughness: royal || palatine ? 0.22 : (predalien ? 0.24 : (offspring ? 0.55 : 0.28)),
+        metalness: predalien ? 0.54 : (offspring ? 0.15 : 0.46)
       });
       const secondary = this._material('resin', {
-        color: royal || palatine ? 0x4a214f : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238))),
+        color: royal || palatine ? 0x4a214f : (predalien ? 0x1c1913 : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238)))),
         opacity: 0.96
       });
-      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (offspring ? 0xf4f4f5 : 0xb9c6a5) });
+      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (predalien ? 0xa89f88 : (offspring ? 0xf4f4f5 : 0xb9c6a5)) });
       const sensory = this._material(royal || palatine ? 'emissiveRed' : (spitter || burster ? 'emissiveGreen' : 'emissiveGreen'), {
         emissiveIntensity: royal || palatine ? 0.42 : (burster ? 0.65 : 0.32)
       });
@@ -2678,8 +2680,47 @@
         18
       ));
       this._addJaw(root, primary, bone, { x: 0, y: 4.08 * scale, z: 1.32 * scale }, scale, royal);
+
+      if (predalien) {
+        // Chantier 36 : 4 Mandibules prédatrices Yautja articulées (Canon AvP)
+        const mandibleMat = this._material('bone', { color: 0x948464, roughness: 0.38, metalness: 0.15 });
+        const fangMat = this._material('bone', { color: 0xded8c6, roughness: 0.25 });
+        const mandibleOffsets = [
+          { name: 'upper_left', x: -0.42 * scale, y: 4.18 * scale, z: 1.15 * scale, rotZ: 0.35, rotY: 0.45 },
+          { name: 'upper_right', x: 0.42 * scale, y: 4.18 * scale, z: 1.15 * scale, rotZ: -0.35, rotY: -0.45 },
+          { name: 'lower_left', x: -0.36 * scale, y: 3.92 * scale, z: 1.25 * scale, rotZ: -0.28, rotY: 0.38 },
+          { name: 'lower_right', x: 0.36 * scale, y: 3.92 * scale, z: 1.25 * scale, rotZ: 0.28, rotY: -0.38 }
+        ];
+        mandibleOffsets.forEach((m) => {
+          const mandGroup = new T.Group();
+          mandGroup.name = `predalien_mandible_${m.name}`;
+          mandGroup.position.set(m.x, m.y, m.z);
+          mandGroup.rotation.set(0, m.rotY, m.rotZ);
+          mandGroup.add(this._segment(mandibleMat, new T.Vector3(0, 0, 0), new T.Vector3(0, 0, 0.42 * scale), 0.08 * scale, 0.05 * scale, `mand_shaft_${m.name}`, 8));
+          mandGroup.add(this._coneAlong(fangMat, { x: 0, y: 0, z: 0.42 * scale }, { x: m.rotZ > 0 ? 0.2 : -0.2, y: -0.2, z: 1 }, 0.05 * scale, 0.24 * scale, `fang_${m.name}`, 6));
+          root.add(mandGroup);
+        });
+
+        // 16 Dreadlocks sensoriels biomécaniques retombant sur les épaules et le dos
+        const dreadMat = this._material('chitin', { color: 0x1a1814, roughness: 0.32, metalness: 0.45 });
+        const ringMat = this._material('darkMetal', { color: 0xb45309, roughness: 0.3, metalness: 0.8 }); // Viroles en laiton Yautja
+        for (let d = 0; d < 16; d++) {
+          const angle = ((d - 8) / 16) * Math.PI * 0.95;
+          const dreadRootX = Math.sin(angle) * 0.55 * scale;
+          const dreadRootY = (4.45 - Math.abs(angle) * 0.22) * scale;
+          const dreadRootZ = (-0.1 - Math.cos(angle) * 0.35) * scale;
+          const dreadPoints = [
+            { x: dreadRootX, y: dreadRootY, z: dreadRootZ },
+            { x: dreadRootX * 1.35, y: dreadRootY - 0.7 * scale, z: dreadRootZ - 0.4 * scale },
+            { x: dreadRootX * 1.2, y: dreadRootY - 1.55 * scale, z: dreadRootZ - 0.25 * scale }
+          ];
+          root.add(this._tube(dreadMat, dreadPoints, 0.065 * scale, `predalien_dreadlock_${d}`, 16, 6));
+          root.add(this._ring(ringMat, 0.078 * scale, 0.02 * scale, { x: dreadRootX * 1.35, y: dreadRootY - 0.7 * scale, z: dreadRootZ - 0.4 * scale }, { x: 0.4, y: 0, z: 0 }, `dread_collar_${d}`));
+        }
+      }
+
       this._addRibCage(root, secondary, 3.62 * scale, 0.72 * scale, 0.52 * scale, royal ? 8 : 6);
-      this._addDorsalTubes(root, primary, 2.72 * scale, scale, royal ? 8 : (warrior ? 6 : 4));
+      this._addDorsalTubes(root, primary, 2.72 * scale, scale, royal ? 8 : (warrior || predalien ? 6 : 4));
 
       for (let side = -1; side <= 1; side += 2) {
         const stance = guardian || royal ? 0.22 : 0;
@@ -3558,6 +3599,57 @@
         }
         root.add(this._box(frostMat, { x: 0.3, y: 0.45, z: 0.3 }, { x: 0, y: 3.75, z: 0 }, 'cryo_vent_valve'));
         root.add(this._box(warning, { x: 0.6, y: 0.6, z: 0.06 }, { x: 0, y: 1.8, z: 1.18 }, 'flammable_hazard_plaque'));
+      } else if (normalizedType === 'water_pump' || normalizedType === 'flood_grate') {
+        // Chantier 31 : Station de pompage hydraulique et vanne Sub-Level 3 (Hadley's Hope / Aliens 1986)
+        const pumpMetal = this._material('darkMetal', { color: 0x1e293b, roughness: 0.45, metalness: 0.7 });
+        const pipeCopper = this._material('industrial', { color: 0xb45309, roughness: 0.35, metalness: 0.85 });
+        root.add(this._box(pumpMetal, { x: 2.2, y: 0.15, z: 2.2 }, { x: 0, y: 0.08, z: 0 }, 'sump_grate', true));
+        root.add(this._segment(pumpMetal, new T.Vector3(0, 0.15, 0), new T.Vector3(0, 2.2, 0), 0.55, 0.45, 'pump_cylinder', 20));
+        root.add(this._segment(pipeCopper, new T.Vector3(0, 1.6, 0), new T.Vector3(1.2, 1.6, 0), 0.22, 0.22, 'intake_pipe_h', 16));
+        root.add(this._ring(dark, 0.62, 0.06, { x: 0, y: 1.1, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'pump_collar'));
+        root.add(this._box(screen, { x: 0.35, y: 0.25, z: 0.08 }, { x: 0, y: 1.5, z: 0.52 }, 'pump_gauge'));
+      } else if (normalizedType === 'terminal' || normalizedType === 'seegson_terminal') {
+        // Chantier 33 & 40 : Terminal mural Seegson / Weyland-Yutani 9 pouces CRT (Alien: Isolation)
+        const casing = this._material('synthetic', { color: 0x94a3b8, roughness: 0.42, metalness: 0.2 });
+        const crtAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 1.6 });
+        root.add(this._box(casing, { x: 1.1, y: 1.4, z: 0.35 }, { x: 0, y: 0.7, z: 0 }, 'terminal_housing', true));
+        root.add(this._box(crtAmber, { x: 0.68, y: 0.52, z: 0.06 }, { x: 0, y: 0.92, z: 0.18 }, 'crt_screen_9inch'));
+        root.add(this._box(dark, { x: 0.8, y: 0.28, z: 0.22 }, { x: 0, y: 0.28, z: 0.22 }, 'keyboard_bevel', true));
+        root.add(this._box(warning, { x: 0.2, y: 0.04, z: 0.05 }, { x: 0, y: 0.55, z: 0.18 }, 'cassette_drive_slot'));
+      } else if (normalizedType === 'camera' || normalizedType === 'security_camera') {
+        // Chantier 33 : Caméra de sécurité motorisée CRT Weyland-Yutani (Alien: Isolation)
+        const camMetal = this._material('darkMetal', { color: 0x0f172a, roughness: 0.3 });
+        const lensLed = this._material('emissiveGreen', { color: 0x22c55e, emissiveIntensity: 2.0 });
+        root.add(this._box(camMetal, { x: 0.3, y: 0.4, z: 0.18 }, { x: 0, y: 0.2, z: 0 }, 'camera_wall_bracket', true));
+        root.add(this._segment(camMetal, new T.Vector3(0, 0.2, 0.1), new T.Vector3(0, 0.2, 0.5), 0.06, 0.06, 'camera_swivel_arm', 10));
+        root.add(this._box(camMetal, { x: 0.28, y: 0.32, z: 0.75 }, { x: 0, y: 0.2, z: 0.85 }, 'camera_casing', true));
+        root.add(this._ring(dark, 0.16, 0.03, { x: 0, y: 0.2, z: 1.24 }, { x: 0, y: 0, z: 0 }, 'camera_lens_hood'));
+        root.add(this._ellipsoid(lensLed, { x: 0.08, y: 0.08, z: 0.05 }, { x: 0, y: 0.2, z: 1.25 }, 'camera_starlight_sensor', 12));
+      } else if (normalizedType === 'trap' || normalizedType === 'tripwire_trap') {
+        // Chantier 35 : Piège au sol à harpons pneumatiques et filet électrifié (Alien 3 / Isolation)
+        const baseMat = this._material('darkMetal', { color: 0x18181b, roughness: 0.4, metalness: 0.8 });
+        const laserMat = this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 2.5 });
+        root.add(this._box(baseMat, { x: 1.8, y: 0.08, z: 0.45 }, { x: 0, y: 0.04, z: 0 }, 'trap_base_plate', true));
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._segment(baseMat, new T.Vector3(side * 0.78, 0.08, 0), new T.Vector3(side * 0.78, 0.45, 0), 0.06, 0.045, `harpoon_post_${side}`, 10));
+          root.add(this._coneAlong(dark, { x: side * 0.78, y: 0.45, z: 0 }, { x: 0, y: 1, z: 0 }, 0.05, 0.16, `harpoon_spike_${side}`, 6));
+        }
+        root.add(this._segment(laserMat, new T.Vector3(-0.75, 0.25, 0), new T.Vector3(0.75, 0.25, 0), 0.015, 0.015, 'tripwire_laser_beam', 8));
+      } else if (normalizedType === 'ceiling_cocoon' || normalizedType === 'suspended_cocoon') {
+        // Chantier 39 : Cocon organique suspendu aux poutrelles du plafond (Aliens 1986)
+        const resinMat = this._material('resin', { color: 0x2e1065, opacity: 0.94, roughness: 0.35 });
+        const hostBone = this._material('bone', { color: 0x94a3b8, opacity: 0.45 });
+        root.add(this._segment(resinMat, new T.Vector3(0, 3.2, 0), new T.Vector3(0, 1.8, 0), 0.14, 0.48, 'cocoon_stem', 14));
+        root.add(this._ellipsoid(resinMat, { x: 0.58, y: 0.92, z: 0.55 }, { x: 0, y: 1.1, z: 0 }, 'cocoon_main_body', 22));
+        root.add(this._ellipsoid(hostBone, { x: 0.28, y: 0.45, z: 0.26 }, { x: 0, y: 1.15, z: 0.12 }, 'cocoon_embedded_host', 14));
+        for (let w = 0; w < 6; w++) {
+          const wAngle = (w / 6) * Math.PI * 2;
+          root.add(this._tube(resinMat, [
+            { x: Math.cos(wAngle) * 0.4, y: 1.2, z: Math.sin(wAngle) * 0.4 },
+            { x: Math.cos(wAngle) * 0.8, y: 2.2, z: Math.sin(wAngle) * 0.8 },
+            { x: Math.cos(wAngle) * 0.6, y: 3.2, z: Math.sin(wAngle) * 0.6 }
+          ], 0.035, `web_strand_${w}`, 12, 6));
+        }
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -3798,6 +3890,41 @@
       const finalized = this._finalize(root, { modelType: 'sentryTurret', height: 1.4 });
       this.placeOnGround(finalized, 0);
       return finalized;
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 36 : Phénotype Hybride Predalien (Canon AvP)
+    // -------------------------------------------------------------------------
+    createPredalien() {
+      return this._createUprightAdult('predalien');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 33 : Caméra de Sécurité Motorisée CRT Seegson / Weyland-Yutani
+    // -------------------------------------------------------------------------
+    createSecurityCamera() {
+      return this.createIndustrialProp('security_camera');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 35 : Piège au Sol à Harpons Pneumatiques & Filet Électrifié
+    // -------------------------------------------------------------------------
+    createTripwireTrap() {
+      return this.createIndustrialProp('tripwire_trap');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 33 & 40 : Terminal Mural Seegson / Weyland-Yutani
+    // -------------------------------------------------------------------------
+    createSeegsonTerminal() {
+      return this.createIndustrialProp('seegson_terminal');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 39 : Cocon Suspendu aux Poutrelles du Plafond (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createCeilingCocoon() {
+      return this.createIndustrialProp('ceiling_cocoon');
     }
   }
 

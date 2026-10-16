@@ -1273,6 +1273,188 @@
       osc.stop(now + 0.95);
       this.playGlassShatter(x, z);
     }
+
+    // Chantier 37 : Fusil à impulsion M41A Colonial Marines 10mm pulsé (Aliens 1986)
+    playM41APulseBurst(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      for (let burst = 0; burst < 3; burst++) {
+        const t = now + burst * 0.065;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(980, t);
+        osc.frequency.exponentialRampToValueAtTime(140, t + 0.048);
+        gain.gain.setValueAtTime(0.68, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.055);
+        osc.connect(gain);
+        this.connect(gain, x, z, 75);
+        osc.start(t);
+        osc.stop(t + 0.055);
+      }
+    }
+
+    // Chantier 37 : Lance-grenades U1 à pompe 40mm M40 Fragmentation
+    playM40GrenadePumpLaunch(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(340, now);
+      osc.frequency.exponentialRampToValueAtTime(65, now + 0.22);
+      gain.gain.setValueAtTime(0.72, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+
+    // Chantier 34 : Lance-flammes lourd M240 Incinerator & jet continu de napalm B
+    playNapalmFlameStream(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.45);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const bq = this.ctx.createBiquadFilter();
+      bq.type = 'lowpass';
+      bq.frequency.setValueAtTime(750, now);
+      bq.frequency.linearRampToValueAtTime(280, now + 0.4);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.8, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+      noise.connect(bq);
+      bq.connect(gain);
+      this.connect(gain, x, z, 75);
+      noise.start(now);
+    }
+
+    // Chantier 31 : Éclaboussure d'eau lourde & Sillage aquatique Sub-Level 3
+    playWaterSplashHeavy(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.28);
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.connect(gain);
+      this.connect(gain, x, z, 55);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    }
+
+    playUnderwaterWhoosh(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(95, now);
+      osc.frequency.linearRampToValueAtTime(45, now + 0.4);
+      gain.gain.setValueAtTime(0.42, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+      osc.connect(gain);
+      this.connect(gain, x, z, 60);
+      osc.start(now);
+      osc.stop(now + 0.42);
+    }
+
+    // Chantier 32 : Bourdonnement de gravité zéro / sas d'apesanteur (Alien: Romulus)
+    playZeroGHum(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(55, now);
+      osc.frequency.linearRampToValueAtTime(62, now + 0.8);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+      osc.connect(gain);
+      this.connect(gain, x, z, 50);
+      osc.start(now);
+      osc.stop(now + 0.85);
+    }
+
+    // Chantier 33 : Alerte de caméra de sécurité Seegson (Alien: Isolation)
+    playSecurityAlarmBeep(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      for (let b = 0; b < 2; b++) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(1450, now + b * 0.12);
+        gain.gain.setValueAtTime(0.35, now + b * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + b * 0.12 + 0.08);
+        osc.connect(gain);
+        this.connect(gain, x, z, 65);
+        osc.start(now + b * 0.12);
+        osc.stop(now + b * 0.12 + 0.08);
+      }
+    }
+
+    // Chantier 36 : Rugissement guttural de la caste Predalien (Canon AvP)
+    playPredalienRoar(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc1.type = 'sawtooth';
+      osc2.type = 'square';
+      osc1.frequency.setValueAtTime(95, now);
+      osc1.frequency.linearRampToValueAtTime(520, now + 0.35);
+      osc1.frequency.linearRampToValueAtTime(65, now + 0.95);
+      osc2.frequency.setValueAtTime(110, now);
+      osc2.frequency.linearRampToValueAtTime(480, now + 0.35);
+      osc2.frequency.linearRampToValueAtTime(75, now + 0.95);
+      gain.gain.setValueAtTime(0.8, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.95);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      this.connect(gain, x, z, 85);
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.95);
+      osc2.stop(now + 0.95);
+    }
+
+    // Chantier 40 : Sons de syntonisation Hacker Tuner Seegson (Alien: Isolation)
+    playTunerHackBeep(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1850, now);
+      osc.frequency.exponentialRampToValueAtTime(620, now + 0.09);
+      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      osc.connect(gain);
+      this.connect(gain, x, z, 45);
+      osc.start(now);
+      osc.stop(now + 0.09);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -2641,6 +2823,89 @@
           minZ: tank.z - 1.4, maxZ: tank.z + 1.4
         });
       });
+
+      // Chantier 31 : Sous-Niveau 3 Inondé & Bassin de Traitement des Eaux Usées (Aliens 1986 / Resurrection)
+      this.floodedZone = {
+        minX: -18, maxX: 18,
+        minZ: 50, maxZ: 72,
+        waterLevelY: 0.45,
+        mesh: null
+      };
+      const waterGeo = new THREE.PlaneGeometry(36, 22);
+      const waterMat = new THREE.MeshStandardMaterial({
+        color: 0x0f2b3c,
+        emissive: 0x0369a1,
+        emissiveIntensity: 0.22,
+        roughness: 0.08,
+        metalness: 0.45,
+        transparent: true,
+        opacity: 0.72
+      });
+      const waterMesh = new THREE.Mesh(waterGeo, waterMat);
+      waterMesh.rotation.x = -Math.PI / 2;
+      waterMesh.position.set(0, 0.45, 61);
+      rendererEngine.propsGroup.add(waterMesh);
+      this.floodedZone.mesh = waterMesh;
+
+      const pump1 = window.HiveModelFactory?.createIndustrialProp?.('water_pump');
+      if (pump1) { pump1.position.set(-14, 0, 56); rendererEngine.propsGroup.add(pump1); }
+      const pump2 = window.HiveModelFactory?.createIndustrialProp?.('water_pump');
+      if (pump2) { pump2.position.set(14, 0, 66); rendererEngine.propsGroup.add(pump2); }
+
+      // Chantier 32 : Section Laboratoire Zéro-Gravité & Orbes d'Acide en Lévitation (Alien: Romulus)
+      this.zeroGZone = {
+        minX: 42, maxX: 68,
+        minZ: -16, maxZ: 16,
+        active: true,
+        humTimer: 2.5
+      };
+      this.floatingAcidOrbs = [];
+
+      // Chantier 33 : Caméras de Sécurité Motorisées CRT Seegson / Weyland-Yutani (Alien: Isolation)
+      this.securityCameras = [
+        { id: 'cam_nord', name: 'Caméra Couloir Nord', x: 0, z: -22, baseAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_airlock', name: 'Caméra Sas Est EVA', x: 52, z: 0, baseAngle: 0, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_armory', name: 'Caméra Armurerie', x: 28, z: -45, baseAngle: Math.PI, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false }
+      ];
+      this.securityCameras.forEach((cam) => {
+        const mesh = window.HiveModelFactory?.createSecurityCamera?.();
+        if (mesh) {
+          mesh.position.set(cam.x, 3.8, cam.z);
+          rendererEngine.propsGroup.add(mesh);
+          cam.mesh = mesh;
+        }
+      });
+
+      // Chantier 33 & 40 : Terminaux Muraux Seegson Interactifs (Alien: Isolation)
+      this.seegsonTerminals = [
+        { id: 'term_cryo', name: 'Terminal Seegson Médical', x: -44, z: -24, isHacked: false, mesh: null },
+        { id: 'term_sec', name: 'Terminal Seegson Sécurité KAPPA', x: 42, z: -24, isHacked: false, mesh: null }
+      ];
+      this.seegsonTerminals.forEach((term) => {
+        const mesh = window.HiveModelFactory?.createSeegsonTerminal?.();
+        if (mesh) {
+          mesh.position.set(term.x, 0, term.z);
+          rendererEngine.propsGroup.add(mesh);
+          term.mesh = mesh;
+        }
+      });
+
+      // Chantier 35 : Pièges au Sol à Harpons Pneumatiques & Filet Électrifié (Alien 3 / Isolation)
+      this.tripwireTraps = [
+        { id: 'trap_reactor', name: 'Piège Confinement Réacteur', x: -18, z: 28, isArmed: true, mesh: null },
+        { id: 'trap_fret', name: 'Piège Sas Fret Ouest', x: -55, z: -10, isArmed: true, mesh: null }
+      ];
+      this.tripwireTraps.forEach((trap) => {
+        const mesh = window.HiveModelFactory?.createTripwireTrap?.();
+        if (mesh) {
+          mesh.position.set(trap.x, 0, trap.z);
+          rendererEngine.propsGroup.add(mesh);
+          trap.mesh = mesh;
+        }
+      });
+
+      // Chantier 39 : Cocons Suspendus aux Poutrelles du Plafond (Aliens 1986)
+      this.ceilingCocoons = [];
     }
 
     setBlastDoorState(door, open, silent = false) {
@@ -3039,6 +3304,11 @@
       this.updateNarcissusShuttle(safeDelta);
       this.updateUltrasonicBeacons(safeDelta);
       this.updateCryoFuelTanks(safeDelta);
+      this.updateFloodedZone(safeDelta);
+      this.updateZeroGZone(safeDelta);
+      this.updateSecurityCameras(safeDelta);
+      this.updateTripwireTraps(safeDelta);
+      this.updateCeilingCocoons(safeDelta);
     }
 
     // Chantier 22 : Relique Fossilisée du Space Jockey & Casque d'Ingénieur (Alien 1979)
@@ -3189,6 +3459,224 @@
           }
         }
       }
+    }
+
+    isInFloodedZone(x, z) {
+      if (!this.floodedZone) return false;
+      return x >= this.floodedZone.minX && x <= this.floodedZone.maxX &&
+             z >= this.floodedZone.minZ && z <= this.floodedZone.maxZ;
+    }
+
+    isInZeroGZone(x, z) {
+      if (!this.zeroGZone || !this.zeroGZone.active) return false;
+      return x >= this.zeroGZone.minX && x <= this.zeroGZone.maxX &&
+             z >= this.zeroGZone.minZ && z <= this.zeroGZone.maxZ;
+    }
+
+    // Chantier 31 : Mise à jour de la zone inondée Sub-Level 3 (Aliens 1986 / Resurrection)
+    updateFloodedZone(safeDelta) {
+      if (!this.floodedZone) return;
+      const entities = [playerCreature, ...(window.gameInstance?.humans || [])];
+      entities.forEach((ent) => {
+        if (!ent || ent.isIncapacitated || ent.isCocooned) return;
+        if (this.isInFloodedZone(ent.x, ent.z)) {
+          ent.isInWater = true;
+          ent.waterSplashTimer = (ent.waterSplashTimer || 0) - safeDelta;
+          if (ent.waterSplashTimer <= 0) {
+            ent.waterSplashTimer = 0.55;
+            audioManager.playWaterSplashHeavy?.(ent.x, ent.z);
+            window.HiveSystems?.vfx?.burst?.(ent.x, ent.z, 0x0284c7, 10, 0.08, 0.8);
+          }
+        } else {
+          ent.isInWater = false;
+        }
+      });
+    }
+
+    // Chantier 32 : Mise à jour de la gravité zéro & orbes d'acide flottantes (Alien: Romulus)
+    spawnFloatingAcidOrb(x, y, z) {
+      if (!this.zeroGZone || !this.zeroGZone.active) return;
+      const orbMat = new THREE.MeshStandardMaterial({
+        color: 0x39ff14,
+        emissive: 0x22c55e,
+        emissiveIntensity: 1.8,
+        roughness: 0.1,
+        transparent: true,
+        opacity: 0.85
+      });
+      const orbMesh = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), orbMat);
+      orbMesh.position.set(x, y || 1.8, z);
+      rendererEngine.propsGroup.add(orbMesh);
+      this.floatingAcidOrbs.push({
+        mesh: orbMesh,
+        x, y: y || 1.8, z,
+        vx: (Math.random() - 0.5) * 1.2,
+        vy: (Math.random() - 0.5) * 0.6,
+        vz: (Math.random() - 0.5) * 1.2,
+        lifetime: 14.0
+      });
+    }
+
+    updateZeroGZone(safeDelta) {
+      if (!this.zeroGZone || !this.zeroGZone.active) return;
+      this.zeroGZone.humTimer -= safeDelta;
+      if (this.zeroGZone.humTimer <= 0) {
+        this.zeroGZone.humTimer = 5.0;
+        if (this.isInZeroGZone(playerCreature.x, playerCreature.z)) {
+          audioManager.playZeroGHum?.(playerCreature.x, playerCreature.z);
+        }
+      }
+
+      // Dérive inertielle des orbes d'acide en lévitation (Alien: Romulus)
+      for (let i = this.floatingAcidOrbs.length - 1; i >= 0; i--) {
+        const orb = this.floatingAcidOrbs[i];
+        orb.lifetime -= safeDelta;
+        orb.x += orb.vx * safeDelta;
+        orb.y += orb.vy * safeDelta;
+        orb.z += orb.vz * safeDelta;
+        if (orb.y < 0.6) { orb.y = 0.6; orb.vy = -orb.vy * 0.8; }
+        if (orb.y > 4.5) { orb.y = 4.5; orb.vy = -orb.vy * 0.8; }
+        orb.mesh.position.set(orb.x, orb.y, orb.z);
+
+        // Collision orbe d'acide avec entités
+        const testEntities = [playerCreature, ...(window.gameInstance?.humans || [])];
+        testEntities.forEach((ent) => {
+          if (!ent || ent.isIncapacitated || ent.isCocooned) return;
+          const d = Math.hypot(ent.x - orb.x, ent.z - orb.z);
+          const dy = Math.abs((ent.y || 1.0) - orb.y);
+          if (d <= 0.8 && dy <= 1.2) {
+            ent.takeDamage?.(18);
+            audioManager.playAcidSizzle?.(orb.x, orb.z);
+            window.HiveSystems?.vfx?.burst?.(orb.x, orb.z, 0x39ff14, 18, 0.14, 1.4);
+            window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.5, ent.z, '-18 BRÛLURE ACIDE EN APESANTEUR', '#39ff14', true);
+            orb.lifetime = 0;
+          }
+        });
+
+        if (orb.lifetime <= 0) {
+          if (orb.mesh) rendererEngine.removeObject(orb.mesh);
+          this.floatingAcidOrbs.splice(i, 1);
+        }
+      }
+    }
+
+    // Chantier 33 : Caméras de Sécurité Motorisées CRT Seegson / Weyland-Yutani (Alien: Isolation)
+    updateSecurityCameras(safeDelta) {
+      if (!this.securityCameras) return;
+      this.securityCameras.forEach((cam) => {
+        if (cam.isDestroyed || !cam.mesh) return;
+        cam.sweep += safeDelta * 0.65;
+        const currentAngle = cam.baseAngle + Math.sin(cam.sweep) * 0.75;
+        cam.mesh.rotation.y = currentAngle;
+
+        // Cône de vision de 11 mètres, ouverture 45 degrés
+        const dx = playerCreature.x - cam.x;
+        const dz = playerCreature.z - cam.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist <= 11 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
+          const angleToPlayer = Math.atan2(dx, dz);
+          const angleDiff = Math.abs((((angleToPlayer - currentAngle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+          if (angleDiff <= 0.45) {
+            cam.alertTimer = (cam.alertTimer || 0) + safeDelta;
+            if (cam.alertTimer >= 0.8 && cam.state !== 'alert') {
+              cam.state = 'alert';
+              audioManager.playSecurityAlarmBeep?.(cam.x, cam.z);
+              window.HiveSystems?.vfx?.ring?.(cam.x, cam.z, 0xef4444, 9.0);
+              showToast(`ALERTE CAMÉRA : ${cam.name} a détecté l'organisme !`);
+              window.alarmSystem?.setLevel(Math.max((window.alarmSystem.level || 0), 3));
+
+              // Alerte les patrouilles les plus proches vers la caméra
+              (window.gameInstance?.humans || []).forEach((h) => {
+                if (['guard', 'marine', 'synthetic'].includes(h.type) && !h.isIncapacitated) {
+                  h.aiState = 'CHASE';
+                  h.targetPos = { x: cam.x, z: cam.z };
+                }
+              });
+            }
+          } else {
+            cam.alertTimer = Math.max(0, (cam.alertTimer || 0) - safeDelta * 0.5);
+            if (cam.alertTimer <= 0) cam.state = 'idle';
+          }
+        }
+      });
+    }
+
+    // Chantier 35 : Pièges au Sol à Harpons Pneumatiques & Filet Électrifié (Alien 3 / Isolation)
+    updateTripwireTraps(safeDelta) {
+      if (!this.tripwireTraps) return;
+      this.tripwireTraps.forEach((trap) => {
+        if (!trap.isArmed) return;
+        const dist = Math.hypot(playerCreature.x - trap.x, playerCreature.z - trap.z);
+        if (dist <= 1.4 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
+          trap.isArmed = false;
+          audioManager.playElectricArc?.(trap.x, trap.z);
+          rendererEngine.addScreenShake?.(0.4, 0.25);
+          window.HiveSystems?.vfx?.burst?.(trap.x, trap.z, 0x38bdf8, 30, 0.2, 1.8);
+          playerCreature.takeDamage?.(25);
+          playerCreature.staggerTimer = 2.5;
+          window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.5, playerCreature.z, 'PIÉGÉ ! HARPON ÉLECTRIQUE (-25)', '#38bdf8', true);
+          showToast('PIÈGE WEYLAND-YUTANI : Filet électrifié déployé ! Mobilité bloquée 2.5s !');
+          if (trap.mesh) {
+            trap.mesh.position.y = -0.5;
+          }
+        }
+      });
+    }
+
+    // Chantier 39 : Cocons Organiques Suspendus aux Poutrelles du Plafond (Aliens 1986)
+    hangCeilingCocoon(host) {
+      const mesh = window.HiveModelFactory?.createCeilingCocoon?.();
+      const cocoon = {
+        x: playerCreature.x,
+        y: 4.8,
+        z: playerCreature.z,
+        mesh,
+        hostName: host ? host.name : 'Sujet Inconnu',
+        incubationProgress: 0,
+        isHatches: false
+      };
+      if (mesh) {
+        mesh.position.set(cocoon.x, 2.0, cocoon.z);
+        rendererEngine.propsGroup.add(mesh);
+      }
+      this.ceilingCocoons.push(cocoon);
+      showToast(`COCON AÉRIEN CRÉÉ : ${cocoon.hostName} emmuré en hauteur dans la nurserie suspendue !`);
+      appendSensorLog(`[RÉSINE] Hôte fixé sous les arches du plafond. Sécurité absolue.`, 'bio');
+      return cocoon;
+    }
+
+    updateCeilingCocoons(safeDelta) {
+      if (!this.ceilingCocoons) return;
+      this.ceilingCocoons.forEach((cocoon) => {
+        if (cocoon.isHatches) return;
+        cocoon.incubationProgress += safeDelta * 2.5;
+        if (cocoon.incubationProgress >= 100 && !cocoon.isHatches) {
+          cocoon.isHatches = true;
+          audioManager.playWetImpact?.(cocoon.x, cocoon.z);
+          window.HiveSystems?.vfx?.burst?.(cocoon.x, cocoon.z, 0xef4444, 25, 0.2, 1.8);
+          window.HiveSystems?.vfx?.floatingText?.(cocoon.x, 3.5, cocoon.z, 'ÉMERGENCE CHESTBURSTER AÉRIEN !', '#ef4444', true);
+          if (window.gameInstance?.currentStage?.spawnChestburster) {
+            window.gameInstance.currentStage.spawnChestburster(cocoon.x, cocoon.z);
+          }
+        }
+      });
+    }
+
+    // Chantier 40 : Mini-Jeu Hack Décodeur Cybernétique Weyland-Yutani (Alien: Isolation)
+    hackSeegsonTerminal(term) {
+      if (!term || term.isHacked) return;
+      term.isHacked = true;
+      audioManager.playTunerHackBeep?.(term.x, term.z);
+      window.HiveSystems?.vfx?.burst?.(term.x, term.z, 0xf59e0b, 16, 0.1, 1.2);
+      window.HiveSystems?.vfx?.floatingText?.(term.x, 2.5, term.z, 'TERMINAL SEEGSON PIRATÉ !', '#f59e0b', true);
+
+      // Désactive toutes les caméras de sécurité pendant 45 secondes
+      this.securityCameras.forEach((c) => {
+        c.isDestroyed = true;
+        if (c.mesh) rendererEngine.removeObject(c.mesh);
+      });
+      showToast('HACK DECODEUR RÉUSSI : Réseau de caméras Seegson neutralisé sur tout le secteur !');
+      appendSensorLog(`[HACK] Protocoles de sécurité Seegson bypassés. Caméras hors service.`, 'alert');
     }
 
     updateSteamVents(deltaSeconds) {
@@ -3890,6 +4378,121 @@
       return true;
     }
 
+    // Chantier 31 : Immersion Aquatique Furtive & Nage Ondulatoire (Alien: Resurrection)
+    toggleAquaticImmersion() {
+      if (!stationMap.isInFloodedZone(this.x, this.z)) {
+        showToast("Immersion impossible : vous n'êtes pas dans le bassin inondé du Sous-Niveau 3.");
+        return false;
+      }
+      this.isSubmerged = !this.isSubmerged;
+      if (this.isSubmerged) {
+        audioManager.playUnderwaterWhoosh?.(this.x, this.z);
+        audioManager.playWaterSplashHeavy?.(this.x, this.z);
+        window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x0284c7, 18, 0.1, 1.2);
+        if (this.mesh) this.mesh.position.y = -0.3;
+        showToast("IMMERSION AQUATIQUE [U] ACTIVÉE : Vitesse +35%, furtivité absolue sous l'eau (Alien: Resurrection) !");
+        appendSensorLog(`[AQUATIQUE] Prédateur immergé dans le bassin de traitement. Profil hydrodynamique furtif.`, 'stealth');
+      } else {
+        audioManager.playWaterSplashHeavy?.(this.x, this.z);
+        if (this.mesh) this.mesh.position.y = 0;
+        showToast("Émergence hors de l'eau.");
+      }
+      return true;
+    }
+
+    executeAquaticAmbush(target = null) {
+      if (!stationMap.isInFloodedZone(this.x, this.z)) return false;
+      const humans = window.gameInstance?.humans || [];
+      const victim = target || humans.filter((h) => (
+        !h.isIncapacitated && !h.isCocooned &&
+        stationMap.isInFloodedZone(h.x, h.z) &&
+        Math.hypot(h.x - this.x, h.z - this.z) <= 6.5
+      )).sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z))[0];
+
+      if (!victim) return false;
+
+      audioManager.playWaterSplashHeavy?.(victim.x, victim.z);
+      audioManager.playInnerJawSnap?.(victim.x, victim.z);
+      audioManager.playUnderwaterWhoosh?.(victim.x, victim.z);
+      rendererEngine.addScreenShake?.(0.38, 0.22);
+      window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0x0284c7, 30, 0.2, 1.8);
+      window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0xef4444, 20, 0.15, 1.2);
+
+      victim.takeDamage?.(160, this);
+      victim.isIncapacitated = true;
+      if (victim.mesh) {
+        victim.mesh.position.y = 0.15;
+        victim.mesh.rotation.z = Math.PI / 2;
+      }
+      showToast(`EMBUSCADE AQUATIQUE FATALE ! ${victim.name} a été saisi par les jambes et entraîné sous la surface (Resurrection 1997) !`);
+      appendSensorLog(`[EMBUSCADE AQUATIQUE] ${victim.name} noyé silencieusement sous la surface. Zéro coup de feu tiré.`, 'stealth');
+      window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, 'NOYADE AQUATIQUE SILENCIEUSE (1:1)', '#38bdf8', true);
+      return true;
+    }
+
+    // Chantier 36 : Implantation Orale Directe par les Mandibules (Canon AvP Requiem)
+    executeOralImplantation(target = null) {
+      if (this.caste !== 'predalien') return false;
+      const humans = window.gameInstance?.humans || [];
+      const victim = target || humans.filter((h) => (
+        (h.isIncapacitated || h.hp <= 0) && !h.isCocooned && !h.isConsumedByCycle &&
+        Math.hypot(h.x - this.x, h.z - this.z) <= 3.8
+      )).sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z))[0];
+
+      if (!victim) {
+        showToast("Approchez-vous d'une proie neutralisée (3.8m) pour l'insémination orale directe [G].");
+        return false;
+      }
+
+      audioManager.playPredalienRoar?.(this.x, this.z);
+      audioManager.playWetImpact?.(victim.x, victim.z);
+      rendererEngine.addScreenShake?.(0.32, 0.2);
+      window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0xa89f88, 26, 0.18, 1.6);
+      window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0x22c55e, 16, 0.12, 1.2);
+
+      victim.isCocooned = true;
+      victim.isIncapacitated = true;
+      victim.oralImpregnated = true;
+      if (victim.mesh) {
+        victim.mesh.rotation.z = Math.PI / 2;
+        victim.mesh.position.y = 0.3;
+      }
+
+      const stage = window.gameInstance?.currentStage;
+      if (stage) {
+        stage.hiveBiomass = (stage.hiveBiomass || 0) + 35;
+      }
+      showToast(`IMPLANTATION ORALE DIRECTE (PREDALIEN 1:1) : Mandibules déployées, embryons multiples injectés (+35 Biomasse) !`);
+      appendSensorLog(`[PREDALIEN] Fécondation directe de ${victim.name}. Élimination du besoin d'Ovomorphe intermédiaire.`, 'bio');
+      window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.8, victim.z, 'IMPLANTATION ORALE MULTIPLE (+35 BIOMASSE)', '#f59e0b', true);
+      return true;
+    }
+
+    // Chantier 40 : Piratage Terminal Seegson / Mémoire Androïde (Alien: Isolation)
+    executeHackTerminal() {
+      const terminals = stationMap.seegsonTerminals || [];
+      const term = terminals.find((t) => !t.isHacked && Math.hypot(t.x - this.x, t.z - this.z) <= 3.8);
+      if (term) {
+        stationMap.hackSeegsonTerminal(term);
+        return true;
+      }
+      const synths = (window.gameInstance?.humans || []).filter((h) => (
+        (h.type === 'synthetic' || h.type === 'android') && h.isIncapacitated &&
+        Math.hypot(h.x - this.x, h.z - this.z) <= 3.8
+      ));
+      if (synths.length > 0) {
+        const s = synths[0];
+        audioManager.playTunerHackBeep?.(s.x, s.z);
+        audioManager.playSyntheticGlitchedVoice?.(s.x, s.z);
+        window.HiveSystems?.vfx?.burst?.(s.x, s.z, 0x38bdf8, 20, 0.15, 1.4);
+        showToast(`MÉMOIRE SYNTHÉTIQUE EXTRAITE : Codes d'accès Weyland-Yutani de ${s.name} décryptés ! Caméras désactivées !`);
+        stationMap.securityCameras?.forEach((c) => { c.isDestroyed = true; if (c.mesh) rendererEngine.removeObject(c.mesh); });
+        return true;
+      }
+      showToast("Aucun terminal Seegson ou synthétique neutralisé à portée (3.8m) pour le piratage [K].");
+      return false;
+    }
+
     toggleDragHost() {
       if (this.draggedHost) {
         showToast(`Hôte ${this.draggedHost.name} relâché au sol.`);
@@ -3914,6 +4517,15 @@
     wallCocoonDraggedHost() {
       if (!this.draggedHost) return false;
       const host = this.draggedHost;
+      if (this.isCeilingProwling) {
+        // Chantier 39 : Cocon suspendu aux poutrelles du plafond (Aliens 1986)
+        stationMap.hangCeilingCocoon?.(host);
+        host.isCocooned = true;
+        host.isIncapacitated = true;
+        if (host.mesh) host.mesh.position.y = 4.8;
+        this.draggedHost = null;
+        return true;
+      }
       host.cocoonInResin();
       host.isCocooned = true;
       host.isIncapacitated = true;
@@ -3960,6 +4572,35 @@
             stationMap.meltDoorWeld?.(door);
           }
         });
+
+        // Chantier 35 : Neutralisation des pièges tripwire par le jet d'acide
+        stationMap.tripwireTraps?.forEach((trap) => {
+          if (trap.isArmed && Math.hypot(trap.x - targetPos.x, trap.z - targetPos.z) <= 3.8) {
+            trap.isArmed = false;
+            audioManager.playAcidSizzle?.(trap.x, trap.z);
+            window.HiveSystems?.vfx?.burst?.(trap.x, trap.z, 0x39ff14, 16, 0.1, 1.2);
+            window.HiveSystems?.vfx?.floatingText?.(trap.x, 2.0, trap.z, 'PIÈGE DISSOUT PAR L’ACIDE', '#39ff14', false);
+            if (trap.mesh) trap.mesh.position.y = -0.5;
+          }
+        });
+
+        // Chantier 33 : Destruction des caméras par le jet d'acide
+        stationMap.securityCameras?.forEach((cam) => {
+          if (!cam.isDestroyed && Math.hypot(cam.x - targetPos.x, cam.z - targetPos.z) <= 4.2) {
+            cam.isDestroyed = true;
+            audioManager.playGlassShatter?.(cam.x, cam.z);
+            window.HiveSystems?.vfx?.burst?.(cam.x, cam.z, 0xef4444, 20, 0.15, 1.4);
+            window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'CAMÉRA DISSOUTE', '#ef4444', true);
+            if (cam.mesh) rendererEngine.removeObject(cam.mesh);
+          }
+        });
+
+        // Chantier 32 : Si dans la zone Zéro-G, fait jaillir des orbes d'acide flottantes en suspension 3D (Alien: Romulus)
+        if (stationMap.isInZeroGZone(targetPos.x, targetPos.z)) {
+          for (let o = 0; o < 4; o++) {
+            stationMap.spawnFloatingAcidOrb?.(targetPos.x + (Math.random() - 0.5) * 1.5, 1.5 + Math.random() * 1.5, targetPos.z + (Math.random() - 0.5) * 1.5);
+          }
+        }
 
         // Chantier 30 : Détonation en chaîne sur cuves cryogéniques
         stationMap.fuelTanks?.forEach((tank) => {
@@ -4899,6 +5540,35 @@
         appliedDamage *= 0.55;
       }
 
+      // Chantier 34 : Vulnérabilité 1:1 canon — Déflagration thermobarique du réservoir dorsal M240
+      if (['cleaner', 'incinerator'].includes(this.type) && attacker && !this.tankExploded) {
+        const humanFacing = this.mesh ? this.mesh.rotation.y : 0;
+        const angleToAttacker = Math.atan2(attacker.x - this.x, attacker.z - this.z);
+        const angleDiff = Math.abs((((angleToAttacker - humanFacing) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+        if (angleDiff > 1.75 && appliedDamage >= 16) {
+          this.tankExploded = true;
+          this.hp = 0;
+          appliedDamage = 999;
+          audioManager.playGrenadeExplode?.(this.x, this.z);
+          rendererEngine.addScreenShake?.(0.5, 0.3);
+          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf97316, 45, 0.3, 2.8);
+          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xff8a16, 35, 0.25, 2.2);
+          window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0xf97316, 8.5);
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 3.4, this.z, 'DÉFLAGRATION DU RÉSERVOIR DORSAL M240 !', '#f97316', true);
+          showToast(`POINT FAIBLE EXPLOITÉ (1:1 LORE) : Le réservoir de napalm de ${this.name} a explosé dans son dos !`);
+          appendSensorLog(`[EXPLOSION] Réservoir de napalm dorsal M240 éventré par frappe arrière. Déflagration thermobarique.`, 'alert');
+
+          const nearby = (window.gameInstance?.humans || []).filter((h) => h !== this && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 7.5);
+          nearby.forEach((victim) => {
+            victim.takeDamage(65, this);
+            victim.staggerTimer = 1.2;
+            window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, '-65 SOUFFLE NAPALM', '#f97316', true);
+          });
+          this.incapacitate();
+          return true;
+        }
+      }
+
       this.hp = Math.max(0, this.hp - appliedDamage);
       if (this.bossId === 'MANTIS_4' && this.bossPhase === 2 && this.hp <= this.maxHp * 0.5) {
         this.bossPhase = 3;
@@ -5259,6 +5929,18 @@
             window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, quote, '#ef4444', true);
             appendSensorLog(`[TERREUR] ${this.name} : « ${quote} »`, 'alert');
           }
+
+          // Chantier 38 : Grenade fumigène CS anti-émeute lancée par les humains apeurés (Alien: Romulus)
+          this.csGrenadeCooldown = (this.csGrenadeCooldown || 0) - safeDelta;
+          if (this.csGrenadeCooldown <= 0 && distToPlayer <= 10) {
+            this.csGrenadeCooldown = 22.0;
+            audioManager.playSteamVentHiss?.(this.x, this.z);
+            window.HiveSystems?.vfx?.spawnSteamCloud?.(this.x, 2.0, this.z, 5.0);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'FUMIGÈNE CS ANTI-ÉMEUTE !', '#cbd5e1', true);
+            showToast(`FUMIGÈNE CS DÉPLOYÉ : Visibilité humaine réduite. L'organe de Jacobson du Xénomorphe surligne les battements cardiaques !`);
+            appendSensorLog(`[FUMIGÈNE] Écran de fumée CS déclenché par ${this.name}. Capteurs optiques aveuglés, sens Jacobson actif.`, 'alert');
+          }
+
           if (this.stress >= 85 && distToPlayer < 10) {
             const panicAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
             const fleeX = this.x + Math.cos(panicAngle) * 4;
@@ -5370,9 +6052,10 @@
             window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 2.8, combatTarget.z, 'BROYAGE HYDRAULIQUE P-5000', '#f59e0b', true);
             applyWeaponDamage(1.8);
           } else if (['cleaner', 'incinerator'].includes(this.type)) {
+            // Chantier 34 : Lance-flammes lourd M240 Incinerator & jet de napalm continu (Aliens 1986 / Isolation)
             this.shootCooldown = 2.4;
-            audioManager.playFlamethrowerWhoosh(this.x, this.z);
-            window.HiveSystems?.vfx?.muzzleFlash(this.x, 2.7, this.z, 0xff8a16, 0.25);
+            audioManager.playNapalmFlameStream?.(this.x, this.z);
+            window.HiveSystems?.vfx?.muzzleFlash(this.x, 2.7, this.z, 0xff8a16, 0.35);
             window.HiveSystems?.vfx?.flameJet(
               this.x,
               2.65,
@@ -5381,7 +6064,8 @@
               combatTarget.caste === 'queen' ? 3.5 : 1.5,
               combatTarget.z
             );
-            applyWeaponDamage();
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 20, 0.16, 1.8);
+            applyWeaponDamage(1.15);
           } else if (['marine', 'guard', 'commando'].includes(this.type) && distToPlayer <= 3.2) {
             // Chantier 14 : Fusil à pompe Ithaca 37 "Shorty" calibre 12 bout portant (Caporal Hicks, Aliens 1986)
             this.shootCooldown = 2.1;
@@ -5420,29 +6104,54 @@
               applyWeaponDamage(0.9);
             }
           } else {
-            // Fusil à impulsion M41A Marine standard
-            this.shootCooldown = ['powerloader', 'exosuit'].includes(this.type) ? 1.9 : 1.6;
-            audioManager.playPulseRifleFire(this.x, this.z);
-            const projectileColor = this.bossId === 'MANTIS_4'
-              ? (this.bossPhase >= 3 ? 0xef4444 : 0x38bdf8)
-              : 0xfbbf24;
-            window.HiveSystems?.vfx?.muzzleFlash(this.x, 2.75, this.z, projectileColor, 0.18);
-            const projectileVfx = window.HiveSystems?.vfx;
-            if (projectileVfx?.projectile) {
-              projectileVfx.projectile({
-                startX: this.x,
-                startY: 2.72,
-                startZ: this.z,
-                endX: combatTarget.x,
-                endY: combatTarget.caste === 'queen' ? 3.6 : 1.3,
-                endZ: combatTarget.z,
-                color: projectileColor,
-                scale: this.bossId === 'MANTIS_4' ? 0.2 : 0.14,
-                speed: this.bossId === 'MANTIS_4' ? 28 : 34,
-                onImpact: applyWeaponDamage
-              });
+            // Chantier 37 : Fusil à impulsion M41A avec Lance-grenades U1 40mm sous le canon (Aliens 1986)
+            this.u1GrenadeCooldown = (this.u1GrenadeCooldown || 0) - safeDelta;
+            if (['marine', 'guard'].includes(this.type) && distToPlayer >= 7.0 && distToPlayer <= 20 && this.u1GrenadeCooldown <= 0) {
+              this.u1GrenadeCooldown = 11.0;
+              this.shootCooldown = 2.2;
+              audioManager.playM40GrenadePumpLaunch?.(this.x, this.z);
+              window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf97316, 0.3);
+              const onU1Impact = () => {
+                audioManager.playGrenadeExplode?.(combatTarget.x, combatTarget.z);
+                rendererEngine.addScreenShake?.(0.36, 0.22);
+                window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 28, 0.18, 2.2);
+                window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.0, combatTarget.z, 'GRENADE U1 40MM EXPLOSIVE !', '#f97316', true);
+                applyWeaponDamage(1.75);
+              };
+              if (window.HiveSystems?.vfx?.projectile) {
+                window.HiveSystems.vfx.projectile({
+                  startX: this.x, startY: 2.7, startZ: this.z,
+                  endX: combatTarget.x, endY: 1.0, endZ: combatTarget.z,
+                  color: 0xf97316, scale: 0.24, speed: 22,
+                  onImpact: onU1Impact
+                });
+              } else {
+                onU1Impact();
+              }
             } else {
-              applyWeaponDamage();
+              this.shootCooldown = ['powerloader', 'exosuit'].includes(this.type) ? 1.9 : 1.35;
+              audioManager.playM41APulseBurst?.(this.x, this.z);
+              const projectileColor = this.bossId === 'MANTIS_4'
+                ? (this.bossPhase >= 3 ? 0xef4444 : 0x38bdf8)
+                : 0xfbbf24;
+              window.HiveSystems?.vfx?.muzzleFlash(this.x, 2.75, this.z, projectileColor, 0.22);
+              const projectileVfx = window.HiveSystems?.vfx;
+              if (projectileVfx?.projectile) {
+                projectileVfx.projectile({
+                  startX: this.x,
+                  startY: 2.72,
+                  startZ: this.z,
+                  endX: combatTarget.x,
+                  endY: combatTarget.caste === 'queen' ? 3.6 : 1.3,
+                  endZ: combatTarget.z,
+                  color: projectileColor,
+                  scale: this.bossId === 'MANTIS_4' ? 0.2 : 0.14,
+                  speed: this.bossId === 'MANTIS_4' ? 28 : 34,
+                  onImpact: applyWeaponDamage
+                });
+              } else {
+                applyWeaponDamage();
+              }
             }
           }
       }
@@ -7311,7 +8020,9 @@
         <button type="button" id="btn-airlock-purge" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);">★ PURGE SAS [Y]</button>
         <button type="button" id="btn-drag-host" class="act-btn" style="border-color: #f59e0b;">★ TRAÎNER / COCON MURAL [V]</button>
         <button type="button" id="btn-cocoon-host" class="act-btn">4. COCOONISER UN HÔTE [4 / F]</button>
-        <button type="button" id="btn-eggmorph" class="act-btn">6. OVOMORPHE [G]</button>
+        <button type="button" id="btn-eggmorph" class="act-btn">6. OVOMORPHE / ORAL [G]</button>
+        <button type="button" id="btn-aquatic-dive" class="act-btn" style="border-color: #0284c7; background: rgba(2,132,199,0.18);">★ IMMERSION AQUATIQUE [U]</button>
+        <button type="button" id="btn-hack-terminal" class="act-btn" style="border-color: #f59e0b; background: rgba(245,158,11,0.18);">★ PIRATAGE TERMINAL / SYNTH [K]</button>
         <button type="button" id="btn-found-queen-hive" class="act-btn" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
       `;
 
@@ -7330,6 +8041,8 @@
       document.getElementById('btn-drag-host').onclick = () => this.executeDragOrWallCocoon();
       document.getElementById('btn-cocoon-host').onclick = () => this.executeCocoonHost();
       document.getElementById('btn-eggmorph').onclick = () => this.executeEggmorph();
+      document.getElementById('btn-aquatic-dive').onclick = () => playerCreature.toggleAquaticImmersion();
+      document.getElementById('btn-hack-terminal').onclick = () => playerCreature.executeHackTerminal();
       document.getElementById('btn-found-queen-hive').onclick = () => this.foundRoyalNursery();
       this.updateRoyalButton();
     }
@@ -7445,15 +8158,31 @@
       }
       if (key === 'c') this.toggleVentInfiltration();
       if (key === 'z') playerCreature.toggleProwlStance();
-      if (key === 'k') this.executeProwlLeap();
+      if (key === 'u') playerCreature.toggleAquaticImmersion();
+      if (key === 'k') {
+        const hacked = playerCreature.executeHackTerminal();
+        if (!hacked) this.executeProwlLeap();
+      }
       if (key === 'q') this.toggleCeilingProwl();
       if (key === 'x') this.executeAcidSpit();
       if (key === 'b') this.executeSabotagePower();
       if (key === 'y') this.executeAirlockPurge();
       if (key === 'h' || key === '5') this.executeTerrifyingHiss();
       if (key === 'v') this.executeDragOrWallCocoon();
-      if (key === 'g') this.executeEggmorph();
-      if (key === '1' || key === 'e') this.executeAmbush();
+      if (key === 'g') {
+        if (playerCreature.caste === 'predalien') {
+          playerCreature.executeOralImplantation();
+        } else {
+          this.executeEggmorph();
+        }
+      }
+      if (key === '1' || key === 'e') {
+        if (playerCreature.isInWater && playerCreature.isSubmerged) {
+          playerCreature.executeAquaticAmbush();
+        } else {
+          this.executeAmbush();
+        }
+      }
       if (key === '2' || key === 'r') this.executeInnerJaw();
       if (key === '3' || key === 't') this.executeTailImpale();
       if (key === '4' || key === 'f') this.executeCocoonHost();
@@ -9048,6 +9777,10 @@
       const visionByKey = { f1: 'normal', f2: 'thermal', f3: 'acoustic' };
       if (visionByKey[key]) {
         visionSystem.setMode(visionByKey[key]);
+        return;
+      }
+      if (key === 'u' && (!this.currentStage || !this.currentStage.handleKeyDown)) {
+        playerCreature.toggleAquaticImmersion?.();
         return;
       }
       if (this.currentStage && this.currentStage.handleKeyDown) this.currentStage.handleKeyDown(key);

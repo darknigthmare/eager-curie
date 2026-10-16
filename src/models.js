@@ -155,21 +155,21 @@
       const T = this._three();
       const defaults = {
         chitin: {
-          color: 0x111827,
-          roughness: 0.28,
-          metalness: 0.48
+          color: 0x0c121e,
+          roughness: 0.16,
+          metalness: 0.58
         },
         chitinWarm: {
-          color: 0x3f2a23,
-          roughness: 0.42,
-          metalness: 0.18
+          color: 0x2e1c14,
+          roughness: 0.22,
+          metalness: 0.42
         },
         resin: {
-          color: 0x301934,
-          roughness: 0.24,
-          metalness: 0.16,
+          color: 0x281230,
+          roughness: 0.14,
+          metalness: 0.32,
           transparent: true,
-          opacity: 0.92
+          opacity: 0.88
         },
         industrial: {
           color: 0x4b5563,
@@ -423,9 +423,10 @@
 
     _ellipsoid(material, scale, position, name, segments) {
       const T = this._three();
-      const resolution = segments || 16;
+      const resolution = Math.max(32, Math.round((segments || 16) * 2.5));
+      const heightSegments = Math.max(24, Math.round(resolution * 0.75));
       const mesh = this._mesh(
-        new T.SphereGeometry(1, resolution, Math.max(8, Math.floor(resolution * 0.75))),
+        new T.SphereGeometry(1, resolution, heightSegments),
         material,
         name
       );
@@ -436,8 +437,9 @@
 
     _box(material, size, position, name, bevelHint) {
       const T = this._three();
+      const subdivisions = bevelHint ? 4 : 2;
       const mesh = this._mesh(
-        new T.BoxGeometry(size.x, size.y, size.z, bevelHint ? 2 : 1, bevelHint ? 2 : 1, bevelHint ? 2 : 1),
+        new T.BoxGeometry(size.x, size.y, size.z, subdivisions, subdivisions, subdivisions),
         material,
         name
       );
@@ -449,13 +451,14 @@
       const T = this._three();
       const direction = new T.Vector3().subVectors(end, start);
       const length = Math.max(0.001, direction.length());
+      const radSeg = Math.max(20, Math.round((radialSegments || 8) * 2.5));
       const mesh = this._mesh(
         new T.CylinderGeometry(
           radiusEnd === undefined ? radiusStart : radiusEnd,
           radiusStart,
           length,
-          radialSegments || 8,
-          1,
+          radSeg,
+          2,
           false
         ),
         material,
@@ -475,7 +478,7 @@
         { x: radius, y: radius, z: radius },
         position,
         name,
-        12
+        24
       );
     }
 
@@ -484,8 +487,10 @@
       const curve = new T.CatmullRomCurve3(points.map((point) => (
         new T.Vector3(point.x, point.y, point.z)
       )));
+      const tubSeg = Math.max(48, Math.round((tubularSegments || 24) * 2));
+      const radSeg = Math.max(16, Math.round((radialSegments || 7) * 2.5));
       return this._mesh(
-        new T.TubeGeometry(curve, tubularSegments || 24, radius, radialSegments || 7, false),
+        new T.TubeGeometry(curve, tubSeg, radius, radSeg, false),
         material,
         name
       );
@@ -494,8 +499,9 @@
     _coneAlong(material, base, direction, radius, length, name, radialSegments) {
       const T = this._three();
       const normalized = new T.Vector3(direction.x, direction.y, direction.z).normalize();
+      const radSeg = Math.max(20, Math.round((radialSegments || 7) * 2.5));
       const mesh = this._mesh(
-        new T.ConeGeometry(radius, length, radialSegments || 7),
+        new T.ConeGeometry(radius, length, radSeg),
         material,
         name
       );
@@ -511,7 +517,7 @@
     _ring(material, majorRadius, tubeRadius, position, rotation, name, arc) {
       const T = this._three();
       const mesh = this._mesh(
-        new T.TorusGeometry(majorRadius, tubeRadius, 7, 22, arc === undefined ? Math.PI * 2 : arc),
+        new T.TorusGeometry(majorRadius, tubeRadius, 16, 48, arc === undefined ? Math.PI * 2 : arc),
         material,
         name
       );
@@ -2609,8 +2615,17 @@
         'pelvic_carapace',
         18
       ));
+      const isDrone = caste === 'drone';
+      const domeMat = isDrone ? this._material('resin', {
+        color: 0x151c28,
+        opacity: 0.62,
+        roughness: 0.12,
+        metalness: 0.35,
+        transparent: true
+      }) : primary;
+
       root.add(this._ellipsoid(
-        primary,
+        domeMat,
         {
           x: (royal ? 0.92 : 0.7) * scale,
           y: (royal ? 0.54 : 0.46) * scale,
@@ -2620,6 +2635,41 @@
         'cranial_dome',
         royal ? 28 : 22
       ));
+
+      if (isDrone) {
+        // Canon Alien 1979 (H.R. Giger Big Chap) : Crâne humain sculpté sous la carapace translucide
+        const innerSkullMat = this._material('bone', { color: 0xd6d3cb, roughness: 0.48 });
+        const darkSocketMat = this._material('darkMetal', { color: 0x020617, roughness: 0.8 });
+        root.add(this._ellipsoid(
+          innerSkullMat,
+          { x: 0.52 * scale, y: 0.38 * scale, z: 0.92 * scale },
+          { x: 0, y: 4.54 * scale, z: 0.34 * scale },
+          'drone_internal_skull',
+          22
+        ));
+        for (let eyeSide = -1; eyeSide <= 1; eyeSide += 2) {
+          root.add(this._ellipsoid(
+            darkSocketMat,
+            { x: 0.11 * scale, y: 0.12 * scale, z: 0.08 * scale },
+            { x: eyeSide * 0.21 * scale, y: 4.46 * scale, z: 0.86 * scale },
+            `skull_orbit_${eyeSide}`,
+            14
+          ));
+        }
+        root.add(this._box(
+          darkSocketMat,
+          { x: 0.07 * scale, y: 0.12 * scale, z: 0.06 * scale },
+          { x: 0, y: 4.34 * scale, z: 0.94 * scale },
+          'skull_nasal_cavity'
+        ));
+        root.add(this._box(
+          innerSkullMat,
+          { x: 0.26 * scale, y: 0.07 * scale, z: 0.16 * scale },
+          { x: 0, y: 4.22 * scale, z: 1.04 * scale },
+          'skull_maxilla_teeth'
+        ));
+      }
+
       root.add(this._ellipsoid(
         secondary,
         { x: 0.58 * scale, y: 0.23 * scale, z: 0.62 * scale },
@@ -3458,6 +3508,56 @@
         root.add(this._segment(blackLiquid, new T.Vector3(0, 0.22, 0), new T.Vector3(0, 1.1, 0), 0.22, 0.22, 'canister_fluid'));
         root.add(this._segment(metal, new T.Vector3(0, 1.2, 0), new T.Vector3(0, 1.4, 0), 0.3, 0.3, 'canister_cap'));
         root.add(this._box(hazard, { x: 0.12, y: 0.18, z: 0.04 }, { x: 0, y: 0.7, z: 0.28 }, 'weyland_biohazard_label'));
+      } else if (normalizedType === 'narcissus' || normalizedType === 'narcissus_dock') {
+        // Chantier 25 : Quai d'amarrage de la navette Narcissus (Alien 1979)
+        const frameMat = this._material('darkMetal', { color: 0x1e293b, roughness: 0.35 });
+        const hatchMat = this._material('industrial', { color: 0x64748b, roughness: 0.28 });
+        const thrusterMat = this._material('emissiveBlue', { emissiveIntensity: 0.95 });
+        root.add(this._box(frameMat, { x: 4.2, y: 4.8, z: 1.2 }, { x: 0, y: 2.4, z: 0 }, 'narcissus_dock_frame', true));
+        root.add(this._box(hatchMat, { x: 3.2, y: 3.8, z: 0.4 }, { x: 0, y: 2.2, z: 0.4 }, 'narcissus_hatch_door', true));
+        root.add(this._box(hazard, { x: 3.0, y: 0.22, z: 0.08 }, { x: 0, y: 4.0, z: 0.65 }, 'narcissus_hazard_stripe'));
+        root.add(this._box(screen, { x: 0.8, y: 0.5, z: 0.1 }, { x: 1.2, y: 2.2, z: 0.68 }, 'narcissus_launch_screen'));
+        root.add(this._box(warning, { x: 0.2, y: 0.2, z: 0.12 }, { x: -1.1, y: 2.2, z: 0.68 }, 'narcissus_abort_lever'));
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._ring(thrusterMat, 0.4, 0.08, { x: side * 1.6, y: 4.5, z: 0.2 }, { x: 0, y: 0, z: 0 }, `narcissus_thruster_${side}`));
+        }
+      } else if (normalizedType === 'ultrasonic') {
+        // Chantier 26 : Émetteur de sonde ultrasonique anti-xénomorphe Weyland-Yutani
+        const pylonMat = this._material('darkMetal', { color: 0x0f172a, roughness: 0.3 });
+        const strobeBlue = this._material('emissiveBlue', { color: 0x38bdf8, emissiveIntensity: 2.2 });
+        root.add(this._box(metal, { x: 1.2, y: 0.28, z: 1.2 }, { x: 0, y: 0.14, z: 0 }, 'pylon_base', true));
+        root.add(this._segment(pylonMat, new T.Vector3(0, 0.2, 0), new T.Vector3(0, 1.6, 0), 0.18, 0.14, 'pylon_mast', 18));
+        root.add(this._ellipsoid(strobeBlue, { x: 0.26, y: 0.26, z: 0.26 }, { x: 0, y: 1.75, z: 0 }, 'ultrasonic_strobe', 20));
+        root.add(this._ring(hazard, 0.35, 0.04, { x: 0, y: 1.4, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'waveguide_collar'));
+        for (let leg = 0; leg < 3; leg++) {
+          const legAngle = (leg / 3) * Math.PI * 2;
+          const legMesh = this._segment(pylonMat, new T.Vector3(0, 0.4, 0), new T.Vector3(Math.cos(legAngle) * 0.75, 0, Math.sin(legAngle) * 0.75), 0.05, 0.05, `pylon_strut_${leg}`, 12);
+          root.add(legMesh);
+        }
+      } else if (normalizedType === 'medikit') {
+        // Chantier 28 : Station médicale murale Medikit & seringues de stimulants Weyland-Yutani
+        const cabinetMat = this._material('synthetic', { color: 0xf1f5f9, roughness: 0.24, metalness: 0.3 });
+        const medCrossMat = this._material('emissiveGreen', { color: 0x22c55e, emissiveIntensity: 1.4 });
+        root.add(this._box(cabinetMat, { x: 1.2, y: 1.5, z: 0.4 }, { x: 0, y: 0.75, z: 0 }, 'medikit_cabinet', true));
+        root.add(this._box(medCrossMat, { x: 0.5, y: 0.14, z: 0.05 }, { x: 0, y: 0.9, z: 0.22 }, 'medikit_cross_h'));
+        root.add(this._box(medCrossMat, { x: 0.14, y: 0.5, z: 0.05 }, { x: 0, y: 0.9, z: 0.22 }, 'medikit_cross_v'));
+        const hypoMat = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 0.9 });
+        for (let i = -1; i <= 1; i++) {
+          root.add(this._segment(hypoMat, new T.Vector3(i * 0.24, 0.3, 0.12), new T.Vector3(i * 0.24, 0.58, 0.12), 0.04, 0.04, `hypospray_${i}`, 10));
+        }
+        root.add(this._box(screen, { x: 0.6, y: 0.2, z: 0.04 }, { x: 0, y: 0.35, z: 0.21 }, 'medikit_vitals_screen'));
+      } else if (normalizedType === 'fuel_tank' || normalizedType === 'fueltank') {
+        // Chantier 30 : Réservoir de carburant cryogénique de raffinerie (détonation en chaîne)
+        const tankMat = this._material('industrial', { color: 0x475569, roughness: 0.32, metalness: 0.85 });
+        const frostMat = this._material('visorGlass', { color: 0x38bdf8, opacity: 0.75 });
+        root.add(this._segment(tankMat, new T.Vector3(0, 0, 0), new T.Vector3(0, 3.4, 0), 1.15, 1.15, 'fuel_tank_body', 28));
+        root.add(this._ellipsoid(tankMat, { x: 1.15, y: 0.45, z: 1.15 }, { x: 0, y: 3.4, z: 0 }, 'fuel_tank_cap_top', 24));
+        root.add(this._ellipsoid(tankMat, { x: 1.15, y: 0.45, z: 1.15 }, { x: 0, y: 0, z: 0 }, 'fuel_tank_cap_bottom', 24));
+        for (let band = 0; band < 4; band++) {
+          root.add(this._ring(dark, 1.22, 0.065, { x: 0, y: 0.65 + band * 0.72, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `tank_reinforce_${band}`));
+        }
+        root.add(this._box(frostMat, { x: 0.3, y: 0.45, z: 0.3 }, { x: 0, y: 3.75, z: 0 }, 'cryo_vent_valve'));
+        root.add(this._box(warning, { x: 0.6, y: 0.6, z: 0.06 }, { x: 0, y: 1.8, z: 1.18 }, 'flammable_hazard_plaque'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -3523,6 +3623,179 @@
       root.add(tail);
 
       const finalized = this._finalize(root, { modelType: 'cat', height: 0.5 });
+      this.placeOnGround(finalized, 0);
+      return finalized;
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 22 : Le Casque d'Ingénieur / Space Jockey & Relique Fossilisée (Alien 1979)
+    // -------------------------------------------------------------------------
+    createSpaceJockeyRelic() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'space_jockey_derelict_relic';
+      root.userData.modelType = 'spaceJockey';
+
+      const petrifiedBone = this._material('bone', { color: 0x948e85, roughness: 0.72, metalness: 0.12 });
+      const darkBiomech = this._material('darkMetal', { color: 0x1e1c24, roughness: 0.45, metalness: 0.7 });
+      const petrifiedChitin = this._material('chitin', { color: 0x27242d, roughness: 0.38, metalness: 0.42 });
+      const bioAmber = this._material('emissiveAmber', { color: 0xd97706, emissiveIntensity: 0.6 });
+
+      // Plateforme circulaire biradiale fossilisée
+      root.add(this._segment(darkBiomech, new T.Vector3(0, 0, 0), new T.Vector3(0, 0.6, 0), 3.2, 3.4, 'relic_dais', 32));
+      for (let r = 0; r < 8; r++) {
+        const radAngle = (r / 8) * Math.PI * 2;
+        root.add(this._box(petrifiedChitin, { x: 0.32, y: 0.45, z: 2.2 }, { x: Math.cos(radAngle) * 1.8, y: 0.5, z: Math.sin(radAngle) * 1.8 }, `radial_strut_${r}`));
+      }
+
+      // Siège de pilotage / Trône télescopique incliné à 35 degrés
+      const chairGroup = new T.Group();
+      chairGroup.name = 'pilot_chair_assembly';
+      chairGroup.rotation.x = -0.38;
+      chairGroup.position.set(0, 0.6, 0);
+
+      // Dossier biomécanique incurvé avec cannelures vertébrales
+      chairGroup.add(this._box(darkBiomech, { x: 2.2, y: 3.4, z: 0.8 }, { x: 0, y: 1.7, z: -0.4 }, 'chair_backrest', true));
+      for (let v = 0; v < 6; v++) {
+        chairGroup.add(this._ring(petrifiedChitin, 0.9, 0.08, { x: 0, y: 0.6 + v * 0.48, z: -0.25 }, { x: 0, y: 0, z: 0 }, `chair_vertebra_${v}`));
+      }
+
+      // Corps fossilisé de l'Ingénieur / Space Jockey géant
+      chairGroup.add(this._ellipsoid(petrifiedBone, { x: 0.95, y: 1.35, z: 0.75 }, { x: 0, y: 1.5, z: 0.1 }, 'engineer_torso', 24));
+
+      // Cage thoracique pétrifiée avec sternum éclaté vers l'extérieur (Chestburst 1:1 canon)
+      for (let rib = 0; rib < 5; rib++) {
+        for (let side = -1; side <= 1; side += 2) {
+          const ribMesh = this._coneAlong(
+            petrifiedBone,
+            { x: side * 0.45, y: 1.1 + rib * 0.28, z: 0.4 },
+            { x: side * 0.6, y: 0.15, z: 0.75 },
+            0.11,
+            0.65,
+            `shattered_rib_${side}_${rib}`,
+            14
+          );
+          chairGroup.add(ribMesh);
+        }
+      }
+      chairGroup.add(this._ellipsoid(darkBiomech, { x: 0.42, y: 0.65, z: 0.45 }, { x: 0, y: 1.55, z: 0.42 }, 'ruptured_chest_void', 16));
+
+      // Tête casquée d'Ingénieur / Space Jockey
+      chairGroup.add(this._ellipsoid(petrifiedBone, { x: 0.58, y: 0.72, z: 0.85 }, { x: 0, y: 2.85, z: 0.2 }, 'space_jockey_helmet', 24));
+      chairGroup.add(this._tube(
+        petrifiedBone,
+        [
+          { x: 0, y: 2.65, z: 0.75 },
+          { x: 0, y: 2.2, z: 1.05 },
+          { x: 0, y: 1.85, z: 0.85 },
+          { x: 0, y: 1.6, z: 0.5 }
+        ],
+        0.18,
+        'elephantine_breathing_trunk',
+        32,
+        14
+      ));
+
+      for (let armSide = -1; armSide <= 1; armSide += 2) {
+        chairGroup.add(this._segment(
+          petrifiedBone,
+          new T.Vector3(armSide * 0.85, 2.1, 0.1),
+          new T.Vector3(armSide * 0.95, 1.2, 0.7),
+          0.2,
+          0.16,
+          `engineer_arm_${armSide}`,
+          16
+        ));
+      }
+
+      chairGroup.add(this._segment(
+        darkBiomech,
+        new T.Vector3(0, 1.2, 0.6),
+        new T.Vector3(0, 3.8, 2.6),
+        0.35,
+        0.22,
+        'stellar_telescope_barrel',
+        24
+      ));
+      chairGroup.add(this._ring(bioAmber, 0.4, 0.06, { x: 0, y: 3.8, z: 2.6 }, { x: 0.5, y: 0, z: 0 }, 'telescope_lens_optic'));
+
+      root.add(chairGroup);
+
+      const finalized = this._finalize(root, { modelType: 'spaceJockey', height: 4.5 });
+      this.placeOnGround(finalized, 0);
+      return finalized;
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 23 : Tourelles Automatiques UA 571-C Sentry Guns (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createUA571CTurret() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'ua571c_sentry_turret';
+      root.userData.modelType = 'sentryTurret';
+
+      const gunMetal = this._material('darkMetal', { color: 0x1f2937, roughness: 0.32, metalness: 0.88 });
+      const oliveDrab = this._material('industrial', { color: 0x3f4a3c, roughness: 0.45, metalness: 0.65 });
+      const ammoDrumMat = this._material('industrial', { color: 0x27272a, roughness: 0.5, metalness: 0.75 });
+      const laserSensor = this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 2.4 });
+      const digitalCounter = this._material('emissiveGreen', { color: 0x22c55e, emissiveIntensity: 2.0 });
+
+      // Trépied pliant d'ancrage lourd au sol
+      root.add(this._ellipsoid(gunMetal, { x: 0.28, y: 0.15, z: 0.28 }, { x: 0, y: 0.42, z: 0 }, 'tripod_hub', 16));
+      for (let leg = 0; leg < 3; leg++) {
+        const legAngle = (leg / 3) * Math.PI * 2;
+        const groundX = Math.cos(legAngle) * 0.95;
+        const groundZ = Math.sin(legAngle) * 0.95;
+        root.add(this._segment(
+          gunMetal,
+          new T.Vector3(0, 0.42, 0),
+          new T.Vector3(groundX, 0.05, groundZ),
+          0.065,
+          0.05,
+          `tripod_leg_${leg}`,
+          14
+        ));
+        root.add(this._box(gunMetal, { x: 0.18, y: 0.08, z: 0.18 }, { x: groundX, y: 0.04, z: groundZ }, `tripod_foot_${leg}`));
+      }
+
+      root.add(this._segment(gunMetal, new T.Vector3(0, 0.42, 0), new T.Vector3(0, 0.95, 0), 0.11, 0.11, 'elevation_post', 18));
+
+      const swivelHead = new T.Group();
+      swivelHead.name = 'turret_swivel_head';
+      swivelHead.position.set(0, 0.95, 0);
+
+      swivelHead.add(this._box(oliveDrab, { x: 0.52, y: 0.38, z: 0.85 }, { x: 0, y: 0.16, z: -0.1 }, 'breech_housing', true));
+
+      for (let barrel = -1; barrel <= 1; barrel += 2) {
+        swivelHead.add(this._segment(
+          gunMetal,
+          new T.Vector3(barrel * 0.14, 0.16, 0.3),
+          new T.Vector3(barrel * 0.14, 0.16, 1.25),
+          0.045,
+          0.04,
+          `pulse_barrel_${barrel}`,
+          16
+        ));
+        swivelHead.add(this._ring(gunMetal, 0.06, 0.015, { x: barrel * 0.14, y: 0.16, z: 1.22 }, { x: 0, y: 0, z: 0 }, `muzzle_brake_${barrel}`));
+      }
+
+      swivelHead.add(this._ellipsoid(laserSensor, { x: 0.08, y: 0.08, z: 0.12 }, { x: 0, y: 0.34, z: 0.28 }, 'thermal_sensor_lens', 16));
+      swivelHead.add(this._box(digitalCounter, { x: 0.18, y: 0.09, z: 0.03 }, { x: 0.25, y: 0.28, z: -0.2 }, 'digital_ammo_display'));
+
+      swivelHead.add(this._segment(
+        ammoDrumMat,
+        new T.Vector3(0, -0.18, -0.1),
+        new T.Vector3(0, -0.18, 0.32),
+        0.28,
+        0.28,
+        'ammo_drum_500rd',
+        22
+      ));
+
+      root.add(swivelHead);
+
+      const finalized = this._finalize(root, { modelType: 'sentryTurret', height: 1.4 });
       this.placeOnGround(finalized, 0);
       return finalized;
     }

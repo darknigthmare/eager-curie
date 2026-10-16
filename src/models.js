@@ -3440,6 +3440,24 @@
         root.add(this._box(rationPack, { x: 0.95, y: 0.32, z: 0.65 }, { x: 0, y: 0.16, z: 0 }, 'ration_chassis', true));
         root.add(this._box(dark, { x: 0.82, y: 0.08, z: 0.52 }, { x: 0, y: 0.34, z: 0 }, 'ration_seal_strip'));
         root.add(this._box(rationLabel, { x: 0.45, y: 0.02, z: 0.28 }, { x: 0, y: 0.33, z: 0.08 }, 'weyland_yutani_food_label'));
+      } else if (normalizedType === 'cryopod') {
+        // Chantier 15 : Caisson de stase cryogénique d'hypersommeil (Alien 1979 / Romulus)
+        const glassMat = this._material('visorGlass', { color: 0x38bdf8, opacity: 0.45 });
+        const chassis = this._material('synthetic', { color: 0xe2e8f0, roughness: 0.22, metalness: 0.4 });
+        root.add(this._box(chassis, { x: 1.25, y: 0.45, z: 2.65 }, { x: 0, y: 0.22, z: 0 }, 'cryo_base', true));
+        root.add(this._box(dark, { x: 1.05, y: 0.3, z: 2.45 }, { x: 0, y: 0.48, z: 0 }, 'cryo_interior'));
+        root.add(this._box(glassMat, { x: 0.98, y: 0.32, z: 2.35 }, { x: 0, y: 0.72, z: 0 }, 'cryo_glass_lid'));
+        root.add(this._ellipsoid(metal, { x: 0.35, y: 0.16, z: 0.95 }, { x: 0, y: 0.52, z: -0.1 }, 'sleeper_silhouette'));
+        root.add(this._box(screen, { x: 0.42, y: 0.08, z: 0.25 }, { x: 0, y: 0.52, z: 1.15 }, 'cryo_vitals_screen'));
+      } else if (normalizedType === 'blackgoo' || normalizedType === 'mutagen') {
+        // Chantier 18 : Canister de fluide pathogène mutagène noir Z-01 (Prometheus / Romulus)
+        const glass = this._material('visorGlass', { color: 0x1e293b, opacity: 0.65 });
+        const blackLiquid = this._material('chitin', { color: 0x020617, roughness: 0.1, metalness: 0.9 });
+        root.add(this._segment(metal, new T.Vector3(0, 0, 0), new T.Vector3(0, 0.2, 0), 0.3, 0.3, 'canister_base'));
+        root.add(this._segment(glass, new T.Vector3(0, 0.2, 0), new T.Vector3(0, 1.2, 0), 0.26, 0.26, 'canister_glass'));
+        root.add(this._segment(blackLiquid, new T.Vector3(0, 0.22, 0), new T.Vector3(0, 1.1, 0), 0.22, 0.22, 'canister_fluid'));
+        root.add(this._segment(metal, new T.Vector3(0, 1.2, 0), new T.Vector3(0, 1.4, 0), 0.3, 0.3, 'canister_cap'));
+        root.add(this._box(hazard, { x: 0.12, y: 0.18, z: 0.04 }, { x: 0, y: 0.7, z: 0.28 }, 'weyland_biohazard_label'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -3459,6 +3477,52 @@
         subtype: normalizedType,
         localGroundPlaneY: 0
       });
+      this.placeOnGround(finalized, 0);
+      return finalized;
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 13 : Le Chat Jonesy & Faune de Bord (Alien 1979)
+    // -------------------------------------------------------------------------
+    createCat() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'ship_cat_jonesy';
+      root.userData.modelType = 'cat';
+      const fur = this._material('organicAmber', { color: 0xd97706, roughness: 0.8, metalness: 0.05 });
+      const furWhite = this._material('bone', { color: 0xfef3c7, roughness: 0.85, metalness: 0.02 });
+      const eye = this._material('emissiveGreen', { emissiveIntensity: 1.2 });
+      const nose = this._material('emissiveRed', { color: 0xf43f5e, emissiveIntensity: 0.2 });
+
+      // Corps félin souple roux tigré
+      root.add(this._ellipsoid(fur, { x: 0.18, y: 0.16, z: 0.38 }, { x: 0, y: 0.22, z: 0 }, 'cat_torso', 14));
+      // Ventre blanc
+      root.add(this._ellipsoid(furWhite, { x: 0.14, y: 0.08, z: 0.28 }, { x: 0, y: 0.14, z: 0 }, 'cat_belly', 12));
+      // Tête
+      root.add(this._ellipsoid(fur, { x: 0.14, y: 0.13, z: 0.14 }, { x: 0, y: 0.32, z: 0.32 }, 'cat_head', 14));
+      // Museau blanc
+      root.add(this._ellipsoid(furWhite, { x: 0.09, y: 0.06, z: 0.08 }, { x: 0, y: 0.28, z: 0.44 }, 'cat_muzzle', 10));
+      root.add(this._box(nose, { x: 0.03, y: 0.02, z: 0.02 }, { x: 0, y: 0.31, z: 0.5 }, 'cat_nose'));
+      // Yeux verts félins
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._ellipsoid(eye, { x: 0.025, y: 0.025, z: 0.02 }, { x: side * 0.065, y: 0.34, z: 0.42 }, `cat_eye_${side}`, 8));
+        const ear = this._box(fur, { x: 0.04, y: 0.08, z: 0.04 }, { x: side * 0.08, y: 0.44, z: 0.28 }, `cat_ear_${side}`);
+        ear.rotation.z = side * -0.25;
+        root.add(ear);
+      }
+      // 4 pattes félines
+      for (let i = 0; i < 4; i++) {
+        const side = i % 2 === 0 ? -1 : 1;
+        const front = i < 2;
+        const leg = this._box(furWhite, { x: 0.05, y: 0.18, z: 0.06 }, { x: side * 0.11, y: 0.09, z: front ? 0.22 : -0.22 }, `cat_paw_${i}`);
+        root.add(leg);
+      }
+      // Queue dressée avec bout incurvé
+      const tail = this._box(fur, { x: 0.035, y: 0.32, z: 0.035 }, { x: 0, y: 0.36, z: -0.42 }, 'cat_tail');
+      tail.rotation.x = 0.35;
+      root.add(tail);
+
+      const finalized = this._finalize(root, { modelType: 'cat', height: 0.5 });
       this.placeOnGround(finalized, 0);
       return finalized;
     }

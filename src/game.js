@@ -1882,6 +1882,184 @@
       osc.start(now);
       osc.stop(now + 0.05);
     }
+
+    // Chantier 61 : Onde télépathique psychique de commandement de l'Alpha (Marvel Comics: Alien: Bloodlines 2021)
+    playAlphaPsychicWave(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const sub = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      sub.type = 'sawtooth';
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.linearRampToValueAtTime(220, now + 0.4);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.9);
+      sub.frequency.setValueAtTime(40, now);
+      sub.frequency.linearRampToValueAtTime(75, now + 0.5);
+      sub.frequency.exponentialRampToValueAtTime(28, now + 0.9);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.92);
+      osc.connect(gain);
+      sub.connect(gain);
+      this.connect(gain, x, z, 95);
+      osc.start(now);
+      sub.start(now);
+      osc.stop(now + 0.92);
+      sub.stop(now + 0.92);
+    }
+
+    // Chantier 62 : Clisquetis multiples frénétiques d'essaim de Swarmers (Marvel Comics: Alien: Icarus)
+    playSwarmerChitter(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      for (let i = 0; i < 3; i++) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        const startT = now + i * 0.06;
+        osc.frequency.setValueAtTime(1400 + Math.random() * 600, startT);
+        osc.frequency.exponentialRampToValueAtTime(450, startT + 0.09);
+        gain.gain.setValueAtTime(0.35, startT);
+        gain.gain.exponentialRampToValueAtTime(0.01, startT + 0.09);
+        osc.connect(gain);
+        this.connect(gain, x, z, 55);
+        osc.start(startT);
+        osc.stop(startT + 0.09);
+      }
+    }
+
+    // Chantier 63 : Allumage et sifflement plasma thermo-lame Steel Team (Marvel Comics: Alien: Icarus)
+    playThermalBladeIgnite(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.linearRampToValueAtTime(880, now + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.4);
+      gain.gain.setValueAtTime(0.65, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now);
+      osc.stop(now + 0.42);
+    }
+
+    // Chantier 63 : Tir percussion fusil à concussion magnétique Steel Team
+    playConcussionBlast(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(240, now);
+      osc.frequency.exponentialRampToValueAtTime(35, now + 0.28);
+      gain.gain.setValueAtTime(0.9, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.connect(gain);
+      this.connect(gain, x, z, 80);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    }
+
+    // Chantier 64 : Suintement et pulsation visqueuse expansion Hive Creep (Marvel Comics)
+    playHiveCreepSpread(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(95, now);
+      osc.frequency.linearRampToValueAtTime(145, now + 0.3);
+      osc.frequency.exponentialRampToValueAtTime(50, now + 0.6);
+      gain.gain.setValueAtTime(0.55, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.62);
+      osc.connect(gain);
+      this.connect(gain, x, z, 50);
+      osc.start(now);
+      osc.stop(now + 0.62);
+      this.playWetImpact?.(x, z);
+    }
+
+    // Chantier 68 : Déflagration lourde baril de Napalm USCM (Aliens 1986 / Isolation)
+    playNapalmBarrelExplosion(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(28, now + 0.65);
+      gain.gain.setValueAtTime(1.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+      osc.connect(gain);
+      this.connect(gain, x, z, 120);
+      osc.start(now);
+      osc.stop(now + 0.7);
+    }
+
+    // Chantier 69 : Battement de coeur volumétrique vision phéromonale (Marvel Comics 1:1)
+    playHeartbeatPulse(bpm = 90) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(55, now);
+      osc.frequency.exponentialRampToValueAtTime(32, now + 0.12);
+      gain.gain.setValueAtTime(0.42, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+      osc.connect(gain);
+      gain.connect(this.master);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    }
+
+    // Chantier 70 : Claquement supersonique balistique whip-crack de l'Alpha (Marvel Comics)
+    playSupersonicTailSnap(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(2600, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
+      gain.gain.setValueAtTime(0.95, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      osc.connect(gain);
+      this.connect(gain, x, z, 90);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    }
+
+    // Chantier 67 : Hurlement d'agonie rageur Death Throes (Marvel Comics)
+    playDeathThroesScreech(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(750, now);
+      osc.frequency.linearRampToValueAtTime(1450, now + 0.4);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 1.2);
+      gain.gain.setValueAtTime(1.0, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 1.25);
+      osc.connect(gain);
+      this.connect(gain, x, z, 100);
+      osc.start(now);
+      osc.stop(now + 1.25);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -2563,6 +2741,7 @@
     update(deltaSeconds) {
       if (this.currentMode === 'acoustic') {
         this.sonarTimer = (this.sonarTimer || 0) - deltaSeconds;
+        this.heartbeatPulseTimer = (this.heartbeatPulseTimer || 0) - deltaSeconds;
         if (this.sonarTimer <= 0) {
           this.sonarTimer = 2.4;
           audioManager.playSonarPing?.(playerCreature.x, playerCreature.z);
@@ -2573,6 +2752,26 @@
               window.HiveSystems?.vfx?.ring?.(h.x, h.z, 0x4ade80, 2.5);
             }
           });
+        }
+        // Chantier 69 : Vision Chimio-Phéromonale Battements Cardiaques Marvel 1:1
+        if (this.heartbeatPulseTimer <= 0) {
+          const humans = window.gameInstance?.humans || [];
+          const activeHumans = humans.filter((h) => !h.isIncapacitated && h.hp > 0 && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 32);
+          if (activeHumans.length > 0) {
+            const maxStress = Math.max(...activeHumans.map((h) => h.stress || 0));
+            const calculatedBpm = Math.round(75 + (maxStress / 100) * 85);
+            this.heartbeatPulseTimer = 60 / calculatedBpm;
+            audioManager.playHeartbeatPulse?.(calculatedBpm);
+            activeHumans.forEach((h) => {
+              const pulseColor = (h.stress || 0) > 60 ? 0xdc2626 : 0xef4444;
+              window.HiveSystems?.vfx?.ring?.(h.x, h.z, pulseColor, 1.2 + ((h.stress || 0) / 100) * 1.5);
+              if (Math.random() < 0.35) {
+                window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, `♥ ${calculatedBpm} BPM`, '#ef4444', false);
+              }
+            });
+          } else {
+            this.heartbeatPulseTimer = 1.6;
+          }
         }
       } else if (this.currentMode === 'thermal') {
         // Chantier 11 : Système FLIR / Thermique & Furtivité Ectothermique (Alien: Isolation / Romulus)
@@ -2805,6 +3004,10 @@
       this.selfDestructActive = false;
       this.selfDestructTimer = 0;
       this.selfDestructKlaxonTimer = 0;
+      this.napalmBarrels = [];
+      this.alphaContainmentCells = [];
+      this.hiveCreepPatches = [];
+      this.activeSwarmers = [];
     }
 
     buildMap() {
@@ -3519,6 +3722,59 @@
           mist.mesh = mesh;
         }
       });
+
+      // Chantier 66 : Cuve de Confinement Alpha & Sas Bio-Sécurité Euridice (Marvel Comics: Alien: Bloodlines)
+      this.alphaContainmentCells = [
+        { id: 'alpha_tank_1', x: -35, z: 45, mesh: null }
+      ];
+      this.alphaContainmentCells.forEach((tank) => {
+        const mesh = window.HiveModelFactory?.createAlphaContainmentCell?.();
+        if (mesh) {
+          mesh.position.set(tank.x, 0, tank.z);
+          rendererEngine.propsGroup.add(mesh);
+          tank.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: tank.x - 2.4, maxX: tank.x + 2.4,
+          minZ: tank.z - 2.4, maxZ: tank.z + 2.4
+        });
+      });
+
+      // Chantier 68 : Barils de Carburant Napalm USCM Inflammables (Aliens 1986 / Isolation)
+      this.napalmBarrels = [
+        { id: 'barrel_1', x: -10, z: -25, mesh: null, isDetonated: false, fireTimer: 0 },
+        { id: 'barrel_2', x: 28, z: 18, mesh: null, isDetonated: false, fireTimer: 0 },
+        { id: 'barrel_3', x: -45, z: 15, mesh: null, isDetonated: false, fireTimer: 0 },
+        { id: 'barrel_4', x: 12, z: 42, mesh: null, isDetonated: false, fireTimer: 0 }
+      ];
+      this.napalmBarrels.forEach((b) => {
+        const mesh = window.HiveModelFactory?.createNapalmBarrel?.();
+        if (mesh) {
+          mesh.position.set(b.x, 0, b.z);
+          rendererEngine.propsGroup.add(mesh);
+          b.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: b.x - 0.7, maxX: b.x + 0.7,
+          minZ: b.z - 0.7, maxZ: b.z + 0.7,
+          isNapalmBarrel: true,
+          barrelRef: b
+        });
+      });
+
+      // Chantier 64 : Expansion Vivante de la Toile de Ruche "Hive Creep" (Marvel Comics)
+      this.hiveCreepPatches = [
+        { x: -20, z: -35, radius: 4.5, mesh: null },
+        { x: 0, z: -30, radius: 4.5, mesh: null }
+      ];
+      this.hiveCreepPatches.forEach((patch) => {
+        const mesh = window.HiveModelFactory?.createHiveCreepPatch?.();
+        if (mesh) {
+          mesh.position.set(patch.x, 0.04, patch.z);
+          rendererEngine.propsGroup.add(mesh);
+          patch.mesh = mesh;
+        }
+      });
     }
 
     setBlastDoorState(door, open, silent = false) {
@@ -3933,6 +4189,9 @@
       this.updateFalseEchoes(safeDelta);
       this.updateEMPGrenades(safeDelta);
       this.updateCryoMistZones(safeDelta);
+      this.updateNapalmBarrels(safeDelta);
+      this.updateHiveCreep(safeDelta);
+      this.updateSwarmers(safeDelta);
     }
 
     // Chantier 22 : Relique Fossilisée du Space Jockey & Casque d'Ingénieur (Alien 1979)
@@ -4778,6 +5037,227 @@
       }
     }
 
+    // Chantier 68 : Barils de Napalm USCM Inflammables (Aliens 1986 / Isolation)
+    detonateNapalmBarrel(barrel, triggerEntity = null) {
+      if (!barrel || barrel.isDetonated) return;
+      barrel.isDetonated = true;
+      barrel.fireTimer = 15.0;
+
+      // Supprimer le collider solide du baril
+      const cIdx = this.colliders.findIndex((c) => c.barrelRef === barrel);
+      if (cIdx >= 0) this.colliders.splice(cIdx, 1);
+
+      audioManager.playNapalmBarrelExplosion?.(barrel.x, barrel.z);
+      rendererEngine.addScreenShake?.(0.48, 0.32);
+      window.HiveSystems?.vfx?.burst?.(barrel.x, barrel.z, 0xea580c, 45, 0.45, 3.2);
+      window.HiveSystems?.vfx?.ring?.(barrel.x, barrel.z, 0xf97316, 7.5);
+      showToast('DÉTONATION NAPALM USCM ! Barrière de feu persistante de 15s !');
+      appendSensorLog(`[NAPALM] Détonation d'un baril de carburant. Incendie de zone à 800°C.`, 'alert');
+
+      // Dégâts initiaux massifs dans le rayon de déflagration (6.5m)
+      const entities = [playerCreature, ...(window.gameInstance?.humans || [])];
+      entities.forEach((ent) => {
+        if (!ent || ent.isIncapacitated || ent.isCocooned) return;
+        const d = Math.hypot(ent.x - barrel.x, ent.z - barrel.z);
+        if (d <= 6.5) {
+          const dmg = ent === playerCreature ? 45 : 95;
+          ent.takeDamage?.(dmg, triggerEntity || playerCreature);
+          if (ent.staggerTimer !== undefined) ent.staggerTimer = 1.2;
+          window.HiveSystems?.vfx?.floatingText?.(ent.x, 3.2, ent.z, `-${dmg} SOUFFLE DU NAPALM`, '#ea580c', true);
+        }
+      });
+    }
+
+    updateNapalmBarrels(safeDelta) {
+      if (!this.napalmBarrels) return;
+      const entities = [playerCreature, ...(window.gameInstance?.humans || [])];
+
+      for (const b of this.napalmBarrels) {
+        if (b.isDetonated && b.fireTimer > 0) {
+          b.fireTimer -= safeDelta;
+          if (Math.random() < 0.45) {
+            window.HiveSystems?.vfx?.burst?.(b.x + (Math.random() * 3 - 1.5), b.z + (Math.random() * 3 - 1.5), 0xf97316, 12, 0.22, 1.6);
+          }
+          if (b.fireTimer <= 0 && b.mesh) {
+            rendererEngine.removeObject(b.mesh);
+          }
+
+          // Dégâts continus de brûlure pour qui traverse le napalm
+          entities.forEach((ent) => {
+            if (!ent || ent.isIncapacitated || ent.isCocooned) return;
+            const dist = Math.hypot(ent.x - b.x, ent.z - b.z);
+            if (dist <= 5.2) {
+              const burnDmg = ent === playerCreature ? 12 : 32;
+              ent.takeDamage?.(burnDmg * safeDelta, null);
+              if (ent.stress !== undefined) ent.stress = 100;
+              if (Math.random() < 0.15) {
+                window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.8, ent.z, 'BRÛLURE NAPALM !', '#ea580c', false);
+              }
+            }
+          });
+        }
+      }
+    }
+
+    // Chantier 64 : Expansion Vivante de la Toile de Ruche "Hive Creep" (Marvel Comics)
+    spreadHiveCreep(x, z, radius = 4.5) {
+      const patch = { x, z, radius, mesh: window.HiveModelFactory?.createHiveCreepPatch?.() };
+      if (patch.mesh) {
+        patch.mesh.position.set(x, 0.04, z);
+        rendererEngine.propsGroup.add(patch.mesh);
+      }
+      this.hiveCreepPatches.push(patch);
+      audioManager.playHiveCreepSpread?.(x, z);
+      window.HiveSystems?.vfx?.ring?.(x, z, 0x831843, radius);
+      showToast('TOILE VIVANTE DE RUCHE ÉTENDUE : Régénération +25% et Vitesse +20% sur la résine active !');
+      appendSensorLog(`[HIVE CREEP] Nappe filamenteuse de ruche propagée en (${Math.round(x)}, ${Math.round(z)}).`, 'bio');
+    }
+
+    updateHiveCreep(safeDelta) {
+      if (!this.hiveCreepPatches || !this.hiveCreepPatches.length) return;
+      playerCreature.isOnHiveCreep = false;
+
+      for (const patch of this.hiveCreepPatches) {
+        const dXeno = Math.hypot(playerCreature.x - patch.x, playerCreature.z - patch.z);
+        if (dXeno <= patch.radius) {
+          playerCreature.isOnHiveCreep = true;
+          // Régénération passive sur la toile vivante
+          if (playerCreature.health < playerCreature.maxHealth) {
+            playerCreature.health = Math.min(playerCreature.maxHealth, playerCreature.health + 4 * safeDelta);
+          }
+        }
+
+        // Détection de pas humains sur la toile (vibrations tactiles pour le joueur)
+        const humans = window.gameInstance?.humans || [];
+        for (const h of humans) {
+          if (h.isIncapacitated || h.isCocooned) continue;
+          const dH = Math.hypot(h.x - patch.x, h.z - patch.z);
+          if (dH <= patch.radius) {
+            h.creepSlowTimer = 0.5;
+            if (Math.random() < 0.08) {
+              window.HiveSystems?.vfx?.floatingText?.(h.x, 2.6, h.z, 'INTRUS SUR LA TOILE !', '#ec4899', true);
+            }
+          }
+        }
+      }
+    }
+
+    // Chantier 62 : Nuée de Xénomorphes Nains "Swarmers" (Marvel Comics 2022: Alien: Icarus)
+    spawnSwarmerPack(x, z, count = 5) {
+      const mesh = window.HiveModelFactory?.createSwarmerPack?.();
+      const pack = {
+        x,
+        z,
+        mesh,
+        count,
+        hp: 45,
+        speed: 0.52,
+        targetHuman: null,
+        targetX: x,
+        targetZ: z,
+        attackCooldown: 0
+      };
+      if (mesh) {
+        mesh.position.set(x, 0.05, z);
+        rendererEngine.propsGroup.add(mesh);
+      }
+      this.activeSwarmers.push(pack);
+      audioManager.playSwarmerChitter?.(x, z);
+      window.HiveSystems?.vfx?.burst?.(x, z, 0x090d16, 20, 0.15, 1.4);
+      showToast('NUÉE DE SWARMERS INVOQUÉE : Meute de micro-morphs grouillant au sol prête à submerger les soldats !');
+      appendSensorLog(`[SWARMERS] Meute de micro-xénomorphes déployée. Prête à attaquer.`, 'bio');
+      return pack;
+    }
+
+    // Chantier 65 : Ordres de Meute Télépathiques de l'Alpha (Marvel Comics)
+    orderSwarmers(targetX, targetZ, targetHuman = null) {
+      if (!this.activeSwarmers || !this.activeSwarmers.length) {
+        this.spawnSwarmerPack(playerCreature.x, playerCreature.z);
+      }
+      audioManager.playAlphaPsychicWave?.(playerCreature.x, playerCreature.z);
+      audioManager.playSwarmerChitter?.(playerCreature.x, playerCreature.z);
+      rendererEngine.addScreenShake?.(0.2, 0.14);
+      window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0xdc2626, 12);
+
+      this.activeSwarmers.forEach((pack) => {
+        pack.targetX = targetX;
+        pack.targetZ = targetZ;
+        pack.targetHuman = targetHuman;
+        if (targetHuman) {
+          window.HiveSystems?.vfx?.floatingText?.(targetHuman.x, 3.2, targetHuman.z, 'CIBLE DÉSIGNÉE PAR L\'ALPHA !', '#dc2626', true);
+        }
+      });
+      showToast('ORDRE TÉLÉPATHIQUE DE MEUTE [T] : Les Swarmers et Drones convergent vers la cible !');
+      appendSensorLog(`[ALPHA] Ordre psychique émis vers (${Math.round(targetX)}, ${Math.round(targetZ)}).`, 'bio');
+    }
+
+    updateSwarmers(safeDelta) {
+      if (!this.activeSwarmers || !this.activeSwarmers.length) return;
+      const humans = window.gameInstance?.humans || [];
+
+      for (let i = this.activeSwarmers.length - 1; i >= 0; i--) {
+        const pack = this.activeSwarmers[i];
+        if (pack.hp <= 0) {
+          audioManager.playAcidBurn?.(pack.x, pack.z);
+          window.HiveSystems?.vfx?.burst?.(pack.x, pack.z, 0x84cc16, 16, 0.15, 1.2);
+          if (pack.mesh) rendererEngine.removeObject(pack.mesh);
+          this.activeSwarmers.splice(i, 1);
+          continue;
+        }
+
+        // Trouver cible si aucune
+        if (!pack.targetHuman || pack.targetHuman.isIncapacitated || pack.targetHuman.isCocooned) {
+          let closest = null;
+          let minD = 35;
+          for (const h of humans) {
+            if (h.isIncapacitated || h.isCocooned) continue;
+            const d = Math.hypot(h.x - pack.x, h.z - pack.z);
+            if (d < minD) { minD = d; closest = h; }
+          }
+          pack.targetHuman = closest;
+          if (closest) {
+            pack.targetX = closest.x;
+            pack.targetZ = closest.z;
+          } else {
+            pack.targetX = playerCreature.x + Math.sin(Date.now() * 0.003 + i) * 2.5;
+            pack.targetZ = playerCreature.z + Math.cos(Date.now() * 0.003 + i) * 2.5;
+          }
+        } else {
+          pack.targetX = pack.targetHuman.x;
+          pack.targetZ = pack.targetHuman.z;
+        }
+
+        // Déplacement du pack
+        const dx = pack.targetX - pack.x;
+        const dz = pack.targetZ - pack.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > 0.8) {
+          const moveStep = Math.min(dist, pack.speed * 60 * safeDelta);
+          pack.x += (dx / dist) * moveStep;
+          pack.z += (dz / dist) * moveStep;
+          if (pack.mesh) {
+            pack.mesh.position.set(pack.x, 0.05, pack.z);
+            pack.mesh.rotation.y = Math.atan2(dx, dz);
+          }
+        }
+
+        // Attaque d'étouffement / morsure de nuée
+        if (pack.targetHuman && dist <= 2.2) {
+          const h = pack.targetHuman;
+          pack.attackCooldown -= safeDelta;
+          if (pack.attackCooldown <= 0) {
+            pack.attackCooldown = 0.6;
+            audioManager.playSwarmerChitter?.(h.x, h.z);
+            h.takeDamage?.(18, playerCreature);
+            h.staggerTimer = 0.8;
+            h.stress = 100;
+            window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0x090d16, 10, 0.1, 1.0);
+            window.HiveSystems?.vfx?.floatingText?.(h.x, 2.5, h.z, 'SUBMERGÉ PAR LES SWARMERS (-60% VITESSE)', '#ef4444', true);
+          }
+        }
+      }
+    }
+
     findClosestVent(x, z) {
       if (!this.vents || !this.vents.length) return null;
       let closest = null;
@@ -5367,6 +5847,18 @@
       huntDamage: 135,
       jawDamage: 180,
       tailDamage: 145
+    }),
+    alpha: Object.freeze({
+      key: 'alpha',
+      label: 'ALPHA XENOMORPH (MARVEL)',
+      maxHealth: 520,
+      speed: 0.48,
+      huntAction: 'IMPULSION TÉLÉPATHIQUE',
+      huntCost: 35,
+      huntRange: 75,
+      huntDamage: 190,
+      jawDamage: 260,
+      tailDamage: 210
     })
   });
 
@@ -5766,6 +6258,86 @@
     executeAcousticDecoy() {
       stationMap.createAcousticDecoy?.(this.x, this.z);
       return true;
+    }
+
+    // Chantier 61 & 65 : Impulsion Télépathique de Commandement de l'Alpha (Marvel Comics: Alien: Bloodlines)
+    executeAlphaPsychicCommand(target = null) {
+      if (this.adultCaste !== 'alpha' && this.adultCaste !== 'queen') {
+        showToast('Capacité Impulsion Télépathique réservée à l’Alpha et à la Reine.');
+        return false;
+      }
+      const humans = window.gameInstance?.humans || [];
+      const victim = target || humans.find((h) => !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 14);
+
+      stationMap.orderSwarmers(victim ? victim.x : this.x, victim ? victim.z : this.z, victim);
+
+      // Étourdissement mental des humains dans le cône psychique
+      humans.forEach((h) => {
+        if (h.isIncapacitated || h.isCocooned) return;
+        const d = Math.hypot(h.x - this.x, h.z - this.z);
+        if (d <= 14) {
+          h.staggerTimer = 2.0;
+          h.stress = 100;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.8, h.z, 'CHOC PSYCHIQUE ALPHA !', '#dc2626', true);
+        }
+      });
+      return true;
+    }
+
+    // Chantier 70 : Fouet Bifide de Queue Supersonique de l'Alpha (Marvel Comics)
+    executeSupersonicTailSnap() {
+      if (this.adultCaste !== 'alpha') {
+        showToast('Capacité Fouet Supersonique réservée à l’Alpha.');
+        return false;
+      }
+      audioManager.playSupersonicTailSnap?.(this.x, this.z);
+      rendererEngine.addScreenShake?.(0.42, 0.28);
+      window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xef4444, 35, 0.35, 2.4);
+
+      const humans = window.gameInstance?.humans || [];
+      let hits = 0;
+      humans.forEach((h) => {
+        if (h.isIncapacitated || h.isCocooned) return;
+        const d = Math.hypot(h.x - this.x, h.z - this.z);
+        if (d <= 8.5) {
+          hits++;
+          h.takeDamage?.(190, this);
+          h.staggerTimer = 2.2;
+          // Rétropulsion balistique
+          const angle = Math.atan2(h.z - this.z, h.x - this.x);
+          h.x += Math.cos(angle) * 3.5;
+          h.z += Math.sin(angle) * 3.5;
+          window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0xef4444, 20, 0.2, 1.6);
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, '-190 FOUET SUPERSONIQUE !', '#ef4444', true);
+        }
+      });
+      showToast(`FOUET BIFIDE SUPERSONIQUE [Y] : Onde de choc balistique ! ${hits} soldat(s) fauchés et repoussés !`);
+      appendSensorLog(`[ALPHA] Frappe supersonique de queue balistique déployée. Arc 180° balayé.`, 'bio');
+      return true;
+    }
+
+    // Chantier 62 : Invocation directe d'une Nuée de Swarmers (Marvel Comics: Alien: Icarus)
+    executeSpawnSwarmerPack() {
+      stationMap.spawnSwarmerPack(this.x, this.z);
+      return true;
+    }
+
+    // Chantier 64 : Expansion de la Toile Vivante Hive Creep (Marvel Comics)
+    executeSpreadHiveCreep() {
+      stationMap.spreadHiveCreep(this.x, this.z);
+      return true;
+    }
+
+    // Chantier 67 : Agonie Berserk "Death Throes Acid Nova" (Marvel Comics)
+    triggerDeathThroes() {
+      if (this.inDeathThroes) return;
+      this.inDeathThroes = true;
+      this.deathThroesTimer = 4.0;
+      audioManager.playDeathThroesScreech?.(this.x, this.z);
+      rendererEngine.addScreenShake?.(0.55, 0.4);
+      window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0xef4444, 9.0);
+      showToast('AGONIE BERSERK (DEATH THROES) ! 4 SECONDES DE FUREUR AVANT LA NOVA D\'ACIDE !');
+      appendSensorLog('[DEATH THROES] Xénomorphe en état d\'agonie berserk critique. Risque acide extrême.', 'alert');
     }
 
     toggleDragHost() {
@@ -6286,6 +6858,12 @@
         `${Math.ceil(this.health)}/${this.maxHealth}`
       );
       if (this.health <= 0) {
+        if (!this.inDeathThroes && (this.adultCaste === 'alpha' || this.adultCaste === 'warrior' || this.adultCaste === 'praetorian')) {
+          this.health = 1;
+          this.triggerDeathThroes();
+          return;
+        }
+        if (this.inDeathThroes) return;
         this.isDefeated = true;
         if (window.gameInstance) {
           window.gameInstance.showEndModal(
@@ -6443,6 +7021,47 @@
       const safeDelta = Math.max(0, deltaSeconds);
       this.actionAnimation = Math.max(0, this.actionAnimation - safeDelta * 3.4);
 
+      // Chantier 67 : Fureur d'agonie berserk (Death Throes Acid Nova - Marvel Comics)
+      if (this.inDeathThroes) {
+        this.deathThroesTimer = (this.deathThroesTimer || 4.0) - safeDelta;
+        if (Math.random() < 0.28) {
+          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xdc2626, 6, 0.15, 1.2);
+          rendererEngine.addScreenShake?.(0.12, 0.08);
+        }
+        if (this.deathThroesTimer <= 0) {
+          this.inDeathThroes = false;
+          audioManager.playNapalmBarrelExplosion?.(this.x, this.z);
+          audioManager.playDeathThroesScreech?.(this.x, this.z);
+          rendererEngine.addScreenShake?.(0.85, 0.6);
+          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x84cc16, 90, 0.5, 4.0);
+          window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0x84cc16, 9.5);
+          for (let i = 0; i < 8; i++) {
+            const ang = (i / 8) * Math.PI * 2;
+            stationMap.addAcidCorrosion?.(this.x + Math.cos(ang) * 4.5, this.z + Math.sin(ang) * 4.5);
+          }
+          const humans = window.gameInstance?.humans || [];
+          humans.forEach((h) => {
+            if (h.isIncapacitated || h.isCocooned) return;
+            const d = Math.hypot(h.x - this.x, h.z - this.z);
+            if (d <= 9.0) {
+              h.takeDamage?.(140, this);
+              window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-140 NOVA D\'ACIDE !', '#84cc16', true);
+            }
+          });
+          showToast('NOVA D\'ACIDE FINALE DÉCLENCHÉE ! Le spécimen a libéré toute son acidité vitale.');
+          appendSensorLog('[DEATH THROES] Nova acide libérée à 360° (rayon 9m, 140 dégâts). Destruction cataclysmique.', 'bio');
+          this.health = 0;
+          this.isDefeated = true;
+          if (window.gameInstance) {
+            window.gameInstance.showEndModal(
+              'XÉNOMORPHE SACRIFIÉ (NOVA D\'ACIDE)',
+              'Dans un baroud d\'honneur cataclysmique, votre organisme a anéanti la zone d\'opération sous un déluge d\'acide sulfurique.'
+            );
+          }
+          return;
+        }
+      }
+
       if (this.form === 'egg') {
         if (this.eggIsOpen && this.eggOpeningProgress < 1) {
           this.eggOpeningProgress = Math.min(1, this.eggOpeningProgress + safeDelta / 0.9);
@@ -6537,7 +7156,9 @@
         const scentBonus = (window.pheromoneSystem?.getScentBonus?.(this.x, this.z)) || 1.0;
         const suppressionPenalty = (this.suppressionTimer > 0) ? 0.65 : 1.0;
         if (this.suppressionTimer > 0) this.suppressionTimer -= safeDelta;
-        const currentSpeed = this.speed * (this.isInVent ? 1.45 : 1.0) * resinBonus * scentBonus * suppressionPenalty;
+        const deathThroesBonus = this.inDeathThroes ? 1.5 : 1.0;
+        const creepBonus = this.isOnHiveCreep ? 1.2 : 1.0;
+        const currentSpeed = this.speed * (this.isInVent ? 1.45 : 1.0) * resinBonus * scentBonus * suppressionPenalty * deathThroesBonus * creepBonus;
         const movementStep = Math.min(currentSpeed * frameScale, remainingDistance);
         const nextX = this.x + dx * movementStep;
         const nextZ = this.z + dy * movementStep;
@@ -6612,7 +7233,9 @@
         ? 440
         : (['weyland_commando_mk2'].includes(type)
           ? 260
-          : (['android', 'synthetic'].includes(type) ? 190 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110)));
+          : (['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(type)
+            ? 240
+            : (['android', 'synthetic'].includes(type) ? 190 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110))));
       this.maxHp = this.hp;
       this.mesh = null;
       this.targetPos = { x, z };
@@ -6628,7 +7251,7 @@
       this.isIncapacitated = false;
       this.shootCooldown = 0;
       this.motionPingCooldown = 0.5 + Math.random();
-      this.hostEligibility = ['android', 'synthetic', 'powerloader', 'exosuit', 'turret'].includes(type)
+      this.hostEligibility = ['android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(type)
         ? 'none'
         : (type === 'commando' ? 'protected' : 'viable');
       this.usedAsHost = false;
@@ -6860,7 +7483,8 @@
       }
 
       // 1. Flash émissif vif sur l'ensemble des maillages de l'entité
-      const isSynth = this.type === 'synthetic' || this.type === 'android';
+      const isSteel = ['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type);
+      const isSynth = this.type === 'synthetic' || this.type === 'android' || isSteel;
       const flashColor = isSynth ? 0xffffff : 0xef233c;
       const trackedMaterials = [];
       this.mesh?.traverse((child) => {
@@ -6925,7 +7549,8 @@
     incapacitate() {
       if (this.isIncapacitated) return;
       this.isIncapacitated = true;
-      const isSynth = this.type === 'synthetic' || this.type === 'android';
+      const isSteel = ['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type);
+      const isSynth = this.type === 'synthetic' || this.type === 'android' || isSteel;
       if (isSynth) {
         if (this.mesh) {
           this.mesh.rotation.z = Math.PI / 2;
@@ -6933,16 +7558,28 @@
           this.mesh.scale.y = 0.65;
         }
         audioManager.playSyntheticGlitchedVoice?.(this.x, this.z);
-        window.HiveSystems?.vfx?.burst(this.x, this.z, 0xf8fafc, 24, 0.16, 1.6);
-        const synthQuotes = [
-          "Rook-7 : Admiration pour sa pureté... Organisme parfait...",
-          "Rook-7 : Ordre Spécial 937... Toute autre considération secondaire...",
-          "Rook-7 : Vous ne comprenez toujours pas à quoi vous avez affaire..."
-        ];
-        const quote = synthQuotes[Math.floor(Math.random() * synthQuotes.length)];
-        window.HiveSystems?.narrative('ROOK-7 (DÉFAILLANT)', quote, 5000);
-        showToast('SYNTHÉTIQUE SECTIONNÉ : Fuite de fluide blanc laiteux. Incompatible avec Facehuggers.');
-        appendSensorLog(`[SYNTHÉTIQUE] ${this.name} démembré. Châssis inerte, fluide de synthèse au sol.`, 'bio');
+        window.HiveSystems?.vfx?.burst(this.x, this.z, 0xf8fafc, 26, 0.18, 1.8);
+        if (isSteel) {
+          const steelQuotes = [
+            "Steel Team : Échec de la capture du spécimen... Protocole Weyland-Yutani compromis...",
+            "Steel Team : Châssis endommagé... Priorité absolue aux échantillons génétiques...",
+            "Steel Team : Défaillance interne critique... Lame plasma désactivée..."
+          ];
+          const quote = steelQuotes[Math.floor(Math.random() * steelQuotes.length)];
+          window.HiveSystems?.narrative('STEEL TEAM (NEUTRALISÉ)', quote, 5000);
+          showToast('SYNTHÉTIQUE STEEL TEAM SECTIONNÉ : Fuite abondante de fluide blanc laiteux.');
+          appendSensorLog(`[STEEL TEAM] Commando synthétique ${this.name} démembré. Fluide de synthèse Weyland-Yutani au sol.`, 'bio');
+        } else {
+          const synthQuotes = [
+            "Rook-7 : Admiration pour sa pureté... Organisme parfait...",
+            "Rook-7 : Ordre Spécial 937... Toute autre considération secondaire...",
+            "Rook-7 : Vous ne comprenez toujours pas à quoi vous avez affaire..."
+          ];
+          const quote = synthQuotes[Math.floor(Math.random() * synthQuotes.length)];
+          window.HiveSystems?.narrative('ROOK-7 (DÉFAILLANT)', quote, 5000);
+          showToast('SYNTHÉTIQUE SECTIONNÉ : Fuite de fluide blanc laiteux. Incompatible avec Facehuggers.');
+          appendSensorLog(`[SYNTHÉTIQUE] ${this.name} démembré. Châssis inerte, fluide de synthèse au sol.`, 'bio');
+        }
         return;
       }
       if (this.mesh) {
@@ -7067,7 +7704,8 @@
 
       const isCombatant = !this.isInfected && [
         'guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator',
-        'commando', 'android', 'synthetic', 'powerloader', 'exosuit', 'weyland_commando_mk2'
+        'commando', 'android', 'synthetic', 'powerloader', 'exosuit', 'weyland_commando_mk2',
+        'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'
       ].includes(this.type);
       const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
       const currentStageStep = window.gameInstance?.currentStage?.step;
@@ -7093,6 +7731,13 @@
         this.saidOrder937 = true;
         showToast(`${this.name} : [ORDRE SPÉCIAL 937] Confinement de l'organisme engagé. Équipage sacrifiable.`);
         appendSensorLog(`[SYNTHÉTIQUE] ${this.name} applique la Directive 937 : la préservation du spécimen surpasse toute vie humaine.`, 'alert');
+      }
+
+      // Canon 1:1 Lore — Steel Team Weyland-Yutani (Marvel Comics: Alien: Icarus)
+      if (isCombatant && ['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type) && hasLineOfSight && distToPlayer <= 16 && !this.saidSteelTeamDirective) {
+        this.saidSteelTeamDirective = true;
+        showToast(`${this.name} : [STEEL TEAM WEYLAND-YUTANI] Unité synthétique d'élite engagée.`);
+        appendSensorLog(`[STEEL TEAM] ${this.name} déploie les lames thermiques et armes à concussion. Priorité capture génétique.`, 'alert');
       }
 
       const inDarkness = (rendererEngine?.powerSabotagedTimer || 0) > 0;
@@ -7144,9 +7789,11 @@
           });
         }
 
+        const isSyntheticEntity = ['synthetic', 'android', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type);
+
         // 2. REPLI TACTIQUE SOUS TIRS / SANTÉ CRITIQUE (< 35% PV)
         // Les humains blessés reculent tout en tirant pour maintenir la distance
-        if (this.hp < this.maxHp * 0.35 && distToPlayer < 7.5 && this.type !== 'synthetic' && this.type !== 'android') {
+        if (this.hp < this.maxHp * 0.35 && distToPlayer < 7.5 && !isSyntheticEntity) {
           const retreatAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
           const backX = this.x + Math.cos(retreatAngle) * 3.5;
           const backZ = this.z + Math.sin(retreatAngle) * 3.5;
@@ -7156,7 +7803,7 @@
         }
 
         // Chantier 28 : Recherche de Station Médicale & Injecteur de Stimulants
-        if (this.hp < this.maxHp * 0.55 && this.type !== 'synthetic' && this.type !== 'android') {
+        if (this.hp < this.maxHp * 0.55 && !isSyntheticEntity) {
           const availableMed = (stationMap.medikits || []).find((m) => !m.isSabotaged && m.uses > 0);
           if (availableMed) {
             const medDist = Math.hypot(availableMed.x - this.x, availableMed.z - this.z);
@@ -7190,7 +7837,7 @@
       }
 
       // Chantier 6 : Jauge de Stress Humaine 0 - 100 & IA de Terreur (Aliens 1986 / Isolation)
-      if (this.type !== 'synthetic' && this.type !== 'android' && this.type !== 'labrodent') {
+      if (!isSyntheticEntity && this.type !== 'labrodent') {
         let stressDelta = -3.5 * safeDelta;
         if (inDarkness) stressDelta += 6.5 * safeDelta;
         if (distToPlayer < 14) stressDelta += (1 - distToPlayer / 14) * 28 * safeDelta;
@@ -7293,6 +7940,12 @@
             } else if (window.gameInstance?.currentStageIndex === 5 && combatTarget?.takeDamage) {
               const baseDamage = ['powerloader', 'exosuit'].includes(this.type) ? 25 : 11;
               combatTarget.takeDamage(baseDamage * multiplier * window.gameInstance.getDifficultyDamageModifier());
+            }
+
+            // Chantier 68 : Barils de napalm inflammables touchés par tirs perdus
+            const closeNapalm = (stationMap.napalmBarrels || []).find((b) => !b.isDetonated && Math.hypot(b.x - combatTarget.x, b.z - combatTarget.z) <= 3.2);
+            if (closeNapalm) {
+              stationMap.detonateNapalmBarrel(closeNapalm, this);
             }
           };
 
@@ -7417,6 +8070,51 @@
               window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.75, this.z, 0xf59e0b, 0.32);
               window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'RAFALE LOURDE XM99 !', '#f59e0b', false);
               applyWeaponDamage(1.55);
+            }
+          } else if (['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type)) {
+            // Chantier 63 : Commando Synthétique Steel Team Weyland-Yutani (Marvel Comics: Alien: Icarus)
+            // Lame thermique plasma au corps-à-corps (< 2.8m) ou Fusil à concussion magnétique à distance
+            if (distToPlayer <= 2.8) {
+              this.shootCooldown = 1.0;
+              this.attackAnimation = 1.0;
+              audioManager.playThermalBladeIgnite?.(this.x, this.z);
+              rendererEngine.addScreenShake?.(0.24, 0.16);
+              window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xff3b30, 24, 0.18, 1.6);
+              window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.0, combatTarget.z, '-32 LAME THERMIQUE PLASMA !', '#ff3b30', true);
+              const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
+              targetReceiver.takeDamage(32, this);
+            } else {
+              this.shootCooldown = 1.6;
+              audioManager.playConcussionBlast?.(this.x, this.z);
+              rendererEngine.addScreenShake?.(0.3, 0.18);
+              window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xef4444, 0.45);
+              const onConcussionImpact = () => {
+                rendererEngine.addScreenShake?.(0.38, 0.22);
+                window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xef4444, 25, 0.2, 2.0);
+                window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.2, combatTarget.z, '-28 SOUFFLE CONCUSSION MAGNÉTIQUE !', '#ef4444', true);
+                const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
+                targetReceiver.takeDamage(28, this);
+                if (combatTarget === playerCreature) {
+                  const pushAng = Math.atan2(playerCreature.z - this.z, playerCreature.x - this.x);
+                  const pX = playerCreature.x + Math.cos(pushAng) * 2.2;
+                  const pZ = playerCreature.z + Math.sin(pushAng) * 2.2;
+                  if (!stationMap.checkCollision(pX, pZ)) {
+                    playerCreature.x = pX;
+                    playerCreature.z = pZ;
+                    playerCreature.mesh?.position.set(pX, playerCreature.mesh.position.y, pZ);
+                  }
+                }
+              };
+              if (window.HiveSystems?.vfx?.projectile) {
+                window.HiveSystems.vfx.projectile({
+                  startX: this.x, startY: 2.7, startZ: this.z,
+                  endX: combatTarget.x, endY: 1.2, endZ: combatTarget.z,
+                  color: 0xef4444, scale: 0.28, speed: 42,
+                  onImpact: onConcussionImpact
+                });
+              } else {
+                onConcussionImpact();
+              }
             }
           } else {
             // Chantier 37 : Fusil à impulsion M41A avec Lance-grenades U1 40mm sous le canon (Aliens 1986)
@@ -9291,7 +9989,9 @@
           new HumanAI(94, 'labhound', 36, -22, 'Animal de service Q-4'),
           new HumanAI(93, 'weyland_security_taser', 12, -26, 'Garde Taser Weyland-Yutani Briggs'),
           new HumanAI(92, 'powerloader', -45, 35, 'Chef de pont Jansen - Caterpillar P-5000 Power Loader'),
-          new HumanAI(91, 'weyland_commando_mk2', -35, -20, 'Commando Lourd Weyland-Yutani Vance - Armure MK-II & XM99')
+          new HumanAI(91, 'weyland_commando_mk2', -35, -20, 'Commando Lourd Weyland-Yutani Vance - Armure MK-II & XM99'),
+          new HumanAI(90, 'weyland_steel_team_synth', -40, 40, 'Synthétique Steel Team T-01 - Lame Plasma & Concussion'),
+          new HumanAI(89, 'weyland_steel_team_synth', 38, -32, 'Synthétique Steel Team T-02 - Lame Plasma & Concussion')
         ];
         enemies[4].hp = enemies[4].maxHp = 80;
         enemies.forEach((enemy) => enemy.createMesh());
@@ -9321,7 +10021,8 @@
         drone: { jaw: 'MÂCHOIRE INTERNE', tail: 'FRAPPE DE QUEUE' },
         runner: { jaw: 'MORSURE À L’ÉLAN', tail: 'FOUET DE QUEUE' },
         warrior: { jaw: 'BRISE-BLINDAGE', tail: 'BALAYAGE LOURD' },
-        deacon: { jaw: 'MÂCHOIRE PRÉMAXILLAIRE', tail: 'COUP DE FOUET' }
+        deacon: { jaw: 'MÂCHOIRE PRÉMAXILLAIRE', tail: 'COUP DE FOUET' },
+        alpha: { jaw: 'BROYAGE DE CRÂNE', tail: 'FOUET BIFIDE SUPERSONIQUE' }
       };
       const actionLabels = casteActions[profile.key] || casteActions.drone;
       document.getElementById('stage-badge').textContent = `PHASE 4 : ${adultLabel} — CHASSE ET NURSERIE`;
@@ -9361,6 +10062,11 @@
         <button type="button" id="btn-acoustic-decoy" class="act-btn" style="border-color: #38bdf8; background: rgba(56,189,248,0.22);">★ ÉCHO RADAR FANTÔME [N]</button>
         <button type="button" id="btn-neomorph-frenzy" class="act-btn" style="border-color: #f1f5f9; background: rgba(241,245,249,0.25); display: ${playerCreature.caste === 'neomorph' ? 'inline-block' : 'none'};">★ FRINGALE FRÉNÉTIQUE [B]</button>
         <button type="button" id="btn-praetorian-roar" class="act-btn" style="border-color: #c084fc; background: rgba(192,132,252,0.25); display: ${playerCreature.caste === 'praetorian' ? 'inline-block' : 'none'};">★ RUGISSEMENT BÉLIER [R]</button>
+        <button type="button" id="btn-alpha-psychic" class="act-btn" style="border-color: #dc2626; background: rgba(220,38,38,0.25);">★ IMPULSION PSYCHIQUE ALPHA [T]</button>
+        <button type="button" id="btn-supersonic-tail" class="act-btn" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ FOUET BIFIDE SUPERSONIQUE [Y]</button>
+        <button type="button" id="btn-spawn-swarmers" class="act-btn" style="border-color: #090d16; background: rgba(15,23,42,0.45);">★ NUÉE DE SWARMERS [U]</button>
+        <button type="button" id="btn-spread-creep" class="act-btn" style="border-color: #ec4899; background: rgba(236,72,153,0.2);">★ ÉTENDRE HIVE CREEP [F]</button>
+        <button type="button" id="btn-evolve-alpha" class="act-btn" style="border-color: #dc2626; background: rgba(220,38,38,0.2);">★ MUE EN ALPHA (MARVEL)</button>
         <button type="button" id="btn-direct-inoculation" class="act-btn" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ IMPLANTATION DIRECTE [G]</button>
         <button type="button" id="btn-airlock-purge" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);">★ PURGE SAS [Y]</button>
         <button type="button" id="btn-drag-host" class="act-btn" style="border-color: #f59e0b;">★ TRAÎNER / COCON MURAL [V]</button>
@@ -9384,6 +10090,23 @@
       document.getElementById('btn-drone-prowl-leap').onclick = () => this.executeProwlLeap();
       document.getElementById('btn-drone-vent').onclick = () => this.toggleVentInfiltration();
       document.getElementById('btn-sabotage-power').onclick = () => this.executeSabotagePower();
+      const btnAlpha = document.getElementById('btn-alpha-psychic');
+      if (btnAlpha) btnAlpha.onclick = () => playerCreature.executeAlphaPsychicCommand();
+      const btnTailSnap = document.getElementById('btn-supersonic-tail');
+      if (btnTailSnap) btnTailSnap.onclick = () => playerCreature.executeSupersonicTailSnap();
+      const btnSwarmers = document.getElementById('btn-spawn-swarmers');
+      if (btnSwarmers) btnSwarmers.onclick = () => playerCreature.executeSpawnSwarmerPack();
+      const btnCreep = document.getElementById('btn-spread-creep');
+      if (btnCreep) btnCreep.onclick = () => playerCreature.executeSpreadHiveCreep();
+      const btnEvolveAlpha = document.getElementById('btn-evolve-alpha');
+      if (btnEvolveAlpha) {
+        btnEvolveAlpha.onclick = () => {
+          playerCreature.setAdultCaste('alpha');
+          playerCreature.createMesh();
+          this.updateHUD();
+          showToast('MUE EN ALPHA XENOMORPH CONFIRMÉE ! Le titan commande la ruche.');
+        };
+      }
       const btnDecoy = document.getElementById('btn-acoustic-decoy');
       if (btnDecoy) btnDecoy.onclick = () => playerCreature.executeAcousticDecoy();
       const btnFrenzy = document.getElementById('btn-neomorph-frenzy');
@@ -9533,7 +10256,13 @@
           this.executeSabotagePower();
         }
       }
-      if (key === 'y') this.executeAirlockPurge();
+      if (key === 'y') {
+        if (playerCreature.adultCaste === 'alpha') {
+          playerCreature.executeSupersonicTailSnap();
+        } else {
+          this.executeAirlockPurge();
+        }
+      }
       if (key === 'h' || key === '5') this.executeTerrifyingHiss();
       if (key === 'v') this.executeDragOrWallCocoon();
       if (key === 'g') {
@@ -9560,7 +10289,13 @@
           this.executeInnerJaw();
         }
       }
-      if (key === '3' || key === 't') this.executeTailImpale();
+      if (key === '3' || key === 't') {
+        if (playerCreature.adultCaste === 'alpha') {
+          playerCreature.executeAlphaPsychicCommand();
+        } else {
+          this.executeTailImpale();
+        }
+      }
       if (key === '4' || key === 'f') this.executeCocoonHost();
       if (key === ' ') this.executeClawSwipe();
     }
@@ -9698,6 +10433,8 @@
       if (closeDoor) stationMap.pryHydraulicDoor(closeDoor, playerCreature);
       const closeVent = (stationMap.steamVents || []).find((v) => !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 3.8);
       if (closeVent) stationMap.ruptureSteamVent(closeVent, playerCreature);
+      const closeNapalm = (stationMap.napalmBarrels || []).find((b) => !b.isDetonated && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 3.8);
+      if (closeNapalm) stationMap.detonateNapalmBarrel(closeNapalm, playerCreature);
 
       this.updateRoyalButton();
     }

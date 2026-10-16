@@ -68,7 +68,10 @@
     powerloader: 'powerloader',
     powerloadersuit: 'powerloader',
     exosuit: 'powerloader',
-    mech: 'powerloader'
+    mech: 'powerloader',
+    steelteam: 'weyland_steel_team_synth',
+    steelteamsynth: 'weyland_steel_team_synth',
+    steelteamandroid: 'weyland_steel_team_synth'
   });
 
   // ---------------------------------------------------------------------------
@@ -1231,6 +1234,34 @@
           { x: 0, y: 0.32, z: 0.1 },
           'xm99_holo_sight'
         ));
+      } else if (type === 'weyland_steel_team_synth') {
+        // Chantier 63 : Fusil à Concussion Magnétique Steel Team (Marvel Comics: Alien: Icarus)
+        weapon.add(this._segment(
+          dark,
+          new T.Vector3(0, 0.05, 0.25),
+          new T.Vector3(0, 0.05, 1.65),
+          0.13,
+          0.11,
+          'concussion_magnetic_barrel',
+          14
+        ));
+        for (let coil = 0; coil < 4; coil++) {
+          weapon.add(this._ring(
+            this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 2.2 }),
+            0.17,
+            0.028,
+            { x: 0, y: 0.05, z: 0.45 + coil * 0.28 },
+            { x: 0, y: 0, z: 0 },
+            `magnetic_inductor_coil_${coil}`
+          ));
+        }
+        weapon.add(this._box(
+          dark,
+          { x: 0.22, y: 0.38, z: 0.42 },
+          { x: 0, y: -0.22, z: 0.45 },
+          'concussion_power_cell',
+          true
+        ));
       }
 
       weapon.userData.equipmentType = type;
@@ -1351,6 +1382,17 @@
           shoulderX: 0.72,
           hipX: 0.36,
           helmetScale: 1.12
+        },
+        weyland_steel_team_synth: {
+          uniformColor: 0x09090b,
+          armorColor: 0x18181b, // Composite titane-carbone mat blindé (Marvel Comics: Alien: Icarus)
+          torso: { x: 0.7, y: 0.96, z: 0.42 },
+          pelvis: { x: 0.52, y: 0.35, z: 0.34 },
+          chest: { x: 1.25, y: 0.95, z: 0.3 },
+          pack: { x: 0.78, y: 0.88, z: 0.32 },
+          shoulderX: 0.7,
+          hipX: 0.35,
+          helmetScale: 1.08
         }
       };
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
@@ -1364,7 +1406,7 @@
       const dark = materials.dark;
       const visor = materials.visor;
       const accent = materials.accent;
-      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2'].indexOf(type) >= 0;
+      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth'].indexOf(type) >= 0;
 
       if (combatRole) {
         for (let side = -1; side <= 1; side += 2) {
@@ -1606,6 +1648,32 @@
             true
           ));
         }
+      } else if (type === 'weyland_steel_team_synth') {
+        // Chantier 63 : Lame Thermique Thermo-Plasma Incandescente Avant-Bras Droit (Marvel Comics: Alien: Icarus)
+        const bladeGlow = this._material('emissiveRed', {
+          color: 0xff3b30,
+          emissive: 0xff2d55,
+          emissiveIntensity: 3.4,
+          roughness: 0.1,
+          metalness: 0.95
+        });
+        const bladeSpine = this._material('darkMetal', { color: 0x09090b, roughness: 0.2, metalness: 0.95 });
+        root.add(this._box(bladeSpine, { x: 0.18, y: 0.14, z: 0.55 }, { x: profile.shoulderX + 0.14, y: torsoY - 0.72, z: 0.35 }, 'thermal_blade_gauntlet', true));
+        root.add(this._segment(
+          bladeGlow,
+          new T.Vector3(profile.shoulderX + 0.14, torsoY - 0.72, 0.45),
+          new T.Vector3(profile.shoulderX + 0.14, torsoY - 0.72, 1.45),
+          0.065,
+          0.015,
+          'thermal_blade_glow',
+          10
+        ));
+        root.add(this._box(
+          this._material('bone', { color: 0xf8fafc, roughness: 0.3 }),
+          { x: 0.28, y: 0.18, z: 0.04 },
+          { x: 0, y: torsoY + 0.32, z: profile.chest.z + 0.12 },
+          'steel_team_wy_insignia'
+        ));
       }
     }
 
@@ -2812,12 +2880,14 @@
       const predalien = caste === 'predalien';
       const deacon = caste === 'deacon';
       const neomorph = caste === 'neomorph';
+      const alpha = caste === 'alpha';
 
-      const scale = royal ? 1.42 : (palatine ? 1.28 : (guardian ? 1.24 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (offspring ? 1.15 : (burster ? 0.96 : 1))))))));
+      const scale = royal ? 1.42 : (alpha ? 1.38 : (palatine ? 1.28 : (guardian ? 1.24 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (offspring ? 1.15 : (burster ? 0.96 : 1)))))))));
       let chitinColor = 0x0b1518;
       if (royal) chitinColor = 0x221033;
       else if (palatine) chitinColor = 0x1f0b29;
       else if (guardian) chitinColor = 0x2d163d;
+      else if (alpha) chitinColor = 0x140a0b; // Obsidienne marbrée de carmin (Marvel Comics: Alien: Bloodlines)
       else if (predalien) chitinColor = 0x2e291e; // Bronze sombre métallique Yautja
       else if (deacon) chitinColor = 0x1e293b; // Bleu ardoise profond lisse (Prometheus 2012)
       else if (neomorph) chitinColor = 0xf1f5f9; // Peau blanc albâtre translucide (Alien: Covenant 2017)
@@ -2829,16 +2899,18 @@
 
       const primary = this._material('chitin', {
         color: chitinColor,
-        roughness: royal || palatine ? 0.22 : (predalien ? 0.24 : (deacon ? 0.16 : (neomorph ? 0.18 : (offspring ? 0.55 : 0.28)))),
-        metalness: predalien ? 0.54 : (deacon ? 0.22 : (neomorph ? 0.06 : (offspring ? 0.15 : 0.46)))
+        roughness: royal || palatine ? 0.22 : (alpha ? 0.20 : (predalien ? 0.24 : (deacon ? 0.16 : (neomorph ? 0.18 : (offspring ? 0.55 : 0.28))))),
+        metalness: alpha ? 0.65 : (predalien ? 0.54 : (deacon ? 0.22 : (neomorph ? 0.06 : (offspring ? 0.15 : 0.46)))),
+        emissive: alpha ? 0x991b1b : 0x000000,
+        emissiveIntensity: alpha ? 0.32 : 0
       });
       const secondary = this._material('resin', {
-        color: royal || palatine ? 0x4a214f : (predalien ? 0x1c1913 : (deacon ? 0x0f172a : (neomorph ? 0xfbcfe8 : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238)))))),
+        color: royal || palatine ? 0x4a214f : (alpha ? 0x3b0712 : (predalien ? 0x1c1913 : (deacon ? 0x0f172a : (neomorph ? 0xfbcfe8 : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238))))))),
         opacity: 0.96
       });
-      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (predalien ? 0xa89f88 : (deacon ? 0x94a3b8 : (neomorph ? 0xffffff : (offspring ? 0xf4f4f5 : 0xb9c6a5)))) });
-      const sensory = this._material(royal || palatine ? 'emissiveRed' : (spitter || burster ? 'emissiveGreen' : 'emissiveGreen'), {
-        emissiveIntensity: royal || palatine ? 0.42 : (burster ? 0.65 : 0.32)
+      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (alpha ? 0xfee2e2 : (predalien ? 0xa89f88 : (deacon ? 0x94a3b8 : (neomorph ? 0xffffff : (offspring ? 0xf4f4f5 : 0xb9c6a5)))) ) });
+      const sensory = this._material(royal || palatine || alpha ? 'emissiveRed' : (spitter || burster ? 'emissiveGreen' : 'emissiveGreen'), {
+        emissiveIntensity: royal || palatine ? 0.42 : (alpha ? 0.75 : (burster ? 0.65 : 0.32))
       });
 
       root.add(this._ellipsoid(
@@ -3099,6 +3171,36 @@
           ));
         }
       }
+      if (alpha) {
+        // Chantier 61 : Crête sagittale osseuse acérée et 6 arêtes transversales de l'Alpha (Marvel Comics: Alien: Bloodlines 2021)
+        root.add(this._box(
+          bone,
+          { x: 0.14 * scale, y: 0.42 * scale, z: 1.85 * scale },
+          { x: 0, y: 5.08 * scale, z: 0.28 * scale },
+          'alpha_sagittal_crest',
+          true
+        ));
+        for (let r = 0; r < 6; r++) {
+          root.add(this._box(
+            primary,
+            { x: (0.85 - r * 0.08) * scale, y: 0.16 * scale, z: 0.18 * scale },
+            { x: 0, y: (4.85 + (r % 2) * 0.04) * scale, z: (0.95 - r * 0.28) * scale },
+            `alpha_cranial_ridge_${r}`,
+            true
+          ));
+        }
+        // Cicatrices chitineuses blanches d'anciennes batailles (Marvel Canon)
+        const scarMat = this._material('bone', { color: 0xf1f5f9, roughness: 0.45 });
+        for (let s = 0; s < 4; s++) {
+          const side = s % 2 === 0 ? -1 : 1;
+          root.add(this._box(
+            scarMat,
+            { x: 0.08 * scale, y: 0.55 * scale, z: 0.05 * scale },
+            { x: side * (0.65 + s * 0.06) * scale, y: (3.1 + s * 0.25) * scale, z: 0.35 * scale },
+            `alpha_battle_scar_${s}`
+          ));
+        }
+      }
       this._addTail(
         root,
         primary,
@@ -3120,6 +3222,20 @@
           'neomorph_tail_stylus',
           8
         ));
+      }
+      if (alpha) {
+        // Chantier 70 : Fouet bifide à double pointe barbelée supersonique de l'Alpha (Marvel Comics: Alien: Bloodlines)
+        for (let prong = -1; prong <= 1; prong += 2) {
+          root.add(this._coneAlong(
+            bone,
+            { x: (-0.34 * 4.8 * scale * 0.47) + prong * 0.22 * scale, y: 1.88 * scale + 0.58 * scale, z: -0.36 * scale - 4.8 * scale },
+            { x: prong * 0.35, y: 0.1, z: -1 },
+            0.12 * scale,
+            1.1 * scale,
+            `alpha_bifid_tail_prong_${prong < 0 ? 'left' : 'right'}`,
+            8
+          ));
+        }
       }
       this._addCarapaceSpines(root, primary, 4.75 * scale, royal ? 13 : 9, 1.15 * scale, 1.0 * scale, -1);
       root.add(this._ellipsoid(
@@ -3153,7 +3269,7 @@
       return this._finalize(root, {
         modelType: 'adult',
         caste,
-        height: (royal ? 7.4 : (guardian ? 6.25 : 5.25)),
+        height: (royal ? 7.4 : (alpha ? 6.8 : (guardian ? 6.25 : 5.25))),
         animationJoints: {
           head: 'cranial_dome',
           jaw: 'articulated_jaw',
@@ -4119,6 +4235,122 @@
         root.add(this._box(sealBeam, { x: 4.4, y: 0.32, z: 0.22 }, { x: 0, y: 3.2, z: 0.34 }, 'lock_bar_upper', true));
         // Vérin hydraulique central renforcé sous pression
         root.add(this._segment(pistonMetal, new T.Vector3(0, 1.2, 0.38), new T.Vector3(0, 3.8, 0.38), 0.12, 0.12, 'hydraulic_reinforcement_ram', 12));
+      } else if (normalizedType === 'swarmer_pack' || normalizedType === 'micro_morphs') {
+        // Chantier 62 : Nuée de Xénomorphes Nains "Swarmers" (Marvel Comics 2022: Alien: Icarus)
+        const swarmerChitin = this._material('chitin', { color: 0x090d16, roughness: 0.18, metalness: 0.62 });
+        const swarmerBone = this._material('bone', { color: 0xe2e8f0, roughness: 0.3 });
+        const offsets = [
+          { x: 0, z: 0, rotY: 0 },
+          { x: -0.45, z: 0.35, rotY: 0.4 },
+          { x: 0.42, z: -0.28, rotY: -0.35 },
+          { x: -0.32, z: -0.42, rotY: 0.8 },
+          { x: 0.38, z: 0.46, rotY: -0.6 }
+        ];
+        offsets.forEach((o, idx) => {
+          const mini = new T.Group();
+          mini.name = `swarmer_unit_${idx}`;
+          mini.position.set(o.x, 0, o.z);
+          mini.rotation.y = o.rotY;
+          // Mini-corps allongé
+          mini.add(this._ellipsoid(swarmerChitin, { x: 0.12, y: 0.1, z: 0.28 }, { x: 0, y: 0.14, z: 0 }, `swarmer_torso_${idx}`, 10));
+          // Mini-crâne caréné
+          mini.add(this._ellipsoid(swarmerChitin, { x: 0.08, y: 0.08, z: 0.24 }, { x: 0, y: 0.2, z: 0.18 }, `swarmer_head_${idx}`, 12));
+          // Mini-mâchoire à crochets
+          mini.add(this._coneAlong(swarmerBone, { x: 0, y: 0.16, z: 0.32 }, { x: 0, y: -0.1, z: 1 }, 0.04, 0.12, `swarmer_jaw_${idx}`, 6));
+          // 4 Pattes arachnéennes arquées
+          for (let leg = 0; leg < 4; leg++) {
+            const side = leg % 2 === 0 ? -1 : 1;
+            const fwd = leg < 2 ? 0.08 : -0.08;
+            mini.add(this._segment(swarmerChitin, new T.Vector3(side * 0.08, 0.14, fwd), new T.Vector3(side * 0.24, 0.02, fwd + (leg < 2 ? 0.06 : -0.06)), 0.02, 0.012, `swarmer_leg_${idx}_${leg}`, 6));
+          }
+          // Mini-queue ondulante
+          mini.add(this._tube(
+            swarmerChitin,
+            [
+              { x: 0, y: 0.14, z: -0.22 },
+              { x: (idx % 2 === 0 ? 0.08 : -0.08), y: 0.18, z: -0.42 },
+              { x: 0, y: 0.24, z: -0.65 }
+            ],
+            0.022,
+            `swarmer_tail_${idx}`,
+            10,
+            5
+          ));
+          root.add(mini);
+        });
+      } else if (normalizedType === 'napalm_barrel' || normalizedType === 'incinerator_barrel') {
+        // Chantier 68 : Baril de Napalm USCM Inflammable (Aliens / Isolation)
+        const barrelMat = this._material('industrial', { color: 0xc2410c, roughness: 0.35, metalness: 0.65 });
+        const ringMat = this._material('darkMetal', { color: 0x18181b, roughness: 0.45, metalness: 0.85 });
+        const hazardDecal = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 2.2 });
+        // Fût cylindrique principal
+        root.add(this._segment(barrelMat, new T.Vector3(0, 0, 0), new T.Vector3(0, 1.85, 0), 0.58, 0.58, 'napalm_barrel_drum', 22));
+        // 3 Anneaux de renfort d'acier
+        for (let ring = 0; ring < 3; ring++) {
+          root.add(this._ring(ringMat, 0.61, 0.04, { x: 0, y: 0.35 + ring * 0.58, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `napalm_ring_${ring}`));
+        }
+        // Couvercle étanche avec bouchon de décharge rouge
+        root.add(this._segment(ringMat, new T.Vector3(0, 1.85, 0), new T.Vector3(0, 1.9, 0), 0.56, 0.56, 'barrel_lid', 20));
+        root.add(this._segment(hazardDecal, new T.Vector3(0.24, 1.88, 0), new T.Vector3(0.24, 1.96, 0), 0.08, 0.08, 'napalm_bung_cap', 10));
+        // Logo de danger inflammable
+        root.add(this._box(hazardDecal, { x: 0.35, y: 0.35, z: 0.04 }, { x: 0, y: 0.95, z: 0.58 }, 'flammable_hazard_badge'));
+      } else if (normalizedType === 'alpha_containment_cell' || normalizedType === 'alpha_tank') {
+        // Chantier 66 : Cuve de Confinement Alpha & Sas Bio-Sécurité (Marvel Comics: Alien: Bloodlines)
+        const frameMetal = this._material('darkMetal', { color: 0x0f172a, roughness: 0.35, metalness: 0.9 });
+        const reinforcedGlass = this._material('glass', { color: 0x38bdf8, opacity: 0.36, transparent: true, roughness: 0.1 });
+        const bioWarning = this._material('emissiveRed', { color: 0xdc2626, emissiveIntensity: 2.4 });
+        const fluidResidue = this._material('resin', { color: 0x450a0a, opacity: 0.72, transparent: true });
+        // Socle octogonal lourd
+        root.add(this._segment(frameMetal, new T.Vector3(0, 0, 0), new T.Vector3(0, 0.6, 0), 2.2, 2.35, 'containment_base', 16));
+        // Cylindre de verre acrylique blindé brisé
+        root.add(this._segment(reinforcedGlass, new T.Vector3(0, 0.6, 0), new T.Vector3(0, 4.2, 0), 1.85, 1.85, 'acrylic_tank_shattered', 24));
+        // Fluide d'incubation sombre résiduel au fond
+        root.add(this._segment(fluidResidue, new T.Vector3(0, 0.6, 0), new T.Vector3(0, 1.25, 0), 1.8, 1.8, 'amniotic_black_fluid_residue', 20));
+        // 4 Montants d'acier lourd et anneau supérieur
+        for (let pillar = 0; pillar < 4; pillar++) {
+          const pAngle = (pillar / 4) * Math.PI * 2;
+          root.add(this._segment(frameMetal, new T.Vector3(Math.cos(pAngle) * 1.95, 0.6, Math.sin(pAngle) * 1.95), new T.Vector3(Math.cos(pAngle) * 1.95, 4.4, Math.sin(pAngle) * 1.95), 0.14, 0.14, `containment_pillar_${pillar}`, 12));
+        }
+        root.add(this._ring(frameMetal, 1.95, 0.12, { x: 0, y: 4.3, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'containment_top_collar'));
+        // Dôme supérieur avec voyant biohazard
+        root.add(this._ellipsoid(frameMetal, { x: 2.0, y: 0.8, z: 2.0 }, { x: 0, y: 4.6, z: 0 }, 'containment_dome', 20));
+        root.add(this._ellipsoid(bioWarning, { x: 0.25, y: 0.25, z: 0.25 }, { x: 0, y: 5.1, z: 0 }, 'biohazard_strobe', 12));
+        // Panneau d'avertissement Weyland-Yutani Alpha Specimen
+        root.add(this._box(bioWarning, { x: 0.8, y: 0.35, z: 0.05 }, { x: 0, y: 0.35, z: 2.3 }, 'alpha_specimen_placard'));
+      } else if (normalizedType === 'hive_creep_patch' || normalizedType === 'hive_creep') {
+        // Chantier 64 : Expansion Vivante de la Toile de Ruche "Hive Creep" (Marvel Comics / Lore canon)
+        const creepResin = this._material('resin', { color: 0x3b0712, roughness: 0.14, metalness: 0.45, opacity: 0.94 });
+        const bioPustule = this._material('emissiveRed', { color: 0xb91c1c, emissiveIntensity: 1.4, roughness: 0.2 });
+        // Nappe ondulante centrale de résine
+        root.add(this._ellipsoid(creepResin, { x: 2.8, y: 0.18, z: 2.8 }, { x: 0, y: 0.09, z: 0 }, 'hive_creep_slab', 24));
+        // Pustules biologiques et vésicules de biomasse pulsantes
+        for (let p = 0; p < 7; p++) {
+          const pAngle = (p / 7) * Math.PI * 2 + (p * 0.3);
+          const pDist = 0.6 + (p % 3) * 0.65;
+          root.add(this._ellipsoid(
+            bioPustule,
+            { x: 0.16 + (p % 3) * 0.08, y: 0.14 + (p % 2) * 0.06, z: 0.16 + (p % 3) * 0.08 },
+            { x: Math.cos(pAngle) * pDist, y: 0.16, z: Math.sin(pAngle) * pDist },
+            `creep_pustule_${p}`,
+            14
+          ));
+        }
+        // Filaments de résine tentaculaires rayonnants
+        for (let f = 0; f < 8; f++) {
+          const fAngle = (f / 8) * Math.PI * 2;
+          root.add(this._tube(
+            creepResin,
+            [
+              { x: Math.cos(fAngle) * 1.2, y: 0.12, z: Math.sin(fAngle) * 1.2 },
+              { x: Math.cos(fAngle) * 2.2 + 0.15, y: 0.08, z: Math.sin(fAngle) * 2.2 - 0.1 },
+              { x: Math.cos(fAngle) * 3.4, y: 0.02, z: Math.sin(fAngle) * 3.4 }
+            ],
+            0.065,
+            `creep_tendril_${f}`,
+            16,
+            6
+          ));
+        }
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -4485,6 +4717,48 @@
     // -------------------------------------------------------------------------
     createSealedHydraulicDoor() {
       return this.createIndustrialProp('sealed_hydraulic_door');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 61 : Phénotype "Alpha Xenomorph" (Marvel Comics 2021: Alien: Bloodlines)
+    // -------------------------------------------------------------------------
+    createAlpha() {
+      return this._createUprightAdult('alpha');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 62 : Nuée de Xénomorphes Nains "Swarmers" (Marvel Comics 2022: Alien: Icarus)
+    // -------------------------------------------------------------------------
+    createSwarmerPack() {
+      return this.createIndustrialProp('swarmer_pack');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 63 : Synthétique d'Élite "Steel Team" Weyland-Yutani (Marvel Comics)
+    // -------------------------------------------------------------------------
+    createSteelTeamSynth() {
+      return this._createHumanFigure('weyland_steel_team_synth');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 68 : Baril de Carburant Napalm USCM (Aliens / Isolation)
+    // -------------------------------------------------------------------------
+    createNapalmBarrel() {
+      return this.createIndustrialProp('napalm_barrel');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 66 : Cuve de Confinement Alpha & Sas Bio-Sécurité (Marvel Comics)
+    // -------------------------------------------------------------------------
+    createAlphaContainmentCell() {
+      return this.createIndustrialProp('alpha_containment_cell');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 64 : Expansion Vivante de la Toile de Ruche "Hive Creep" (Marvel Comics)
+    // -------------------------------------------------------------------------
+    createHiveCreepPatch() {
+      return this.createIndustrialProp('hive_creep_patch');
     }
   }
 

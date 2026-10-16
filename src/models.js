@@ -1162,6 +1162,32 @@
           'incinerator_pilot_emitter',
           10
         ));
+      } else if (type === 'weyland_security_taser' || type === 'taser_guard') {
+        // Chantier 45 : Bâton à choc haute tension 100kV Weyland-Yutani (Alien 3 / Isolation)
+        weapon.add(this._segment(
+          dark,
+          new T.Vector3(0, 0, -0.3),
+          new T.Vector3(0, 0, 1.3),
+          0.05,
+          0.04,
+          'stun_baton_shaft',
+          10
+        ));
+        weapon.add(this._ellipsoid(
+          this._material('emissiveGreen', { color: 0x38bdf8, emissiveIntensity: 2.8 }),
+          { x: 0.09, y: 0.09, z: 0.18 },
+          { x: 0, y: 0, z: 1.35 },
+          'stun_baton_tip',
+          12
+        ));
+        weapon.add(this._ring(
+          accent,
+          0.08,
+          0.02,
+          { x: 0, y: 0, z: 0.95 },
+          { x: 0, y: 0, z: 0 },
+          'stun_charge_collar'
+        ));
       }
 
       weapon.userData.equipmentType = type;
@@ -1260,6 +1286,17 @@
           shoulderX: 0.61,
           hipX: 0.31,
           helmetScale: 0.98
+        },
+        weyland_security_taser: {
+          uniformColor: 0x0f172a,
+          armorColor: 0x334155,
+          torso: { x: 0.62, y: 0.88, z: 0.38 },
+          pelvis: { x: 0.48, y: 0.32, z: 0.32 },
+          chest: { x: 1.05, y: 0.85, z: 0.2 },
+          pack: { x: 0.68, y: 0.78, z: 0.26 },
+          shoulderX: 0.64,
+          hipX: 0.33,
+          helmetScale: 1.02
         }
       };
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
@@ -1685,19 +1722,24 @@
     _createExosuit() {
       const T = this._three();
       const root = new T.Group();
-      root.name = 'industrial_exosuit';
-      const metal = this._material('industrial', { color: 0xd9a514, roughness: 0.34, metalness: 0.74 });
-      const dark = this._material('darkMetal', { color: 0x1f2937 });
-      const hazard = this._material('emissiveAmber', { emissiveIntensity: 0.82 });
+      root.name = 'caterpillar_p5000_powerloader';
+      // Chantier 41 : Caterpillar P-5000 Power Loader (Aliens 1986 James Cameron)
+      const catYellow = this._material('industrial', { color: 0xeab308, roughness: 0.38, metalness: 0.65 });
+      const metal = catYellow;
+      const dark = this._material('darkMetal', { color: 0x18181b, roughness: 0.45, metalness: 0.85 });
+      const hazardAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 2.2 });
+      const hazardStripe = this._material('industrial', { color: 0x1c1917, roughness: 0.5 });
       const glass = this._material('glass', { color: 0x93c5fd, opacity: 0.34 });
 
+      // Châssis central industriel lourd
       root.add(this._box(
-        metal,
+        catYellow,
         { x: 2.6, y: 3.2, z: 1.35 },
         { x: 0, y: 3.25, z: 0 },
         'central_frame',
         true
       ));
+      // Berceau du pilote avec harnais
       root.add(this._box(
         dark,
         { x: 1.42, y: 2.05, z: 0.86 },
@@ -1705,6 +1747,45 @@
         'pilot_cradle',
         true
       ));
+      // Arceau de sécurité tubulaire (Roll-Cage) Caterpillar P-5000 au-dessus du pilote
+      for (let bar = -1; bar <= 1; bar += 2) {
+        root.add(this._segment(
+          catYellow,
+          new T.Vector3(bar * 0.72, 4.4, 0.4),
+          new T.Vector3(bar * 0.72, 5.25, 0.9),
+          0.07,
+          0.07,
+          `rollcage_arch_${bar}`,
+          12
+        ));
+      }
+      root.add(this._segment(
+        catYellow,
+        new T.Vector3(-0.72, 5.25, 0.9),
+        new T.Vector3(0.72, 5.25, 0.9),
+        0.07,
+        0.07,
+        'rollcage_crossbar',
+        12
+      ));
+      // Gyrophare rotatif d'avertissement orange vif sur le sommet de la cage (P-5000 Flashing Beacon)
+      root.add(this._segment(
+        dark,
+        new T.Vector3(0, 5.25, 0.9),
+        new T.Vector3(0, 5.48, 0.9),
+        0.08,
+        0.08,
+        'beacon_stalk',
+        10
+      ));
+      root.add(this._ellipsoid(
+        hazardAmber,
+        { x: 0.18, y: 0.22, z: 0.18 },
+        { x: 0, y: 5.65, z: 0.9 },
+        'p5000_amber_beacon',
+        16
+      ));
+
       root.add(this._box(
         glass,
         { x: 1.18, y: 0.78, z: 0.08 },
@@ -1727,15 +1808,22 @@
           `frame_rail_${side}`,
           true
         ));
+        // Bandes de sécurité chevron noir/jaune sur l'épaulement
         root.add(this._box(
-          hazard,
+          hazardStripe,
+          { x: 0.38, y: 0.28, z: 0.06 },
+          { x: side * 1.34, y: 4.45, z: 0.42 },
+          `hazard_chevrons_${side}`
+        ));
+        root.add(this._box(
+          hazardAmber,
           { x: 0.16, y: 0.22, z: 0.08 },
           { x: side * 1.32, y: 4.52, z: 0.72 },
           `warning_light_${side}`
         ));
         this._addMechanicalLimb(
           root,
-          metal,
+          catYellow,
           dark,
           [
             { x: side * 1.04, y: 2.12, z: 0 },
@@ -1755,7 +1843,7 @@
         ));
         this._addMechanicalLimb(
           root,
-          metal,
+          catYellow,
           dark,
           [
             { x: side * 1.34, y: 4.22, z: 0 },
@@ -1766,6 +1854,44 @@
           `exosuit_arm_${side < 0 ? 'left' : 'right'}`,
           true
         );
+
+        // Pinces de préhension hydrauliques massives P-5000 (Upper & Lower Heavy Claws)
+        const clawGroup = new T.Group();
+        clawGroup.name = `p5000_hydraulic_pincer_${side < 0 ? 'left' : 'right'}`;
+        clawGroup.position.set(side * 2.24, 2.08, 0.72);
+        // Poignet rotatif
+        clawGroup.add(this._ring(dark, 0.26, 0.06, { x: 0, y: 0, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `pincer_wrist_${side}`));
+        // Mâchoire supérieure crantée
+        clawGroup.add(this._segment(
+          catYellow,
+          new T.Vector3(0, 0.12, 0),
+          new T.Vector3(side * 0.15, 0.35, 0.75),
+          0.12,
+          0.08,
+          `upper_claw_prong_${side}`,
+          12
+        ));
+        // Mâchoire inférieure crantée
+        clawGroup.add(this._segment(
+          catYellow,
+          new T.Vector3(0, -0.12, 0),
+          new T.Vector3(side * 0.15, -0.35, 0.75),
+          0.12,
+          0.08,
+          `lower_claw_prong_${side}`,
+          12
+        ));
+        // Vérin hydraulique central
+        clawGroup.add(this._segment(
+          dark,
+          new T.Vector3(0, 0, 0),
+          new T.Vector3(0, 0, 0.45),
+          0.09,
+          0.07,
+          `pincer_actuator_${side}`,
+          10
+        ));
+        root.add(clawGroup);
       }
 
       root.add(this._tube(
@@ -1796,9 +1922,11 @@
         leftArm: 'exosuit_arm_left',
         rightArm: 'exosuit_arm_right',
         leftLeg: 'exosuit_leg_left',
-        rightLeg: 'exosuit_leg_right'
+        rightLeg: 'exosuit_leg_right',
+        leftPincer: 'p5000_hydraulic_pincer_left',
+        rightPincer: 'p5000_hydraulic_pincer_right'
       };
-      return this._finalize(root, { modelType: 'human', subtype: 'powerloader', height: 5.25 });
+      return this._finalize(root, { modelType: 'human', subtype: 'powerloader', height: 5.65 });
     }
 
     // -------------------------------------------------------------------------
@@ -2576,13 +2704,15 @@
       const burster = caste === 'burster';
       const offspring = caste === 'offspring';
       const predalien = caste === 'predalien';
+      const deacon = caste === 'deacon';
 
-      const scale = royal ? 1.42 : (palatine ? 1.28 : (guardian ? 1.18 : (predalien ? 1.32 : (warrior ? 1.06 : (offspring ? 1.15 : (burster ? 0.96 : 1))))));
+      const scale = royal ? 1.42 : (palatine ? 1.28 : (guardian ? 1.18 : (predalien ? 1.32 : (deacon ? 1.12 : (warrior ? 1.06 : (offspring ? 1.15 : (burster ? 0.96 : 1)))))));
       let chitinColor = 0x0b1518;
       if (royal) chitinColor = 0x221033;
       else if (palatine) chitinColor = 0x1f0b29;
       else if (guardian) chitinColor = 0x2d163d;
       else if (predalien) chitinColor = 0x2e291e; // Bronze sombre métallique Yautja
+      else if (deacon) chitinColor = 0x1e293b; // Bleu ardoise profond lisse (Prometheus 2012)
       else if (warrior) chitinColor = 0x111827;
       else if (prowler) chitinColor = 0x3d0c0c;
       else if (spitter) chitinColor = 0x1a2e05;
@@ -2591,14 +2721,14 @@
 
       const primary = this._material('chitin', {
         color: chitinColor,
-        roughness: royal || palatine ? 0.22 : (predalien ? 0.24 : (offspring ? 0.55 : 0.28)),
-        metalness: predalien ? 0.54 : (offspring ? 0.15 : 0.46)
+        roughness: royal || palatine ? 0.22 : (predalien ? 0.24 : (deacon ? 0.16 : (offspring ? 0.55 : 0.28))),
+        metalness: predalien ? 0.54 : (deacon ? 0.22 : (offspring ? 0.15 : 0.46))
       });
       const secondary = this._material('resin', {
-        color: royal || palatine ? 0x4a214f : (predalien ? 0x1c1913 : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238)))),
+        color: royal || palatine ? 0x4a214f : (predalien ? 0x1c1913 : (deacon ? 0x0f172a : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238))))),
         opacity: 0.96
       });
-      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (predalien ? 0xa89f88 : (offspring ? 0xf4f4f5 : 0xb9c6a5)) });
+      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (predalien ? 0xa89f88 : (deacon ? 0x94a3b8 : (offspring ? 0xf4f4f5 : 0xb9c6a5))) });
       const sensory = this._material(royal || palatine ? 'emissiveRed' : (spitter || burster ? 'emissiveGreen' : 'emissiveGreen'), {
         emissiveIntensity: royal || palatine ? 0.42 : (burster ? 0.65 : 0.32)
       });
@@ -2629,14 +2759,33 @@
       root.add(this._ellipsoid(
         domeMat,
         {
-          x: (royal ? 0.92 : 0.7) * scale,
-          y: (royal ? 0.54 : 0.46) * scale,
-          z: (royal ? 1.35 : 1.14) * scale
+          x: (royal ? 0.92 : (deacon ? 0.58 : 0.7)) * scale,
+          y: (royal ? 0.54 : (deacon ? 0.42 : 0.46)) * scale,
+          z: (royal ? 1.35 : (deacon ? 1.25 : 1.14)) * scale
         },
         { x: 0, y: 4.58 * scale, z: 0.36 * scale },
         'cranial_dome',
         royal ? 28 : 22
       ));
+
+      if (deacon) {
+        // Chantier 44 : Crâne conique effilé pointu vers l'arrière & Mâchoire prémaxillaire de type requin gobelin (Prometheus 2012)
+        root.add(this._coneAlong(
+          primary,
+          { x: 0, y: 4.58 * scale, z: 0.15 * scale },
+          { x: 0, y: 0.08, z: -1 },
+          0.48 * scale,
+          1.45 * scale,
+          'deacon_pointed_occiput',
+          18
+        ));
+        const premaxGroup = new T.Group();
+        premaxGroup.name = 'deacon_premaxillary_jaw';
+        premaxGroup.position.set(0, 4.04 * scale, 1.35 * scale);
+        premaxGroup.add(this._box(primary, { x: 0.34 * scale, y: 0.2 * scale, z: 0.45 * scale }, { x: 0, y: 0, z: 0.2 * scale }, 'premax_frame', true));
+        premaxGroup.add(this._box(bone, { x: 0.3 * scale, y: 0.08 * scale, z: 0.38 * scale }, { x: 0, y: -0.06 * scale, z: 0.22 * scale }, 'premax_teeth'));
+        root.add(premaxGroup);
+      }
 
       if (isDrone) {
         // Canon Alien 1979 (H.R. Giger Big Chap) : Crâne humain sculpté sous la carapace translucide
@@ -2720,7 +2869,9 @@
       }
 
       this._addRibCage(root, secondary, 3.62 * scale, 0.72 * scale, 0.52 * scale, royal ? 8 : 6);
-      this._addDorsalTubes(root, primary, 2.72 * scale, scale, royal ? 8 : (warrior || predalien ? 6 : 4));
+      if (!deacon) {
+        this._addDorsalTubes(root, primary, 2.72 * scale, scale, royal ? 8 : (warrior || predalien ? 6 : 4));
+      }
 
       for (let side = -1; side <= 1; side += 2) {
         const stance = guardian || royal ? 0.22 : 0;
@@ -3650,6 +3801,76 @@
             { x: Math.cos(wAngle) * 0.6, y: 3.2, z: Math.sin(wAngle) * 0.6 }
           ], 0.035, `web_strand_${w}`, 12, 6));
         }
+      } else if (normalizedType === 'airlock_decompression' || normalizedType === 'decompression_airlock') {
+        // Chantier 42 : Sas de Dépressurisation d'Urgence & Éjection Spatiale (Alien 1979 / Romulus)
+        const frameMat = this._material('darkMetal', { color: 0x1e293b, roughness: 0.38, metalness: 0.85 });
+        const doorMat = this._material('industrial', { color: 0x475569, roughness: 0.45, metalness: 0.75 });
+        const warningMat = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 1.5 });
+        const voidGlass = this._material('glass', { color: 0x0284c7, opacity: 0.45, roughness: 0.1 });
+        const handleRed = this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 2.2 });
+        // Cadre de sas lourd
+        root.add(this._box(frameMat, { x: 3.4, y: 4.2, z: 0.6 }, { x: 0, y: 2.1, z: 0 }, 'airlock_outer_frame', true));
+        // Battants étanches
+        root.add(this._box(doorMat, { x: 2.8, y: 3.6, z: 0.2 }, { x: 0, y: 1.9, z: 0.1 }, 'airlock_inner_door', true));
+        // Hublot blindé circulaire donnant sur le vide spatial étoilé
+        root.add(this._ring(frameMat, 0.95, 0.14, { x: 0, y: 2.4, z: 0.28 }, { x: 0, y: 0, z: 0 }, 'airlock_porthole_frame'));
+        root.add(this._ellipsoid(voidGlass, { x: 0.9, y: 0.9, z: 0.08 }, { x: 0, y: 2.4, z: 0.25 }, 'airlock_porthole_glass', 24));
+        // Poignée manuelle rouge d'urgence "EMERGENCY AIR DUMP"
+        root.add(this._box(handleRed, { x: 0.14, y: 0.55, z: 0.22 }, { x: 1.25, y: 2.0, z: 0.35 }, 'airlock_dump_lever'));
+        root.add(this._box(warningMat, { x: 0.8, y: 0.2, z: 0.04 }, { x: 0, y: 3.8, z: 0.32 }, 'airlock_hazard_header'));
+      } else if (normalizedType === 'decon_shower' || normalizedType === 'decon_arch') {
+        // Chantier 43 : Sas Décontaminant avec Douches Chimiques (Alien 3 / Isolation)
+        const archMetal = this._material('industrial', { color: 0x64748b, roughness: 0.35, metalness: 0.65 });
+        const nozzleMat = this._material('darkMetal', { color: 0x0f172a, roughness: 0.3 });
+        const sensorBlue = this._material('emissiveGreen', { color: 0x38bdf8, emissiveIntensity: 2.0 });
+        // Portique d'arche de décontamination
+        root.add(this._box(archMetal, { x: 0.4, y: 3.8, z: 0.4 }, { x: -1.6, y: 1.9, z: 0 }, 'arch_post_left', true));
+        root.add(this._box(archMetal, { x: 0.4, y: 3.8, z: 0.4 }, { x: 1.6, y: 1.9, z: 0 }, 'arch_post_right', true));
+        root.add(this._box(archMetal, { x: 3.6, y: 0.45, z: 0.45 }, { x: 0, y: 3.8, z: 0 }, 'arch_crossbeam', true));
+        // 4 Buses de pulvérisation haute pression orientées vers le bas
+        for (let b = -1; b <= 1; b += 0.66) {
+          root.add(this._coneAlong(nozzleMat, { x: b * 1.1, y: 3.55, z: 0 }, { x: 0, y: -1, z: 0 }, 0.08, 0.22, `spray_nozzle_${Math.round(b*10)}`, 10));
+        }
+        // Détecteur de passage optique
+        root.add(this._ellipsoid(sensorBlue, { x: 0.1, y: 0.06, z: 0.12 }, { x: 0, y: 3.5, z: 0.25 }, 'decon_motion_sensor', 12));
+      } else if (normalizedType === 'subfloor_grate' || normalizedType === 'floor_grate_ambush') {
+        // Chantier 49 : Éventration de Planchers & Grilles de Sol (Aliens 1986 / Alien 3)
+        const grateMetal = this._material('darkMetal', { color: 0x27272a, roughness: 0.6, metalness: 0.7 });
+        const voidShadow = this._material('darkMetal', { color: 0x09090b, roughness: 0.95 });
+        const rustAccent = this._material('industrial', { color: 0x78350f, roughness: 0.8 });
+        // Fosse technique sous le plancher
+        root.add(this._box(voidShadow, { x: 2.4, y: 0.6, z: 2.4 }, { x: 0, y: -0.3, z: 0 }, 'subfloor_pit_void'));
+        // Grille à caillebotis métallique perforé
+        root.add(this._box(grateMetal, { x: 2.5, y: 0.08, z: 2.5 }, { x: 0, y: 0.04, z: 0 }, 'floor_grate_frame', true));
+        for (let s = -4; s <= 4; s++) {
+          root.add(this._box(s % 2 === 0 ? grateMetal : rustAccent, { x: 2.4, y: 0.05, z: 0.1 }, { x: 0, y: 0.06, z: s * 0.24 }, `grate_slat_${s}`));
+        }
+      } else if (normalizedType === 'bisected_android' || normalizedType === 'crawling_synth') {
+        // Chantier 47 : Demi-corps de Synthétique Décapité Rampant (Alien 1979 / Aliens 1986)
+        const synthSkin = this._material('skin', { color: 0xe2e8f0, roughness: 0.35 });
+        const chassisMat = this._material('darkMetal', { color: 0x334155, roughness: 0.45, metalness: 0.65 });
+        const milkMat = new T.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.88 });
+        const sparkMat = this._material('emissiveGreen', { color: 0x67e8f9, emissiveIntensity: 2.2 });
+        // Torse incliné rampant au sol
+        const torsoGroup = new T.Group();
+        torsoGroup.name = 'bisected_torso_assembly';
+        torsoGroup.rotation.x = 0.55;
+        torsoGroup.position.set(0, 0.25, 0);
+        torsoGroup.add(this._ellipsoid(synthSkin, { x: 0.5, y: 0.65, z: 0.3 }, { x: 0, y: 0.4, z: 0 }, 'synth_upper_torso', 16));
+        torsoGroup.add(this._segment(chassisMat, new T.Vector3(0, 0.2, -0.15), new T.Vector3(0, 0.7, -0.15), 0.06, 0.05, 'severed_spine', 10));
+        // Bras rampant vers l'avant
+        torsoGroup.add(this._segment(synthSkin, new T.Vector3(-0.45, 0.6, 0), new T.Vector3(-0.65, 0.15, 0.55), 0.1, 0.08, 'crawl_arm_left', 8));
+        torsoGroup.add(this._segment(synthSkin, new T.Vector3(0.45, 0.6, 0), new T.Vector3(0.65, 0.15, 0.55), 0.1, 0.08, 'crawl_arm_right', 8));
+        // Câbles dénudés et étincelles au niveau de la taille sectionnée
+        for (let c = 0; c < 4; c++) {
+          torsoGroup.add(this._coneAlong(sparkMat, { x: (c - 1.5) * 0.18, y: 0.05, z: 0 }, { x: 0, y: -1, z: 0 }, 0.04, 0.18, `severed_cable_${c}`, 6));
+        }
+        root.add(torsoGroup);
+        // Flaque de liquide laiteux synthétique blanc répandue au sol
+        const milkPool = new T.Mesh(new T.CircleGeometry(1.4, 20), milkMat);
+        milkPool.rotation.x = -Math.PI / 2;
+        milkPool.position.y = 0.02;
+        root.add(milkPool);
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -3925,6 +4146,48 @@
     // -------------------------------------------------------------------------
     createCeilingCocoon() {
       return this.createIndustrialProp('ceiling_cocoon');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 41 : Exosquelette Caterpillar P-5000 Power Loader (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createPowerLoader() {
+      return this._createExosuit();
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 44 : Phénotype Deacon / Proto-Xénomorphe (Prometheus 2012)
+    // -------------------------------------------------------------------------
+    createDeacon() {
+      return this._createUprightAdult('deacon');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 47 : Demi-corps de Synthétique Décapité Rampant (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createBisectedAndroid() {
+      return this.createIndustrialProp('bisected_android');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 42 : Sas de Dépressurisation d'Urgence (Alien 1979 / Romulus)
+    // -------------------------------------------------------------------------
+    createDepressurizationAirlock() {
+      return this.createIndustrialProp('airlock_decompression');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 43 : Sas Décontaminant avec Douches Chimiques (Alien 3 / Isolation)
+    // -------------------------------------------------------------------------
+    createDeconShowerArch() {
+      return this.createIndustrialProp('decon_shower');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 49 : Grille d'Éventration de Plancher Technique (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createSubfloorGrate() {
+      return this.createIndustrialProp('subfloor_grate');
     }
   }
 

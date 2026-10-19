@@ -85,7 +85,16 @@
     weylanddroneoperator: 'weyland_drone_operator',
     weyland_drone_operator: 'weyland_drone_operator',
     skimmerdrone: 'skimmer_scan_drone',
-    skimmer_scan_drone: 'skimmer_scan_drone'
+    skimmer_scan_drone: 'skimmer_scan_drone',
+    sniper: 'uscm_sniper',
+    marksman: 'uscm_sniper',
+    uscmsniper: 'uscm_sniper',
+    uscm_sniper: 'uscm_sniper',
+    containment: 'weyland_containment_squad',
+    containmentsquad: 'weyland_containment_squad',
+    hazmatsquad: 'weyland_containment_squad',
+    weylandcontainment: 'weyland_containment_squad',
+    weyland_containment_squad: 'weyland_containment_squad'
   });
 
   // ---------------------------------------------------------------------------
@@ -1429,6 +1438,28 @@
           shoulderX: 0.63,
           hipX: 0.32,
           helmetScale: 1.02
+        },
+        uscm_sniper: {
+          uniformColor: 0x334155, // Camouflage d'infiltration nocturne USCM (Aliens / Dark Descent)
+          armorColor: 0x1e293b,
+          torso: { x: 0.66, y: 0.92, z: 0.38 },
+          pelvis: { x: 0.5, y: 0.34, z: 0.34 },
+          chest: { x: 1.05, y: 0.88, z: 0.26 },
+          pack: { x: 0.76, y: 0.84, z: 0.28 }, // Radio longue portée et télémètre balistique
+          shoulderX: 0.68,
+          hipX: 0.34,
+          helmetScale: 1.04
+        },
+        weyland_containment_squad: {
+          uniformColor: 0xffedd5, // Combinaison hermétique haute sécurité blanche avec marquages orange (Alien: Romulus)
+          armorColor: 0xf97316,
+          torso: { x: 0.75, y: 1.0, z: 0.46 },
+          pelvis: { x: 0.58, y: 0.38, z: 0.38 },
+          chest: { x: 1.28, y: 0.98, z: 0.35 },
+          pack: { x: 0.95, y: 1.15, z: 0.5 }, // Compresseur autonome de fréon cryogénique
+          shoulderX: 0.76,
+          hipX: 0.38,
+          helmetScale: 1.18
         }
       };
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
@@ -1442,7 +1473,7 @@
       const dark = materials.dark;
       const visor = materials.visor;
       const accent = materials.accent;
-      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator'].indexOf(type) >= 0;
+      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad'].indexOf(type) >= 0;
 
       if (combatRole) {
         for (let side = -1; side <= 1; side += 2) {
@@ -1748,6 +1779,32 @@
         // Mât d'antenne de liaison de données satellite repliable dans le dos
         root.add(this._segment(antennaMat, new T.Vector3(0.25, torsoY + 0.35, -0.32), new T.Vector3(0.3, torsoY + 1.65, -0.38), 0.025, 0.012, 'drone_link_antenna', 8));
         root.add(this._ellipsoid(screenMat, { x: 0.04, y: 0.04, z: 0.04 }, { x: 0.3, y: torsoY + 1.68, z: -0.38 }, 'drone_link_beacon', 8));
+      } else if (type === 'uscm_sniper') {
+        // Chantier 92 : Tireur d'Élite USCM & Fusil de Précision M42A Scoped Pulse Rifle (Aliens / Dark Descent)
+        const scopeMat = this._material('darkMetal', { color: 0x09090b, roughness: 0.25, metalness: 0.95 });
+        const laserRed = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 4.0 });
+        // Monoculaire thermique sur le côté droit du casque
+        root.add(this._segment(scopeMat, new T.Vector3(0.18, torsoY + 1.32, 0.22), new T.Vector3(0.18, torsoY + 1.32, 0.44), 0.045, 0.038, 'sniper_nv_monocular', 8));
+        root.add(this._ellipsoid(laserRed, { x: 0.03, y: 0.03, z: 0.01 }, { x: 0.18, y: torsoY + 1.32, z: 0.44 }, 'sniper_optic_glow'));
+        // Fusil de sniper M42A long lourd à deux mains
+        root.add(this._box(scopeMat, { x: 0.12, y: 0.18, z: 1.15 }, { x: profile.shoulderX + 0.06, y: torsoY - 0.6, z: 0.65 }, 'm42a_sniper_chassis', true));
+        root.add(this._segment(scopeMat, new T.Vector3(profile.shoulderX + 0.06, torsoY - 0.58, 1.2), new T.Vector3(profile.shoulderX + 0.06, torsoY - 0.58, 2.45), 0.032, 0.024, 'm42a_long_barrel', 8));
+        root.add(this._segment(scopeMat, new T.Vector3(profile.shoulderX + 0.06, torsoY - 0.46, 0.4), new T.Vector3(profile.shoulderX + 0.06, torsoY - 0.46, 1.1), 0.05, 0.05, 'm42a_thermal_scope', 8));
+        // Faisceau laser de visée rouge continu vers la cible
+        root.add(this._segment(laserRed, new T.Vector3(profile.shoulderX + 0.06, torsoY - 0.64, 2.45), new T.Vector3(profile.shoulderX + 0.06, torsoY - 0.64, 8.5), 0.012, 0.012, 'm42a_laser_sight_beam', 6));
+      } else if (type === 'weyland_containment_squad') {
+        // Chantier 97 : Équipe d'Intervention Confinement Weyland-Yutani & Filet Cryogénique (Romulus / Comics)
+        const containmentVisor = this._material('darkMetal', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 0.6, metalness: 0.9 });
+        const cryoTankMat = this._material('industrial', { color: 0x38bdf8, roughness: 0.35, metalness: 0.75 });
+        const cryoGlow = this._material('emissiveGreen', { color: 0x0284c7, emissive: 0x38bdf8, emissiveIntensity: 2.8 });
+        // Masque intégral pressurisé miroir orange
+        root.add(this._ellipsoid(containmentVisor, { x: 0.38, y: 0.28, z: 0.25 }, { x: 0, y: torsoY + 1.25, z: 0.36 }, 'containment_visor_dome', 16));
+        // Bonbonne de fréon liquide cryogénique sur l'épaule gauche
+        root.add(this._segment(cryoTankMat, new T.Vector3(-0.38, torsoY + 0.4, -0.35), new T.Vector3(-0.38, torsoY + 1.25, -0.35), 0.13, 0.13, 'cryo_freon_tank', 12));
+        root.add(this._ring(dark, 0.16, 0.03, { x: -0.38, y: torsoY + 0.8, z: -0.35 }, { x: 0, y: 0, z: 0 }, 'cryo_tank_clamp'));
+        // Lanceur de filet cryogénique monté sur l'avant-bras droit
+        root.add(this._segment(dark, new T.Vector3(profile.shoulderX + 0.16, torsoY - 0.72, 0.3), new T.Vector3(profile.shoulderX + 0.16, torsoY - 0.72, 1.2), 0.095, 0.15, 'cryo_net_launcher', 12));
+        root.add(this._ellipsoid(cryoGlow, { x: 0.12, y: 0.12, z: 0.06 }, { x: profile.shoulderX + 0.16, y: torsoY - 0.72, z: 1.2 }, 'cryo_capsule_muzzle', 10));
       }
     }
 
@@ -2953,17 +3010,21 @@
       const boiler = caste === 'boiler';
       const carrier = caste === 'carrier';
       const offspring = caste === 'offspring';
+      const newborn = caste === 'newborn';
+      const raven = caste === 'raven';
       const predalien = caste === 'predalien';
       const deacon = caste === 'deacon';
       const neomorph = caste === 'neomorph';
       const alpha = caste === 'alpha';
 
-      const scale = royal ? 1.42 : (alpha ? 1.38 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : 1)))))))))));
+      const scale = raven ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : 1)))))))))))));
       let chitinColor = 0x0b1518;
       if (royal) chitinColor = 0x221033;
       else if (palatine) chitinColor = 0x1f0b29;
       else if (guardian) chitinColor = 0x2d163d;
+      else if (raven) chitinColor = 0x0a0e14; // Blindage bivalve chitineux obsidienne impénétrable (Aliens: Colonial Marines)
       else if (alpha) chitinColor = 0x140a0b; // Obsidienne marbrée de carmin (Marvel Comics: Alien: Bloodlines)
+      else if (newborn) chitinColor = 0xfce7f3; // Peau gélatineuse blanc cassé/rosé humanoïde (Alien: Resurrection 1997)
       else if (predalien) chitinColor = 0x2e291e; // Bronze sombre métallique Yautja
       else if (deacon) chitinColor = 0x1e293b; // Bleu ardoise profond lisse (Prometheus 2012)
       else if (neomorph) chitinColor = 0xf1f5f9; // Peau blanc albâtre translucide (Alien: Covenant 2017)
@@ -2977,16 +3038,16 @@
 
       const primary = this._material('chitin', {
         color: chitinColor,
-        roughness: royal || palatine ? 0.22 : (alpha ? 0.20 : (predalien ? 0.24 : (deacon ? 0.16 : (neomorph ? 0.18 : (offspring ? 0.55 : 0.28))))),
-        metalness: alpha ? 0.65 : (predalien ? 0.54 : (deacon ? 0.22 : (neomorph ? 0.06 : (offspring ? 0.15 : 0.46)))),
-        emissive: alpha ? 0x991b1b : 0x000000,
-        emissiveIntensity: alpha ? 0.32 : 0
+        roughness: royal || palatine ? 0.22 : (raven ? 0.35 : (alpha ? 0.20 : (newborn ? 0.65 : (predalien ? 0.24 : (deacon ? 0.16 : (neomorph ? 0.18 : (offspring ? 0.55 : 0.28))))))),
+        metalness: raven ? 0.72 : (alpha ? 0.65 : (predalien ? 0.54 : (deacon ? 0.22 : (neomorph ? 0.06 : (newborn ? 0.04 : (offspring ? 0.15 : 0.46)))))),
+        emissive: alpha ? 0x991b1b : (raven ? 0x0f172a : 0x000000),
+        emissiveIntensity: alpha ? 0.32 : (raven ? 0.2 : 0)
       });
       const secondary = this._material('resin', {
-        color: royal || palatine ? 0x4a214f : (alpha ? 0x3b0712 : (predalien ? 0x1c1913 : (deacon ? 0x0f172a : (neomorph ? 0xfbcfe8 : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238))))))),
+        color: royal || palatine ? 0x4a214f : (raven ? 0x18181b : (alpha ? 0x3b0712 : (newborn ? 0xfbcfe8 : (predalien ? 0x1c1913 : (deacon ? 0x0f172a : (neomorph ? 0xfbcfe8 : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238))))))))),
         opacity: 0.96
       });
-      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (alpha ? 0xfee2e2 : (predalien ? 0xa89f88 : (deacon ? 0x94a3b8 : (neomorph ? 0xffffff : (offspring ? 0xf4f4f5 : 0xb9c6a5)))) ) });
+      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (raven ? 0x334155 : (alpha ? 0xfee2e2 : (newborn ? 0xfff1f2 : (predalien ? 0xa89f88 : (deacon ? 0x94a3b8 : (neomorph ? 0xffffff : (offspring ? 0xf4f4f5 : 0xb9c6a5))))))) });
       const sensory = this._material(royal || palatine || alpha ? 'emissiveRed' : (spitter || burster ? 'emissiveGreen' : 'emissiveGreen'), {
         emissiveIntensity: royal || palatine ? 0.42 : (alpha ? 0.75 : (burster ? 0.65 : 0.32))
       });
@@ -3127,8 +3188,8 @@
       }
 
       this._addRibCage(root, secondary, 3.62 * scale, 0.72 * scale, 0.52 * scale, royal ? 8 : 6);
-      if (!deacon && !neomorph) {
-        this._addDorsalTubes(root, primary, 2.72 * scale, scale, royal ? 8 : (warrior || predalien ? 6 : 4));
+      if (!deacon && !neomorph && !newborn) {
+        this._addDorsalTubes(root, primary, 2.72 * scale, scale, royal ? 8 : (warrior || predalien || raven ? 6 : 4));
       }
 
       for (let side = -1; side <= 1; side += 2) {
@@ -3422,16 +3483,70 @@
           }
         });
       }
-      this._addTail(
-        root,
-        primary,
-        bone,
-        { x: 0, y: 1.88 * scale, z: -0.36 * scale },
-        (royal ? 6.4 : 4.8) * scale,
-        royal ? 1.05 * scale : 0.58 * scale,
-        royal ? 0.42 : -0.34,
-        (royal ? 0.19 : 0.14) * scale
-      );
+      if (newborn) {
+        // Chantier 91 : Phénotype "The Newborn / Hybride Humain-Xénomorphe" (Alien: Resurrection 1997)
+        const eyeMat = this._material('darkMetal', { color: 0x09090b, roughness: 0.1 });
+        const tongueMat = this._material('resin', { color: 0xf43f5e, roughness: 0.4 });
+        const noseBridge = this._material('bone', { color: 0xfce7f3, roughness: 0.5 });
+        // Arcades sourcilières et orbites oculaires profondes expressives
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._ellipsoid(eyeMat, { x: 0.09 * scale, y: 0.08 * scale, z: 0.05 * scale }, { x: side * 0.22 * scale, y: 4.38 * scale, z: 1.18 * scale }, `newborn_eye_${side}`, 12));
+          root.add(this._box(noseBridge, { x: 0.16 * scale, y: 0.06 * scale, z: 0.12 * scale }, { x: side * 0.22 * scale, y: 4.48 * scale, z: 1.15 * scale }, `newborn_brow_${side}`));
+        }
+        // Nez retroussé quasi-humain
+        root.add(this._box(noseBridge, { x: 0.08 * scale, y: 0.14 * scale, z: 0.12 * scale }, { x: 0, y: 4.32 * scale, z: 1.25 * scale }, 'newborn_humanoid_nose'));
+        // Langue humaine charnue rétractile
+        root.add(this._segment(tongueMat, new T.Vector3(0, 4.08 * scale, 1.1 * scale), new T.Vector3(0, 4.06 * scale, 1.62 * scale), 0.09 * scale, 0.06 * scale, 'newborn_fleshy_tongue', 10));
+        // Pectoraux et cage thoracique humanoïde
+        root.add(this._ellipsoid(secondary, { x: 0.72 * scale, y: 0.45 * scale, z: 0.4 * scale }, { x: 0, y: 3.25 * scale, z: 0.35 * scale }, 'newborn_humanoid_chest', 16));
+      }
+      if (raven) {
+        // Chantier 94 : Phénotype "The Raven / Berserker Géant à Blindage Bivalve" (Aliens: Colonial Marines)
+        const armorChitin = this._material('darkMetal', { color: 0x0f172a, roughness: 0.3, metalness: 0.85 });
+        const boneSpur = this._material('bone', { color: 0x475569, roughness: 0.35, metalness: 0.5 });
+        // Blindage bivalve céphalique : plaques superposées protégeant le crâne
+        for (let p = 0; p < 5; p++) {
+          root.add(this._box(
+            armorChitin,
+            { x: (0.95 - p * 0.06) * scale, y: 0.22 * scale, z: 0.35 * scale },
+            { x: 0, y: (4.95 - p * 0.18) * scale, z: (0.8 - p * 0.45) * scale },
+            `raven_bivalve_plate_${p}`,
+            true
+          ));
+        }
+        // Éperons d'épaule massifs
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._coneAlong(boneSpur, { x: side * 0.85 * scale, y: 3.85 * scale, z: 0 }, { x: side * 0.8, y: 0.8, z: -0.3 }, 0.16 * scale, 0.95 * scale, `raven_shoulder_spur_${side}`, 8));
+        }
+      }
+      if (!newborn) {
+        this._addTail(
+          root,
+          primary,
+          bone,
+          { x: 0, y: 1.88 * scale, z: -0.36 * scale },
+          (royal ? 6.4 : (raven ? 5.5 : 4.8)) * scale,
+          royal ? 1.05 * scale : 0.58 * scale,
+          royal ? 0.42 : -0.34,
+          (royal ? 0.19 : (raven ? 0.22 : 0.14)) * scale
+        );
+      } else {
+        // Coccyx vestigial humain atrophié du Newborn
+        root.add(this._segment(primary, new T.Vector3(0, 1.88 * scale, -0.36 * scale), new T.Vector3(0, 1.65 * scale, -0.55 * scale), 0.14 * scale, 0.05 * scale, 'newborn_vestigial_tail', 8));
+      }
+      if (raven) {
+        // Massue caudale lourde hérissée de pointes au bout de la queue du Raven
+        const armorChitin = this._material('darkMetal', { color: 0x0f172a, roughness: 0.3, metalness: 0.85 });
+        const boneSpur = this._material('bone', { color: 0x475569, roughness: 0.35, metalness: 0.5 });
+        const tailEndX = -0.34 * 5.5 * scale * 0.47;
+        const tailEndY = 1.88 * scale + 0.58 * scale;
+        const tailEndZ = -0.36 * scale - 5.5 * scale;
+        root.add(this._ellipsoid(armorChitin, { x: 0.32 * scale, y: 0.28 * scale, z: 0.55 * scale }, { x: tailEndX, y: tailEndY, z: tailEndZ }, 'raven_tail_club_mace', 16));
+        for (let sp = 0; sp < 6; sp++) {
+          const spAng = (sp / 6) * Math.PI * 2;
+          root.add(this._coneAlong(boneSpur, { x: tailEndX, y: tailEndY, z: tailEndZ }, { x: Math.cos(spAng), y: Math.sin(spAng), z: -0.5 }, 0.06 * scale, 0.4 * scale, `raven_mace_spike_${sp}`, 6));
+        }
+      }
       if (neomorph) {
         // Chantier 51 : Stylet osseux acéré terminal de queue du Néomorphe (Alien: Covenant)
         root.add(this._coneAlong(
@@ -4904,6 +5019,131 @@
         root.add(this._coneAlong(blueScanner, { x: 0, y: 1.4, z: 0.18 }, { x: 0, y: -1, z: 0.3 }, 0.05, 1.4, 'drone_scan_cone', 12));
         // Cellule de décharge EMP d'autodéfense
         root.add(this._ellipsoid(empCell, { x: 0.12, y: 0.08, z: 0.12 }, { x: 0, y: 1.74, z: -0.15 }, 'drone_emp_core', 12));
+      } else if (normalizedType === 'decontamination_airlock' || normalizedType === 'decon_shower' || normalizedType === 'hazmat_airlock') {
+        // Chantier 93 : Sas de Décontamination Nucléaire & Douches Caustiques d'Urgence (Aliens / Isolation)
+        const frameMat = this._material('industrial', { color: 0x475569, roughness: 0.35, metalness: 0.85 });
+        const yellowDoor = this._material('hazard', { color: 0xeab308, roughness: 0.4 });
+        const glassPort = this._material('glass', { color: 0x38bdf8, opacity: 0.65, transparent: true });
+        const nozzleMat = this._material('darkMetal', { color: 0x0f172a, roughness: 0.2, metalness: 0.9 });
+        const alertBeacon = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 3.5 });
+
+        // Structure du sas cubique étanche (4.2m x 3.8m x 4.2m)
+        root.add(this._box(frameMat, { x: 4.2, y: 0.25, z: 4.2 }, { x: 0, y: 0.12, z: 0 }, 'decon_floor_tray', true));
+        root.add(this._box(frameMat, { x: 4.2, y: 0.25, z: 4.2 }, { x: 0, y: 3.65, z: 0 }, 'decon_ceiling_hood', true));
+        // Parois latérales avec montants renforcés
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._box(frameMat, { x: 0.25, y: 3.4, z: 4.2 }, { x: side * 2.0, y: 1.85, z: 0 }, `decon_wall_${side}`, true));
+          // Portes coulissantes jaunes avec hublot circulaire étanche
+          root.add(this._box(yellowDoor, { x: 1.6, y: 3.2, z: 0.18 }, { x: side * 0.9, y: 1.8, z: 2.05 }, `decon_sliding_door_${side}`, true));
+          root.add(this._ring(frameMat, 0.35, 0.05, { x: side * 0.9, y: 2.1, z: 2.15 }, { x: 0, y: 0, z: 0 }, `decon_porthole_frame_${side}`));
+          root.add(this._ellipsoid(glassPort, { x: 0.3, y: 0.3, z: 0.02 }, { x: side * 0.9, y: 2.1, z: 2.15 }, `decon_porthole_glass_${side}`, 14));
+        }
+        // 4 Buses de pulvérisation rotatives au plafond
+        const nozzlePositions = [
+          { x: -1.2, z: -1.2 }, { x: 1.2, z: -1.2 },
+          { x: -1.2, z: 1.2 }, { x: 1.2, z: 1.2 }
+        ];
+        nozzlePositions.forEach((noz, idx) => {
+          root.add(this._coneAlong(nozzleMat, { x: noz.x, y: 3.55, z: noz.z }, { x: 0, y: -1, z: 0 }, 0.12, 0.25, `decon_spray_nozzle_${idx}`, 10));
+          root.add(this._ring(nozzleMat, 0.16, 0.03, { x: noz.x, y: 3.55, z: noz.z }, { x: Math.PI / 2, y: 0, z: 0 }, `decon_nozzle_flange_${idx}`));
+        });
+        // Gyrophare d'urgence jaune au sommet du sas
+        root.add(this._ellipsoid(alertBeacon, { x: 0.22, y: 0.18, z: 0.22 }, { x: 0, y: 3.9, z: 2.05 }, 'decon_alert_beacon', 14));
+        // Console murale avec bouton poussoir d'activation d'urgence
+        root.add(this._box(frameMat, { x: 0.3, y: 0.45, z: 0.15 }, { x: 1.9, y: 1.7, z: 1.2 }, 'decon_switch_panel', true));
+        root.add(this._box(this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 3.0 }), { x: 0.08, y: 0.08, z: 0.06 }, { x: 1.78, y: 1.7, z: 1.2 }, 'decon_emergency_trigger'));
+      } else if (normalizedType === 'industrial_crane_arm' || normalizedType === 'crane_arm' || normalizedType === 'seegson_crane') {
+        // Chantier 96 : Bras Manipulateur Robotique Industriel & Grue Suspendue Télescopique Seegson (Alien: Isolation)
+        const frameYellow = this._material('hazard', { color: 0xeab308, roughness: 0.45, metalness: 0.6 });
+        const hydSteel = this._material('darkMetal', { color: 0x334155, roughness: 0.2, metalness: 0.95 });
+        const clawMat = this._material('darkMetal', { color: 0x0f172a, roughness: 0.25, metalness: 0.92 });
+        const warningGlow = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 2.5 });
+
+        // Portique d'ancrage télescopique au plafond (hauteur 7.5m)
+        root.add(this._box(frameYellow, { x: 1.8, y: 0.5, z: 2.4 }, { x: 0, y: 7.2, z: 0 }, 'crane_ceiling_mount', true));
+        // Pivot rotatif d'azimut
+        root.add(this._segment(hydSteel, new T.Vector3(0, 7.2, 0), new T.Vector3(0, 6.4, 0), 0.45, 0.45, 'crane_turntable_shaft', 16));
+        // Bras articulé principal plongeant
+        root.add(this._segment(frameYellow, new T.Vector3(0, 6.4, 0), new T.Vector3(0, 4.2, 1.8), 0.28, 0.22, 'crane_upper_boom', 12));
+        // Vérin hydraulique double effet
+        root.add(this._segment(hydSteel, new T.Vector3(0, 6.2, -0.2), new T.Vector3(0, 4.6, 1.2), 0.12, 0.08, 'crane_hydraulic_ram', 8));
+        // Poignet articulé et rotule d'orientation
+        root.add(this._ellipsoid(hydSteel, { x: 0.35, y: 0.35, z: 0.35 }, { x: 0, y: 4.2, z: 1.8 }, 'crane_wrist_joint', 16));
+        // Pince tripode géante de préhension d'acier
+        for (let f = 0; f < 3; f++) {
+          const fAng = (f / 3) * Math.PI * 2;
+          const clawBase = new T.Vector3(Math.cos(fAng) * 0.35, 4.2, 1.8 + Math.sin(fAng) * 0.35);
+          const clawTip = new T.Vector3(Math.cos(fAng) * 0.65, 2.7, 1.8 + Math.sin(fAng) * 0.65);
+          root.add(this._segment(clawMat, clawBase, clawTip, 0.14, 0.06, `crane_claw_jaw_${f}`, 8));
+          root.add(this._coneAlong(clawMat, clawTip, { x: -Math.cos(fAng) * 0.4, y: -1, z: -Math.sin(fAng) * 0.4 }, 0.06, 0.35, `crane_claw_tooth_${f}`, 6));
+        }
+        root.add(this._ellipsoid(warningGlow, { x: 0.15, y: 0.15, z: 0.15 }, { x: 0, y: 4.15, z: 1.8 }, 'crane_working_beacon', 12));
+      } else if (normalizedType === 'fusion_reactor_core' || normalizedType === 'reactor_core' || normalizedType === 'fusion_core') {
+        // Chantier 98 : Réacteur à Fusion Surchauffé & Rupture du Confinement Magnétique (Aliens 1986 / Romulus)
+        const reactorBaseMat = this._material('industrial', { color: 0x1e293b, roughness: 0.4, metalness: 0.85 });
+        const copperToroid = this._material('chitinWarm', { color: 0xb45309, roughness: 0.25, metalness: 0.95 });
+        const glassCore = this._material('glass', { color: 0x38bdf8, opacity: 0.45, transparent: true });
+        const plasmaCoreGlow = this._material('emissiveGreen', { color: 0x0284c7, emissive: 0x38bdf8, emissiveIntensity: 5.5 });
+        const arcSpark = this._material('emissiveGreen', { color: 0x67e8f9, emissiveIntensity: 4.2 });
+
+        // Base toroïdale du réacteur au sol
+        root.add(this._segment(reactorBaseMat, new T.Vector3(0, 0, 0), new T.Vector3(0, 1.2, 0), 2.8, 2.5, 'reactor_pedestal_body', 24));
+        root.add(this._ring(reactorBaseMat, 3.2, 0.25, { x: 0, y: 0.12, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'reactor_deck_rim'));
+        // Dôme de confinement borosilicaté transparent (hauteur 4m)
+        root.add(this._segment(glassCore, new T.Vector3(0, 1.2, 0), new T.Vector3(0, 5.2, 0), 1.8, 1.8, 'reactor_containment_cylinder', 24));
+        // Cœur plasmique vertical hyper-luminescent bleu
+        root.add(this._segment(plasmaCoreGlow, new T.Vector3(0, 1.4, 0), new T.Vector3(0, 5.0, 0), 0.55, 0.55, 'reactor_plasma_column', 16));
+        // 4 Anneaux magnétiques supraconducteurs toroïdaux en cuivre
+        for (let ringIdx = 0; ringIdx < 4; ringIdx++) {
+          const ringY = 1.8 + ringIdx * 0.95;
+          root.add(this._ring(copperToroid, 2.2, 0.16, { x: 0, y: ringY, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `magnetic_choke_ring_${ringIdx}`));
+        }
+        // Arches d'arcs électriques et de décharge plasmique
+        for (let arc = 0; arc < 4; arc++) {
+          const arcAng = (arc / 4) * Math.PI * 2;
+          root.add(this._tube(arcSpark, [
+            { x: Math.cos(arcAng) * 0.55, y: 2.2, z: Math.sin(arcAng) * 0.55 },
+            { x: Math.cos(arcAng + 0.5) * 1.6, y: 3.2, z: Math.sin(arcAng + 0.5) * 1.6 },
+            { x: Math.cos(arcAng) * 0.55, y: 4.2, z: Math.sin(arcAng) * 0.55 }
+          ], 0.035, `plasma_discharge_arc_${arc}`, 12, 6));
+        }
+        // Couvercle magnétique supérieur
+        root.add(this._segment(reactorBaseMat, new T.Vector3(0, 5.2, 0), new T.Vector3(0, 6.2, 0), 2.5, 2.0, 'reactor_top_cap', 24));
+      } else if (normalizedType === 'muthur_terminal' || normalizedType === 'mother_terminal' || normalizedType === 'muthur_6000') {
+        // Chantier 100 : Système M.U.T.H.U.R. 6000 & Interface Terminaux Rétro-Futuriste CRT Orale (Alien 1979 / Romulus)
+        const consoleShell = this._material('industrial', { color: 0x334155, roughness: 0.35, metalness: 0.8 });
+        const crtScreenMat = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.8 });
+        const keyboardMat = this._material('darkMetal', { color: 0x0f172a, roughness: 0.4 });
+        const blinkerMat = this._material('emissiveGreen', { color: 0x22c55e, emissiveIntensity: 2.0 });
+
+        // Pupitre central hexagonal (largeur 2.4m, hauteur 1.1m)
+        root.add(this._segment(consoleShell, new T.Vector3(0, 0, 0), new T.Vector3(0, 1.1, 0), 1.25, 1.4, 'muthur_pedestal_base', 6));
+        // 3 Écrans incurvés CRT cathodiques à phosphore ambré orientés à 120°
+        for (let scr = 0; scr < 3; scr++) {
+          const scrAng = (scr / 3) * Math.PI * 2;
+          const scrX = Math.cos(scrAng) * 0.95;
+          const scrZ = Math.sin(scrAng) * 0.95;
+          // Boîtier moniteur CRT
+          const monBox = this._box(consoleShell, { x: 0.75, y: 0.55, z: 0.45 }, { x: scrX, y: 1.45, z: scrZ }, `muthur_crt_housing_${scr}`, true);
+          monBox.rotation.y = -scrAng + Math.PI / 2;
+          root.add(monBox);
+          // Écran incurvé vert/ambre
+          const crtFace = this._box(crtScreenMat, { x: 0.62, y: 0.42, z: 0.04 }, { x: scrX * 1.15, y: 1.45, z: scrZ * 1.15 }, `muthur_screen_glow_${scr}`);
+          crtFace.rotation.y = -scrAng + Math.PI / 2;
+          root.add(crtFace);
+          // Clavier mécanique incliné à touches cliquetantes
+          const kbFace = this._box(keyboardMat, { x: 0.65, y: 0.08, z: 0.35 }, { x: scrX * 1.35, y: 1.12, z: scrZ * 1.35 }, `muthur_keyboard_${scr}`);
+          kbFace.rotation.y = -scrAng + Math.PI / 2;
+          kbFace.rotation.x = 0.2;
+          root.add(kbFace);
+        }
+        // Panneau supérieur de voyants lumineux carrés stroboscopiques
+        for (let b = 0; b < 6; b++) {
+          const bAng = (b / 6) * Math.PI * 2;
+          root.add(this._box(b % 2 === 0 ? blinkerMat : crtScreenMat, { x: 0.06, y: 0.06, z: 0.06 }, { x: Math.cos(bAng) * 0.55, y: 1.82, z: Math.sin(bAng) * 0.55 }, `muthur_blinker_${b}`));
+        }
+        // Mât central de processeur avec ventilation
+        root.add(this._segment(consoleShell, new T.Vector3(0, 1.1, 0), new T.Vector3(0, 2.1, 0), 0.35, 0.25, 'muthur_central_core', 12));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -5424,6 +5664,62 @@
     // -------------------------------------------------------------------------
     createDroneOperator() {
       return this._createHumanFigure('weyland_drone_operator');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 91 : Phénotype "The Newborn / Hybride Humain-Xénomorphe" (Alien: Resurrection)
+    // -------------------------------------------------------------------------
+    createNewborn() {
+      return this._createUprightAdult('newborn');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 94 : Phénotype "The Raven / Berserker Géant à Blindage Bivalve" (Colonial Marines)
+    // -------------------------------------------------------------------------
+    createRaven() {
+      return this._createUprightAdult('raven');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 92 : Tireur d'Élite USCM & Fusil Sniper M42A (Aliens / Dark Descent)
+    // -------------------------------------------------------------------------
+    createSniper() {
+      return this._createHumanFigure('uscm_sniper');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 97 : Équipe d'Intervention Confinement Weyland-Yutani (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    createContainmentSquad() {
+      return this._createHumanFigure('weyland_containment_squad');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 93 : Sas de Décontamination Nucléaire & Douches Caustiques (Aliens / Isolation)
+    // -------------------------------------------------------------------------
+    createDecontaminationAirlock() {
+      return this.createIndustrialProp('decontamination_airlock');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 96 : Bras Manipulateur Robotique Industriel & Grue Seegson (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createIndustrialCraneArm() {
+      return this.createIndustrialProp('industrial_crane_arm');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 98 : Réacteur à Fusion Surchauffé & Rupture Magnétique (Aliens / Romulus)
+    // -------------------------------------------------------------------------
+    createFusionReactorCore() {
+      return this.createIndustrialProp('fusion_reactor_core');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 100 : Système M.U.T.H.U.R. 6000 & Interface Terminaux CRT (Alien 1979 / Romulus)
+    // -------------------------------------------------------------------------
+    createMuthurTerminal() {
+      return this.createIndustrialProp('muthur_terminal');
     }
   }
 

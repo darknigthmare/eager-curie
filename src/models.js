@@ -71,7 +71,11 @@
     mech: 'powerloader',
     steelteam: 'weyland_steel_team_synth',
     steelteamsynth: 'weyland_steel_team_synth',
-    steelteamandroid: 'weyland_steel_team_synth'
+    steelteamandroid: 'weyland_steel_team_synth',
+    cyberhound: 'weyland_cyber_hound',
+    cyber_hound: 'weyland_cyber_hound',
+    weylandcyberhound: 'weyland_cyber_hound',
+    weyland_cyber_hound: 'weyland_cyber_hound'
   });
 
   // ---------------------------------------------------------------------------
@@ -3160,14 +3164,50 @@
         }
       }
       if (spitter) {
-        // Canon Aliens Fireteam / CM : Poches d'acide pharyngées fluorescentes
+        // Chantier 71 : Phénotype "Spitter Corrosif Évolué" (Aliens: Colonial Marines / Fireteam Elite)
+        // 4 Poches de venin acide bioluminescentes vert fluo 0x84cc16 (2 antérieures et 2 postérieures)
+        const acidVenomMat = this._material('acidBiolum', {
+          color: 0x84cc16,
+          roughness: 0.22,
+          transmission: 0.65,
+          transparent: true,
+          opacity: 0.88,
+          emissiveIntensity: 2.8
+        });
+        const acidGlandMat = this._material('chitinWarm', { color: 0x365314, roughness: 0.38 });
+
         for (let side = -1; side <= 1; side += 2) {
+          // Poches antérieures maxillaires
           root.add(this._ellipsoid(
-            sensory,
-            { x: 0.22 * scale, y: 0.16 * scale, z: 0.38 * scale },
-            { x: side * 0.52 * scale, y: 4.38 * scale, z: 0.48 * scale },
-            `spitter_acid_pouch_${side}`,
-            14
+            acidVenomMat,
+            { x: 0.26 * scale, y: 0.22 * scale, z: 0.44 * scale },
+            { x: side * 0.54 * scale, y: 4.42 * scale, z: 0.56 * scale },
+            `spitter_acid_pouch_anterior_${side < 0 ? 'left' : 'right'}`,
+            16
+          ));
+          // Poches postérieures carotides cervicales
+          root.add(this._ellipsoid(
+            acidVenomMat,
+            { x: 0.28 * scale, y: 0.26 * scale, z: 0.52 * scale },
+            { x: side * 0.48 * scale, y: 4.15 * scale, z: -0.12 * scale },
+            `spitter_acid_pouch_posterior_${side < 0 ? 'left' : 'right'}`,
+            16
+          ));
+          // Crêtes glandulaires caustiques céphaliques
+          root.add(this._box(
+            acidGlandMat,
+            { x: 0.12 * scale, y: 0.28 * scale, z: 0.95 * scale },
+            { x: side * 0.38 * scale, y: 4.75 * scale, z: 0.35 * scale },
+            `spitter_glandular_crest_${side < 0 ? 'left' : 'right'}`,
+            true
+          ));
+          // Nœuds de suintement d'acide sous les mâchoires
+          root.add(this._ellipsoid(
+            acidVenomMat,
+            { x: 0.14 * scale, y: 0.12 * scale, z: 0.16 * scale },
+            { x: side * 0.25 * scale, y: 3.82 * scale, z: 1.12 * scale },
+            `spitter_acid_drip_node_${side < 0 ? 'left' : 'right'}`,
+            12
           ));
         }
       }
@@ -3375,14 +3415,34 @@
         20
       ));
 
-      // Triangular bullet-proof cranial shield (Ramming Shield)
+      // Chantier 77 : Bouclier Céphalique Pare-Balles Renforcé et Cornes de Percée (Aliens: Colonial Marines / Fireteam Elite)
       const shieldGeo = new T.ConeGeometry(1.4 * scale, 2.0 * scale, 4);
       const shieldMesh = new T.Mesh(shieldGeo, primary);
+      shieldMesh.name = 'crusher_heavy_shield';
       shieldMesh.rotation.x = Math.PI / 3;
       shieldMesh.rotation.y = Math.PI / 4;
       shieldMesh.position.set(0, 2.3 * scale, 1.35 * scale);
       shieldMesh.scale.set(1.3, 0.45, 1.15);
       root.add(shieldMesh);
+
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._coneAlong(
+          bone,
+          { x: side * 1.15 * scale, y: 3.1 * scale, z: 1.15 * scale },
+          { x: side * 0.45, y: 0.65, z: 0.35 },
+          0.16 * scale,
+          0.85 * scale,
+          `crusher_shield_horn_${side < 0 ? 'left' : 'right'}`,
+          10
+        ));
+        root.add(this._box(
+          primary,
+          { x: 0.45 * scale, y: 0.72 * scale, z: 0.88 * scale },
+          { x: side * 0.85 * scale, y: 1.95 * scale, z: 0.55 * scale },
+          `crusher_jugular_plate_${side < 0 ? 'left' : 'right'}`,
+          true
+        ));
+      }
 
       this._addJaw(root, primary, bone, { x: 0, y: 1.5 * scale, z: 2.6 * scale }, 0.95 * scale, true);
       this._addRibCage(root, secondary, 2.1 * scale, 0.9 * scale, 0.7 * scale, 6);
@@ -3577,14 +3637,18 @@
     _createServiceAnimal(requestedType) {
       const T = this._three();
       const root = new T.Group();
-      root.name = 'service_animal_labhound';
-      const coat = this._material('fabric', { color: 0x4a392f, roughness: 0.94 });
-      const armor = this._material('industrial', { color: 0x374151, roughness: 0.58 });
+      const isCyberHound = String(requestedType || '').includes('cyber');
+      root.name = isCyberHound ? 'service_animal_weyland_cyber_hound' : 'service_animal_labhound';
+      const coat = isCyberHound
+        ? this._material('chitin', { color: 0x1e293b, roughness: 0.35, metalness: 0.72 })
+        : this._material('fabric', { color: 0x4a392f, roughness: 0.94 });
+      const armor = isCyberHound
+        ? this._material('darkMetal', { color: 0x09090b, roughness: 0.25, metalness: 0.88 })
+        : this._material('industrial', { color: 0x374151, roughness: 0.58 });
       const dark = this._material('darkMetal', { color: 0x111827 });
-      const sensor = this._material('emissiveAmber', {
-        color: 0x713f12,
-        emissiveIntensity: 0.58
-      });
+      const sensor = isCyberHound
+        ? this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 3.2 })
+        : this._material('emissiveAmber', { color: 0x713f12, emissiveIntensity: 0.58 });
 
       // The animal faces +Z, matching humanoids and weapon barrels.
       root.add(this._ellipsoid(
@@ -3624,6 +3688,31 @@
         'labhound_nose',
         12
       ));
+
+      if (isCyberHound) {
+        // Chantier 73 : Capteur mono-optique rouge et mâchoire cybernétique acier dentelée
+        root.add(this._ellipsoid(
+          sensor,
+          { x: 0.16, y: 0.08, z: 0.12 },
+          { x: 0, y: 1.72, z: 1.62 },
+          'cyberhound_mono_optic',
+          16
+        ));
+        root.add(this._box(
+          dark,
+          { x: 0.34, y: 0.12, z: 0.54 },
+          { x: 0, y: 1.34, z: 1.82 },
+          'cyberhound_steel_mandible',
+          true
+        ));
+        root.add(this._box(
+          armor,
+          { x: 0.44, y: 0.15, z: 0.58 },
+          { x: 0, y: 1.82, z: 1.25 },
+          'cyberhound_cranial_armor',
+          true
+        ));
+      }
 
       for (let side = -1; side <= 1; side += 2) {
         root.add(this._coneAlong(
@@ -3743,7 +3832,7 @@
 
       return this._finalize(root, {
         modelType: 'serviceAnimal',
-        subtype: 'labhound',
+        subtype: isCyberHound ? 'weyland_cyber_hound' : 'labhound',
         requestedSubtype: requestedType,
         forwardAxis: '+Z',
         height: 2.25,
@@ -3778,7 +3867,7 @@
       const requestedType = String(type || 'civilian');
       const normalizedType = this._normalizeHumanType(requestedType);
       if (normalizedType === 'powerloader') return this._createExosuit();
-      if (normalizedType === 'labhound') return this._createServiceAnimal(requestedType);
+      if (normalizedType === 'labhound' || normalizedType === 'weyland_cyber_hound') return this._createServiceAnimal(requestedType);
       if (normalizedType === 'labrodent') return this._createLaboratoryRodent(requestedType);
 
       const root = this._createHumanFigure(normalizedType, false);
@@ -4351,6 +4440,115 @@
             6
           ));
         }
+      } else if (normalizedType === 'gantry_container' || normalizedType === 'rail_container' || normalizedType === 'suspended_container') {
+        // Chantier 72 : Baie de Fret & Déambulateur de Fret "Powerloader Rail Gantry" (Aliens 1986)
+        // Conteneur de fret 10t suspendu par 4 câbles en acier à un chariot de roulement sur rail de plafond
+        const containerYellow = this._material('industrial', { color: 0xd97706, roughness: 0.45, metalness: 0.65 });
+        const cableMetal = this._material('darkMetal', { color: 0x1e293b, roughness: 0.35, metalness: 0.9 });
+        const hazardMark = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 1.8 });
+        // Corps principal du conteneur lourd de 10t
+        root.add(this._box(containerYellow, { x: 3.6, y: 2.4, z: 5.4 }, { x: 0, y: 3.4, z: 0 }, 'gantry_container_body', true));
+        // Renforts angulaires et nervures d'armature
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._box(cableMetal, { x: 0.22, y: 2.48, z: 5.48 }, { x: side * 1.75, y: 3.4, z: 0 }, `container_side_rib_${side}`, true));
+          root.add(this._box(cableMetal, { x: 3.68, y: 2.48, z: 0.22 }, { x: 0, y: 3.4, z: side * 2.65 }, `container_end_rib_${side}`, true));
+        }
+        // Plaques d'avertissement et jauge de charge 10000 KG
+        root.add(this._box(hazardMark, { x: 1.2, y: 0.4, z: 0.08 }, { x: 0, y: 3.6, z: 2.74 }, 'container_payload_stencil'));
+        root.add(this._box(hazardMark, { x: 1.2, y: 0.4, z: 0.08 }, { x: 0, y: 3.6, z: -2.74 }, 'container_payload_stencil_back'));
+        // 4 Câbles d'acier de levage suspendus aux poutres supérieures
+        const cableCorners = [
+          { x: -1.6, z: -2.5 },
+          { x: 1.6, z: -2.5 },
+          { x: -1.6, z: 2.5 },
+          { x: 1.6, z: 2.5 }
+        ];
+        cableCorners.forEach((corner, idx) => {
+          root.add(this._ring(cableMetal, 0.22, 0.04, { x: corner.x, y: 4.65, z: corner.z }, { x: 0, y: 0, z: 0 }, `gantry_cable_ring_${idx}`));
+          root.add(this._segment(cableMetal, new T.Vector3(corner.x, 4.7, corner.z), new T.Vector3(corner.x, 8.2, corner.z), 0.045, 0.045, `gantry_steel_cable_${idx}`, 8));
+        });
+        // Chariot de roulement sur rail supérieur
+        root.add(this._box(cableMetal, { x: 4.2, y: 0.45, z: 6.2 }, { x: 0, y: 8.35, z: 0 }, 'gantry_trolley_chassis', true));
+      } else if (normalizedType === 'freon_pipe' || normalizedType === 'freon_system' || normalizedType === 'cryo_pipe') {
+        // Chantier 74 : Réseau de Fluide Réfrigérant & Rupture de Conduites de Fréon (Alien 1979 / Romulus)
+        // Conduites murales bleu glacier givrées sous pression avec manomètres et valves de purge
+        const pipeBlue = this._material('industrial', { color: 0x0284c7, roughness: 0.32, metalness: 0.82 });
+        const pipeFrost = this._material('visorGlass', { color: 0xe0f2fe, opacity: 0.85, roughness: 0.15 });
+        const bracketDark = this._material('darkMetal', { color: 0x1e293b, roughness: 0.45 });
+        const gaugeGlass = this._material('glass', { color: 0xffffff, opacity: 0.9 });
+        const dialNeedle = this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 2.5 });
+        // Conduite principale horizontale réfrigérée (longueur 4m)
+        root.add(this._segment(pipeBlue, new T.Vector3(-2.2, 2.4, 0), new T.Vector3(2.2, 2.4, 0), 0.22, 0.22, 'freon_main_pipe', 16));
+        // Manchon givré / condensation cristallisée à -150°C
+        root.add(this._segment(pipeFrost, new T.Vector3(-1.8, 2.4, 0), new T.Vector3(1.8, 2.4, 0), 0.245, 0.245, 'freon_frost_sleeve', 14));
+        // 3 Étriers de fixation murale industrielle
+        for (let b = -1; b <= 1; b++) {
+          root.add(this._box(bracketDark, { x: 0.18, y: 0.75, z: 0.38 }, { x: b * 1.5, y: 2.4, z: -0.12 }, `freon_wall_bracket_${b}`, true));
+          root.add(this._ring(bracketDark, 0.26, 0.04, { x: b * 1.5, y: 2.4, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, `freon_collar_${b}`));
+        }
+        // Buse de purge / raccord de surpression
+        root.add(this._segment(bracketDark, new T.Vector3(0, 2.4, 0), new T.Vector3(0, 1.7, 0.2), 0.12, 0.1, 'freon_vent_nozzle', 10));
+        // Manomètre circulaire de pression cryogénique
+        root.add(this._segment(bracketDark, new T.Vector3(0.65, 2.4, 0), new T.Vector3(0.65, 2.85, 0.18), 0.05, 0.05, 'gauge_stem', 8));
+        root.add(this._ellipsoid(bracketDark, { x: 0.24, y: 0.24, z: 0.08 }, { x: 0.65, y: 2.95, z: 0.22 }, 'gauge_housing', 16));
+        root.add(this._ellipsoid(gaugeGlass, { x: 0.2, y: 0.2, z: 0.02 }, { x: 0.65, y: 2.95, z: 0.28 }, 'gauge_dial_face', 14));
+        root.add(this._box(dialNeedle, { x: 0.03, y: 0.14, z: 0.01 }, { x: 0.65, y: 2.98, z: 0.3 }, 'gauge_pressure_needle'));
+      } else if (normalizedType === 'tripwire_claymore' || normalizedType === 'claymore_mine' || normalizedType === 'claymore') {
+        // Chantier 76 : Pièges Mines Antipersonnel Claymore M18A1 à Câble USCM (Aliens 1986)
+        // Boîtier concave olive-drab "FRONT TOWARD ENEMY" monté sur ciseaux et fil laser de déclenchement
+        const claymoreDrab = this._material('fabric', { color: 0x3f4f38, roughness: 0.72, metalness: 0.2 });
+        const scissorLegs = this._material('darkMetal', { color: 0x18181b, roughness: 0.35, metalness: 0.8 });
+        const armingLed = this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 3.2 });
+        const tripwireBeam = this._material('emissiveRed', { color: 0xf87171, emissiveIntensity: 2.8 });
+        // Boîtier incurvé convexe M18A1
+        root.add(this._box(claymoreDrab, { x: 0.65, y: 0.38, z: 0.16 }, { x: 0, y: 0.35, z: 0 }, 'claymore_casing', true));
+        // Viseur optique à fente supérieur
+        root.add(this._box(scissorLegs, { x: 0.18, y: 0.08, z: 0.08 }, { x: 0, y: 0.56, z: 0 }, 'claymore_scissor_sight'));
+        // 2 Paires de pieds métalliques en ciseaux plantés dans le sol
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._segment(scissorLegs, new T.Vector3(side * 0.22, 0.3, 0), new T.Vector3(side * 0.32, 0, -0.15), 0.02, 0.015, `claymore_leg_back_${side}`, 6));
+          root.add(this._segment(scissorLegs, new T.Vector3(side * 0.22, 0.3, 0), new T.Vector3(side * 0.32, 0, 0.15), 0.02, 0.015, `claymore_leg_front_${side}`, 6));
+        }
+        // LED rouge clignotante de mise à feu
+        root.add(this._ellipsoid(armingLed, { x: 0.035, y: 0.035, z: 0.02 }, { x: 0.22, y: 0.42, z: 0.09 }, 'claymore_arming_beacon', 10));
+        // Fil laser de déclenchement rouge horizontal tendu en travers du couloir
+        root.add(this._segment(tripwireBeam, new T.Vector3(0, 0.35, 0.08), new T.Vector3(0, 0.35, 3.2), 0.008, 0.008, 'claymore_laser_tripwire', 6));
+      } else if (normalizedType === 'magnesium_flare' || normalizedType === 'flare' || normalizedType === 'marine_flare') {
+        // Chantier 78 : Flares de Magnésium Luminescents USCM & Feux de Détresse (Aliens 1986)
+        // Bâtonnet d'allumage cylindrique avec flamme chimique blanche-orangée aveuglante
+        const casingTube = this._material('industrial', { color: 0x991b1b, roughness: 0.55, metalness: 0.35 });
+        const flareGlow = this._material('emissiveRed', { color: 0xffedd5, emissiveIntensity: 4.8 });
+        const sparkAmber = this._material('emissiveAmber', { color: 0xf97316, emissiveIntensity: 3.5 });
+        // Tube de la fusée au sol
+        root.add(this._segment(casingTube, new T.Vector3(0, 0.04, -0.15), new T.Vector3(0, 0.04, 0.15), 0.035, 0.035, 'flare_cartridge_casing', 10));
+        // Tête incandescente de combustion magnésium
+        root.add(this._ellipsoid(flareGlow, { x: 0.12, y: 0.14, z: 0.12 }, { x: 0, y: 0.12, z: 0.18 }, 'flare_magnesium_core', 14));
+        // Volute de flamme vive et étincelles
+        root.add(this._coneAlong(sparkAmber, { x: 0, y: 0.12, z: 0.18 }, { x: 0, y: 1, z: 0.2 }, 0.08, 0.28, 'flare_flame_cone', 8));
+        // Halo d'étincelles au sol
+        root.add(this._ring(sparkAmber, 0.45, 0.02, { x: 0, y: 0.02, z: 0.18 }, { x: Math.PI / 2, y: 0, z: 0 }, 'flare_ground_slag_ring'));
+      } else if (normalizedType === 'garbage_chute' || normalizedType === 'trash_compactor' || normalizedType === 'fiorina_grinder') {
+        // Chantier 79 : Trémie de Broyage & Incinérateur de Déchets Fiorina 161 (Alien 3)
+        // Puits vertical de broyage avec mâchoires rotatives d'acier, rotor à lames et veilleuse d'incinération
+        const heavyCastIron = this._material('darkMetal', { color: 0x1c1917, roughness: 0.65, metalness: 0.85 });
+        const rotorSteel = this._material('industrial', { color: 0x71717a, roughness: 0.25, metalness: 0.95 });
+        const furnaceGlow = this._material('emissiveRed', { color: 0xdc2626, emissiveIntensity: 2.8 });
+        const hazardBevel = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 1.6 });
+        // Trémie d'acier évasée au sol
+        root.add(this._box(heavyCastIron, { x: 2.6, y: 0.35, z: 2.6 }, { x: 0, y: 0.18, z: 0 }, 'grinder_collar_rim', true));
+        root.add(this._box(hazardBevel, { x: 2.8, y: 0.08, z: 2.8 }, { x: 0, y: 0.38, z: 0 }, 'grinder_hazard_stripe'));
+        // Puits creux central
+        root.add(this._box(heavyCastIron, { x: 2.1, y: 1.8, z: 2.1 }, { x: 0, y: -0.9, z: 0 }, 'grinder_chute_shaft', true));
+        // Deux rotors broyeurs contrarotatifs à lames d'acier acérées
+        for (let rotor = -1; rotor <= 1; rotor += 2) {
+          root.add(this._segment(rotorSteel, new T.Vector3(rotor * 0.45, 0.05, -0.9), new T.Vector3(rotor * 0.45, 0.05, 0.9), 0.14, 0.14, `grinder_shaft_${rotor}`, 12));
+          for (let tooth = 0; tooth < 5; tooth++) {
+            const tAngle = (tooth / 5) * Math.PI * 2;
+            root.add(this._box(rotorSteel, { x: 0.08, y: 0.28, z: 0.12 }, { x: rotor * 0.45 + Math.cos(tAngle) * 0.22, y: 0.05 + Math.sin(tAngle) * 0.22, z: -0.7 + tooth * 0.35 }, `grinder_tooth_${rotor}_${tooth}`));
+          }
+        }
+        // Veilleuse d'incinération rougeoyante dans la profondeur du puits
+        root.add(this._ellipsoid(furnaceGlow, { x: 0.9, y: 0.25, z: 0.9 }, { x: 0, y: -1.7, z: 0 }, 'incinerator_furnace_glow', 16));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -4759,6 +4957,48 @@
     // -------------------------------------------------------------------------
     createHiveCreepPatch() {
       return this.createIndustrialProp('hive_creep_patch');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 73 : Molosse Cybernétique de Reconnaissance Weyland-Yutani (Dark Descent / Alien 3)
+    // -------------------------------------------------------------------------
+    createCyberHound() {
+      return this._createServiceAnimal('weyland_cyber_hound');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 72 : Baie de Fret & Déambulateur de Fret "Powerloader Rail Gantry" (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createGantryContainer() {
+      return this.createIndustrialProp('gantry_container');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 74 : Réseau de Fluide Réfrigérant & Rupture de Conduites de Fréon (Alien 1979 / Romulus)
+    // -------------------------------------------------------------------------
+    createFreonPipe() {
+      return this.createIndustrialProp('freon_pipe');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 76 : Pièges Mines Antipersonnel Claymore M18A1 à Câble USCM (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createTripwireClaymore() {
+      return this.createIndustrialProp('tripwire_claymore');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 78 : Flares de Magnésium Luminescents USCM & Feux de Détresse (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createMagnesiumFlare() {
+      return this.createIndustrialProp('magnesium_flare');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 79 : Trémie de Broyage & Incinérateur de Déchets Fiorina 161 (Alien 3)
+    // -------------------------------------------------------------------------
+    createGarbageChute() {
+      return this.createIndustrialProp('garbage_chute');
     }
   }
 

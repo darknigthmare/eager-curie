@@ -459,6 +459,25 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #39ff14 #0f172a;
+}
+
+.action-btn-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.action-btn-list::-webkit-scrollbar-track {
+  background: #0f172a;
+  border-radius: 3px;
+}
+
+.action-btn-list::-webkit-scrollbar-thumb {
+  background: #39ff14;
+  border-radius: 3px;
 }
 
 .act-btn {

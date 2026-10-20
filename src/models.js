@@ -94,7 +94,11 @@
     containmentsquad: 'weyland_containment_squad',
     hazmatsquad: 'weyland_containment_squad',
     weylandcontainment: 'weyland_containment_squad',
-    weyland_containment_squad: 'weyland_containment_squad'
+    weyland_containment_squad: 'weyland_containment_squad',
+    heavyflamer: 'uscm_heavy_flamer',
+    flamersquad: 'uscm_heavy_flamer',
+    uscmflamer: 'uscm_heavy_flamer',
+    uscm_heavy_flamer: 'uscm_heavy_flamer'
   });
 
   // ---------------------------------------------------------------------------
@@ -1460,6 +1464,17 @@
           shoulderX: 0.76,
           hipX: 0.38,
           helmetScale: 1.18
+        },
+        uscm_heavy_flamer: {
+          uniformColor: 0x3f3f46, // Combinaison ignifugée amiante-kevlar sombre USCM (Aliens 1986 / Dark Descent)
+          armorColor: 0x365314,   // Plaques balistiques M3 Olive Drab
+          torso: { x: 0.78, y: 1.02, z: 0.48 },
+          pelvis: { x: 0.6, y: 0.38, z: 0.4 },
+          chest: { x: 1.32, y: 1.0, z: 0.38 },
+          pack: { x: 1.05, y: 1.25, z: 0.55 }, // Double bonbonne de napalm liquide M240A1 pressurisée
+          shoulderX: 0.78,
+          hipX: 0.4,
+          helmetScale: 1.14
         }
       };
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
@@ -1473,7 +1488,7 @@
       const dark = materials.dark;
       const visor = materials.visor;
       const accent = materials.accent;
-      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad'].indexOf(type) >= 0;
+      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer'].indexOf(type) >= 0;
 
       if (combatRole) {
         for (let side = -1; side <= 1; side += 2) {
@@ -1805,6 +1820,28 @@
         // Lanceur de filet cryogénique monté sur l'avant-bras droit
         root.add(this._segment(dark, new T.Vector3(profile.shoulderX + 0.16, torsoY - 0.72, 0.3), new T.Vector3(profile.shoulderX + 0.16, torsoY - 0.72, 1.2), 0.095, 0.15, 'cryo_net_launcher', 12));
         root.add(this._ellipsoid(cryoGlow, { x: 0.12, y: 0.12, z: 0.06 }, { x: profile.shoulderX + 0.16, y: torsoY - 0.72, z: 1.2 }, 'cryo_capsule_muzzle', 10));
+      } else if (type === 'uscm_heavy_flamer') {
+        // Chantier 102 : Équipe de Choc USCM "Heavy Flamer Squad" & Lance-Flammes Lourd M240A1 (Aliens 1986 / Dark Descent)
+        const goldVisor = this._material('industrial', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.45, metalness: 0.95, roughness: 0.12 });
+        const napalmTankMat = this._material('industrial', { color: 0xdc2626, roughness: 0.32, metalness: 0.65 });
+        const pilotBlue = this._material('emissiveGreen', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 3.5 });
+        // Visière thermique réfléchissante dorée M3
+        root.add(this._ellipsoid(goldVisor, { x: 0.36, y: 0.24, z: 0.22 }, { x: 0, y: torsoY + 1.25, z: 0.36 }, 'heavy_flamer_gold_visor', 14));
+        // Double bonbonne dorsale de napalm liquide pressurisée avec sangles d'acier
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._segment(napalmTankMat, new T.Vector3(side * 0.26, torsoY - 0.55, -0.45), new T.Vector3(side * 0.26, torsoY + 0.65, -0.45), 0.16, 0.16, `m240_napalm_tank_${side}`, 14));
+          root.add(this._ring(dark, 0.19, 0.035, { x: side * 0.26, y: torsoY + 0.05, z: -0.45 }, { x: 0, y: 0, z: 0 }, `m240_tank_strap_${side}`));
+        }
+        // Conduite haute pression blindée vers le lance-flammes M240A1
+        root.add(this._tube(dark, [
+          { x: 0.26, y: torsoY - 0.35, z: -0.45 },
+          { x: 0.62, y: torsoY - 0.58, z: -0.1 },
+          { x: profile.shoulderX + 0.18, y: torsoY - 0.72, z: 0.35 }
+        ], 0.05, 'm240_fuel_hose', 14, 6));
+        // Lance-flammes lourd M240A1 Incinerator Unit avec manchon thermique perforé et veilleuse bleue
+        root.add(this._box(dark, { x: 0.16, y: 0.22, z: 0.95 }, { x: profile.shoulderX + 0.18, y: torsoY - 0.72, z: 0.65 }, 'm240_flamer_body', true));
+        root.add(this._segment(dark, new T.Vector3(profile.shoulderX + 0.18, torsoY - 0.7, 1.1), new T.Vector3(profile.shoulderX + 0.18, torsoY - 0.7, 1.75), 0.065, 0.055, 'm240_heat_shroud', 10));
+        root.add(this._ellipsoid(pilotBlue, { x: 0.05, y: 0.05, z: 0.09 }, { x: profile.shoulderX + 0.18, y: torsoY - 0.78, z: 1.82 }, 'm240_pilot_flame', 8));
       }
     }
 
@@ -3012,14 +3049,18 @@
       const offspring = caste === 'offspring';
       const newborn = caste === 'newborn';
       const raven = caste === 'raven';
+      const king = caste === 'king';
+      const bodyburster = caste === 'bodyburster';
       const predalien = caste === 'predalien';
       const deacon = caste === 'deacon';
       const neomorph = caste === 'neomorph';
       const alpha = caste === 'alpha';
 
-      const scale = raven ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : 1)))))))))))));
+      const scale = king ? 1.62 : (raven ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1)))))))))))))));
       let chitinColor = 0x0b1518;
       if (royal) chitinColor = 0x221033;
+      else if (king) chitinColor = 0x7f1d1d; // Chitine royale cramoisie sombre Rouge de Charon (Aliens: Rogue 1993)
+      else if (bodyburster) chitinColor = 0xfef2f2; // Membrane translucide pâle d'éruption dorsale (Alien: Covenant 2017)
       else if (palatine) chitinColor = 0x1f0b29;
       else if (guardian) chitinColor = 0x2d163d;
       else if (raven) chitinColor = 0x0a0e14; // Blindage bivalve chitineux obsidienne impénétrable (Aliens: Colonial Marines)
@@ -3038,18 +3079,18 @@
 
       const primary = this._material('chitin', {
         color: chitinColor,
-        roughness: royal || palatine ? 0.22 : (raven ? 0.35 : (alpha ? 0.20 : (newborn ? 0.65 : (predalien ? 0.24 : (deacon ? 0.16 : (neomorph ? 0.18 : (offspring ? 0.55 : 0.28))))))),
-        metalness: raven ? 0.72 : (alpha ? 0.65 : (predalien ? 0.54 : (deacon ? 0.22 : (neomorph ? 0.06 : (newborn ? 0.04 : (offspring ? 0.15 : 0.46)))))),
-        emissive: alpha ? 0x991b1b : (raven ? 0x0f172a : 0x000000),
-        emissiveIntensity: alpha ? 0.32 : (raven ? 0.2 : 0)
+        roughness: royal || palatine || king ? 0.22 : (raven ? 0.35 : (alpha ? 0.20 : (newborn ? 0.65 : (bodyburster ? 0.15 : (predalien ? 0.24 : (deacon ? 0.16 : (neomorph ? 0.18 : (offspring ? 0.55 : 0.28)))))))),
+        metalness: king ? 0.68 : (raven ? 0.72 : (alpha ? 0.65 : (predalien ? 0.54 : (deacon ? 0.22 : (neomorph || bodyburster ? 0.06 : (newborn ? 0.04 : (offspring ? 0.15 : 0.46))))))),
+        emissive: king ? 0x991b1b : (alpha ? 0x991b1b : (bodyburster ? 0xdc2626 : (raven ? 0x0f172a : 0x000000))),
+        emissiveIntensity: king ? 0.38 : (alpha ? 0.32 : (bodyburster ? 0.28 : (raven ? 0.2 : 0)))
       });
       const secondary = this._material('resin', {
-        color: royal || palatine ? 0x4a214f : (raven ? 0x18181b : (alpha ? 0x3b0712 : (newborn ? 0xfbcfe8 : (predalien ? 0x1c1913 : (deacon ? 0x0f172a : (neomorph ? 0xfbcfe8 : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238))))))))),
+        color: king ? 0x450a0a : (bodyburster ? 0xfecdd3 : (royal || palatine ? 0x4a214f : (raven ? 0x18181b : (alpha ? 0x3b0712 : (newborn ? 0xfbcfe8 : (predalien ? 0x1c1913 : (deacon ? 0x0f172a : (neomorph ? 0xfbcfe8 : (prowler ? 0x450a0a : (spitter ? 0x365314 : (offspring ? 0xa1a1aa : 0x263238))))))))))),
         opacity: 0.96
       });
-      const bone = this._material('bone', { color: royal || palatine ? 0xc8b6d8 : (raven ? 0x334155 : (alpha ? 0xfee2e2 : (newborn ? 0xfff1f2 : (predalien ? 0xa89f88 : (deacon ? 0x94a3b8 : (neomorph ? 0xffffff : (offspring ? 0xf4f4f5 : 0xb9c6a5))))))) });
-      const sensory = this._material(royal || palatine || alpha ? 'emissiveRed' : (spitter || burster ? 'emissiveGreen' : 'emissiveGreen'), {
-        emissiveIntensity: royal || palatine ? 0.42 : (alpha ? 0.75 : (burster ? 0.65 : 0.32))
+      const bone = this._material('bone', { color: king ? 0xfecaca : (bodyburster ? 0xfee2e2 : (royal || palatine ? 0xc8b6d8 : (raven ? 0x334155 : (alpha ? 0xfee2e2 : (newborn ? 0xfff1f2 : (predalien ? 0xa89f88 : (deacon ? 0x94a3b8 : (neomorph ? 0xffffff : (offspring ? 0xf4f4f5 : 0xb9c6a5))))))))) });
+      const sensory = this._material(royal || palatine || alpha || king || bodyburster ? 'emissiveRed' : (spitter || burster ? 'emissiveGreen' : 'emissiveGreen'), {
+        emissiveIntensity: royal || palatine || king ? 0.52 : (alpha ? 0.75 : (burster || bodyburster ? 0.65 : 0.32))
       });
 
       root.add(this._ellipsoid(
@@ -3519,16 +3560,41 @@
           root.add(this._coneAlong(boneSpur, { x: side * 0.85 * scale, y: 3.85 * scale, z: 0 }, { x: side * 0.8, y: 0.8, z: -0.3 }, 0.16 * scale, 0.95 * scale, `raven_shoulder_spur_${side}`, 8));
         }
       }
+      if (king) {
+        // Chantier 101 : Phénotype "The King Xenomorph / Rouge de Charon" (Aliens: Rogue 1993 / Comics)
+        const royalRed = this._material('chitin', { color: 0x991b1b, emissive: 0x7f1d1d, emissiveIntensity: 0.45, roughness: 0.18, metalness: 0.72 });
+        const crownHorn = this._material('bone', { color: 0xfecaca, roughness: 0.25, metalness: 0.55 });
+        // Couronne céphalique trilobée royale massive
+        root.add(this._box(royalRed, { x: 1.55 * scale, y: 0.88 * scale, z: 1.85 * scale }, { x: 0, y: 5.05 * scale, z: -0.35 * scale }, 'king_royal_trilobe_crest', true));
+        // 4 Cornes latérales incurvées royales
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._coneAlong(crownHorn, { x: side * 0.75 * scale, y: 5.15 * scale, z: 0.2 * scale }, { x: side * 0.65, y: 0.45, z: 0.85 }, 0.18 * scale, 1.35 * scale, `king_forward_horn_${side}`, 10));
+          root.add(this._coneAlong(crownHorn, { x: side * 0.88 * scale, y: 5.25 * scale, z: -0.8 * scale }, { x: side * 0.85, y: 0.65, z: -0.9 }, 0.22 * scale, 1.65 * scale, `king_rear_horn_${side}`, 10));
+          // Épaulières osseuses dentelées massives
+          root.add(this._ellipsoid(royalRed, { x: 0.52 * scale, y: 0.38 * scale, z: 0.65 * scale }, { x: side * 0.95 * scale, y: 3.95 * scale, z: 0.1 * scale }, `king_shoulder_crest_${side}`, 14));
+        }
+      }
+      if (bodyburster) {
+        // Chantier 104 : Phénotype "Bodyburster / Émergence Dorsale Fulgurante" (Alien: Covenant 2017)
+        const bloodVein = this._material('emissiveRed', { color: 0xdc2626, emissive: 0x991b1b, emissiveIntensity: 1.4 });
+        const membraneMat = this._material('resin', { color: 0xfda4af, opacity: 0.78, transparent: true });
+        // Lambeaux de membrane amniotique sanglante sur le dos (vestige de l'éruption vertébrale)
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._box(membraneMat, { x: 0.45 * scale, y: 0.85 * scale, z: 0.08 * scale }, { x: side * 0.42 * scale, y: 3.2 * scale, z: -0.35 * scale }, `bodyburster_dorsal_shred_${side}`));
+        }
+        // Artères cramoisies pulsantes et museau ensanglanté d'émergence
+        root.add(this._ellipsoid(bloodVein, { x: 0.28 * scale, y: 0.22 * scale, z: 0.48 * scale }, { x: 0, y: 4.12 * scale, z: 1.25 * scale }, 'bodyburster_bloodied_jaw', 12));
+      }
       if (!newborn) {
         this._addTail(
           root,
           primary,
           bone,
           { x: 0, y: 1.88 * scale, z: -0.36 * scale },
-          (royal ? 6.4 : (raven ? 5.5 : 4.8)) * scale,
-          royal ? 1.05 * scale : 0.58 * scale,
-          royal ? 0.42 : -0.34,
-          (royal ? 0.19 : (raven ? 0.22 : 0.14)) * scale
+          (king ? 6.8 : (royal ? 6.4 : (raven ? 5.5 : 4.8))) * scale,
+          (king || royal) ? 1.05 * scale : 0.58 * scale,
+          (king || royal) ? 0.42 : -0.34,
+          (king ? 0.24 : (royal ? 0.19 : (raven ? 0.22 : 0.14))) * scale
         );
       } else {
         // Coccyx vestigial humain atrophié du Newborn
@@ -3559,8 +3625,8 @@
           8
         ));
       }
-      if (alpha) {
-        // Chantier 70 : Fouet bifide à double pointe barbelée supersonique de l'Alpha (Marvel Comics: Alien: Bloodlines)
+      if (alpha || king) {
+        // Chantier 70 & 101 : Fouet bifide / Double dard royal
         for (let prong = -1; prong <= 1; prong += 2) {
           root.add(this._coneAlong(
             bone,
@@ -3573,7 +3639,7 @@
           ));
         }
       }
-      this._addCarapaceSpines(root, primary, 4.75 * scale, royal ? 13 : 9, 1.15 * scale, 1.0 * scale, -1);
+      this._addCarapaceSpines(root, primary, 4.75 * scale, (royal || king) ? 13 : (bodyburster ? 11 : 9), 1.15 * scale, 1.0 * scale, -1);
       root.add(this._ellipsoid(
         sensory,
         { x: 0.12 * scale, y: 0.06 * scale, z: 0.18 * scale },
@@ -5144,6 +5210,102 @@
         }
         // Mât central de processeur avec ventilation
         root.add(this._segment(consoleShell, new T.Vector3(0, 1.1, 0), new T.Vector3(0, 2.1, 0), 0.35, 0.25, 'muthur_central_core', 12));
+      } else if (normalizedType === 'high_pressure_steam_valve') {
+        // Chantier 103 : Sas de Décharge de Pression & Vannes Hydrauliques de Vapeur d'Urgence (Alien 1979 / Isolation)
+        const pipeCopper = this._material('chitinWarm', { color: 0xb45309, roughness: 0.3, metalness: 0.88 });
+        const valveRed = this._material('industrial', { color: 0xdc2626, roughness: 0.35, metalness: 0.65 });
+        const gaugeGlow = this._material('emissiveAmber', { color: 0xfef08a, emissive: 0xf59e0b, emissiveIntensity: 2.2 });
+        // Double colonne de vapeur haute pression 40 bars
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._segment(pipeCopper, new T.Vector3(side * 0.45, 0, 0), new T.Vector3(side * 0.45, 3.8, 0), 0.18, 0.18, `steam_main_column_${side}`, 16));
+          root.add(this._ring(dark, 0.24, 0.04, { x: side * 0.45, y: 1.5, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `steam_flange_${side}`));
+        }
+        // Collecteur transversal et buse d'échappement
+        root.add(this._segment(metal, new T.Vector3(-0.45, 1.5, 0), new T.Vector3(0.45, 1.5, 0), 0.14, 0.14, 'steam_cross_manifold', 12));
+        root.add(this._segment(dark, new T.Vector3(0, 1.5, 0), new T.Vector3(0, 1.5, 0.55), 0.12, 0.16, 'steam_exhaust_nozzle', 12));
+        // Volant de manœuvre rouge cranté
+        root.add(this._ring(valveRed, 0.38, 0.055, { x: 0, y: 1.5, z: 0.62 }, { x: 0, y: 0, z: 0 }, 'steam_red_handwheel'));
+        root.add(this._box(valveRed, { x: 0.72, y: 0.05, z: 0.05 }, { x: 0, y: 1.5, z: 0.62 }, 'steam_wheel_spoke_h'));
+        root.add(this._box(valveRed, { x: 0.05, y: 0.72, z: 0.05 }, { x: 0, y: 1.5, z: 0.62 }, 'steam_wheel_spoke_v'));
+        // Manomètre de pression 40 bars
+        root.add(this._ellipsoid(gaugeGlow, { x: 0.14, y: 0.14, z: 0.05 }, { x: 0, y: 2.05, z: 0.22 }, 'steam_pressure_gauge_40bar', 12));
+      } else if (normalizedType === 'seismic_claymore_mine') {
+        // Chantier 105 : Mines Magnétiques Détectrices de Mouvement "M38 Claymore Sismique" (Aliens: Colonial Marines)
+        const oliveCase = this._material('industrial', { color: 0x365314, roughness: 0.42, metalness: 0.68 });
+        const sensorBlue = this._material('emissiveGreen', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 3.5 });
+        // Trépied magnétique néodyme bas
+        for (let leg = 0; leg < 3; leg++) {
+          const ang = (leg / 3) * Math.PI * 2;
+          root.add(this._segment(dark, new T.Vector3(0, 0.28, 0), new T.Vector3(Math.cos(ang) * 0.38, 0.02, Math.sin(ang) * 0.38), 0.03, 0.025, `m38_leg_${leg}`, 8));
+        }
+        // Boîtier incurvé directionnel M38 ("FRONT TOWARD ENEMY")
+        root.add(this._box(oliveCase, { x: 0.56, y: 0.28, z: 0.16 }, { x: 0, y: 0.36, z: 0 }, 'm38_claymore_body', true));
+        // Double diode bleue de détection sismique
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._ellipsoid(sensorBlue, { x: 0.045, y: 0.045, z: 0.03 }, { x: side * 0.16, y: 0.44, z: 0.09 }, `m38_seismic_led_${side}`, 8));
+        }
+      } else if (normalizedType === 'uscm_titanium_barricade') {
+        // Chantier 106 : Système de Barricades Déployables Renforcées en Titane USCM (Aliens: Dark Descent)
+        const titaniumMat = this._material('industrial', { color: 0x475569, roughness: 0.28, metalness: 0.88 });
+        const hazardYellow = this._material('emissiveAmber', { color: 0xeab308, emissive: 0xca8a04, emissiveIntensity: 0.45 });
+        // Bouclier frontal blindé incliné (largeur 3.6m, hauteur 1.55m)
+        const shieldPlate = this._box(titaniumMat, { x: 3.6, y: 1.55, z: 0.24 }, { x: 0, y: 0.78, z: 0 }, 'titanium_shield_plate', true);
+        shieldPlate.rotation.x = -0.15;
+        root.add(shieldPlate);
+        // Bandeau d'avertissement jaune USCM et meurtrières de tir
+        root.add(this._box(hazardYellow, { x: 3.4, y: 0.18, z: 0.28 }, { x: 0, y: 1.25, z: 0.02 }, 'barricade_hazard_stripe'));
+        // 3 Vérins hydrauliques d'ancrage arrière
+        for (let strut = -1; strut <= 1; strut++) {
+          root.add(this._segment(dark, new T.Vector3(strut * 1.2, 1.2, -0.1), new T.Vector3(strut * 1.2, 0.05, -0.95), 0.08, 0.07, `barricade_anchor_strut_${strut}`, 10));
+        }
+      } else if (normalizedType === 'seegson_medibot') {
+        // Chantier 107 : Unité Médicale Robotisée Seegson Medi-Bot & Décontamination Hygiénique (Alien: Isolation)
+        const clinicalWhite = this._material('bone', { color: 0xf8fafc, roughness: 0.2, metalness: 0.35 });
+        const seegsonEmerald = this._material('industrial', { color: 0x059669, roughness: 0.3, metalness: 0.65 });
+        const ecgGreen = this._material('emissiveGreen', { color: 0x10b981, emissive: 0x059669, emissiveIntensity: 3.2 });
+        const laserRed = this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 3.0 });
+        // Socle roulant et fût cylindrique médical blanc/émeraude
+        root.add(this._segment(dark, new T.Vector3(0, 0, 0), new T.Vector3(0, 0.25, 0), 0.85, 0.75, 'medibot_base', 18));
+        root.add(this._segment(clinicalWhite, new T.Vector3(0, 0.25, 0), new T.Vector3(0, 1.85, 0), 0.55, 0.52, 'medibot_chassis_body', 20));
+        root.add(this._ring(seegsonEmerald, 0.56, 0.08, { x: 0, y: 1.15, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'medibot_seegson_band'));
+        // Écran moniteur ECG cardiaque frontal
+        root.add(this._box(ecgGreen, { x: 0.52, y: 0.34, z: 0.06 }, { x: 0, y: 1.52, z: 0.52 }, 'medibot_ecg_screen'));
+        // 2 Bras articulés chirurgicaux (seringue de neurotoxine/soin & scalpel laser)
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._segment(clinicalWhite, new T.Vector3(side * 0.55, 1.45, 0), new T.Vector3(side * 0.95, 1.25, 0.65), 0.07, 0.05, `medibot_arm_${side}`, 10));
+          root.add(this._coneAlong(side < 0 ? ecgGreen : laserRed, { x: side * 0.95, y: 1.25, z: 0.65 }, { x: 0, y: -0.2, z: 1 }, 0.045, 0.38, `medibot_injector_${side}`, 8));
+        }
+      } else if (normalizedType === 'hanging_hv_cables') {
+        // Chantier 108 : Réseau Haute Tension & Câbles Pendants Électrifiés (Alien 1979 / Isolation)
+        const cableRubber = this._material('darkMetal', { color: 0x09090b, roughness: 0.6, metalness: 0.2 });
+        const sparkArc = this._material('emissiveGreen', { color: 0x38bdf8, emissive: 0x67e8f9, emissiveIntensity: 4.5 });
+        // Boîtier de jonction arraché au plafond (y = 4.6m)
+        root.add(this._box(dark, { x: 1.2, y: 0.35, z: 1.2 }, { x: 0, y: 4.6, z: 0 }, 'hv_ceiling_junction_box', true));
+        // 3 Câbles 50 000 V pendants et ondulants avec extrémités d'arcs électriques
+        for (let c = -1; c <= 1; c++) {
+          root.add(this._tube(cableRubber, [
+            { x: c * 0.32, y: 4.5, z: 0 },
+            { x: c * 0.48, y: 2.8, z: c * 0.25 },
+            { x: c * 0.28, y: 1.15, z: -c * 0.2 }
+          ], 0.055, `hv_hanging_cable_${c}`, 16, 8));
+          root.add(this._ellipsoid(sparkArc, { x: 0.14, y: 0.14, z: 0.14 }, { x: c * 0.28, y: 1.1, z: -c * 0.2 }, `hv_cable_spark_tip_${c}`, 10));
+        }
+        // Socle d'avertissement de flaque conductrice au sol
+        root.add(this._ring(sparkArc, 1.35, 0.03, { x: 0, y: 0.04, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'hv_floor_arc_ring'));
+      } else if (normalizedType === 'zero_g_gravity_generator') {
+        // Chantier 110 : Dispositif de Sabotage Central de Gravité Artificielle "Zero-G Emergency Flush" (Alien: Romulus 2024)
+        const brassGimbal = this._material('chitinWarm', { color: 0xd97706, roughness: 0.22, metalness: 0.92 });
+        const gravCoreGlow = this._material('emissiveGreen', { color: 0xa855f7, emissive: 0x38bdf8, emissiveIntensity: 4.8 });
+        // Piédestal octogonal lourd
+        root.add(this._segment(dark, new T.Vector3(0, 0, 0), new T.Vector3(0, 0.85, 0), 1.85, 1.6, 'zerog_pedestal_base', 8));
+        // 2 Anneaux de cardan gyroscopiques croisés
+        root.add(this._ring(brassGimbal, 1.45, 0.1, { x: 0, y: 2.35, z: 0 }, { x: 0.4, y: 0.3, z: 0 }, 'zerog_outer_gimbal_ring'));
+        root.add(this._ring(brassGimbal, 1.12, 0.08, { x: 0, y: 2.35, z: 0 }, { x: -0.5, y: 0.8, z: 0.4 }, 'zerog_inner_gimbal_ring'));
+        // Singularité centrale d'antigravité en lévitation
+        root.add(this._ellipsoid(gravCoreGlow, { x: 0.55, y: 0.55, z: 0.55 }, { x: 0, y: 2.35, z: 0 }, 'zerog_graviton_sphere', 20));
+        // Console frontale de débrayage Zero-G
+        root.add(this._box(metal, { x: 0.85, y: 1.15, z: 0.45 }, { x: 0, y: 0.58, z: 1.55 }, 'zerog_override_console', true));
+        root.add(this._box(gravCoreGlow, { x: 0.65, y: 0.28, z: 0.05 }, { x: 0, y: 1.05, z: 1.78 }, 'zerog_console_screen'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -5720,6 +5882,69 @@
     // -------------------------------------------------------------------------
     createMuthurTerminal() {
       return this.createIndustrialProp('muthur_terminal');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 101 : Phénotype "The King Xenomorph / Rouge de Charon" (Aliens: Rogue 1993)
+    // -------------------------------------------------------------------------
+    createKing() {
+      return this._createUprightAdult('king');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 102 : Équipe de Choc USCM "Heavy Flamer Squad" & Lance-Flammes M240A1 (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createHeavyFlamer() {
+      return this.createHuman('uscm_heavy_flamer');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 103 : Sas de Décharge de Pression & Vannes Hydrauliques de Vapeur (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createHighPressureSteamValve() {
+      return this.createIndustrialProp('high_pressure_steam_valve');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 104 : Phénotype "Bodyburster / Émergence Dorsale Fulgurante" (Alien: Covenant 2017)
+    // -------------------------------------------------------------------------
+    createBodyburster() {
+      return this._createUprightAdult('bodyburster');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 105 : Mines Magnétiques Détectrices de Mouvement "M38 Claymore Sismique" (Colonial Marines)
+    // -------------------------------------------------------------------------
+    createSeismicClaymoreMine() {
+      return this.createIndustrialProp('seismic_claymore_mine');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 106 : Système de Barricades Déployables Renforcées en Titane USCM (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createTitaniumBarricade() {
+      return this.createIndustrialProp('uscm_titanium_barricade');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 107 : Unité Médicale Robotisée Seegson Medi-Bot (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSeegsonMedibot() {
+      return this.createIndustrialProp('seegson_medibot');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 108 : Réseau Haute Tension & Câbles Pendants Électrifiés (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createHangingHVCables() {
+      return this.createIndustrialProp('hanging_hv_cables');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 110 : Dispositif de Sabotage Central de Gravité Artificielle "Zero-G" (Alien: Romulus 2024)
+    // -------------------------------------------------------------------------
+    createZeroGGenerator() {
+      return this.createIndustrialProp('zero_g_gravity_generator');
     }
   }
 

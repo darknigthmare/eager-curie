@@ -103,6 +103,17 @@
       return this.isMuted;
     }
 
+    // Audit QA #17 : Ducking audio dynamique sur le bus des détonations/mortiers pour préserver répliques vocales, M314 et feulements
+    triggerExplosionDucking(duration = 0.55, duckRatio = 0.42) {
+      if (!this.initialized || !this.masterGain || !this.ctx || this.isMuted) return;
+      const now = this.ctx.currentTime;
+      const baseVol = this.volume;
+      this.masterGain.gain.cancelScheduledValues(now);
+      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+      this.masterGain.gain.exponentialRampToValueAtTime(Math.max(0.05, baseVol * duckRatio), now + 0.04);
+      this.masterGain.gain.exponentialRampToValueAtTime(Math.max(0.01, baseVol), now + duration);
+    }
+
     startAmbience() {
       if (!this.initialized || this.ambienceNodes) return;
       this.resume();
@@ -3387,6 +3398,202 @@
       osc.start(now);
       osc.stop(now + 0.9);
     }
+
+    // Chantier 131 : Cri strident hybride à modulation d'albâtre de l'Abomination (Alien: Romulus 2024)
+    playAbominationShriek(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc1.type = 'sawtooth';
+      osc2.type = 'sine';
+      osc1.frequency.setValueAtTime(780, now);
+      osc1.frequency.exponentialRampToValueAtTime(1420, now + 0.35);
+      osc1.frequency.exponentialRampToValueAtTime(310, now + 0.8);
+      osc2.frequency.setValueAtTime(260, now);
+      osc2.frequency.exponentialRampToValueAtTime(95, now + 0.85);
+      gain.gain.setValueAtTime(1.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.85);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      this.connect(gain, x, z, 120);
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.85);
+      osc2.stop(now + 0.85);
+    }
+
+    // Chantier 132 : Vrombissement de turbine lourd du blindé M577 APC & double canon 20mm (Aliens 1986)
+    playM577APCEngineAndCannon(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      this.triggerExplosionDucking(0.65, 0.4);
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.linearRampToValueAtTime(75, now + 0.5);
+      gain.gain.setValueAtTime(1.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+      osc.connect(gain);
+      this.connect(gain, x, z, 130);
+      osc.start(now);
+      osc.stop(now + 0.65);
+    }
+
+    // Chantier 133 : Détonation sourde explosive de grenade U1 30mm à shrapnel (Aliens 1986)
+    playPulseRifleU1Grenade(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      this.triggerExplosionDucking(0.55, 0.38);
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(210, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.45);
+      gain.gain.setValueAtTime(1.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain);
+      this.connect(gain, x, z, 100);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    }
+
+    // Chantier 134 : Clapotis métallique cristallin et régulier de condensation tombant du plafond (Alien 1979)
+    playWaterDropletDrip(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1650, now);
+      osc.frequency.exponentialRampToValueAtTime(2450, now + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.12);
+      gain.gain.setValueAtTime(0.65, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+      osc.connect(gain);
+      this.connect(gain, x, z, 45);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    }
+
+    // Chantier 135 : Arc électrique haute tension 5000V et décharge condensateur Seegson (Alien: Isolation)
+    playDefibrillatorShock5000V(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.linearRampToValueAtTime(2800, now + 0.1);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.45);
+      gain.gain.setValueAtTime(1.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.48);
+      osc.connect(gain);
+      this.connect(gain, x, z, 85);
+      osc.start(now);
+      osc.stop(now + 0.48);
+    }
+
+    // Chantier 136 : Feulements vifs et aigus du Bloodburster blanc juvénile Belugamorph (Alien: Covenant)
+    playBelugamorphHiss(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(890, now);
+      osc.frequency.linearRampToValueAtTime(1650, now + 0.22);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.5);
+      gain.gain.setValueAtTime(1.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.55);
+    }
+
+    // Chantier 137 : Souffle violent et torrentiel de tuyère SAS C-30 à gaz ionisé 800°C (Alien: Romulus)
+    playReactionPurgeBlast(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      this.triggerExplosionDucking(0.8, 0.35);
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(420, now);
+      osc.frequency.exponentialRampToValueAtTime(55, now + 0.85);
+      gain.gain.setValueAtTime(1.6, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.95);
+      osc.connect(gain);
+      this.connect(gain, x, z, 140);
+      osc.start(now);
+      osc.stop(now + 0.95);
+    }
+
+    // Chantier 138 : Grésillement de balayage CRT et stridence électromagnétique caméra thermique (Aliens / Isolation)
+    playThermalCameraScream(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(3400, now);
+      osc.frequency.linearRampToValueAtTime(2100, now + 0.28);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now);
+      osc.stop(now + 0.32);
+    }
+
+    // Chantier 139 : Claquement osseux et perforation d'embuscade murale silencieuse (Alien 1979)
+    playWallAmbushPinSnap(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
+      gain.gain.setValueAtTime(1.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+      osc.connect(gain);
+      this.connect(gain, x, z, 80);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    }
+
+    // Chantier 140 : Sirène modulée d'évacuation générale du réacteur atmosphérique (Aliens 1986)
+    playReactorEvacuationKlaxon(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      this.triggerExplosionDucking(0.7, 0.45);
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(460, now);
+      osc.frequency.linearRampToValueAtTime(880, now + 0.35);
+      osc.frequency.linearRampToValueAtTime(460, now + 0.7);
+      gain.gain.setValueAtTime(1.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.75);
+      osc.connect(gain);
+      this.connect(gain, x, z, 160);
+      osc.start(now);
+      osc.stop(now + 0.75);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -5682,6 +5889,112 @@
           dockRef: nd
         });
       });
+
+      // Chantier 132 : Véhicule Blindé de Transport de Troupes M577 APC USCM (Aliens 1986)
+      this.m577APCs = [
+        { id: 'm577_1', name: 'Transport Blindé M577 APC USCM Baie Fret', x: 0, z: -45, isSabotaged: false, generatorHp: 220, shootCooldown: 3.2, mesh: null }
+      ];
+      this.m577APCs.forEach((apc) => {
+        const mesh = window.HiveModelFactory?.createM577APC?.();
+        if (mesh) {
+          mesh.position.set(apc.x, 0, apc.z);
+          rendererEngine.propsGroup.add(mesh);
+          apc.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: apc.x - 3.2, maxX: apc.x + 3.2,
+          minZ: apc.z - 2.0, maxZ: apc.z + 2.0,
+          isM577APC: true,
+          apcRef: apc
+        });
+      });
+
+      // Chantier 134 : Sas de Condensation & Chutes de Gouttes d'Eau Industrielles (Alien 1979)
+      this.waterDropletVents = [
+        { id: 'droplet_1', name: 'Condensation Sas Nord', x: -8, z: 12, dripTimer: 1.2, mesh: null },
+        { id: 'droplet_2', name: 'Condensation Couloir Sud', x: 18, z: -20, dripTimer: 1.8, mesh: null },
+        { id: 'droplet_3', name: 'Condensation Sas Maintenance Ouest', x: -28, z: -10, dripTimer: 1.5, mesh: null }
+      ];
+      this.waterDropletVents.forEach((wd) => {
+        const mesh = window.HiveModelFactory?.createWaterDropletVent?.();
+        if (mesh) {
+          mesh.position.set(wd.x, 0, wd.z);
+          rendererEngine.propsGroup.add(mesh);
+          wd.mesh = mesh;
+        }
+      });
+
+      // Chantier 135 : Défibrillateur Médical Mural Seegson & Surcharge 5000V (Alien: Isolation)
+      this.wallDefibrillators = [
+        { id: 'defib_1', name: 'Défibrillateur Seegson Bloc Médical', x: -18, z: -30, isOverloaded: false, uses: 3, mesh: null },
+        { id: 'defib_2', name: 'Défibrillateur Seegson Quai Fret Est', x: 24, z: 15, isOverloaded: false, uses: 3, mesh: null }
+      ];
+      this.wallDefibrillators.forEach((wd) => {
+        const mesh = window.HiveModelFactory?.createWallDefibrillator?.();
+        if (mesh) {
+          mesh.position.set(wd.x, 0, wd.z);
+          rendererEngine.propsGroup.add(mesh);
+          wd.mesh = mesh;
+        }
+      });
+
+      // Chantier 137 : Sas de Purge Dépressurisation SAS C-30 avec Vents de Propulsion (Alien: Romulus)
+      this.reactionPurgeVents = [
+        { id: 'reaction_vent_1', name: 'Tuyère SAS C-30 Propulsion Sud-Est', x: 35, z: -35, isFlushing: false, flushTimer: 0, mesh: null }
+      ];
+      this.reactionPurgeVents.forEach((rp) => {
+        const mesh = window.HiveModelFactory?.createReactionPurgeVent?.();
+        if (mesh) {
+          mesh.position.set(rp.x, 0, rp.z);
+          rendererEngine.propsGroup.add(mesh);
+          rp.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: rp.x - 2.0, maxX: rp.x + 2.0,
+          minZ: rp.z - 2.0, maxZ: rp.z + 2.0,
+          isReactionVent: true,
+          ventRef: rp
+        });
+      });
+
+      // Chantier 138 : Caméra de Surveillance Thermique Rotative USCM & Écran CRT (Aliens 1986 / Isolation)
+      this.thermalSurveillancePosts = [
+        { id: 'thermal_cam_1', name: 'Poste Thermique USCM Couloir A', x: -14, z: -12, isDestroyed: false, hp: 50, rotAngle: 0, rotDir: 1, mesh: null },
+        { id: 'thermal_cam_2', name: 'Poste Thermique USCM Baie Fret', x: 16, z: 32, isDestroyed: false, hp: 50, rotAngle: 0, rotDir: -1, mesh: null }
+      ];
+      this.thermalSurveillancePosts.forEach((tc) => {
+        const mesh = window.HiveModelFactory?.createThermalSurveillancePost?.();
+        if (mesh) {
+          mesh.position.set(tc.x, 0, tc.z);
+          rendererEngine.propsGroup.add(mesh);
+          tc.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: tc.x - 1.2, maxX: tc.x + 1.2,
+          minZ: tc.z - 1.2, maxZ: tc.z + 1.2,
+          isThermalCam: true,
+          camRef: tc
+        });
+      });
+
+      // Chantier 140 : Console de Déconnexion du Réacteur Principal & Sirène d'Évacuation (Aliens 1986)
+      this.reactorDisconnectConsoles = [
+        { id: 'reactor_disconnect_1', name: 'Pupitre Déconnexion Barres Uranium Réacteur', x: 0, z: 38, isEvacuating: false, meltdownTimer: 300.0, mesh: null }
+      ];
+      this.reactorDisconnectConsoles.forEach((rc) => {
+        const mesh = window.HiveModelFactory?.createReactorDisconnectConsole?.();
+        if (mesh) {
+          mesh.position.set(rc.x, 0, rc.z);
+          rendererEngine.propsGroup.add(mesh);
+          rc.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: rc.x - 1.6, maxX: rc.x + 1.6,
+          minZ: rc.z - 1.6, maxZ: rc.z + 1.6,
+          isReactorConsole: true,
+          consoleRef: rc
+        });
+      });
     }
 
     setBlastDoorState(door, open, silent = false) {
@@ -6131,6 +6444,12 @@
       this.updateToxicWasteChutes(safeDelta);
       this.updatePortableMortars(safeDelta);
       this.updateNarcissusDocks(safeDelta);
+      this.updateM577APCs(safeDelta);
+      this.updateWaterDropletVents(safeDelta);
+      this.updateWallDefibrillators(safeDelta);
+      this.updateReactionPurgeVents(safeDelta);
+      this.updateThermalSurveillancePosts(safeDelta);
+      this.updateReactorDisconnectConsoles(safeDelta);
     }
 
     // Chantier 22 : Relique Fossilisée du Space Jockey & Casque d'Ingénieur (Alien 1979)
@@ -8523,6 +8842,224 @@
       });
     }
 
+    // Chantier 132 : Véhicule Blindé de Transport de Troupes M577 APC USCM (Aliens 1986)
+    sabotageM577APC(apc) {
+      if (!apc || apc.isSabotaged) return false;
+      apc.isSabotaged = true;
+      audioManager.playM577APCEngineAndCannon?.(apc.x, apc.z);
+      rendererEngine.addScreenShake?.(0.65, 0.45);
+      window.HiveSystems?.vfx?.burst?.(apc.x, apc.z, 0xf97316, 50, 0.35, 3.2);
+      window.HiveSystems?.vfx?.ring?.(apc.x, apc.z, 0xef4444, 20.0);
+
+      // Déflagration d'incinération du générateur à turbine sur les ennemis à 9m
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (h.isIncapacitated || h.isCocooned) return;
+        const dist = Math.hypot(h.x - apc.x, h.z - apc.z);
+        if (dist <= 9.0) {
+          h.takeDamage(160, playerCreature);
+          h.staggerTimer = 3.0;
+          h.stress = 100;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-160 SURCHAUFFE TURBINE M577 !', '#f97316', true);
+        }
+      });
+      showToast('TRANSPORT M577 APC SABOTÉ : Turbine en surchauffe critique, déflagration de zone !');
+      appendSensorLog(`[M577 APC] Générateur du blindé USCM surchauffé et détruit. Déflagration d'incinération.`, 'alert');
+      return true;
+    }
+
+    updateM577APCs(safeDelta) {
+      (this.m577APCs || []).forEach((apc) => {
+        if (apc.isSabotaged) return;
+        apc.shootCooldown = (apc.shootCooldown || 3.2) - safeDelta;
+        if (apc.shootCooldown <= 0) {
+          apc.shootCooldown = 4.2;
+          const distToPlayer = Math.hypot(playerCreature.x - apc.x, playerCreature.z - apc.z);
+          if (distToPlayer >= 6.0 && distToPlayer <= 24.0 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
+            audioManager.playM577APCEngineAndCannon?.(apc.x, apc.z);
+            rendererEngine.addScreenShake?.(0.25, 0.2);
+            window.HiveSystems?.vfx?.muzzleFlash?.(apc.x, 2.8, apc.z, 0xfbbf24, 0.35);
+            if (Math.random() < 0.65) {
+              playerCreature.takeDamage(32, null);
+              window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 3.0, playerCreature.z, '-32 DOUBLE CANON 20MM M577 !', '#ef4444', true);
+            }
+          }
+        }
+      });
+    }
+
+    // Chantier 134 : Sas de Condensation & Chutes de Gouttes d'Eau Industrielles (Alien 1979)
+    triggerWaterDropletVent(vent) {
+      if (!vent) return false;
+      audioManager.playWaterDropletDrip?.(vent.x, vent.z);
+      playerCreature.acousticMaskTimer = 10.0;
+      showToast('SAS DE CONDENSATION : Le clapotis d\'eau masque totalement le bruit de vos pas (10s) !');
+      appendSensorLog(`[CONDENSATION] Écoulement d'eau dense masquant la signature acoustique du prédateur.`, 'stealth');
+      window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.6, playerCreature.z, 'PAS SILENCIEUX (MASQUAGE EAU)', '#38bdf8', true);
+      return true;
+    }
+
+    updateWaterDropletVents(safeDelta) {
+      (this.waterDropletVents || []).forEach((wd) => {
+        wd.dripTimer -= safeDelta;
+        if (wd.dripTimer <= 0) {
+          wd.dripTimer = 1.4 + Math.random() * 0.8;
+          const dist = Math.hypot(playerCreature.x - wd.x, playerCreature.z - wd.z);
+          if (dist <= 18.0) {
+            audioManager.playWaterDropletDrip?.(wd.x, wd.z);
+          }
+          window.HiveSystems?.vfx?.ring?.(wd.x, wd.z, 0x38bdf8, 1.8);
+        }
+      });
+    }
+
+    // Chantier 135 : Défibrillateur Médical Mural Seegson & Surcharge 5000V (Alien: Isolation)
+    dischargeWallDefibrillator(defib) {
+      if (!defib || defib.isOverloaded) return false;
+      defib.isOverloaded = true;
+      audioManager.playDefibrillatorShock5000V?.(defib.x, defib.z);
+      rendererEngine.addScreenShake?.(0.5, 0.35);
+      window.HiveSystems?.vfx?.burst?.(defib.x, defib.z, 0x06b6d4, 38, 0.3, 2.6);
+      window.HiveSystems?.vfx?.ring?.(defib.x, defib.z, 0x38bdf8, 12.0);
+
+      // Arc de décharge à 5000V paralysant les humains à proximité
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        const dist = Math.hypot(h.x - defib.x, h.z - defib.z);
+        if (dist <= 6.5) {
+          h.takeDamage(75, playerCreature);
+          h.staggerTimer = 3.8;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.8, h.z, '-75 DÉCHARGE 5000V (PARALYSIE) !', '#06b6d4', true);
+        }
+      });
+      showToast('DÉFIBRILLATEUR SEEGSON SURCHARGÉ : Décharge d\'arc 5000V foudroyante !');
+      appendSensorLog(`[SEEGSON DÉFIBRILLATEUR] Surcharge 5000V provoquée. Arc haute tension libéré.`, 'alert');
+      return true;
+    }
+
+    updateWallDefibrillators(safeDelta) {
+      (this.wallDefibrillators || []).forEach((wd) => {
+        if (wd.isOverloaded && Math.random() < 0.08) {
+          window.HiveSystems?.vfx?.burst?.(wd.x, wd.z, 0x06b6d4, 4, 0.08, 0.6);
+        }
+      });
+    }
+
+    // Chantier 137 : Sas de Purge Dépressurisation SAS C-30 avec Vents de Propulsion (Alien: Romulus)
+    triggerReactionPurgeVent(vent) {
+      if (!vent || vent.isFlushing) return false;
+      vent.isFlushing = true;
+      vent.flushTimer = 8.0;
+      audioManager.playReactionPurgeBlast?.(vent.x, vent.z);
+      rendererEngine.addScreenShake?.(0.68, 0.5);
+      window.HiveSystems?.vfx?.burst?.(vent.x, vent.z, 0x38bdf8, 48, 0.4, 3.5);
+      window.HiveSystems?.vfx?.ring?.(vent.x, vent.z, 0x0284c7, 24.0);
+
+      // Torrent de gaz ionisé à 800°C soufflant les ennemis sur 15 mètres
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (h.isIncapacitated || h.isCocooned) return;
+        const dist = Math.hypot(h.x - vent.x, h.z - vent.z);
+        if (dist <= 15.0) {
+          const pushAngle = Math.atan2(h.z - vent.z, h.x - vent.x);
+          h.x += Math.cos(pushAngle) * 8.5;
+          h.z += Math.sin(pushAngle) * 8.5;
+          h.mesh?.position.set(h.x, 0, h.z);
+          h.takeDamage(130, playerCreature);
+          h.staggerTimer = 3.5;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, '-130 PURGE GAZ IONISÉ 800°C !', '#38bdf8', true);
+        }
+      });
+      showToast('SAS DE PURGE C-30 ACTIF : Torrent de gaz ionisé à 800°C projetant tout sur 15 mètres !');
+      appendSensorLog(`[PURGE SAS C-30] Poussée réactionnelle ionique 800°C libérée. Dépressurisation violente.`, 'alert');
+      return true;
+    }
+
+    updateReactionPurgeVents(safeDelta) {
+      (this.reactionPurgeVents || []).forEach((rp) => {
+        if (!rp.isFlushing) return;
+        rp.flushTimer -= safeDelta;
+        if (rp.flushTimer <= 0) {
+          rp.isFlushing = false;
+        } else if (Math.random() < 0.25) {
+          window.HiveSystems?.vfx?.burst?.(rp.x, rp.z, 0x38bdf8, 6, 0.15, 1.2);
+        }
+      });
+    }
+
+    // Chantier 138 : Caméra de Surveillance Thermique Rotative USCM & Écran CRT (Aliens 1986 / Isolation)
+    destroyThermalSurveillancePost(post, dmg = 50) {
+      if (!post || post.isDestroyed) return false;
+      post.hp = (post.hp || 50) - dmg;
+      if (post.hp <= 0) {
+        post.isDestroyed = true;
+        audioManager.playThermalCameraScream?.(post.x, post.z);
+        audioManager.playWelderSparks?.(post.x, post.z);
+        rendererEngine.addScreenShake?.(0.35, 0.25);
+        window.HiveSystems?.vfx?.burst?.(post.x, post.z, 0xef4444, 30, 0.25, 2.2);
+        showToast('CAMÉRA THERMIQUE USCM DÉTRUITE : Pings radar du secteur neutralisés !');
+        appendSensorLog(`[CAMÉRA THERMIQUE] Poste optique détruit à (${Math.round(post.x)}, ${Math.round(post.z)}). Aveuglement du secteur.`, 'notice');
+      }
+      return true;
+    }
+
+    updateThermalSurveillancePosts(safeDelta) {
+      (this.thermalSurveillancePosts || []).forEach((tc) => {
+        if (tc.isDestroyed) return;
+        tc.rotAngle = (tc.rotAngle || 0) + (tc.rotDir || 1) * safeDelta * 0.8;
+        if (tc.rotAngle > 0.85) { tc.rotAngle = 0.85; tc.rotDir = -1; }
+        else if (tc.rotAngle < -0.85) { tc.rotAngle = -0.85; tc.rotDir = 1; }
+        if (tc.mesh) tc.mesh.rotation.y = tc.rotAngle;
+
+        // Détection thermique dans l'arc de vue
+        const dist = Math.hypot(playerCreature.x - tc.x, playerCreature.z - tc.z);
+        if (dist <= 12.0 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
+          if (!tc.lastAlert || Date.now() - tc.lastAlert > 5000) {
+            tc.lastAlert = Date.now();
+            audioManager.playThermalCameraScream?.(tc.x, tc.z);
+            window.HiveSystems?.vfx?.floatingText?.(tc.x, 3.2, tc.z, 'THERMIQUE: SIGNATURE ACQUISE !', '#ef4444', true);
+            (window.gameInstance?.humans || []).forEach((h) => {
+              if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - tc.x, h.z - tc.z) <= 30) {
+                h.aiState = 'CHASE';
+                h.targetPos = { x: playerCreature.x, z: playerCreature.z };
+              }
+            });
+          }
+        }
+      });
+    }
+
+    // Chantier 140 : Console de Déconnexion du Réacteur Principal & Sirène d'Évacuation (Aliens 1986)
+    triggerReactorEvacuationCountdown(consoleProp) {
+      if (!consoleProp || consoleProp.isEvacuating) return false;
+      consoleProp.isEvacuating = true;
+      audioManager.playReactorEvacuationKlaxon?.(consoleProp.x, consoleProp.z);
+      rendererEngine.addScreenShake?.(0.75, 0.6);
+      window.HiveSystems?.vfx?.burst?.(consoleProp.x, consoleProp.z, 0xdc2626, 45, 0.35, 3.2);
+      window.HiveSystems?.vfx?.ring?.(consoleProp.x, consoleProp.z, 0xef4444, 25.0);
+
+      // Panique totale dans toute la station (Aliens 1986)
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        h.stress = 100;
+        h.staggerTimer = 2.5;
+        window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, 'ÉVACUATION GÉNÉRALE ! FONTE DU CŒUR !', '#dc2626', true);
+      });
+      showToast('SIRÈNE D\'ÉVACUATION DÉCLENCHÉE : Décompte de fonte du cœur réacteur enclenché (5 min) !');
+      appendSensorLog(`[RÉACTEUR PRINCIPAL] Barres de contrôle déconnectées. Surchauffe nucléaire irréversible.`, 'alert');
+      return true;
+    }
+
+    updateReactorDisconnectConsoles(safeDelta) {
+      (this.reactorDisconnectConsoles || []).forEach((rc) => {
+        if (!rc.isEvacuating) return;
+        rc.meltdownTimer -= safeDelta;
+        if (Math.random() < 0.05) {
+          audioManager.playReactorEvacuationKlaxon?.(rc.x, rc.z);
+        }
+      });
+    }
+
     findClosestVent(x, z) {
       if (!this.vents || !this.vents.length) return null;
       let closest = null;
@@ -8588,14 +9125,23 @@
       return true;
     }
 
-    checkCollision(nextX, nextZ, padding = 0) {
+    // Audit QA #18 : Lissage biseauté des colliders AABB pour supprimer les accrochages d'angle
+    checkCollision(nextX, nextZ, padding = 0, bevel = 0.28) {
       for (const col of this.colliders) {
-        if (
-          nextX > col.minX - padding &&
-          nextX < col.maxX + padding &&
-          nextZ > col.minZ - padding &&
-          nextZ < col.maxZ + padding
-        ) {
+        const minX = col.minX - padding;
+        const maxX = col.maxX + padding;
+        const minZ = col.minZ - padding;
+        const maxZ = col.maxZ + padding;
+        if (nextX > minX && nextX < maxX && nextZ > minZ && nextZ < maxZ) {
+          if (bevel > 0) {
+            const inCornerX = (nextX < minX + bevel) || (nextX > maxX - bevel);
+            const inCornerZ = (nextZ < minZ + bevel) || (nextZ > maxZ - bevel);
+            if (inCornerX && inCornerZ) {
+              const dx = nextX < minX + bevel ? (minX + bevel - nextX) : (nextX - (maxX - bevel));
+              const dz = nextZ < minZ + bevel ? (minZ + bevel - nextZ) : (nextZ - (maxZ - bevel));
+              if (dx + dz > bevel * 1.35) continue;
+            }
+          }
           return true;
         }
       }
@@ -9208,6 +9754,30 @@
       huntDamage: 175,
       jawDamage: 255,
       tailDamage: 145
+    }),
+    abomination: Object.freeze({
+      key: 'abomination',
+      label: 'THE ABOMINATION (ROMULUS 2024)',
+      maxHealth: 480,
+      speed: 0.54,
+      huntAction: 'BROYAGE STERNAL & PROJECTION',
+      huntCost: 35,
+      huntRange: 70,
+      huntDamage: 195,
+      jawDamage: 265,
+      tailDamage: 185
+    }),
+    belugamorph: Object.freeze({
+      key: 'belugamorph',
+      label: 'THE BELUGAMORPH (COVENANT)',
+      maxHealth: 230,
+      speed: 0.68,
+      huntAction: 'MORSURES VORACES ÉTOURDISSANTES',
+      huntCost: 20,
+      huntRange: 75,
+      huntDamage: 150,
+      jawDamage: 205,
+      tailDamage: 125
     })
   });
 
@@ -10471,6 +11041,71 @@
       return true;
     }
 
+    // Chantier 131 : The Abomination / Anomaly Hybrid — Broyage Sternal & Projection Caudale (Alien: Romulus 2024)
+    executeAbominationSternalCrush(target) {
+      if (!target || target.isIncapacitated || target.isCocooned) return false;
+      audioManager.playAbominationShriek?.(target.x, target.z);
+      rendererEngine.addScreenShake?.(0.62, 0.45);
+      window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xf1f5f9, 45, 0.35, 3.2);
+      window.HiveSystems?.vfx?.ring?.(target.x, target.z, 0xdc2626, 16.0);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 3.2, target.z, '-195 BROYAGE STERNAL HYBRIDE !', '#f8fafc', true);
+
+      target.takeDamage(195, this);
+      target.staggerTimer = 4.0;
+      target.stress = 100;
+      const pushAngle = Math.atan2(target.z - this.z, target.x - this.x);
+      target.x += Math.cos(pushAngle) * 4.5;
+      target.z += Math.sin(pushAngle) * 4.5;
+      target.mesh?.position.set(target.x, 0, target.z);
+      if (target.hp <= 0) {
+        target.isIncapacitated = true;
+        if (target.mesh) target.mesh.rotation.x = Math.PI / 2;
+      }
+      showToast(`L'ABOMINATION : Cage thoracique de ${target.name} broyée à mains nues et projection caudale !`);
+      appendSensorLog(`[L'ABOMINATION] Broyage sternal et projection cinétique brutale sur cible.`, 'alert');
+      return true;
+    }
+
+    // Chantier 136 : The Belugamorph / Bloodburster Juvénile Blanc — Morsures Voraces Étourdissantes (Alien: Covenant)
+    executeBelugamorphFrenzyBite(target) {
+      if (!target || target.isIncapacitated || target.isCocooned) return false;
+      audioManager.playBelugamorphHiss?.(target.x, target.z);
+      rendererEngine.addScreenShake?.(0.38, 0.25);
+      window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xf8fafc, 30, 0.2, 1.8);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 2.6, target.z, '-150 MORSURES VORACES RAPIDES !', '#e2e8f0', true);
+
+      target.takeDamage(150, this);
+      target.staggerTimer = 2.8;
+      target.stress = 90;
+      showToast(`BELUGAMORPH : Morsures voraces sauvages infligées à ${target.name} !`);
+      appendSensorLog(`[BELUGAMORPH] Assaut reptilien vorace et étourdissement de cible.`, 'alert');
+      return true;
+    }
+
+    // Chantier 139 : Attaque d'Embuscade Murale "Crête Perforante & Plaqué Contre Cloison" en Mimétisme Mural [Z] (Alien 1979)
+    executeWallAmbushPin(target) {
+      if (!target || target.isIncapacitated || target.isCocooned) return false;
+      audioManager.playWallAmbushPinSnap?.(target.x, target.z);
+      audioManager.playInnerJawSnap?.(target.x, target.z);
+      rendererEngine.addScreenShake?.(0.55, 0.35);
+      window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xb91c1c, 42, 0.3, 2.4);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 3.0, target.z, '-240 PLAQUÉ CONTRE CLOISON (SILENCE) !', '#ef4444', true);
+
+      target.takeDamage(240, this);
+      target.staggerTimer = 4.0;
+      target.isPinnedToWall = true;
+      if (target.hp <= 0) {
+        target.isIncapacitated = true;
+        if (target.mesh) target.mesh.rotation.y = Math.PI / 2;
+      }
+      if (this.isWallMimic) {
+        this.toggleResinWallMimicry(false);
+      }
+      showToast(`EMBUSCADE MURALE SILENCIEUSE : ${target.name} plaqué contre la paroi métallique et exécuté sans alerte radio !`);
+      appendSensorLog(`[EMBUSCADE MURALE] Sentinelle plaquée contre la cloison et perforée en silence absolu (Canon Alien 1979).`, 'stealth');
+      return true;
+    }
+
     executeTerrifyingHiss() {
       if (this.form !== 'drone') return;
       audioManager.playXenoHiss(this.x, this.z);
@@ -10610,7 +11245,10 @@
         if (this.form === 'egg') detailedModel = factory.createEgg?.(this.eggIsOpen);
         else if (this.form === 'facehugger') detailedModel = factory.createFacehugger?.();
         else if (this.form === 'chestburster') detailedModel = factory.createChestburster?.(this.isChrysalis);
-        else if (this.form === 'drone') detailedModel = factory.createAdult?.(this.adultCaste || 'drone');
+        else if (this.form === 'drone') {
+          if (this.adultCaste === 'belugamorph') detailedModel = factory.createBelugamorph?.();
+          else detailedModel = factory.createAdult?.(this.adultCaste || 'drone');
+        }
       }
       if (detailedModel) {
         const modelScale = this.form === 'drone'
@@ -10637,7 +11275,9 @@
           carrier: 0xa855f7,
           praetorian: 0xc084fc,
           neomorph: 0xe2e8f0,
-          deacon_adult: 0x38bdf8
+          deacon_adult: 0x38bdf8,
+          abomination: 0xf1f5f9,
+          belugamorph: 0xf8fafc
         };
         const lightColors = {
           egg: this.eggIsOpen ? 0xf59e0b : 0x39ff14,
@@ -10913,8 +11553,27 @@
     exitVent(vent) {
       if (!this.isInVent) return;
       this.isInVent = false;
-      this.x = vent.x;
-      this.z = vent.z;
+      let targetX = vent.x;
+      let targetZ = vent.z;
+      // Audit QA #18 : Dégagement automatique (auto-nudge) à la sortie des conduits [C] pour éliminer tout coincement d'angle
+      if (stationMap.checkCollision(targetX, targetZ, 0.4)) {
+        for (let r = 0.8; r <= 2.2; r += 0.7) {
+          let found = false;
+          for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+            const nx = vent.x + Math.cos(a) * r;
+            const nz = vent.z + Math.sin(a) * r;
+            if (!stationMap.checkCollision(nx, nz, 0.35)) {
+              targetX = nx;
+              targetZ = nz;
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
+      }
+      this.x = targetX;
+      this.z = targetZ;
       this.mesh?.position.set(this.x, 0, this.z);
       if (this.mesh) {
         this.mesh.traverse((c) => {
@@ -11885,6 +12544,34 @@
         if (!this.radioAlertCooldown || this.radioAlertCooldown <= 0) {
           this.radioAlertCooldown = 4.5;
           audioManager.playRadioSquelch?.(this.x, this.z);
+
+          // Audit QA #19 : Barks de terreur diégétiques spécifiques aux castes hybrides et exotiques
+          const currentCaste = playerCreature?.adultCaste || playerCreature?.caste || 'drone';
+          let radioBark = 'RADIO: ENNEMI EN VUE !';
+          let barkColor = '#f59e0b';
+          if (currentCaste === 'abomination') {
+            const abomQuotes = [
+              'RADIO: C\'est quoi ce monstre géant au visage d\'enfant ?!',
+              'RADIO: L\'Abomination est là ! Peau blanche d\'albâtre !',
+              'RADIO: Il fait trois mètres de haut ! Tirez !'
+            ];
+            radioBark = abomQuotes[Math.floor(Math.random() * abomQuotes.length)];
+            barkColor = '#f8fafc';
+            this.stress = Math.min(100, (this.stress || 0) + 35);
+          } else if (currentCaste === 'predalien') {
+            radioBark = 'RADIO: Mon Dieu ces mandibules ! Un hybride Yautja !';
+            barkColor = '#f59e0b';
+            this.stress = Math.min(100, (this.stress || 0) + 30);
+          } else if (currentCaste === 'deacon' || currentCaste === 'deacon_adult') {
+            radioBark = 'RADIO: Spécimen bleu ardoise ! Mâchoire prémaxillaire !';
+            barkColor = '#38bdf8';
+            this.stress = Math.min(100, (this.stress || 0) + 25);
+          } else if (currentCaste === 'belugamorph') {
+            radioBark = 'RADIO: Bloodburster blanc rapide ! Il rampe à toute allure !';
+            barkColor = '#e2e8f0';
+            this.stress = Math.min(100, (this.stress || 0) + 25);
+          }
+
           const allies = (window.gameInstance?.humans || []).filter((h) => (
             h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
             ['guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator', 'commando', 'android', 'synthetic', 'weyland_cyber_hound'].includes(h.type) &&
@@ -11894,7 +12581,7 @@
             if (ally.aiState === 'PATROL') {
               ally.aiState = 'CHASE';
               ally.targetPos = { x: combatTarget.x, z: combatTarget.z };
-              window.HiveSystems?.vfx?.floatingText?.(ally.x, 2.6, ally.z, 'RADIO: ENNEMI EN VUE !', '#f59e0b', false);
+              window.HiveSystems?.vfx?.floatingText?.(ally.x, 2.6, ally.z, radioBark, barkColor, false);
             }
           });
         }
@@ -12403,25 +13090,33 @@
             window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.65, this.z, 0x38bdf8, 0.2);
             applyWeaponDamage(0.85);
           } else {
-            // Chantier 37 : Fusil à impulsion M41A avec Lance-grenades U1 40mm sous le canon (Aliens 1986)
+            // Chantier 133 : Fusil à impulsion M41A avec Lance-Grenades 30mm U1 Intégré (Aliens 1986)
             this.u1GrenadeCooldown = (this.u1GrenadeCooldown || 0) - safeDelta;
-            if (['marine', 'guard'].includes(this.type) && distToPlayer >= 7.0 && distToPlayer <= 20 && this.u1GrenadeCooldown <= 0) {
-              this.u1GrenadeCooldown = 11.0;
-              this.shootCooldown = 2.2;
+            if (['marine', 'guard', 'commando'].includes(this.type) && distToPlayer >= 6.5 && distToPlayer <= 22 && this.u1GrenadeCooldown <= 0) {
+              this.u1GrenadeCooldown = 8.5;
+              this.shootCooldown = 2.4;
               audioManager.playM40GrenadePumpLaunch?.(this.x, this.z);
-              window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf97316, 0.3);
+              audioManager.playPulseRifleU1Grenade?.(this.x, this.z);
+              window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf97316, 0.35);
+              // Recul cinétique sur le tireur
+              const recoilAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
+              this.x += Math.cos(recoilAngle) * 0.45;
+              this.z += Math.sin(recoilAngle) * 0.45;
+              this.mesh?.position.set(this.x, 0, this.z);
+
               const onU1Impact = () => {
-                audioManager.playGrenadeExplode?.(combatTarget.x, combatTarget.z);
-                rendererEngine.addScreenShake?.(0.36, 0.22);
-                window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 28, 0.18, 2.2);
-                window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.0, combatTarget.z, 'GRENADE U1 40MM EXPLOSIVE !', '#f97316', true);
-                applyWeaponDamage(1.75);
+                audioManager.playPulseRifleU1Grenade?.(combatTarget.x, combatTarget.z);
+                rendererEngine.addScreenShake?.(0.45, 0.3);
+                window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 32, 0.22, 2.4);
+                window.HiveSystems?.vfx?.ring?.(combatTarget.x, combatTarget.z, 0xf97316, 6.5);
+                window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.0, combatTarget.z, 'OBUS 30MM U1 EXPLOSIF !', '#f97316', true);
+                applyWeaponDamage(1.85);
               };
               if (window.HiveSystems?.vfx?.projectile) {
                 window.HiveSystems.vfx.projectile({
                   startX: this.x, startY: 2.7, startZ: this.z,
                   endX: combatTarget.x, endY: 1.0, endZ: combatTarget.z,
-                  color: 0xf97316, scale: 0.24, speed: 22,
+                  color: 0xf97316, scale: 0.24, speed: 24,
                   onImpact: onU1Impact
                 });
               } else {
@@ -14324,7 +15019,9 @@
         newborn: { jaw: 'ÉTREINTE BROYEUSE', tail: 'FRAPPE BRACHIALE' },
         raven: { jaw: 'CHARGE SISMIQUE', tail: 'MASSUE CAUDALE HÉRISSÉE' },
         king: { jaw: 'BROYAGE ROYAL SUPRÊME', tail: 'MASSUE ÉPINEUSE ROYALE' },
-        bodyburster: { jaw: 'ÉVENTRATION DORSALE', tail: 'PERFORATION RACHIDIENNE' }
+        bodyburster: { jaw: 'ÉVENTRATION DORSALE', tail: 'PERFORATION RACHIDIENNE' },
+        abomination: { jaw: 'BROYAGE STERNAL', tail: 'PROJECTION CAUDALE' },
+        belugamorph: { jaw: 'MORSURES VORACES', tail: 'REPTATION VIVE' }
       };
       const actionLabels = casteActions[profile.key] || casteActions.drone;
       document.getElementById('stage-badge').textContent = `PHASE 4 : ${adultLabel} — CHASSE ET NURSERIE`;
@@ -14371,54 +15068,66 @@
             <option value="deacon_adult" ${activeCaste === 'deacon_adult' ? 'selected' : ''}>Deacon Apex Archon (Prometheus Lore Étendu)</option>
             <option value="predalien" ${activeCaste === 'predalien' ? 'selected' : ''}>Predalien Hybride Yautja (AvP Lore Officiel)</option>
             <option value="spitter" ${activeCaste === 'spitter' ? 'selected' : ''}>Spitter Sniper Acide (Colonial Marines)</option>
+            <option value="abomination" ${activeCaste === 'abomination' ? 'selected' : ''}>The Abomination / Anomaly Hybrid (Romulus 2024)</option>
+            <option value="belugamorph" ${activeCaste === 'belugamorph' ? 'selected' : ''}>The Belugamorph / Bloodburster (Covenant)</option>
           </select>
         </div>
-        <button type="button" id="btn-drone-ambush" class="act-btn">1. ${profile.huntAction} [1 / E]</button>
-        <button type="button" id="btn-inner-jaw" class="act-btn">2. ${actionLabels.jaw} [2 / R]</button>
-        <button type="button" id="btn-tail-impale" class="act-btn">3. ${actionLabels.tail} [3 / T]</button>
-        <button type="button" id="btn-claw-swipe" class="act-btn">★ GRIFFES [ESPACE]</button>
-        <button type="button" id="btn-king-dominance" class="act-btn" style="border-color: #dc2626; background: rgba(220,38,38,0.25); display: ${activeCaste === 'king' ? 'inline-block' : 'none'};">★ DOMINANCE ROYALE & CHOC SISMIQUE [R]</button>
-        <button type="button" id="btn-bodyburster-lunge" class="act-btn" style="border-color: #fb7185; background: rgba(251,113,133,0.25); display: ${activeCaste === 'bodyburster' ? 'inline-block' : 'none'};">★ ASSAUT VERTÉBRAL BACKBURSTER [R]</button>
-        <button type="button" id="btn-vent-snatch" class="act-btn" style="border-color: #38bdf8; background: rgba(56,189,248,0.22);">★ VENT SNATCH & DRAG (GRILLES TECHNIQUES) [E]</button>
-        <button type="button" id="btn-newborn-crush" class="act-btn" style="border-color: #fce7f3; background: rgba(252,231,243,0.22); display: ${activeCaste === 'newborn' ? 'inline-block' : 'none'};">★ ÉTREINTE BROYEUSE NEWBORN [R]</button>
-        <button type="button" id="btn-raven-charge" class="act-btn" style="border-color: #090d16; background: rgba(15,23,42,0.45); display: ${activeCaste === 'raven' ? 'inline-block' : 'none'};">★ CHARGE SISMIQUE RAVEN [R]</button>
-        <button type="button" id="btn-ceiling-drop-eviscerate" class="act-btn" style="border-color: #ef4444; background: rgba(239,68,68,0.22); display: ${playerCreature.isCeilingProwling ? 'inline-block' : 'none'};">★ ÉVENTRATION DU PLAFOND [E]</button>
-        <button type="button" id="btn-boiler-detonation" class="act-btn" style="border-color: #f97316; background: rgba(249,115,22,0.22); display: ${activeCaste === 'boiler' ? 'inline-block' : 'none'};">★ DÉTONATION THERMIQUE BOILER [X]</button>
-        <button type="button" id="btn-carrier-swarm" class="act-btn" style="border-color: #a855f7; background: rgba(168,85,247,0.22); display: ${activeCaste === 'carrier' ? 'inline-block' : 'none'};">★ NUÉE DE FACEHUGGERS CARRIER [U]</button>
-        <button type="button" id="btn-tail-decapitation" class="act-btn" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ DÉCAPITATION AU DARD [T]</button>
-        <button type="button" id="btn-deacon-archon" class="act-btn" style="border-color: #38bdf8; background: rgba(56,189,248,0.22); display: ${activeCaste === 'deacon_adult' ? 'inline-block' : 'none'};">★ SUCCION BIOMASSE ARCHON [R]</button>
-        <button type="button" id="btn-spinal-whip" class="act-btn" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ SECTION SPINAIL AU FOUET [T]</button>
-        <button type="button" id="btn-predalien-implant" class="act-btn" style="border-color: #f59e0b; background: rgba(245,158,11,0.22); display: ${activeCaste === 'predalien' ? 'inline-block' : 'none'};">★ IMPLANTATION ORALE DIRECTE [G / R]</button>
-        <button type="button" id="btn-acid-back-spray" class="act-btn" style="border-color: #84cc16; background: rgba(132,204,22,0.22);">★ DÉGAZAGE DORSAL ACIDE 360° [B]</button>
-        <button type="button" id="btn-interact-environment" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);">★ PIÈGE ENVIRONNEMENT (SAS DÉCON / GRUE / RÉACTEUR / MUTHUR / VAP / CÂBLE) [ESPACE]</button>
-        <button type="button" id="btn-drone-hiss" class="act-btn" style="border-color: #39ff14;">★ SIFFLEMENT [H / 5]</button>
-        <button type="button" id="btn-acid-spit" class="act-btn" style="border-color: #84cc16; background: rgba(132,204,22,0.18);">★ CRACHAT ACIDE [X]</button>
-        <button type="button" id="btn-drone-ceiling" class="act-btn" style="border-color: #38bdf8;">★ PAROI & PLAFOND [Q] (KIDNAPPING / ÉVENTRATION [E])</button>
-        <button type="button" id="btn-drone-prowl" class="act-btn">★ POSTURE BASSE [Z]</button>
-        <button type="button" id="btn-wall-mimicry" class="act-btn" style="border-color: #22c55e; background: rgba(34,197,94,0.18);">★ CAMOUFLAGE MURAL DE RÉSINE [Z]</button>
-        <button type="button" id="btn-crusher-charge" class="act-btn" style="border-color: #f97316; background: rgba(249,115,22,0.22); display: ${activeCaste === 'crusher' ? 'inline-block' : 'none'};">★ CHARGE BÉLIER CRUSHER [R]</button>
-        <button type="button" id="btn-hive-submission" class="act-btn" style="border-color: #a855f7; background: rgba(168,85,247,0.22); display: ${['alpha', 'queen', 'praetorian'].includes(activeCaste) ? 'inline-block' : 'none'};">★ ONDE DE SOUMISSION DE RUCHE [H]</button>
-        <button type="button" id="btn-drone-prowl-leap" class="act-btn" style="border-color: #39ff14; background: rgba(57,255,20,0.18);">★ BOND DE TRAQUE [K]</button>
-        <button type="button" id="btn-drone-vent" class="act-btn">5. CONDUITS [C]</button>
-        <button type="button" id="btn-sabotage-power" class="act-btn" style="border-color: #eab308; background: rgba(234,179,8,0.18);">★ COUPER COURANT [B]</button>
-        <button type="button" id="btn-acoustic-decoy" class="act-btn" style="border-color: #38bdf8; background: rgba(56,189,248,0.22);">★ ÉCHO RADAR FANTÔME [N]</button>
-        <button type="button" id="btn-neomorph-frenzy" class="act-btn" style="border-color: #f1f5f9; background: rgba(241,245,249,0.25); display: ${activeCaste === 'neomorph' ? 'inline-block' : 'none'};">★ FRINGALE FRÉNÉTIQUE [B]</button>
-        <button type="button" id="btn-praetorian-roar" class="act-btn" style="border-color: #c084fc; background: rgba(192,132,252,0.25); display: ${activeCaste === 'praetorian' ? 'inline-block' : 'none'};">★ RUGISSEMENT BÉLIER [R]</button>
-        <button type="button" id="btn-alpha-psychic" class="act-btn" style="border-color: #dc2626; background: rgba(220,38,38,0.25);">★ IMPULSION PSYCHIQUE ALPHA [T]</button>
-        <button type="button" id="btn-supersonic-tail" class="act-btn" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ FOUET BIFIDE SUPERSONIQUE [Y]</button>
-        <button type="button" id="btn-spawn-swarmers" class="act-btn" style="border-color: #090d16; background: rgba(15,23,42,0.45);">★ NUÉE DE SWARMERS [U]</button>
-        <button type="button" id="btn-spread-creep" class="act-btn" style="border-color: #ec4899; background: rgba(236,72,153,0.2);">★ ÉTENDRE HIVE CREEP [F]</button>
-        <button type="button" id="btn-evolve-alpha" class="act-btn" style="border-color: #dc2626; background: rgba(220,38,38,0.2);">★ MUE EN ALPHA (MARVEL)</button>
-        <button type="button" id="btn-direct-inoculation" class="act-btn" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ IMPLANTATION DIRECTE [G]</button>
-        <button type="button" id="btn-airlock-purge" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);">★ PURGE SAS [Y]</button>
-        <button type="button" id="btn-drag-host" class="act-btn" style="border-color: #f59e0b;">★ TRAÎNER / COCON MURAL [V]</button>
-        <button type="button" id="btn-cocoon-host" class="act-btn">4. COCOONISER UN HÔTE [4 / F]</button>
-        <button type="button" id="btn-eggmorph" class="act-btn">6. OVOMORPHE / ORAL [G]</button>
-        <button type="button" id="btn-aquatic-dive" class="act-btn" style="border-color: #0284c7; background: rgba(2,132,199,0.18);">★ IMMERSION AQUATIQUE [U]</button>
-        <button type="button" id="btn-hack-terminal" class="act-btn" style="border-color: #f59e0b; background: rgba(245,158,11,0.18);">★ PIRATAGE TERMINAL / SYNTH [K]</button>
-        <button type="button" id="btn-subfloor-ambush" class="act-btn" style="border-color: #64748b; background: rgba(100,116,139,0.22);">★ EMBUSCADE SOUS-PLANCHER [J]</button>
-        <button type="button" id="btn-self-destruct-mother" class="act-btn" style="border-color: #dc2626; background: rgba(220,38,38,0.22);">★ PURGE NUCLÉAIRE M.U.T.H.U.R. [O]</button>
-        <button type="button" id="btn-found-queen-hive" class="act-btn" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
+        <!-- Audit QA #16 : Onglets diégétiques de filtrage ergonomique -->
+        <div class="hud-action-tabs" style="display: flex; gap: 4px; margin-bottom: 8px;">
+          <button type="button" class="hud-tab-btn" data-tab="all" style="flex: 1; font-size: 10px; padding: 4px; background: #1e293b; border: 1px solid #38bdf8; color: #e2e8f0; cursor: pointer; border-radius: 3px;">[TOUT]</button>
+          <button type="button" class="hud-tab-btn" data-tab="predation" style="flex: 1; font-size: 10px; padding: 4px; background: #020617; border: 1px solid #334155; color: #ef4444; cursor: pointer; border-radius: 3px;">[PRÉDATION]</button>
+          <button type="button" class="hud-tab-btn" data-tab="environment" style="flex: 1; font-size: 10px; padding: 4px; background: #020617; border: 1px solid #334155; color: #06b6d4; cursor: pointer; border-radius: 3px;">[ENVIRONNEMENT]</button>
+          <button type="button" class="hud-tab-btn" data-tab="stealth" style="flex: 1; font-size: 10px; padding: 4px; background: #020617; border: 1px solid #334155; color: #22c55e; cursor: pointer; border-radius: 3px;">[TACTIQUE & STEALTH]</button>
+        </div>
+        <button type="button" id="btn-drone-ambush" class="act-btn" data-tab-cat="predation">1. ${profile.huntAction} [1 / E]</button>
+        <button type="button" id="btn-inner-jaw" class="act-btn" data-tab-cat="predation">2. ${actionLabels.jaw} [2 / R]</button>
+        <button type="button" id="btn-tail-impale" class="act-btn" data-tab-cat="predation">3. ${actionLabels.tail} [3 / T]</button>
+        <button type="button" id="btn-claw-swipe" class="act-btn" data-tab-cat="predation">★ GRIFFES [ESPACE]</button>
+        <button type="button" id="btn-king-dominance" class="act-btn" data-tab-cat="predation" data-caste-only="king" style="border-color: #dc2626; background: rgba(220,38,38,0.25); display: ${activeCaste === 'king' ? 'inline-block' : 'none'};">★ DOMINANCE ROYALE & CHOC SISMIQUE [R]</button>
+        <button type="button" id="btn-bodyburster-lunge" class="act-btn" data-tab-cat="predation" data-caste-only="bodyburster" style="border-color: #fb7185; background: rgba(251,113,133,0.25); display: ${activeCaste === 'bodyburster' ? 'inline-block' : 'none'};">★ ASSAUT VERTÉBRAL BACKBURSTER [R]</button>
+        <button type="button" id="btn-vent-snatch" class="act-btn" data-tab-cat="stealth" style="border-color: #38bdf8; background: rgba(56,189,248,0.22);">★ VENT SNATCH & DRAG (GRILLES TECHNIQUES) [E]</button>
+        <button type="button" id="btn-newborn-crush" class="act-btn" data-tab-cat="predation" data-caste-only="newborn" style="border-color: #fce7f3; background: rgba(252,231,243,0.22); display: ${activeCaste === 'newborn' ? 'inline-block' : 'none'};">★ ÉTREINTE BROYEUSE NEWBORN [R]</button>
+        <button type="button" id="btn-raven-charge" class="act-btn" data-tab-cat="predation" data-caste-only="raven" style="border-color: #090d16; background: rgba(15,23,42,0.45); display: ${activeCaste === 'raven' ? 'inline-block' : 'none'};">★ CHARGE SISMIQUE RAVEN [R]</button>
+        <button type="button" id="btn-ceiling-drop-eviscerate" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22); display: ${playerCreature.isCeilingProwling ? 'inline-block' : 'none'};">★ ÉVENTRATION DU PLAFOND [E]</button>
+        <button type="button" id="btn-boiler-detonation" class="act-btn" data-tab-cat="predation" data-caste-only="boiler" style="border-color: #f97316; background: rgba(249,115,22,0.22); display: ${activeCaste === 'boiler' ? 'inline-block' : 'none'};">★ DÉTONATION THERMIQUE BOILER [X]</button>
+        <button type="button" id="btn-carrier-swarm" class="act-btn" data-tab-cat="predation" data-caste-only="carrier" style="border-color: #a855f7; background: rgba(168,85,247,0.22); display: ${activeCaste === 'carrier' ? 'inline-block' : 'none'};">★ NUÉE DE FACEHUGGERS CARRIER [U]</button>
+        <button type="button" id="btn-tail-decapitation" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ DÉCAPITATION AU DARD [T]</button>
+        <button type="button" id="btn-deacon-archon" class="act-btn" data-tab-cat="predation" data-caste-only="deacon_adult" style="border-color: #38bdf8; background: rgba(56,189,248,0.22); display: ${activeCaste === 'deacon_adult' ? 'inline-block' : 'none'};">★ SUCCION BIOMASSE ARCHON [R]</button>
+        <button type="button" id="btn-spinal-whip" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ SECTION SPINAIL AU FOUET [T]</button>
+        <button type="button" id="btn-predalien-implant" class="act-btn" data-tab-cat="predation" data-caste-only="predalien" style="border-color: #f59e0b; background: rgba(245,158,11,0.22); display: ${activeCaste === 'predalien' ? 'inline-block' : 'none'};">★ IMPLANTATION ORALE DIRECTE [G / R]</button>
+        <button type="button" id="btn-abomination-crush" class="act-btn" data-tab-cat="predation" data-caste-only="abomination" style="border-color: #f1f5f9; background: rgba(241,245,249,0.25); display: ${activeCaste === 'abomination' ? 'inline-block' : 'none'};">★ BROYAGE STERNAL & PROJECTION [R]</button>
+        <button type="button" id="btn-belugamorph-frenzy" class="act-btn" data-tab-cat="predation" data-caste-only="belugamorph" style="border-color: #f8fafc; background: rgba(248,250,252,0.25); display: ${activeCaste === 'belugamorph' ? 'inline-block' : 'none'};">★ MORSURES VORACES BELUGAMORPH [R]</button>
+        <button type="button" id="btn-wall-ambush-pin" class="act-btn" data-tab-cat="stealth" style="border-color: #22c55e; background: rgba(34,197,94,0.25); display: ${playerCreature.isWallMimic ? 'inline-block' : 'none'};">★ EMBUSCADE MURALE SILENCIEUSE [ESPACE]</button>
+        <button type="button" id="btn-acid-back-spray" class="act-btn" data-tab-cat="predation" style="border-color: #84cc16; background: rgba(132,204,22,0.22);">★ DÉGAZAGE DORSAL ACIDE 360° [B]</button>
+        <button type="button" id="btn-interact-environment" class="act-btn" data-tab-cat="environment" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);">★ PIÈGE ENVIRONNEMENT (SAS DÉCON / GRUE / RÉACTEUR / MUTHUR / VAP / M577 / PURGE) [ESPACE]</button>
+        <button type="button" id="btn-drone-hiss" class="act-btn" data-tab-cat="stealth" style="border-color: #39ff14;">★ SIFFLEMENT [H / 5]</button>
+        <button type="button" id="btn-acid-spit" class="act-btn" data-tab-cat="predation" style="border-color: #84cc16; background: rgba(132,204,22,0.18);">★ CRACHAT ACIDE [X]</button>
+        <button type="button" id="btn-drone-ceiling" class="act-btn" data-tab-cat="stealth" style="border-color: #38bdf8;">★ PAROI & PLAFOND [Q] (KIDNAPPING / ÉVENTRATION [E])</button>
+        <button type="button" id="btn-drone-prowl" class="act-btn" data-tab-cat="stealth">★ POSTURE BASSE [Z]</button>
+        <button type="button" id="btn-wall-mimicry" class="act-btn" data-tab-cat="stealth" style="border-color: #22c55e; background: rgba(34,197,94,0.18);">★ CAMOUFLAGE MURAL DE RÉSINE [Z]</button>
+        <button type="button" id="btn-crusher-charge" class="act-btn" data-tab-cat="predation" data-caste-only="crusher" style="border-color: #f97316; background: rgba(249,115,22,0.22); display: ${activeCaste === 'crusher' ? 'inline-block' : 'none'};">★ CHARGE BÉLIER CRUSHER [R]</button>
+        <button type="button" id="btn-hive-submission" class="act-btn" data-tab-cat="predation" style="border-color: #a855f7; background: rgba(168,85,247,0.22); display: ${['alpha', 'queen', 'praetorian'].includes(activeCaste) ? 'inline-block' : 'none'};">★ ONDE DE SOUMISSION DE RUCHE [H]</button>
+        <button type="button" id="btn-drone-prowl-leap" class="act-btn" data-tab-cat="predation" style="border-color: #39ff14; background: rgba(57,255,20,0.18);">★ BOND DE TRAQUE [K]</button>
+        <button type="button" id="btn-drone-vent" class="act-btn" data-tab-cat="stealth">5. CONDUITS [C]</button>
+        <button type="button" id="btn-sabotage-power" class="act-btn" data-tab-cat="environment" style="border-color: #eab308; background: rgba(234,179,8,0.18);">★ COUPER COURANT [B]</button>
+        <button type="button" id="btn-acoustic-decoy" class="act-btn" data-tab-cat="stealth" style="border-color: #38bdf8; background: rgba(56,189,248,0.22);">★ ÉCHO RADAR FANTÔME [N]</button>
+        <button type="button" id="btn-neomorph-frenzy" class="act-btn" data-tab-cat="predation" data-caste-only="neomorph" style="border-color: #f1f5f9; background: rgba(241,245,249,0.25); display: ${activeCaste === 'neomorph' ? 'inline-block' : 'none'};">★ FRINGALE FRÉNÉTIQUE [B]</button>
+        <button type="button" id="btn-praetorian-roar" class="act-btn" data-tab-cat="predation" data-caste-only="praetorian" style="border-color: #c084fc; background: rgba(192,132,252,0.25); display: ${activeCaste === 'praetorian' ? 'inline-block' : 'none'};">★ RUGISSEMENT BÉLIER [R]</button>
+        <button type="button" id="btn-alpha-psychic" class="act-btn" data-tab-cat="predation" style="border-color: #dc2626; background: rgba(220,38,38,0.25);">★ IMPULSION PSYCHIQUE ALPHA [T]</button>
+        <button type="button" id="btn-supersonic-tail" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ FOUET BIFIDE SUPERSONIQUE [Y]</button>
+        <button type="button" id="btn-spawn-swarmers" class="act-btn" data-tab-cat="predation" style="border-color: #090d16; background: rgba(15,23,42,0.45);">★ NUÉE DE SWARMERS [U]</button>
+        <button type="button" id="btn-spread-creep" class="act-btn" data-tab-cat="stealth" style="border-color: #ec4899; background: rgba(236,72,153,0.2);">★ ÉTENDRE HIVE CREEP [F]</button>
+        <button type="button" id="btn-evolve-alpha" class="act-btn" data-tab-cat="predation" style="border-color: #dc2626; background: rgba(220,38,38,0.2);">★ MUE EN ALPHA (MARVEL)</button>
+        <button type="button" id="btn-direct-inoculation" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);">★ IMPLANTATION DIRECTE [G]</button>
+        <button type="button" id="btn-airlock-purge" class="act-btn" data-tab-cat="environment" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);">★ PURGE SAS [Y]</button>
+        <button type="button" id="btn-drag-host" class="act-btn" data-tab-cat="stealth" style="border-color: #f59e0b;">★ TRAÎNER / COCON MURAL [V]</button>
+        <button type="button" id="btn-cocoon-host" class="act-btn" data-tab-cat="stealth">4. COCOONISER UN HÔTE [4 / F]</button>
+        <button type="button" id="btn-eggmorph" class="act-btn" data-tab-cat="stealth">6. OVOMORPHE / ORAL [G]</button>
+        <button type="button" id="btn-aquatic-dive" class="act-btn" data-tab-cat="stealth" style="border-color: #0284c7; background: rgba(2,132,199,0.18);">★ IMMERSION AQUATIQUE [U]</button>
+        <button type="button" id="btn-hack-terminal" class="act-btn" data-tab-cat="environment" style="border-color: #f59e0b; background: rgba(245,158,11,0.18);">★ PIRATAGE TERMINAL / SYNTH [K]</button>
+        <button type="button" id="btn-subfloor-ambush" class="act-btn" data-tab-cat="stealth" style="border-color: #64748b; background: rgba(100,116,139,0.22);">★ EMBUSCADE SOUS-PLANCHER [J]</button>
+        <button type="button" id="btn-self-destruct-mother" class="act-btn" data-tab-cat="environment" style="border-color: #dc2626; background: rgba(220,38,38,0.22);">★ PURGE NUCLÉAIRE M.U.T.H.U.R. [O]</button>
+        <button type="button" id="btn-found-queen-hive" class="act-btn" data-tab-cat="stealth" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
       `;
 
       const selectCaste = document.getElementById('select-adult-caste');
@@ -14554,8 +15263,68 @@
       if (btnAcidBackSpray) {
         btnAcidBackSpray.onclick = () => playerCreature.executeAcidicBackSpray();
       }
+      const btnAbom = document.getElementById('btn-abomination-crush');
+      if (btnAbom) {
+        btnAbom.onclick = () => {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
+          if (target) playerCreature.executeAbominationSternalCrush(target);
+          else showToast('Aucune cible à portée de broyage sternal (4.5m).');
+        };
+      }
+      const btnBeluga = document.getElementById('btn-belugamorph-frenzy');
+      if (btnBeluga) {
+        btnBeluga.onclick = () => {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 3.8);
+          if (target) playerCreature.executeBelugamorphFrenzyBite(target);
+          else showToast('Aucune cible à portée de morsures voraces (3.8m).');
+        };
+      }
+      const btnWallAmbush = document.getElementById('btn-wall-ambush-pin');
+      if (btnWallAmbush) {
+        btnWallAmbush.onclick = () => {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 3.5);
+          if (target) playerCreature.executeWallAmbushPin(target);
+          else showToast('Aucune cible devant la cloison pour l\'embuscade murale silencieuse (3.5m).');
+        };
+      }
       document.getElementById('btn-found-queen-hive').onclick = () => this.foundRoyalNursery();
       this.updateRoyalButton();
+
+      // Audit QA #16 : Filtrage dynamique des boutons selon l'onglet actif
+      const filterActionButtons = (tab) => {
+        this.activeActionTab = tab;
+        const allBtns = actionsContainer.querySelectorAll('.act-btn');
+        allBtns.forEach((btn) => {
+          const cat = btn.getAttribute('data-tab-cat');
+          const isCasteSpecific = btn.getAttribute('data-caste-only');
+          if (isCasteSpecific && isCasteSpecific !== activeCaste) {
+            btn.style.display = 'none';
+            return;
+          }
+          if (btn.id === 'btn-wall-ambush-pin' && !playerCreature.isWallMimic) {
+            btn.style.display = 'none';
+            return;
+          }
+          if (tab === 'all' || !cat || cat === tab) {
+            btn.style.display = 'inline-block';
+          } else {
+            btn.style.display = 'none';
+          }
+        });
+      };
+
+      actionsContainer.querySelectorAll('.hud-tab-btn').forEach((tabBtn) => {
+        tabBtn.onclick = () => {
+          actionsContainer.querySelectorAll('.hud-tab-btn').forEach((b) => {
+            b.style.background = '#020617';
+            b.style.borderColor = '#334155';
+          });
+          tabBtn.style.background = '#1e293b';
+          tabBtn.style.borderColor = '#38bdf8';
+          filterActionButtons(tabBtn.dataset.tab);
+        };
+      });
+      filterActionButtons(this.activeActionTab || 'all');
     }
 
     executeAcidSpit() {
@@ -14610,6 +15379,18 @@
       if (distMortar) stationMap.destroyPortableMortar(distMortar, 90);
       const distNarcissus = (stationMap.narcissusDocks || []).find((nd) => !nd.isSealed && Math.hypot(nd.x - playerCreature.x, nd.z - playerCreature.z) <= 15);
       if (distNarcissus) stationMap.sabotageNarcissusDock(distNarcissus);
+
+      // Chantiers 132, 135, 137, 138, 140 : Crachat acide balistique sur props Vague 14
+      const distAPC = (stationMap.m577APCs || []).find((apc) => !apc.isSabotaged && Math.hypot(apc.x - playerCreature.x, apc.z - playerCreature.z) <= 15);
+      if (distAPC) stationMap.sabotageM577APC(distAPC);
+      const distDefib = (stationMap.wallDefibrillators || []).find((wd) => !wd.isOverloaded && Math.hypot(wd.x - playerCreature.x, wd.z - playerCreature.z) <= 15);
+      if (distDefib) stationMap.dischargeWallDefibrillator(distDefib);
+      const distPurge = (stationMap.reactionPurgeVents || []).find((rp) => !rp.isFlushing && Math.hypot(rp.x - playerCreature.x, rp.z - playerCreature.z) <= 15);
+      if (distPurge) stationMap.triggerReactionPurgeVent(distPurge);
+      const distCam = (stationMap.thermalSurveillancePosts || []).find((tc) => !tc.isDestroyed && Math.hypot(tc.x - playerCreature.x, tc.z - playerCreature.z) <= 15);
+      if (distCam) stationMap.destroyThermalSurveillancePost(distCam, 90);
+      const distReactor = (stationMap.reactorDisconnectConsoles || []).find((rc) => !rc.isEvacuating && Math.hypot(rc.x - playerCreature.x, rc.z - playerCreature.z) <= 15);
+      if (distReactor) stationMap.triggerReactorEvacuationCountdown(distReactor);
 
       this.updateRoyalButton();
     }
@@ -14759,7 +15540,43 @@
         stationMap.sabotageNarcissusDock(nearNarcissus);
         return true;
       }
-      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus) à portée immédiate.');
+      // 25. Transport Blindé M577 APC USCM (Chantier 132)
+      const nearAPC = (stationMap.m577APCs || []).find((apc) => !apc.isSabotaged && Math.hypot(apc.x - playerCreature.x, apc.z - playerCreature.z) <= 5.5);
+      if (nearAPC) {
+        stationMap.sabotageM577APC(nearAPC);
+        return true;
+      }
+      // 26. Sas de Condensation d'Eau (Chantier 134)
+      const nearWaterVent = (stationMap.waterDropletVents || []).find((wd) => Math.hypot(wd.x - playerCreature.x, wd.z - playerCreature.z) <= 4.5);
+      if (nearWaterVent) {
+        stationMap.triggerWaterDropletVent(nearWaterVent);
+        return true;
+      }
+      // 27. Défibrillateur Médical Seegson 5000V (Chantier 135)
+      const nearDefib = (stationMap.wallDefibrillators || []).find((wd) => !wd.isOverloaded && Math.hypot(wd.x - playerCreature.x, wd.z - playerCreature.z) <= 4.5);
+      if (nearDefib) {
+        stationMap.dischargeWallDefibrillator(nearDefib);
+        return true;
+      }
+      // 28. Tuyère SAS C-30 Poussée Réactionnelle (Chantier 137)
+      const nearPurge = (stationMap.reactionPurgeVents || []).find((rp) => !rp.isFlushing && Math.hypot(rp.x - playerCreature.x, rp.z - playerCreature.z) <= 5.5);
+      if (nearPurge) {
+        stationMap.triggerReactionPurgeVent(nearPurge);
+        return true;
+      }
+      // 29. Poste Surveillance Thermique USCM (Chantier 138)
+      const nearCam = (stationMap.thermalSurveillancePosts || []).find((tc) => !tc.isDestroyed && Math.hypot(tc.x - playerCreature.x, tc.z - playerCreature.z) <= 4.5);
+      if (nearCam) {
+        stationMap.destroyThermalSurveillancePost(nearCam, 60);
+        return true;
+      }
+      // 30. Console Déconnexion Réacteur Principal & Évacuation (Chantier 140)
+      const nearReactorConsole = (stationMap.reactorDisconnectConsoles || []).find((rc) => !rc.isEvacuating && Math.hypot(rc.x - playerCreature.x, rc.z - playerCreature.z) <= 4.5);
+      if (nearReactorConsole) {
+        stationMap.triggerReactorEvacuationCountdown(nearReactorConsole);
+        return true;
+      }
+      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur) à portée immédiate.');
       return false;
     }
 
@@ -14979,6 +15796,14 @@
           playerCreature.executeCrusherCharge?.();
         } else if (key === 'r' && caste === 'praetorian') {
           playerCreature.executePraetorianRoar();
+        } else if (key === 'r' && caste === 'abomination') {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
+          if (target) playerCreature.executeAbominationSternalCrush(target);
+          else showToast('Aucune cible à portée de broyage sternal (4.5m).');
+        } else if (key === 'r' && caste === 'belugamorph') {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 3.8);
+          if (target) playerCreature.executeBelugamorphFrenzyBite(target);
+          else showToast('Aucune cible à portée de morsures voraces (3.8m).');
         } else {
           this.executeInnerJaw();
         }
@@ -14998,6 +15823,13 @@
       }
       if (key === '4' || key === 'f') this.executeCocoonHost();
       if (key === ' ') {
+        if (playerCreature.isWallMimic) {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 3.5);
+          if (target) {
+            playerCreature.executeWallAmbushPin(target);
+            return;
+          }
+        }
         const interacted = this.interactWithNearbyProps();
         if (!interacted) this.executeClawSwipe();
       }

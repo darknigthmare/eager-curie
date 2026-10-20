@@ -206,6 +206,10 @@
       this.removeObject = null;
       this.effects = [];
       this.reducedMotion = false;
+      // Audit QA #20 : Object Pooling pour particules réutilisables (zéro allocation par frame)
+      this.particleMeshPool = [];
+      this.sharedSphereGeo = null;
+      this.sharedMatCache = new Map();
     }
 
     init(scene, removeObject) {
@@ -219,9 +223,50 @@
       this.clear(true);
     }
 
+    getMaterial(color) {
+      if (!this.sharedMatCache.has(color)) {
+        this.sharedMatCache.set(color, new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.88,
+          depthWrite: false
+        }));
+      }
+      return this.sharedMatCache.get(color);
+    }
+
+    getParticle(scale, color) {
+      if (typeof THREE === 'undefined') return null;
+      if (!this.sharedSphereGeo) {
+        this.sharedSphereGeo = new THREE.SphereGeometry(1, 5, 5);
+      }
+      let particle = this.particleMeshPool.pop();
+      if (!particle) {
+        particle = new THREE.Mesh(this.sharedSphereGeo, this.getMaterial(color).clone());
+      } else {
+        if (particle.material.color) particle.material.color.setHex(color);
+        particle.material.opacity = 0.88;
+      }
+      const s = scale * (0.6 + Math.random());
+      particle.scale.set(s, s, s);
+      return particle;
+    }
+
     clear(resolveProjectiles = false) {
       const effects = this.effects.splice(0, this.effects.length);
       for (const effect of effects) {
+        if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
+          while (effect.group.children.length > 0) {
+            const p = effect.group.children.pop();
+            this.particleMeshPool.push(p);
+          }
+        }
+        if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
+          while (effect.group.children.length > 0) {
+            const p = effect.group.children.pop();
+            this.particleMeshPool.push(p);
+          }
+        }
         if (effect.texture) effect.texture.dispose();
         if (effect.group?.material?.dispose) effect.group.material.dispose();
         if (this.removeObject) this.removeObject(effect.group);
@@ -240,14 +285,8 @@
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
       const group = new THREE.Group();
       for (let index = 0; index < count; index++) {
-        const geometry = new THREE.SphereGeometry(scale * (0.6 + Math.random()), 5, 5);
-        const material = new THREE.MeshBasicMaterial({
-          color,
-          transparent: true,
-          opacity: 0.88,
-          depthWrite: false
-        });
-        const particle = new THREE.Mesh(geometry, material);
+        const particle = this.getParticle(scale, color);
+        if (!particle) continue;
         particle.position.set(0, height, 0);
         particle.userData.velocity = new THREE.Vector3(
           (Math.random() - 0.5) * 7,
@@ -258,7 +297,7 @@
       }
       group.position.set(x, 0, z);
       this.scene.add(group);
-      this.effects.push({ group, age: 0, lifetime: 0.72 + Math.random() * 0.35 });
+      this.effects.push({ group, age: 0, lifetime: 0.72 + Math.random() * 0.35, burst: true });
     }
 
     ring(x, z, color = 0xa855f7, radius = 3) {
@@ -727,6 +766,12 @@
             acid: effect.acid
           }
           : null;
+        if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
+          while (effect.group.children.length > 0) {
+            const p = effect.group.children.pop();
+            this.particleMeshPool.push(p);
+          }
+        }
         if (effect.texture) effect.texture.dispose();
         if (effect.group?.material?.dispose) effect.group.material.dispose();
         if (this.removeObject) this.removeObject(effect.group);

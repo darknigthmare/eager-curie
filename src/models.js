@@ -5450,6 +5450,87 @@
           root.add(this._box(dark, { x: 0.38, y: 0.45, z: 0.35 }, { x: jx, y: jy, z: 0.1 }, `docking_jaw_${jaw}`, true));
           root.add(this._ellipsoid(pyroBolt, { x: 0.08, y: 0.08, z: 0.12 }, { x: jx, y: jy, z: 0.3 }, `pyro_explosive_bolt_${jaw}`, 8));
         }
+      } else if (normalizedType === 'forklift_vehicle' || normalizedType === 'forklift') {
+        // Chantier 122 : Chariot Élévateur & Batteries Industrielles au Lithium Weyland (Alien: Isolation)
+        const safetyYellow = this._material('industrial', { color: 0xeab308, roughness: 0.35, metalness: 0.65 });
+        const heavyRubber = this._material('darkMetal', { color: 0x09090b, roughness: 0.85, metalness: 0.1 });
+        const forgedForks = this._material('darkMetal', { color: 0x27272a, roughness: 0.25, metalness: 0.95 });
+        const lithiumBattery = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.2 });
+        // Châssis principal lourd
+        root.add(this._box(safetyYellow, { x: 1.8, y: 0.72, z: 2.8 }, { x: 0, y: 0.55, z: 0 }, 'forklift_chassis', true));
+        // 4 Roues de manutention massives
+        for (let w = 0; w < 4; w++) {
+          const wx = (w % 2 === 0 ? -1 : 1) * 0.95;
+          const wz = (w < 2 ? -1 : 1) * 1.05;
+          root.add(this._cylinder(heavyRubber, 0.38, 0.38, 0.28, { x: wx, y: 0.38, z: wz }, { x: 0, y: 0, z: Math.PI / 2 }, `forklift_wheel_${w}`));
+        }
+        // Cage de protection cabine conducteur (arceaux tubulaires)
+        for (let post = 0; post < 4; post++) {
+          const px = (post % 2 === 0 ? -1 : 1) * 0.72;
+          const pz = (post < 2 ? -1 : 1) * 0.65;
+          root.add(this._segment(dark, new T.Vector3(px, 0.9, pz), new T.Vector3(px, 2.3, pz), 0.045, 0.045, `cage_post_${post}`, 8));
+        }
+        root.add(this._box(dark, { x: 1.5, y: 0.08, z: 1.4 }, { x: 0, y: 2.32, z: 0 }, 'cage_roof'));
+        // Mât élévateur vertical à l'avant
+        root.add(this._segment(dark, new T.Vector3(-0.55, 0.2, 1.45), new T.Vector3(-0.55, 2.8, 1.45), 0.08, 0.08, 'forklift_mast_left', 8));
+        root.add(this._segment(dark, new T.Vector3(0.55, 0.2, 1.45), new T.Vector3(0.55, 2.8, 1.45), 0.08, 0.08, 'forklift_mast_right', 8));
+        // Tablier et fourches horizontales d'acier
+        root.add(this._box(forgedForks, { x: 1.35, y: 0.45, z: 0.12 }, { x: 0, y: 0.35, z: 1.5 }, 'fork_carriage', true));
+        root.add(this._box(forgedForks, { x: 0.14, y: 0.06, z: 1.55 }, { x: -0.38, y: 0.12, z: 2.25 }, 'fork_blade_left', true));
+        root.add(this._box(forgedForks, { x: 0.14, y: 0.06, z: 1.55 }, { x: 0.38, y: 0.12, z: 2.25 }, 'fork_blade_right', true));
+        // Pack de batteries lithium Weyland haute capacité à l'arrière
+        root.add(this._box(lithiumBattery, { x: 1.3, y: 0.55, z: 0.55 }, { x: 0, y: 0.85, z: -1.1 }, 'lithium_battery_pack'));
+      } else if (normalizedType === 'ceiling_fire_sprinkler' || normalizedType === 'fire_sprinkler') {
+        // Chantier 124 : Système d'Arroseurs Automatiques Incendie (Alien 1979 / Isolation)
+        const brassMat = this._material('industrial', { color: 0xd97706, roughness: 0.25, metalness: 0.88 });
+        const thermalBulb = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.8 });
+        // Conduite descendante depuis le plafond (fixée à y=5.8m)
+        root.add(this._segment(dark, new T.Vector3(0, 5.8, 0), new T.Vector3(0, 5.35, 0), 0.06, 0.05, 'sprinkler_pipe', 8));
+        // Corps de buse fileté en laiton doré
+        root.add(this._cylinder(brassMat, 0.1, 0.12, 0.18, { x: 0, y: 5.25, z: 0 }, { x: 0, y: 0, z: 0 }, 'sprinkler_brass_body'));
+        // Ampoule de déclenchement thermique rouge
+        root.add(this._ellipsoid(thermalBulb, { x: 0.035, y: 0.08, z: 0.035 }, { x: 0, y: 5.14, z: 0 }, 'sprinkler_thermal_bulb', 8));
+        // Déflecteur d'arrosage dentelé crénelé en étoile
+        root.add(this._cylinder(brassMat, 0.18, 0.04, 0.025, { x: 0, y: 5.05, z: 0 }, { x: 0, y: 0, z: 0 }, 'sprinkler_deflector_plate'));
+      } else if (normalizedType === 'toxic_waste_chute' || normalizedType === 'waste_chute') {
+        // Chantier 127 : Sas de Décharge Déchets Toxiques Fiorina 161 (Alien 3)
+        const castIron = this._material('darkMetal', { color: 0x334155, roughness: 0.75, metalness: 0.45 });
+        const vacuumIndicator = this._material('emissiveCyan', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 2.5 });
+        // Trémie cylindrique industrielle lourde
+        root.add(this._cylinder(castIron, 1.25, 1.05, 1.85, { x: 0, y: 0.95, z: 0 }, { x: 0, y: 0, z: 0 }, 'waste_chute_hopper'));
+        // Clapet guillotine d'obstruction scellé par vérins
+        root.add(this._box(dark, { x: 1.45, y: 0.22, z: 1.45 }, { x: 0, y: 1.85, z: 0 }, 'waste_chute_gate_valve', true));
+        // Voyant et hublot d'aspiration sous-vide
+        root.add(this._cylinder(vacuumIndicator, 0.35, 0.35, 0.05, { x: 0, y: 1.15, z: 1.12 }, { x: Math.PI / 2, y: 0, z: 0 }, 'vacuum_sight_glass'));
+      } else if (normalizedType === 'portable_mortar_turret' || normalizedType === 'mortar_turret') {
+        // Chantier 128 : Tourelle Portative Mortier M40 USCM à Shrapnel (Aliens: Fireteam Elite)
+        const uscmOlive = this._material('industrial', { color: 0x15803d, roughness: 0.45, metalness: 0.55 });
+        const mortarBarrel = this._material('darkMetal', { color: 0x18181b, roughness: 0.28, metalness: 0.92 });
+        // Trépied de tranchée stabilisé
+        for (let l = 0; l < 3; l++) {
+          const lang = (l / 3) * Math.PI * 2;
+          root.add(this._segment(dark, new T.Vector3(0, 0.48, 0), new T.Vector3(Math.cos(lang) * 0.65, 0.02, Math.sin(lang) * 0.65), 0.05, 0.035, `mortar_leg_${l}`, 8));
+        }
+        // Tube de mortier lourd incliné à 60°
+        const barrelEnd = new T.Vector3(0, 1.15, 0.65);
+        root.add(this._segment(mortarBarrel, new T.Vector3(0, 0.48, 0), barrelEnd, 0.12, 0.09, 'mortar_cannon_tube', 12));
+        // Chargeur rotatif de shrapnels 4 obus
+        root.add(this._cylinder(uscmOlive, 0.24, 0.24, 0.28, { x: 0.22, y: 0.65, z: 0.18 }, { x: 0.45, y: 0, z: 0 }, 'mortar_rotary_magazine'));
+      } else if (normalizedType === 'narcissus_docking_port' || normalizedType === 'narcissus_dock') {
+        // Chantier 130 : Sas d'Amarrage Navette de Sauvetage Narcissus (Alien 1979)
+        const hullWhite = this._material('industrial', { color: 0xe2e8f0, roughness: 0.35, metalness: 0.72 });
+        const greenBeacon = this._material('emissiveGreen', { color: 0x10b981, emissive: 0x059669, emissiveIntensity: 3.2 });
+        // Anneau d'accouplement lourd de 3.8m d'envergure
+        root.add(this._ring(hullWhite, 1.9, 0.25, { x: 0, y: 2.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'narcissus_docking_ring'));
+        // 4 Feux de guidage vert émeraude de pressurisation
+        for (let b = 0; b < 4; b++) {
+          const bang = (b / 4) * Math.PI * 2;
+          const bx = Math.cos(bang) * 1.85;
+          const by = 2.2 + Math.sin(bang) * 1.85;
+          root.add(this._ellipsoid(greenBeacon, { x: 0.09, y: 0.09, z: 0.12 }, { x: bx, y: by, z: 0.2 }, `narcissus_beacon_${b}`, 8));
+        }
+        // Console de commande de déverrouillage manuel
+        root.add(this._box(dark, { x: 0.65, y: 0.85, z: 0.25 }, { x: -2.3, y: 1.4, z: 0.2 }, 'narcissus_manual_console', true));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -6159,6 +6240,119 @@
     // -------------------------------------------------------------------------
     createOrbitalDockingClamp() {
       return this.createIndustrialProp('orbital_docking_clamp');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 122 : Chariot Élévateur & Batteries Lithium Weyland (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createForkliftVehicle() {
+      return this.createIndustrialProp('forklift_vehicle');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 124 : Système d'Arroseurs Automatiques Incendie (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createCeilingFireSprinkler() {
+      return this.createIndustrialProp('ceiling_fire_sprinkler');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 126 : Phénotype "Chestburster Géant / Queen Burster" (Alien 3)
+    // -------------------------------------------------------------------------
+    createQueenBurster() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'queen_burster_juvenile';
+      const royalFlesh = this._material('chitinWarm', { color: 0x4a1d36, roughness: 0.38 });
+      const royalChitin = this._material('chitin', { color: 0x221033, roughness: 0.22, metalness: 0.55 });
+      const bone = this._material('bone', { color: 0xc8b6d8 });
+      const scale = 1.38;
+
+      // Segments corporels sinueux de serpent royal
+      for (let s = 0; s < 9; s++) {
+        const t = s / 8;
+        const radius = (0.48 - t * 0.22) * scale;
+        root.add(this._ellipsoid(
+          s % 2 === 0 ? royalFlesh : royalChitin,
+          { x: radius, y: radius * 0.78, z: 0.52 * scale },
+          { x: 0, y: (0.62 + Math.sin(t * Math.PI) * 0.22) * scale, z: (-0.18 - t * 0.75) * scale },
+          `queen_burster_segment_${s}`,
+          16
+        ));
+      }
+      // Tête allongée avec ébauche de crête royale trilobée
+      root.add(this._ellipsoid(
+        royalChitin,
+        { x: 0.62 * scale, y: 0.45 * scale, z: 0.95 * scale },
+        { x: 0, y: 0.88 * scale, z: 0.78 * scale },
+        'queen_burster_head',
+        22
+      ));
+      // Ébauche de crête royale élargie postérieure
+      root.add(this._box(
+        royalChitin,
+        { x: 0.95 * scale, y: 0.22 * scale, z: 0.85 * scale },
+        { x: 0, y: 1.05 * scale, z: 0.42 * scale },
+        'queen_burster_crest',
+        true
+      ));
+      // Mâchoire acérée
+      this._addJaw(root, royalChitin, bone, { x: 0, y: 0.72 * scale, z: 1.35 * scale }, 0.68 * scale, true);
+
+      // 4 Membres antérieurs (2 paires de bras embryonnaires : Reine Canon Aliens)
+      for (let side = -1; side <= 1; side += 2) {
+        // Paire supérieure principale
+        this._addSegmentedLimb(
+          root, royalFlesh, royalChitin,
+          [
+            { x: side * 0.42 * scale, y: 0.75 * scale, z: 0.25 * scale },
+            { x: side * 0.75 * scale, y: 0.52 * scale, z: 0.52 * scale },
+            { x: side * 0.95 * scale, y: 0.28 * scale, z: 0.75 * scale }
+          ],
+          [0.12 * scale, 0.085 * scale, 0.055 * scale],
+          `queen_burster_main_arm_${side}`,
+          { material: royalFlesh, clawMaterial: bone, side, scale: 0.52, rotationY: side < 0 ? -0.35 : 0.35 }
+        );
+        // Paire secondaire ventrale miniature
+        this._addSegmentedLimb(
+          root, royalFlesh, royalChitin,
+          [
+            { x: side * 0.25 * scale, y: 0.58 * scale, z: 0.48 * scale },
+            { x: side * 0.42 * scale, y: 0.38 * scale, z: 0.68 * scale }
+          ],
+          [0.08 * scale, 0.05 * scale],
+          `queen_burster_sub_arm_${side}`,
+          { material: royalFlesh, clawMaterial: bone, side, scale: 0.36, rotationY: side < 0 ? -0.2 : 0.2 }
+        );
+      }
+
+      return this._finalize(root, {
+        modelType: 'queen_burster',
+        caste: 'queen_burster',
+        height: 1.65,
+        animationJoints: ['queen_burster_head', 'queen_burster_crest', 'queen_burster_segment_0', 'queen_burster_segment_4']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 127 : Sas de Décharge Déchets Toxiques Fiorina 161 (Alien 3)
+    // -------------------------------------------------------------------------
+    createToxicWasteChute() {
+      return this.createIndustrialProp('toxic_waste_chute');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 128 : Tourelle Portative Mortier M40 USCM à Shrapnel (Aliens: Fireteam Elite)
+    // -------------------------------------------------------------------------
+    createPortableMortarTurret() {
+      return this.createIndustrialProp('portable_mortar_turret');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 130 : Sas d'Amarrage Navette de Sauvetage Narcissus (Alien 1979)
+    // -------------------------------------------------------------------------
+    createNarcissusDockingPort() {
+      return this.createIndustrialProp('narcissus_docking_port');
     }
   }
 

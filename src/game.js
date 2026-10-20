@@ -87,11 +87,19 @@
           revSend.connect(this.reverbDelay);
         } catch (_) {}
       }
-      // Audit QA #7 : Filtrage d'atténuation des hautes fréquences par la distance (cloisons métalliques)
+      // Audit QA #7 & #32 : Filtrage d'atténuation et résonance tubulaire de conduits métalliques
       if (this.ctx.createBiquadFilter) {
         const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = Math.max(750, 18000 - distance * 280);
+        const inVent = window.playerCreature?.isInVent;
+        if (inVent) {
+          // Audit QA #32 : Filtrage passe-bande résonant simulant la réverbération tubulaire métallique claustrophobique [C]
+          filter.type = 'bandpass';
+          filter.frequency.value = 1150;
+          filter.Q.value = 3.2;
+        } else {
+          filter.type = 'lowpass';
+          filter.frequency.value = Math.max(750, 18000 - distance * 280);
+        }
         distanceGain.connect(filter);
         if (this.ctx.createStereoPanner) {
           const panner = this.ctx.createStereoPanner();
@@ -4070,6 +4078,208 @@
       osc.start(now);
       osc.stop(now + 0.35);
     }
+
+    // -------------------------------------------------------------------------
+    // Vague 17 : Générateurs Audio Procéduraux WebAudio & Audits QA (161 à 170)
+    // -------------------------------------------------------------------------
+
+    // Chantier 161 : Battements d'Ailes Membraneuses Alien Ailé (Aliens 1992 Kenner)
+    playFlyingXenoWingFlap(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(80, now);
+      osc.frequency.exponentialRampToValueAtTime(32, now + 0.28);
+      gain.gain.setValueAtTime(1.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
+      osc.connect(gain);
+      this.connect(gain, x, z, 90);
+      osc.start(now);
+      osc.stop(now + 0.32);
+    }
+
+    // Chantier 162 : Détente Gazeuse Extincteur CO2 Seegson (Alien: Isolation)
+    playCO2ExtinguisherDischarge(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufSize = Math.floor(this.ctx.sampleRate * 0.55);
+      const buffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.28));
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(2800, now);
+      filter.frequency.linearRampToValueAtTime(1200, now + 0.5);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(1.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+      noise.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 85);
+      noise.start(now);
+    }
+
+    // Chantier 163 : Rafale Combinée Smartgun 10mm & Lance-Flammes Lourd USCM (Fireteam Elite)
+    playSmartgunFlamerDualBurst(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      this.triggerExplosionDucking(0.55, 0.35);
+      const now = this.ctx.currentTime;
+      // Traçante 10mm explosive
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1400, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.12);
+      gain.gain.setValueAtTime(1.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      osc.connect(gain);
+      this.connect(gain, x, z, 120);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+
+    // Chantier 164 : Tirant d'Air & Souffle Thermique Incinérateur 1200°C Fiorina 161 (Alien 3)
+    playIncineratorFurnaceRoar(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      this.triggerExplosionDucking(0.75, 0.4);
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(65, now);
+      osc.frequency.linearRampToValueAtTime(120, now + 0.35);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.85);
+      gain.gain.setValueAtTime(1.8, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.9);
+      osc.connect(gain);
+      this.connect(gain, x, z, 140);
+      osc.start(now);
+      osc.stop(now + 0.9);
+    }
+
+    // Chantier 165 : Cri Strident Juvénile Neomorph Bloodburster (Alien: Covenant)
+    playNeomorphBloodbursterScreech(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1950, now);
+      osc.frequency.linearRampToValueAtTime(2600, now + 0.08);
+      osc.frequency.exponentialRampToValueAtTime(850, now + 0.35);
+      gain.gain.setValueAtTime(1.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
+      osc.connect(gain);
+      this.connect(gain, x, z, 80);
+      osc.start(now);
+      osc.stop(now + 0.38);
+    }
+
+    // Chantier 166 : Servomoteurs & Pince Manipulateur Industriel EVA (Alien 1979 / Romulus)
+    playEvaRoboticArmHydraulics(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(580, now);
+      osc.frequency.linearRampToValueAtTime(780, now + 0.22);
+      gain.gain.setValueAtTime(1.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.connect(gain);
+      this.connect(gain, x, z, 90);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    }
+
+    // Chantier 167 : Détonation Shrapnel Mine Claymore Laser M18A3 (Aliens vs Predator)
+    playLaserClaymoreDetonation(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      this.triggerExplosionDucking(0.85, 0.4);
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.22);
+      gain.gain.setValueAtTime(2.0, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.48);
+      osc.connect(gain);
+      this.connect(gain, x, z, 130);
+      osc.start(now);
+      osc.stop(now + 0.48);
+    }
+
+    // Chantier 168 : Souffle Glacial Générateur de Fréon Sub-Zero (Alien 3 / Isolation)
+    playFreonFogHiss(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufSize = Math.floor(this.ctx.sampleRate * 0.65);
+      const buffer = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.32));
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1600, now);
+      filter.frequency.linearRampToValueAtTime(550, now + 0.6);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(1.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+      noise.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 95);
+      noise.start(now);
+    }
+
+    // Chantier 169 : Transfixion Caudale & Levage Suspendu (Alien 1979 / Isolation)
+    playTailTransfixionLift(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(420, now);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.22);
+      gain.gain.setValueAtTime(1.6, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
+      osc.connect(gain);
+      this.connect(gain, x, z, 95);
+      osc.start(now);
+      osc.stop(now + 0.32);
+    }
+
+    // Chantier 170 : Bips Électrocardiogramme Bio-Scan MUTHUR 6000 (Alien 1979)
+    playMuthurBioScanHeartbeat(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(980, now);
+      osc.frequency.setValueAtTime(1250, now + 0.05);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -4145,6 +4355,22 @@
       ctx.moveTo(cx - radius, cy);
       ctx.lineTo(cx + radius, cy);
       ctx.stroke();
+
+      // Audit QA #31 : Boussole d'orientation cardinale & graduations métriques phosphore vert
+      ctx.save();
+      ctx.font = 'bold 9px monospace';
+      ctx.fillStyle = '#39ff14';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('N', cx, cy - radius + 8);
+      ctx.fillText('S', cx, cy + radius - 8);
+      ctx.fillText('W', cx - radius + 8, cy);
+      ctx.fillText('E', cx + radius - 8, cy);
+      ctx.font = '7px monospace';
+      ctx.fillStyle = 'rgba(57, 255, 20, 0.45)';
+      ctx.fillText(`${Math.round(maxRange * 0.5)}m`, cx + radius * 0.5, cy - 4);
+      ctx.fillText(`${Math.round(maxRange)}m`, cx + radius * 0.92, cy - 4);
+      ctx.restore();
 
       if (this.focusedMode) {
         // Chantier 29 : Faisceau conique étroit 45° vers l'avant (Aliens / Isolation)
@@ -6742,6 +6968,126 @@
           consoleRef: src
         });
       });
+
+      // -----------------------------------------------------------------------
+      // Vague 17 : Props & Installations Diégétiques 1:1 (Chantiers 161 à 170)
+      // -----------------------------------------------------------------------
+
+      // Chantier 162 : Système d'Extincteurs Portatifs CO2 Seegson (Alien: Isolation)
+      this.co2Extinguishers = [
+        { id: 'co2_ext_1', name: 'Extincteur Portatif CO2 Seegson', x: -20, z: 5, isDischarged: false, dischargeTimer: 0, mesh: null },
+        { id: 'co2_ext_2', name: 'Extincteur Portatif CO2 Seegson', x: 10, z: -25, isDischarged: false, dischargeTimer: 0, mesh: null }
+      ];
+      this.co2Extinguishers.forEach((ext) => {
+        const mesh = window.HiveModelFactory?.createSeegsonCO2Extinguisher?.();
+        if (mesh) {
+          mesh.position.set(ext.x, 0, ext.z);
+          rendererEngine.propsGroup.add(mesh);
+          ext.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: ext.x - 0.7, maxX: ext.x + 0.7,
+          minZ: ext.z - 0.7, maxZ: ext.z + 0.7,
+          isCO2Extinguisher: true,
+          extRef: ext
+        });
+      });
+
+      // Chantier 164 : SAS de Traitement Déchets Biologiques & Incinérateur Central Fiorina 161 (Alien 3)
+      this.biowasteIncinerators = [
+        { id: 'incinerator_1', name: 'Incinérateur Central Déchets Biologiques 1200°C', x: 0, z: 35, isActive: false, suctionTimer: 0, mesh: null }
+      ];
+      this.biowasteIncinerators.forEach((inc) => {
+        const mesh = window.HiveModelFactory?.createBioWasteIncinerator?.();
+        if (mesh) {
+          mesh.position.set(inc.x, 0, inc.z);
+          rendererEngine.propsGroup.add(mesh);
+          inc.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: inc.x - 1.8, maxX: inc.x + 1.8,
+          minZ: inc.z - 1.8, maxZ: inc.z + 1.8,
+          isBioIncinerator: true,
+          incRef: inc
+        });
+      });
+
+      // Chantier 166 : Bras Robotique Manipulateur Industriel EVA (Alien 1979 / Romulus)
+      this.evaRoboticArms = [
+        { id: 'eva_arm_1', name: 'Bras Manipulateur Robotique Industriel EVA', x: 35, z: 20, isOperated: false, mesh: null }
+      ];
+      this.evaRoboticArms.forEach((arm) => {
+        const mesh = window.HiveModelFactory?.createEvaRoboticArm?.();
+        if (mesh) {
+          mesh.position.set(arm.x, 0, arm.z);
+          rendererEngine.propsGroup.add(mesh);
+          arm.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: arm.x - 1.5, maxX: arm.x + 1.5,
+          minZ: arm.z - 1.5, maxZ: arm.z + 1.5,
+          isEvaArm: true,
+          armRef: arm
+        });
+      });
+
+      // Chantier 167 : Piège Mural Mine de Proximité Laser Claymore USCM M18A3 (Aliens vs Predator / Dark Descent)
+      this.laserClaymoreMines = [
+        { id: 'claymore_1', name: 'Mine de Proximité Laser Claymore M18A3', x: -15, z: 25, isDetonated: false, mesh: null },
+        { id: 'claymore_2', name: 'Mine de Proximité Laser Claymore M18A3', x: 15, z: -15, isDetonated: false, mesh: null }
+      ];
+      this.laserClaymoreMines.forEach((mine) => {
+        const mesh = window.HiveModelFactory?.createLaserClaymoreMine?.();
+        if (mesh) {
+          mesh.position.set(mine.x, 0, mine.z);
+          rendererEngine.propsGroup.add(mesh);
+          mine.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: mine.x - 0.8, maxX: mine.x + 0.8,
+          minZ: mine.z - 0.8, maxZ: mine.z + 0.8,
+          isClaymoreMine: true,
+          mineRef: mine
+        });
+      });
+
+      // Chantier 168 : Générateur de Brouillard de Fréon Glacial Sub-Zero (Alien 3 / Isolation)
+      this.freonFogGenerators = [
+        { id: 'freon_gen_1', name: 'Générateur de Fréon Glacial Sub-Zero', x: -15, z: -15, isLeaking: false, leakTimer: 0, mesh: null }
+      ];
+      this.freonFogGenerators.forEach((gen) => {
+        const mesh = window.HiveModelFactory?.createFreonFogGenerator?.();
+        if (mesh) {
+          mesh.position.set(gen.x, 0, gen.z);
+          rendererEngine.propsGroup.add(mesh);
+          gen.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: gen.x - 1.1, maxX: gen.x + 1.1,
+          minZ: gen.z - 1.1, maxZ: gen.z + 1.1,
+          isFreonFogGen: true,
+          genRef: gen
+        });
+      });
+
+      // Chantier 170 : Console Centrale Bio-Scan MUTHUR 6000 & Diagnostic Équipage (Alien 1979 / Aliens 1986)
+      this.muthurBioScanConsoles = [
+        { id: 'bioscan_1', name: 'Console Centrale Bio-Scan MUTHUR 6000', x: 5, z: -5, isConsulted: false, mesh: null }
+      ];
+      this.muthurBioScanConsoles.forEach((bsc) => {
+        const mesh = window.HiveModelFactory?.createMuthurBioScanConsole?.();
+        if (mesh) {
+          mesh.position.set(bsc.x, 0, bsc.z);
+          rendererEngine.propsGroup.add(mesh);
+          bsc.mesh = mesh;
+        }
+        this.colliders.push({
+          minX: bsc.x - 1.3, maxX: bsc.x + 1.3,
+          minZ: bsc.z - 1.3, maxZ: bsc.z + 1.3,
+          isBioScanConsole: true,
+          consoleRef: bsc
+        });
+      });
     }
 
     setBlastDoorState(door, open, silent = false) {
@@ -7082,6 +7428,7 @@
           const walkingEntities = [playerCreature, ...(window.gameInstance?.humans || [])];
           walkingEntities.forEach((ent) => {
             if (!ent || ent.isIncapacitated || ent.isCocooned) return;
+            if (ent === playerCreature && playerCreature.adultCaste === 'flying_drone') return; // Audit QA #33 : L'Alien Ailé plane au-dessus des flaques d'eau
             const dist = Math.hypot(ent.x - puddle.x, ent.z - puddle.z);
             if (dist <= puddle.radius) {
               ent.puddleTimer = (ent.puddleTimer || 0) - safeDelta;
@@ -7105,6 +7452,7 @@
 
               walkingEntities.forEach((ent) => {
                 if (!ent || ent.isIncapacitated || ent.isCocooned) return;
+                if (ent === playerCreature && playerCreature.adultCaste === 'flying_drone') return; // Audit QA #33 : Immunité arcs électriques au sol en vol plané
                 if (Math.hypot(ent.x - puddle.x, ent.z - puddle.z) <= puddle.radius) {
                   ent.takeDamage?.(16);
                   if (ent.staggerTimer !== undefined) ent.staggerTimer = 0.9;
@@ -7211,6 +7559,12 @@
       this.updateZX76ShotgunRacks(safeDelta);
       this.updateHalonGasGenerators(safeDelta);
       this.updateSurveillanceRadioConsoles(safeDelta);
+      this.updateCO2Extinguishers(safeDelta);
+      this.updateBioWasteIncinerators(safeDelta);
+      this.updateEvaRoboticArms(safeDelta);
+      this.updateLaserClaymoreMines(safeDelta);
+      this.updateFreonFogGenerators(safeDelta);
+      this.updateMuthurBioScanConsoles(safeDelta);
 
       // Audit QA #25 : Frustum culling optimisé et masquage automatique des props hors champ à plus de 45m
       this.cullingTimer = (this.cullingTimer || 0) + safeDelta;
@@ -7233,6 +7587,12 @@
           ...(this.zx76ShotgunRacks || []),
           ...(this.halonGasGenerators || []),
           ...(this.surveillanceRadioConsoles || []),
+          ...(this.co2Extinguishers || []),
+          ...(this.biowasteIncinerators || []),
+          ...(this.evaRoboticArms || []),
+          ...(this.laserClaymoreMines || []),
+          ...(this.freonFogGenerators || []),
+          ...(this.muthurBioScanConsoles || []),
           ...(this.reactorDisconnectConsoles || []),
           ...(this.m577APCs || []),
           ...(this.thermalSurveillancePosts || [])
@@ -10289,6 +10649,208 @@
       // Terminal d'écoute
     }
 
+    // -------------------------------------------------------------------------
+    // Vague 17 : Systèmes Diégétiques 1:1 (Chantiers 162 à 170)
+    // -------------------------------------------------------------------------
+
+    // Chantier 162 : Système d'Extincteurs Portatifs CO2 Seegson & Masquage Thermique (Alien: Isolation)
+    dischargeCO2Extinguisher(ext) {
+      if (!ext || ext.isDischarged) return false;
+      ext.isDischarged = true;
+      ext.dischargeTimer = 12.0;
+      audioManager.playCO2ExtinguisherDischarge?.(ext.x, ext.z);
+      rendererEngine.addScreenShake?.(0.35, 0.22);
+      window.HiveSystems?.vfx?.ring?.(ext.x, ext.z, 0xe0f2fe, 12.0);
+      window.HiveSystems?.vfx?.burst?.(ext.x, ext.z, 0xffffff, 50, 0.35, 3.2);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - ext.x, h.z - ext.z) <= 8.5) {
+          h.staggerTimer = 2.5;
+          h.thermalBlindedTimer = 12.0;
+          h.stress = 80;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, 'GIVRAGE CO2 -78°C (VISION AVEUGLÉE) !', '#38bdf8', true);
+        }
+      });
+      // Audit QA #34 : Alerte vocale automatisée MUTHUR
+      showToast('EXTINCTEUR CO2 PERCUTÉ : Nuage de neige carbonique à -78°C ! Senseurs thermiques aveuglés et masquage complet !');
+      appendSensorLog(`[SÉCURITÉ SEEGSON] Décharge carbonique en coursive. Masquage infrarouge total actif.`, 'stealth');
+      return true;
+    }
+
+    updateCO2Extinguishers(safeDelta) {
+      (this.co2Extinguishers || []).forEach((ext) => {
+        if (!ext.isDischarged || ext.dischargeTimer <= 0) return;
+        ext.dischargeTimer -= safeDelta;
+        if (Math.random() < 0.1) {
+          window.HiveSystems?.vfx?.burst?.(ext.x, ext.z, 0xf8fafc, 8, 0.15, 1.8);
+        }
+      });
+    }
+
+    // Chantier 164 : SAS de Traitement Déchets Biologiques & Incinérateur Central Fiorina 161 (Alien 3)
+    activateBioWasteIncinerator(inc) {
+      if (!inc || inc.isActive) return false;
+      inc.isActive = true;
+      inc.suctionTimer = 14.0;
+      audioManager.playIncineratorFurnaceRoar?.(inc.x, inc.z);
+      rendererEngine.addScreenShake?.(0.75, 0.55);
+      window.HiveSystems?.vfx?.ring?.(inc.x, inc.z, 0xea580c, 14.0);
+      window.HiveSystems?.vfx?.burst?.(inc.x, inc.z, 0xf97316, 60, 0.45, 4.0);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - inc.x, h.z - inc.z) <= 10.0) {
+          h.takeDamage?.(180, playerCreature);
+          h.staggerTimer = 4.0;
+          h.stress = 100;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.5, h.z, '-180 COMBUSTION INCINÉRATEUR 1200°C !', '#ea580c', true);
+        }
+      });
+      // Audit QA #34 : Alerte vocale évacuation thermique
+      showToast('INCINÉRATEUR FIORINA 161 ACTIVÉ : Foyer à 1200°C ! Tirant d\'air destructeur et carbonisation des patrouilles !');
+      appendSensorLog(`[INCINÉRATEUR] Combustion des boues biologiques engagée. Dégagement calorifique extrême.`, 'alert');
+      return true;
+    }
+
+    updateBioWasteIncinerators(safeDelta) {
+      (this.biowasteIncinerators || []).forEach((inc) => {
+        if (!inc.isActive) return;
+        inc.suctionTimer -= safeDelta;
+        if (inc.suctionTimer > 0) {
+          if (Math.random() < 0.15) {
+            window.HiveSystems?.vfx?.burst?.(inc.x, inc.z, 0xf97316, 12, 0.2, 2.2);
+          }
+        } else {
+          inc.isActive = false;
+        }
+      });
+    }
+
+    // Chantier 166 : Bras Robotique Manipulateur Industriel EVA (Alien 1979 / Romulus)
+    operateEvaRoboticArm(arm) {
+      if (!arm || arm.isOperated) return false;
+      arm.isOperated = true;
+      audioManager.playEvaRoboticArmHydraulics?.(arm.x, arm.z);
+      rendererEngine.addScreenShake?.(0.68, 0.45);
+      window.HiveSystems?.vfx?.ring?.(arm.x, arm.z, 0xfacc15, 12.0);
+      window.HiveSystems?.vfx?.burst?.(arm.x, arm.z, 0x475569, 50, 0.35, 3.2);
+
+      const humans = window.gameInstance?.humans || [];
+      const crushed = humans.filter((h) => !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - arm.x, h.z - arm.z) <= 8.0);
+      crushed.forEach((h) => {
+        h.takeDamage?.(220, playerCreature);
+        h.staggerTimer = 5.0;
+        window.HiveSystems?.vfx?.floatingText?.(h.x, 3.4, h.z, '-220 ÉCRASEMENT PINCE INDUSTRIELLE EVA !', '#ef4444', true);
+      });
+      showToast(`BRAS ROBOTIQUE EVA ACTIVÉ : Pince motorisée de fret déployée ! ${crushed.length} ennemi(s) broyé(s) !`);
+      appendSensorLog(`[BRAS ROBOTIQUE EVA] Manœuvre d'urgence de la grue de maintenance spatiale.`, 'alert');
+      return true;
+    }
+
+    updateEvaRoboticArms(safeDelta) {
+      // Bras fixe
+    }
+
+    // Chantier 167 : Piège Mural Mine de Proximité Laser Claymore USCM M18A3 (Aliens vs Predator / Dark Descent)
+    triggerLaserClaymore(mine) {
+      if (!mine || mine.isDetonated) return false;
+      mine.isDetonated = true;
+      audioManager.playLaserClaymoreDetonation?.(mine.x, mine.z);
+      rendererEngine.addScreenShake?.(0.72, 0.48);
+      window.HiveSystems?.vfx?.ring?.(mine.x, mine.z, 0x22c55e, 10.0);
+      window.HiveSystems?.vfx?.burst?.(mine.x, mine.z, 0xf97316, 55, 0.38, 3.5);
+
+      if (mine.mesh) mine.mesh.visible = false;
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - mine.x, h.z - mine.z) <= 8.5) {
+          h.takeDamage?.(160, playerCreature);
+          h.staggerTimer = 3.5;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, '-160 SHRAPNELS CLAYMORE M18A3 !', '#ef4444', true);
+        }
+      });
+      showToast('MINE CLAYMORE M18A3 PERCUTÉE : Détonation directionnelle à shrapnel USCM !');
+      appendSensorLog(`[MINE CLAYMORE] Faisceaux de détection rompus. Décharge de billes d'acier.`, 'alert');
+      return true;
+    }
+
+    updateLaserClaymoreMines(safeDelta) {
+      // Détection automatique si un humain traverse sans faire attention
+      (this.laserClaymoreMines || []).forEach((mine) => {
+        if (mine.isDetonated) return;
+        const humans = window.gameInstance?.humans || [];
+        const tripped = humans.some((h) => !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - mine.x, h.z - mine.z) <= 2.2);
+        if (tripped) {
+          this.triggerLaserClaymore(mine);
+        }
+      });
+    }
+
+    // Chantier 168 : Générateur de Brouillard de Fréon Glacial Sub-Zero (Alien 3 / Isolation)
+    releaseFreonFog(gen) {
+      if (!gen || gen.isLeaking) return false;
+      gen.isLeaking = true;
+      gen.leakTimer = 16.0;
+      audioManager.playFreonFogHiss?.(gen.x, gen.z);
+      rendererEngine.addScreenShake?.(0.42, 0.28);
+      window.HiveSystems?.vfx?.ring?.(gen.x, gen.z, 0x38bdf8, 14.0);
+      window.HiveSystems?.vfx?.burst?.(gen.x, gen.z, 0xe0f2fe, 55, 0.4, 3.5);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - gen.x, h.z - gen.z) <= 9.0) {
+          h.takeDamage?.(45, playerCreature);
+          h.staggerTimer = 3.0;
+          h.slowTimer = 14.0;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, 'FRÉON SUB-ZERO (-50% VITESSE) !', '#38bdf8', true);
+        }
+      });
+      showToast('GÉNÉRATEUR DE FRÉON LIBÉRÉ : Température polaire sous-zéro, visières givrées et ralentissement massif !');
+      appendSensorLog(`[FRÉON GLACIAL] Rupture du compresseur frigorifique. Coursive congelée.`, 'alert');
+      return true;
+    }
+
+    updateFreonFogGenerators(safeDelta) {
+      (this.freonFogGenerators || []).forEach((gen) => {
+        if (!gen.isLeaking) return;
+        gen.leakTimer -= safeDelta;
+        if (gen.leakTimer > 0) {
+          if (Math.random() < 0.12) {
+            window.HiveSystems?.vfx?.burst?.(gen.x, gen.z, 0x38bdf8, 10, 0.18, 2.0);
+          }
+        } else {
+          gen.isLeaking = false;
+        }
+      });
+    }
+
+    // Chantier 170 : Console Centrale Bio-Scan MUTHUR 6000 & Diagnostic Équipage (Alien 1979 / Aliens 1986)
+    consultMuthurBioScan(consoleProp) {
+      if (!consoleProp || consoleProp.isConsulted) return false;
+      consoleProp.isConsulted = true;
+      audioManager.playMuthurBioScanHeartbeat?.(consoleProp.x, consoleProp.z);
+      rendererEngine.addScreenShake?.(0.2, 0.15);
+      window.HiveSystems?.vfx?.ring?.(consoleProp.x, consoleProp.z, 0x22c55e, 14.0);
+
+      const humans = window.gameInstance?.humans || [];
+      const aliveCount = humans.filter((h) => !h.isIncapacitated && !h.isCocooned).length;
+      const viableCount = humans.filter((h) => h.hostEligibility === 'viable' && !h.usedAsHost).length;
+
+      // Bonus de biomasse par décryptage des biosignaux MUTHUR
+      if (window.gameInstance?.currentStage?.huntReserve !== undefined) {
+        window.gameInstance.currentStage.huntReserve = Math.min(100, window.gameInstance.currentStage.huntReserve + 40);
+      }
+      showToast(`BIO-SCAN MUTHUR 6000 : Télémétrie acquise ! ${aliveCount} signaux vitaux détectés, dont ${viableCount} hôtes viables (+40 Réserve de chasse) !`);
+      appendSensorLog(`[MUTHUR 6000] Bioscan télémétrique synchronisé. Cartographie des fréquences cardiaques achevée.`, 'bio');
+      return true;
+    }
+
+    updateMuthurBioScanConsoles(safeDelta) {
+      // Console de diagnostic active
+    }
+
     // Audit QA #30 : Garbage Collection Proactif Three.js (Libération systématique RAM)
     cleanThreeResources(object) {
       if (!object) return;
@@ -11046,6 +11608,18 @@
       huntDamage: 165,
       jawDamage: 220,
       tailDamage: 140
+    }),
+    flying_drone: Object.freeze({
+      key: 'flying_drone',
+      label: 'ALIEN AILÉ DE CHARON (KENNER 1992)',
+      maxHealth: 210,
+      speed: 0.58,
+      huntAction: 'PIQUÉ AÉRIEN D’EMPALEMENT',
+      huntCost: 25,
+      huntRange: 85,
+      huntDamage: 175,
+      jawDamage: 230,
+      tailDamage: 165
     })
   });
 
@@ -12493,6 +13067,53 @@
       return true;
     }
 
+    // Chantier 161 : Piqué Aérien d'Empalement & Vol Plané (Aliens 1992 Kenner / Comics)
+    executeFlyingDiveSwoop(target) {
+      if (!target || target.isIncapacitated || target.isCocooned) return false;
+      audioManager.playFlyingXenoWingFlap?.(this.x, this.z);
+      audioManager.playXenoRoar?.();
+      rendererEngine.addScreenShake?.(0.58, 0.38);
+      window.HiveSystems?.vfx?.ring?.(target.x, target.z, 0x312e81, 14.0);
+      window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0x1e1b4b, 45, 0.35, 2.8);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 3.4, target.z, '-175 PIQUÉ AÉRIEN D’EMPALEMENT !', '#818cf8', true);
+
+      // Déplacement aérien fulgurant vers la cible
+      this.x = target.x;
+      this.z = target.z;
+      if (this.mesh) this.mesh.position.set(this.x, 0, this.z);
+
+      target.takeDamage?.(175, this);
+      target.staggerTimer = 4.0;
+      target.stress = 100;
+      showToast(`ALIEN AILÉ : Piqué plongeant en vol plané sur ${target.name} (-175 PV) !`);
+      appendSensorLog(`[ALIEN AILÉ] Attaque plongeante chiroptère (Canon Kenner 1992 / Dark Horse).`, 'alert');
+      return true;
+    }
+
+    // Chantier 169 : Attaque Furtive "Dard Caudal Transfixiant & Levage Brachial Suspendu" [T en Embuscade] (Alien 1979 / Isolation)
+    executeTailTransfixionLift(target) {
+      if (!target || target.isIncapacitated || target.isCocooned) return false;
+      audioManager.playTailTransfixionLift?.(target.x, target.z);
+      audioManager.playInnerJawSnap?.(target.x, target.z);
+      rendererEngine.addScreenShake?.(0.65, 0.45);
+      window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xef4444, 52, 0.4, 3.0);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 3.6, target.z, '-190 TRANSFIXION CAUDALE SUSPENDUE !', '#ef4444', true);
+
+      target.takeDamage?.(190, this);
+      target.staggerTimer = 5.0;
+      target.stress = 100;
+      if (target.hp <= 0) {
+        target.isIncapacitated = true;
+        if (target.mesh) {
+          target.mesh.position.y = 2.4; // Suspendu au treillis supérieur
+          target.mesh.rotation.z = Math.PI / 4;
+        }
+      }
+      showToast(`TRANSFIXION SUSPENDUE : ${target.name} transpercé au dard caudal et hissé sous le plafond !`);
+      appendSensorLog(`[TRANSFIXION CAUDALE] Exécution verticale silencieuse depuis les coursives supérieures (Alien 1979).`, 'stealth');
+      return true;
+    }
+
     executeTerrifyingHiss() {
       if (this.form !== 'drone') return;
       audioManager.playXenoHiss(this.x, this.z);
@@ -12666,7 +13287,8 @@
           abomination: 0xf1f5f9,
           belugamorph: 0xf8fafc,
           deaconess: 0x1e3a8a,
-          red_drone: 0x991b1b
+          red_drone: 0x991b1b,
+          flying_drone: 0x312e81
         };
         const lightColors = {
           egg: this.eggIsOpen ? 0xf59e0b : 0x39ff14,
@@ -13292,13 +13914,15 @@
               ? 210
               : (['uscm_heavy_flamer'].includes(type)
                 ? 195
-                : (['uscm_combat_engineer'].includes(type)
+                : (['uscm_smartgun_flamer'].includes(type)
+                  ? 185
+                  : (['uscm_combat_engineer'].includes(type)
                   ? 165
                   : (['uscm_hazmat_tech'].includes(type)
                   ? 175
                   : (['weyland_drone_operator'].includes(type)
                     ? 130
-                    : (isCyberHound ? 180 : (['android', 'synthetic'].includes(type) ? 190 : (['uscm_sniper'].includes(type) ? 125 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110)))))))))));
+                    : (isCyberHound ? 180 : (['android', 'synthetic'].includes(type) ? 190 : (['uscm_sniper'].includes(type) ? 125 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110))))))))))));
       this.maxHp = this.hp;
       this.mesh = null;
       this.targetPos = { x, z };
@@ -13822,7 +14446,7 @@
         'commando', 'android', 'synthetic', 'powerloader', 'exosuit', 'weyland_commando_mk2',
         'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid',
         'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'uscm_sniper',
-        'weyland_containment_squad', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_heavy_flamer', 'uscm_combat_engineer'
+        'weyland_containment_squad', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_smartgun_flamer'
       ].includes(this.type);
       const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
       const currentStageStep = window.gameInstance?.currentStage?.step;
@@ -14452,6 +15076,16 @@
               this.wireDeployCooldown = 16.0;
               stationMap.deployBarbedWire(this.x, this.z);
             }
+          } else if (this.type === 'uscm_smartgun_flamer') {
+            // Chantier 163 : Lance-Flammes Lourd Incinérateur d'Épaule Smartgun Flamer (Aliens: Fireteam Elite)
+            this.shootCooldown = 1.35;
+            audioManager.playSmartgunFlamerDualBurst?.(this.x, this.z);
+            rendererEngine.addScreenShake?.(0.32, 0.2);
+            window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf97316, 0.4);
+            window.HiveSystems?.vfx?.flameJet?.(this.x, 2.65, this.z, combatTarget.x, 1.5, combatTarget.z);
+            const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
+            targetReceiver.takeDamage(34, this);
+            window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.0, combatTarget.z, '-34 SMARTGUN-FLAMER USCM !', '#f97316', true);
           } else if (['commando', 'marine'].includes(this.type) && this.stress > 55 && distToPlayer >= 6.0 && distToPlayer <= 20 && (this.whitePhosphorusCooldown || 0) <= 0) {
             // Chantier 95 : Grenades Incendiaires M40 HEDP au Phosphore Blanc (Aliens 1986 / Fireteam Elite)
             this.whitePhosphorusCooldown = 12.0;
@@ -16413,7 +17047,8 @@
         abomination: { jaw: 'BROYAGE STERNAL', tail: 'PROJECTION CAUDALE' },
         belugamorph: { jaw: 'MORSURES VORACES', tail: 'REPTATION VIVE' },
         deaconess: { jaw: 'TRIPLE MÂCHOIRE PRIMITIVE', tail: 'DARD ROYAL OSSEUX' },
-        red_drone: { jaw: 'FRÉNÉSIE DE GRIFFAGE DOUBLE', tail: 'FOUET TRANCHANT CRAMOISI' }
+        red_drone: { jaw: 'FRÉNÉSIE DE GRIFFAGE DOUBLE', tail: 'FOUET TRANCHANT CRAMOISI' },
+        flying_drone: { jaw: 'PIQUÉ AÉRIEN PLONGEANT', tail: 'TRANSFIXION CAUDALE SUSPENDUE' }
       };
       const actionLabels = casteActions[profile.key] || casteActions.drone;
       document.getElementById('stage-badge').textContent = `PHASE 4 : ${adultLabel} — CHASSE ET NURSERIE`;
@@ -16464,6 +17099,7 @@
             <option value="abomination" ${activeCaste === 'abomination' ? 'selected' : ''}>The Abomination / Anomaly Hybrid (Romulus 2024)</option>
             <option value="belugamorph" ${activeCaste === 'belugamorph' ? 'selected' : ''}>The Belugamorph / Bloodburster (Covenant)</option>
             <option value="red_drone" ${activeCaste === 'red_drone' ? 'selected' : ''}>Guerrier Rouge de Charon (Genocide 1991)</option>
+            <option value="flying_drone" ${activeCaste === 'flying_drone' ? 'selected' : ''}>Alien Ailé de Charon (Kenner 1992)</option>
           </select>
         </div>
         <!-- Audit QA #21 & #26 : Badges de raccourcis visuels & Indicateurs de Cooldown dynamiques -->
@@ -16564,6 +17200,9 @@
         <button type="button" id="btn-red-drone-frenzy" class="act-btn" data-tab-cat="predation" data-caste-only="red_drone" style="border-color: #ef4444; background: rgba(153,27,27,0.35); display: ${activeCaste === 'red_drone' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>FRÉNÉSIE DE GRIFFAGE DOUBLE</button>
         <button type="button" id="btn-sterno-costal-shred" class="act-btn" data-tab-cat="stealth" style="border-color: #ef4444; background: rgba(239,68,68,0.25); display: ${playerCreature.isProwling ? 'inline-block' : 'none'};"><span class="key-badge">E</span>PLAQUAGE & DÉCHIQUETAGE STERNO-COSTAL</button>
         <button type="button" id="btn-intercept-radio" class="act-btn" data-tab-cat="environment" style="border-color: #38bdf8; background: rgba(56,189,248,0.22);"><span class="key-badge">K</span>INTERCEPTION RADIO USCM / SURVEILLANCE</button>
+        <button type="button" id="btn-flying-dive" class="act-btn" data-tab-cat="predation" data-caste-only="flying_drone" style="border-color: #312e81; background: rgba(49,46,129,0.3); display: ${activeCaste === 'flying_drone' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>PIQUÉ AÉRIEN PLONGEANT</button>
+        <button type="button" id="btn-tail-transfix-lift" class="act-btn" data-tab-cat="stealth" style="border-color: #ef4444; background: rgba(239,68,68,0.22);"><span class="key-badge">T</span>TRANSFIXION CAUDALE SUSPENDUE</button>
+        <button type="button" id="btn-consult-bioscan" class="act-btn" data-tab-cat="environment" style="border-color: #06b6d4; background: rgba(6,182,212,0.22);"><span class="key-badge">K</span>CONSOLE BIO-SCAN M.U.T.H.U.R.</button>
         <button type="button" id="btn-self-destruct-mother" class="act-btn" data-tab-cat="environment" style="border-color: #dc2626; background: rgba(220,38,38,0.22);"><span class="key-badge">O</span>PURGE NUCLÉAIRE M.U.T.H.U.R.</button>
         <button type="button" id="btn-found-queen-hive" class="act-btn" data-tab-cat="stealth" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
       `;
@@ -16773,6 +17412,29 @@
           else showToast('Aucune console de surveillance radio à portée immédiate (5m).');
         };
       }
+      const btnFlyingDive = document.getElementById('btn-flying-dive');
+      if (btnFlyingDive) {
+        btnFlyingDive.onclick = () => {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 12.0);
+          playerCreature.executeFlyingDiveSwoop(target);
+        };
+      }
+      const btnTailTransfix = document.getElementById('btn-tail-transfix-lift');
+      if (btnTailTransfix) {
+        btnTailTransfix.onclick = () => {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
+          if (target) playerCreature.executeTailTransfixionLift(target);
+          else showToast('Aucune cible à portée de transfixion caudale (4.5m).');
+        };
+      }
+      const btnBioScan = document.getElementById('btn-consult-bioscan');
+      if (btnBioScan) {
+        btnBioScan.onclick = () => {
+          const nearConsole = (stationMap.muthurBioScanConsoles || []).find((c) => !c.isAnalyzed && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+          if (nearConsole) stationMap.consultMuthurBioScan(nearConsole);
+          else showToast('Aucune console Bio-Scan MUTHUR 6000 à portée immédiate (5.5m).');
+        };
+      }
       document.getElementById('btn-found-queen-hive').onclick = () => this.foundRoyalNursery();
       this.updateCooldownBadges();
       this.updateRoyalButton();
@@ -16908,6 +17570,20 @@
       if (distHalon) stationMap.triggerHalonGasSuppression(distHalon);
       const distRadio = (stationMap.surveillanceRadioConsoles || []).find((src) => !src.isIntercepting && Math.hypot(src.x - playerCreature.x, src.z - playerCreature.z) <= 15);
       if (distRadio) stationMap.interceptMarinesRadio(distRadio);
+
+      // Chantiers 162, 164, 166, 167, 168, 170 : Crachat acide balistique sur props Vague 17
+      const distCO2 = (stationMap.co2Extinguishers || []).find((ce) => !ce.isDischarged && Math.hypot(ce.x - playerCreature.x, ce.z - playerCreature.z) <= 15);
+      if (distCO2) stationMap.dischargeCO2Extinguisher(distCO2);
+      const distIncinerator = (stationMap.biowasteIncinerators || []).find((bi) => !bi.isActive && Math.hypot(bi.x - playerCreature.x, bi.z - playerCreature.z) <= 15);
+      if (distIncinerator) stationMap.activateBioWasteIncinerator(distIncinerator);
+      const distEvaArm = (stationMap.evaRoboticArms || []).find((arm) => !arm.isOperating && Math.hypot(arm.x - playerCreature.x, arm.z - playerCreature.z) <= 15);
+      if (distEvaArm) stationMap.operateEvaRoboticArm(distEvaArm);
+      const distClaymore = (stationMap.laserClaymoreMines || []).find((mine) => !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 15);
+      if (distClaymore) stationMap.triggerLaserClaymore(distClaymore);
+      const distFreon = (stationMap.freonFogGenerators || []).find((ffg) => !ffg.isActive && Math.hypot(ffg.x - playerCreature.x, ffg.z - playerCreature.z) <= 15);
+      if (distFreon) stationMap.releaseFreonFog(distFreon);
+      const distBioScan = (stationMap.muthurBioScanConsoles || []).find((mbc) => !mbc.isAnalyzed && Math.hypot(mbc.x - playerCreature.x, mbc.z - playerCreature.z) <= 15);
+      if (distBioScan) stationMap.consultMuthurBioScan(distBioScan);
 
       this.updateCooldownBadges();
       this.updateRoyalButton();
@@ -17178,7 +17854,43 @@
         stationMap.interceptMarinesRadio(nearRadio);
         return true;
       }
-      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm) à portée immédiate.');
+      // 45. Extincteur Portatif CO2 Seegson (Chantier 162)
+      const nearCO2 = (stationMap.co2Extinguishers || []).find((ce) => !ce.isDischarged && Math.hypot(ce.x - playerCreature.x, ce.z - playerCreature.z) <= 4.5);
+      if (nearCO2) {
+        stationMap.dischargeCO2Extinguisher(nearCO2);
+        return true;
+      }
+      // 46. Incinérateur Central 1200°C Fiorina 161 (Chantier 164)
+      const nearIncinerator = (stationMap.biowasteIncinerators || []).find((bi) => !bi.isActive && Math.hypot(bi.x - playerCreature.x, bi.z - playerCreature.z) <= 5.5);
+      if (nearIncinerator) {
+        stationMap.activateBioWasteIncinerator(nearIncinerator);
+        return true;
+      }
+      // 47. Bras Manipulateur Industriel EVA (Chantier 166)
+      const nearEvaArm = (stationMap.evaRoboticArms || []).find((arm) => !arm.isOperating && Math.hypot(arm.x - playerCreature.x, arm.z - playerCreature.z) <= 5.5);
+      if (nearEvaArm) {
+        stationMap.operateEvaRoboticArm(nearEvaArm);
+        return true;
+      }
+      // 48. Mine Claymore Laser M18A3 USCM (Chantier 167)
+      const nearClaymore = (stationMap.laserClaymoreMines || []).find((mine) => !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 4.5);
+      if (nearClaymore) {
+        stationMap.triggerLaserClaymore(nearClaymore);
+        return true;
+      }
+      // 49. Générateur Fréon Glacial Sub-Zero (Chantier 168)
+      const nearFreon = (stationMap.freonFogGenerators || []).find((ffg) => !ffg.isActive && Math.hypot(ffg.x - playerCreature.x, ffg.z - playerCreature.z) <= 5.5);
+      if (nearFreon) {
+        stationMap.releaseFreonFog(nearFreon);
+        return true;
+      }
+      // 50. Console Bio-Scan MUTHUR 6000 (Chantier 170)
+      const nearBioScan = (stationMap.muthurBioScanConsoles || []).find((mbc) => !mbc.isAnalyzed && Math.hypot(mbc.x - playerCreature.x, mbc.z - playerCreature.z) <= 4.5);
+      if (nearBioScan) {
+        stationMap.consultMuthurBioScan(nearBioScan);
+        return true;
+      }
+      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur) à portée immédiate.');
       return false;
     }
 
@@ -17411,6 +18123,9 @@
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 3.8);
           if (target) playerCreature.executeBelugamorphFrenzyBite(target);
           else showToast('Aucune cible à portée de morsures voraces (3.8m).');
+        } else if (key === 'r' && caste === 'flying_drone') {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 12.0);
+          playerCreature.executeFlyingDiveSwoop(target);
         } else {
           this.executeInnerJaw();
         }
@@ -17418,7 +18133,9 @@
       if (key === '3' || key === 't') {
         const caste = playerCreature.adultCaste || playerCreature.caste;
         const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.0);
-        if (caste === 'deacon_adult' && target) {
+        if (caste === 'flying_drone' && target) {
+          playerCreature.executeTailTransfixionLift(target);
+        } else if (caste === 'deacon_adult' && target) {
           playerCreature.executeSpinalWhipSeverance(target);
         } else if (target && (target.hp <= 50 || target.staggerTimer > 0)) {
           playerCreature.executeTailDecapitationLift(target);
@@ -17966,10 +18683,12 @@
         'btn-deaconess-roar': 'jaw',
         'btn-newborn-crush': 'jaw',
         'btn-raven-charge': 'jaw',
+        'btn-flying-dive': 'jaw',
         'btn-tail-impale': 'tail',
         'btn-tail-decapitation': 'tail',
         'btn-spinal-whip': 'tail',
         'btn-alpha-psychic': 'tail',
+        'btn-tail-transfix-lift': 'tail',
         'btn-drone-ambush': 'ambush',
         'btn-sterno-costal-shred': 'ambush',
         'btn-vent-snatch': 'ambush',

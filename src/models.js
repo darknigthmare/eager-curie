@@ -3095,12 +3095,14 @@
       const alpha = caste === 'alpha';
       const abomination = caste === 'abomination';
       const redDrone = caste === 'red_drone';
+      const flyingDrone = caste === 'flying_drone';
 
-      const scale = king ? 1.62 : (deaconess ? 1.55 : (raven ? 1.48 : (abomination ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (deaconAdult ? 1.34 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1)))))))))))))))))));
+      const scale = king ? 1.62 : (deaconess ? 1.55 : (raven ? 1.48 : (abomination ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (deaconAdult ? 1.34 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1))))))))))))))))))));
       let chitinColor = 0x0b1518;
       if (royal) chitinColor = 0x221033;
       else if (king) chitinColor = 0x7f1d1d; // Chitine royale cramoisie sombre Rouge de Charon (Aliens: Rogue 1993)
       else if (redDrone) chitinColor = 0x991b1b; // Chitine rouge écarlate sanglante Guerre Civile des Ruches (Aliens: Genocide 1991)
+      else if (flyingDrone) chitinColor = 0x0f172a; // Chitine bleu nuit sombre abyssal Ailé de Charon (Aliens 1992 Kenner / Comics)
       else if (deaconess) chitinColor = 0x0a1128; // Bleu nuit abyssal royal iridescente Deaconess Proto-Queen (Fire and Stone)
       else if (bodyburster) chitinColor = 0xfef2f2; // Membrane translucide pâle d'éruption dorsale (Alien: Covenant 2017)
       else if (deaconAdult) chitinColor = 0x0f172a; // Bleu cobalt ébène profond Apex Archon (Prometheus lore étendu)
@@ -3653,6 +3655,19 @@
         }
         // Artères cramoisies pulsantes et museau ensanglanté d'émergence
         root.add(this._ellipsoid(bloodVein, { x: 0.28 * scale, y: 0.22 * scale, z: 0.48 * scale }, { x: 0, y: 4.12 * scale, z: 1.25 * scale }, 'bodyburster_bloodied_jaw', 12));
+      }
+      if (flyingDrone) {
+        // Chantier 161 : Ailes membraneuses chiroptères dorsales (Flying Xenomorph 1992 / Comics Dark Horse)
+        const wingMembrane = this._material('chitin', { color: 0x1e1b4b, roughness: 0.45, opacity: 0.88, transparent: true, side: 2 });
+        const wingBone = this._material('bone', { color: 0x312e81, roughness: 0.3 });
+        for (let side = -1; side <= 1; side += 2) {
+          const p0 = new T.Vector3(side * 0.35 * scale, 3.8 * scale, -0.35 * scale);
+          const p1 = new T.Vector3(side * 1.6 * scale, 4.4 * scale, -0.6 * scale);
+          const p2 = new T.Vector3(side * 2.4 * scale, 3.6 * scale, -0.8 * scale);
+          root.add(this._segment(wingBone, p0, p1, 0.08 * scale, 0.05 * scale, `flying_wing_bone_a_${side}`, 8));
+          root.add(this._segment(wingBone, p1, p2, 0.05 * scale, 0.03 * scale, `flying_wing_bone_b_${side}`, 8));
+          root.add(this._box(wingMembrane, { x: 1.8 * scale, y: 1.4 * scale, z: 0.04 * scale }, { x: side * 1.4 * scale, y: 3.8 * scale, z: -0.65 * scale }, `flying_wing_membrane_${side}`));
+        }
       }
       if (!newborn) {
         this._addTail(
@@ -5802,6 +5817,72 @@
         // Double écran CRT ambré
         root.add(this._box(screenAmber, { x: 0.6, y: 0.45, z: 0.08 }, { x: -0.38, y: 1.35, z: 0.1 }, 'radio_screen_left'));
         root.add(this._box(screenAmber, { x: 0.6, y: 0.45, z: 0.08 }, { x: 0.38, y: 1.35, z: 0.1 }, 'radio_screen_right'));
+      } else if (normalizedType === 'co2_extinguisher' || normalizedType === 'seegson_co2_extinguisher') {
+        // Chantier 162 : Système d'Extincteurs Portatifs CO2 Seegson & Masquage Thermique (Alien: Isolation)
+        const redCylinder = this._material('emissiveRed', { color: 0xdc2626, roughness: 0.3, metalness: 0.6 });
+        const blackHose = this._material('darkMetal', { color: 0x18181b, roughness: 0.5 });
+        const gaugeBrass = this._material('hazard', { color: 0xeab308, roughness: 0.35, metalness: 0.8 });
+        // Bonbonne rouge pressurisée
+        root.add(this._cylinder(redCylinder, 0.16, 0.16, 0.85, { x: 0, y: 0.9, z: 0.12 }, { x: 0, y: 0, z: 0 }, 'co2_tank'));
+        // Manomètre et vanne de percution
+        root.add(this._cylinder(gaugeBrass, 0.05, 0.05, 0.04, { x: 0.1, y: 1.35, z: 0.18 }, { x: Math.PI / 2, y: 0, z: 0 }, 'co2_gauge'));
+        // Tromblon diffuseur noir
+        root.add(this._cylinder(blackHose, 0.06, 0.12, 0.35, { x: -0.12, y: 1.1, z: 0.2 }, { x: 0.2, y: 0, z: -0.4 }, 'co2_horn'));
+      } else if (normalizedType === 'biowaste_incinerator' || normalizedType === 'incinerator_furnace') {
+        // Chantier 164 : SAS de Traitement Déchets Biologiques & Incinérateur Central Fiorina 161 (Alien 3)
+        const furnaceSteel = this._material('darkMetal', { color: 0x1c1917, roughness: 0.6, metalness: 0.85 });
+        const glowingCore = this._material('emissiveAmber', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 2.8 });
+        const ironGrate = this._material('industrial', { color: 0x44403c, roughness: 0.4, metalness: 0.9 });
+        // Corps de chambre de combustion 1200°C
+        root.add(this._box(furnaceSteel, { x: 2.4, y: 2.6, z: 2.2 }, { x: 0, y: 1.3, z: 0 }, 'incinerator_body', true));
+        // Cœur thermique radiant incandescent
+        root.add(this._box(glowingCore, { x: 1.6, y: 1.2, z: 0.2 }, { x: 0, y: 1.1, z: 1.05 }, 'incinerator_fire_chamber'));
+        // Grille de sécurité en fonte réfractaire
+        for (let b = -3; b <= 3; b++) {
+          root.add(this._cylinder(ironGrate, 0.03, 0.03, 1.2, { x: b * 0.22, y: 1.1, z: 1.1 }, { x: 0, y: 0, z: 0 }, `incinerator_bar_${b}`));
+        }
+      } else if (normalizedType === 'eva_robotic_arm' || normalizedType === 'robotic_arm') {
+        // Chantier 166 : Bras Robotique Manipulateur Industriel EVA (Alien 1979 / Romulus)
+        const armYellow = this._material('hazard', { color: 0xfacc15, roughness: 0.35, metalness: 0.65 });
+        const jointDark = this._material('darkMetal', { color: 0x18181b, roughness: 0.25, metalness: 0.9 });
+        // Tourelle pivotante de socle
+        root.add(this._cylinder(jointDark, 0.45, 0.55, 0.5, { x: 0, y: 0.25, z: 0 }, { x: 0, y: 0, z: 0 }, 'eva_arm_base'));
+        // Premier segment élévateur
+        root.add(this._segment(armYellow, new T.Vector3(0, 0.45, 0), new T.Vector3(0.6, 1.8, 0.4), 0.16, 0.12, 'eva_arm_seg1', 8));
+        // Deuxième segment avant-bras
+        root.add(this._segment(armYellow, new T.Vector3(0.6, 1.8, 0.4), new T.Vector3(1.2, 1.4, 1.2), 0.12, 0.09, 'eva_arm_seg2', 8));
+        // Pince de préhension industrielle bipolaire
+        root.add(this._box(jointDark, { x: 0.28, y: 0.12, z: 0.45 }, { x: 1.25, y: 1.4, z: 1.45 }, 'eva_claw_left'));
+        root.add(this._box(jointDark, { x: 0.28, y: 0.12, z: 0.45 }, { x: 1.25, y: 1.4, z: 0.95 }, 'eva_claw_right'));
+      } else if (normalizedType === 'laser_claymore_mine' || normalizedType === 'claymore_mine') {
+        // Chantier 167 : Piège Mural Mine de Proximité Laser Claymore USCM M18A3 (Aliens vs Predator / Dark Descent)
+        const mineOlive = this._material('industrial', { color: 0x3f4f2c, roughness: 0.5, metalness: 0.5 });
+        const laserGreen = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 3.5 });
+        // Boîtier incurvé "FRONT TOWARD ENEMY"
+        root.add(this._box(mineOlive, { x: 0.55, y: 0.35, z: 0.18 }, { x: 0, y: 0.5, z: 0 }, 'claymore_housing', true));
+        // 3 Faisceaux laser de détection volumétrique
+        for (let lb = -1; lb <= 1; lb++) {
+          root.add(this._cylinder(laserGreen, 0.012, 0.012, 4.5, { x: lb * 0.18, y: 0.5, z: 2.25 }, { x: Math.PI / 2, y: 0, z: lb * 0.15 }, `claymore_beam_${lb}`));
+        }
+      } else if (normalizedType === 'freon_fog_generator' || normalizedType === 'freon_condenser') {
+        // Chantier 168 : Générateur de Brouillard de Fréon Glacial Sub-Zero (Alien 3 / Isolation)
+        const cryoFrosted = this._material('industrial', { color: 0xe0f2fe, roughness: 0.15, metalness: 0.8 });
+        const cyanIce = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.2 });
+        root.add(this._cylinder(cryoFrosted, 0.45, 0.45, 1.6, { x: 0, y: 0.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'freon_unit_body', true));
+        // Ailettes de refroidissement thermique
+        for (let r = 0; r < 5; r++) {
+          root.add(this._ring(cyanIce, 0.52, 0.03, { x: 0, y: 0.35 + r * 0.25, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `freon_fin_${r}`));
+        }
+      } else if (normalizedType === 'muthur_bioscan_console' || normalizedType === 'bioscan_console') {
+        // Chantier 170 : Console Centrale Bio-Scan MUTHUR 6000 & Diagnostic Équipage (Alien 1979 / Aliens 1986)
+        const consoleDark = this._material('darkMetal', { color: 0x0f172a, roughness: 0.35, metalness: 0.9 });
+        const greenCrt = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x15803d, emissiveIntensity: 2.8 });
+        const keyPanel = this._material('hazard', { color: 0xd97706, roughness: 0.4 });
+        root.add(this._box(consoleDark, { x: 1.5, y: 1.25, z: 0.75 }, { x: 0, y: 0.62, z: 0 }, 'bioscan_pedestal', true));
+        // Écran CRT phosphore vert incurvé
+        root.add(this._box(greenCrt, { x: 0.85, y: 0.55, z: 0.05 }, { x: 0, y: 1.35, z: 0.12 }, 'bioscan_crt_display'));
+        // Clavier diégétique incliné
+        root.add(this._box(keyPanel, { x: 1.2, y: 0.06, z: 0.35 }, { x: 0, y: 1.05, z: 0.28 }, 'bioscan_keyboard'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -6871,6 +6952,81 @@
     // -------------------------------------------------------------------------
     createSurveillanceRadioConsole() {
       return this.createIndustrialProp('surveillance_radio_console');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 161 : Phénotype The Flying Xenomorph / Alien Ailé de Charon (Aliens 1992 Kenner / Comics)
+    // -------------------------------------------------------------------------
+    createFlyingDrone() {
+      return this._createUprightAdult('flying_drone');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 162 : Système d'Extincteurs Portatifs CO2 Seegson & Masquage Thermique (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSeegsonCO2Extinguisher() {
+      return this.createIndustrialProp('co2_extinguisher');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 164 : SAS de Traitement Déchets Biologiques & Incinérateur Central (Alien 3)
+    // -------------------------------------------------------------------------
+    createBioWasteIncinerator() {
+      return this.createIndustrialProp('biowaste_incinerator');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 165 : Phénotype Juvénile "Neomorph Bloodburster Albinos" (Alien: Covenant)
+    // -------------------------------------------------------------------------
+    createNeomorphBloodburster() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'neomorph_bloodburster';
+      const chalkSkin = this._material('resin', { color: 0xf8fafc, roughness: 0.25, opacity: 0.92, transparent: true });
+      const bloodCrimson = this._material('emissiveRed', { color: 0xdc2626, emissive: 0x991b1b, emissiveIntensity: 1.5 });
+      const scale = 0.92;
+
+      for (let s = 0; s < 6; s++) {
+        const rad = (0.24 - s * 0.025) * scale;
+        root.add(this._ellipsoid(chalkSkin, { x: rad, y: rad * 0.75, z: 0.32 * scale }, { x: 0, y: 0.24 * scale, z: -s * 0.28 * scale }, `bloodburster_seg_${s}`, 12));
+      }
+      root.add(this._ellipsoid(chalkSkin, { x: 0.28 * scale, y: 0.22 * scale, z: 0.55 * scale }, { x: 0, y: 0.32 * scale, z: 0.38 * scale }, 'bloodburster_head', 14));
+      root.add(this._box(bloodCrimson, { x: 0.16 * scale, y: 0.08 * scale, z: 0.24 * scale }, { x: 0, y: 0.25 * scale, z: 0.58 * scale }, 'bloodburster_bloody_teeth'));
+
+      return this._finalize(root, {
+        modelType: 'chestburster',
+        caste: 'neomorph_bloodburster',
+        height: 0.82,
+        animationJoints: ['bloodburster_head', 'bloodburster_seg_0', 'bloodburster_seg_2']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 166 : Bras Robotique Manipulateur Industriel EVA (Alien 1979 / Romulus)
+    // -------------------------------------------------------------------------
+    createEvaRoboticArm() {
+      return this.createIndustrialProp('eva_robotic_arm');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 167 : Piège Mural Mine de Proximité Laser Claymore M18A3 (Aliens vs Predator / Dark Descent)
+    // -------------------------------------------------------------------------
+    createLaserClaymoreMine() {
+      return this.createIndustrialProp('laser_claymore_mine');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 168 : Générateur de Brouillard de Fréon Glacial Sub-Zero (Alien 3 / Isolation)
+    // -------------------------------------------------------------------------
+    createFreonFogGenerator() {
+      return this.createIndustrialProp('freon_fog_generator');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 170 : Console Centrale Bio-Scan MUTHUR 6000 & Diagnostic Équipage (Alien 1979 / Aliens 1986)
+    // -------------------------------------------------------------------------
+    createMuthurBioScanConsole() {
+      return this.createIndustrialProp('muthur_bioscan_console');
     }
   }
 

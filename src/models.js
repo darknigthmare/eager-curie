@@ -98,7 +98,11 @@
     heavyflamer: 'uscm_heavy_flamer',
     flamersquad: 'uscm_heavy_flamer',
     uscmflamer: 'uscm_heavy_flamer',
-    uscm_heavy_flamer: 'uscm_heavy_flamer'
+    uscm_heavy_flamer: 'uscm_heavy_flamer',
+    combatengineer: 'uscm_combat_engineer',
+    engineer: 'uscm_combat_engineer',
+    uscmengineer: 'uscm_combat_engineer',
+    uscm_combat_engineer: 'uscm_combat_engineer'
   });
 
   // ---------------------------------------------------------------------------
@@ -1475,6 +1479,17 @@
           shoulderX: 0.78,
           hipX: 0.4,
           helmetScale: 1.14
+        },
+        uscm_combat_engineer: {
+          uniformColor: 0x27272a, // Combinaison de travail treillis ignifugé gris acier USCM (Aliens: Dark Descent)
+          armorColor: 0xca8a04,   // Cuirasse tactique jaune sécurité / kevlar M3
+          torso: { x: 0.74, y: 0.98, z: 0.46 },
+          pelvis: { x: 0.56, y: 0.36, z: 0.38 },
+          chest: { x: 1.25, y: 0.94, z: 0.34 },
+          pack: { x: 0.95, y: 1.1, z: 0.48 }, // Poste de soudure plasma et déploiement de concertina barbelé
+          shoulderX: 0.74,
+          hipX: 0.37,
+          helmetScale: 1.12
         }
       };
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
@@ -1488,7 +1503,7 @@
       const dark = materials.dark;
       const visor = materials.visor;
       const accent = materials.accent;
-      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer'].indexOf(type) >= 0;
+      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer'].indexOf(type) >= 0;
 
       if (combatRole) {
         for (let side = -1; side <= 1; side += 2) {
@@ -1842,6 +1857,20 @@
         root.add(this._box(dark, { x: 0.16, y: 0.22, z: 0.95 }, { x: profile.shoulderX + 0.18, y: torsoY - 0.72, z: 0.65 }, 'm240_flamer_body', true));
         root.add(this._segment(dark, new T.Vector3(profile.shoulderX + 0.18, torsoY - 0.7, 1.1), new T.Vector3(profile.shoulderX + 0.18, torsoY - 0.7, 1.75), 0.065, 0.055, 'm240_heat_shroud', 10));
         root.add(this._ellipsoid(pilotBlue, { x: 0.05, y: 0.05, z: 0.09 }, { x: profile.shoulderX + 0.18, y: torsoY - 0.78, z: 1.82 }, 'm240_pilot_flame', 8));
+      } else if (type === 'uscm_combat_engineer') {
+        // Chantier 114 : Unité Tactique USCM "Combat Engineer" (Aliens: Dark Descent)
+        const weldingVisor = this._material('industrial', { color: 0x1e293b, roughness: 0.25, metalness: 0.8 });
+        const visorStripe = this._material('emissiveAmber', { color: 0xeab308, emissive: 0xca8a04, emissiveIntensity: 1.5 });
+        const steelSpool = this._material('industrial', { color: 0x64748b, roughness: 0.35, metalness: 0.9 });
+        // Visière de soudage / démolition M3 renforcée
+        root.add(this._box(weldingVisor, { x: 0.38, y: 0.32, z: 0.22 }, { x: 0, y: torsoY + 1.22, z: 0.32 }, 'engineer_welding_helmet', true));
+        root.add(this._box(visorStripe, { x: 0.28, y: 0.08, z: 0.05 }, { x: 0, y: torsoY + 1.25, z: 0.44 }, 'engineer_visor_band'));
+        // Rouleau de fil de concertina barbelé fixé sur l'épaule gauche
+        root.add(this._segment(steelSpool, new T.Vector3(-0.38, torsoY + 0.4, -0.32), new T.Vector3(-0.38, torsoY + 1.1, -0.32), 0.22, 0.22, 'engineer_barbed_wire_rack', 14));
+        root.add(this._ring(dark, 0.26, 0.04, { x: -0.38, y: torsoY + 0.75, z: -0.32 }, { x: 0, y: 0, z: 0 }, 'engineer_rack_strap'));
+        // Découpeur plasma / pistolet agrafeur de concertina sur le bras droit
+        root.add(this._box(dark, { x: 0.14, y: 0.18, z: 0.65 }, { x: profile.shoulderX + 0.16, y: torsoY - 0.72, z: 0.55 }, 'engineer_plasma_welder', true));
+        root.add(this._coneAlong(visorStripe, { x: profile.shoulderX + 0.16, y: torsoY - 0.72, z: 0.88 }, { x: 0, y: 0, z: 1 }, 0.04, 0.18, 'welder_plasma_tip', 8));
       }
     }
 
@@ -2430,16 +2459,23 @@
     // -------------------------------------------------------------------------
     // 8. PUBLIC MODEL: PARASITIC CRAWLER
     // -------------------------------------------------------------------------
-    createFacehugger() {
+    createFacehugger(variant = 'standard') {
       const T = this._three();
       const root = new T.Group();
-      root.name = 'parasitic_crawler';
+      const isBlackGoo = variant === 'black_goo';
+      root.name = isBlackGoo ? 'mutated_black_goo_crawler' : 'parasitic_crawler';
       const legJoints = [];
       const kneeJoints = [];
       const ankleJoints = [];
-      const hide = this._material('chitinWarm', { color: 0x7c5b42, roughness: 0.52 });
-      const joints = this._material('resin', { color: 0x5c342b, opacity: 0.96 });
-      const claw = this._material('bone', { color: 0xc6ad79 });
+      const hide = isBlackGoo
+        ? this._material('chitin', { color: 0x09090b, roughness: 0.18, metalness: 0.82 })
+        : this._material('chitinWarm', { color: 0x7c5b42, roughness: 0.52 });
+      const joints = isBlackGoo
+        ? this._material('emissiveRed', { color: 0xef4444, emissive: 0x991b1b, emissiveIntensity: 1.8 })
+        : this._material('resin', { color: 0x5c342b, opacity: 0.96 });
+      const claw = isBlackGoo
+        ? this._material('darkMetal', { color: 0x18181b, roughness: 0.2 })
+        : this._material('bone', { color: 0xc6ad79 });
 
       root.add(this._ellipsoid(
         hide,
@@ -3052,15 +3088,17 @@
       const king = caste === 'king';
       const bodyburster = caste === 'bodyburster';
       const predalien = caste === 'predalien';
-      const deacon = caste === 'deacon';
+      const deaconAdult = caste === 'deacon_adult';
+      const deacon = caste === 'deacon' || deaconAdult;
       const neomorph = caste === 'neomorph';
       const alpha = caste === 'alpha';
 
-      const scale = king ? 1.62 : (raven ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1)))))))))))))));
+      const scale = king ? 1.62 : (raven ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (deaconAdult ? 1.34 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1))))))))))))))));
       let chitinColor = 0x0b1518;
       if (royal) chitinColor = 0x221033;
       else if (king) chitinColor = 0x7f1d1d; // Chitine royale cramoisie sombre Rouge de Charon (Aliens: Rogue 1993)
       else if (bodyburster) chitinColor = 0xfef2f2; // Membrane translucide pâle d'éruption dorsale (Alien: Covenant 2017)
+      else if (deaconAdult) chitinColor = 0x0f172a; // Bleu cobalt ébène profond Apex Archon (Prometheus lore étendu)
       else if (palatine) chitinColor = 0x1f0b29;
       else if (guardian) chitinColor = 0x2d163d;
       else if (raven) chitinColor = 0x0a0e14; // Blindage bivalve chitineux obsidienne impénétrable (Aliens: Colonial Marines)
@@ -5306,6 +5344,112 @@
         // Console frontale de débrayage Zero-G
         root.add(this._box(metal, { x: 0.85, y: 1.15, z: 0.45 }, { x: 0, y: 0.58, z: 1.55 }, 'zerog_override_console', true));
         root.add(this._box(gravCoreGlow, { x: 0.65, y: 0.28, z: 0.05 }, { x: 0, y: 1.05, z: 1.78 }, 'zerog_console_screen'));
+      } else if (normalizedType === 'cryo_stasis_pod' || normalizedType === 'stasis_pod') {
+        // Chantier 112 : Chambre de Stase Cryogénique Weyland-Yutani & Caissons d'Hyper-Sommeil Ouverts (Alien 1979 / Aliens 1986)
+        const frameMat = this._material('industrial', { color: 0x94a3b8, roughness: 0.24, metalness: 0.82 });
+        const cyanGlow = this._material('emissiveGreen', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.8 });
+        const bedMat = this._material('bone', { color: 0xe2e8f0, roughness: 0.4 });
+        // Socle élévateur et cuve inférieure
+        root.add(this._box(frameMat, { x: 1.6, y: 0.65, z: 2.8 }, { x: 0, y: 0.32, z: 0 }, 'cryo_pod_pedestal', true));
+        root.add(this._box(bedMat, { x: 1.25, y: 0.2, z: 2.35 }, { x: 0, y: 0.65, z: 0 }, 'cryo_pod_mattress'));
+        // Verrière borosilicate incurvée ouverte ou close
+        const canopy = this._box(cyanGlow, { x: 1.35, y: 0.85, z: 2.45 }, { x: 0, y: 1.15, z: 0 }, 'cryo_pod_glass_canopy');
+        root.add(canopy);
+        // Console de monitoring des fonctions vitales en tête de lit
+        root.add(this._box(dark, { x: 0.65, y: 0.45, z: 0.25 }, { x: 0, y: 1.05, z: -1.3 }, 'cryo_vitals_housing', true));
+        root.add(this._box(cyanGlow, { x: 0.48, y: 0.24, z: 0.04 }, { x: 0, y: 1.12, z: -1.18 }, 'cryo_ecg_screen'));
+        // Conduites de fréon réfrigérant liquide sous le caisson
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._segment(dark, new T.Vector3(side * 0.72, 0.2, -1.2), new T.Vector3(side * 0.72, 0.2, 1.2), 0.065, 0.065, `cryo_freon_line_${side}`, 10));
+        }
+      } else if (normalizedType === 'hive_pheromone_spore') {
+        // Chantier 113 : Système de Pulvérisation de Phéromones de Ruche & Brume Organique Épaississante (Aliens: Genocide / Isolation)
+        const sporeChitin = this._material('resin', { color: 0x451a03, roughness: 0.35, metalness: 0.3 });
+        const amberGlow = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 3.2 });
+        // Bulbe organique mural suspendu
+        root.add(this._ellipsoid(sporeChitin, { x: 0.85, y: 1.1, z: 0.85 }, { x: 0, y: 1.6, z: 0 }, 'pheromone_bulb_core', 18));
+        // Pores d'expulsion de phéromones bioluminescents
+        for (let p = 0; p < 5; p++) {
+          const ang = (p / 5) * Math.PI * 2;
+          root.add(this._ellipsoid(amberGlow, { x: 0.18, y: 0.18, z: 0.14 }, { x: Math.cos(ang) * 0.75, y: 1.6 + (p % 2) * 0.25, z: Math.sin(ang) * 0.75 }, `pheromone_pore_${p}`, 10));
+        }
+        // Tentacules d'ancrage le long de la cloison
+        for (let t = 0; t < 4; t++) {
+          const tang = (t / 4) * Math.PI * 2;
+          root.add(this._tube(sporeChitin, [
+            { x: Math.cos(tang) * 0.5, y: 2.2, z: Math.sin(tang) * 0.5 },
+            { x: Math.cos(tang) * 1.1, y: 2.6, z: Math.sin(tang) * 1.1 },
+            { x: Math.cos(tang) * 1.4, y: 3.0, z: Math.sin(tang) * 1.4 }
+          ], 0.08, `pheromone_root_tendril_${t}`, 12, 5));
+        }
+      } else if (normalizedType === 'barbed_wire_spool' || normalizedType === 'concertina_wire') {
+        // Chantier 114 : Unité Tactique USCM "Combat Engineer" & Rouleau de Fil Barbelé Rasoir Électrifié (Aliens: Dark Descent)
+        const wireSteel = this._material('industrial', { color: 0x64748b, roughness: 0.35, metalness: 0.95 });
+        const shockGlow = this._material('emissiveGreen', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.5 });
+        // Trépieds de fixation USCM aux extrémités
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._segment(dark, new T.Vector3(side * 1.4, 0, 0), new T.Vector3(side * 1.4, 0.75, 0), 0.05, 0.04, `wire_post_${side}`, 8));
+          root.add(this._box(shockGlow, { x: 0.14, y: 0.14, z: 0.14 }, { x: side * 1.4, y: 0.8, z: 0 }, `wire_insulator_${side}`));
+        }
+        // Spirale de concertina barbelé en 6 anneaux entrelacés
+        for (let r = 0; r < 6; r++) {
+          const xPos = -1.15 + r * 0.46;
+          root.add(this._ring(wireSteel, 0.42, 0.035, { x: xPos, y: 0.42, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, `concertina_coil_${r}`));
+          root.add(this._coneAlong(shockGlow, { x: xPos, y: 0.8, z: 0 }, { x: 0, y: 1, z: 0 }, 0.03, 0.14, `razor_barb_${r}`, 6));
+        }
+      } else if (normalizedType === 'flight_recorder_box' || normalizedType === 'flight_recorder') {
+        // Chantier 115 : Composant Diégétique "Weyland-Yutani Flight Recorder / Boîte Noire M7" (Alien: Isolation)
+        const orangeBox = this._material('industrial', { color: 0xea580c, roughness: 0.3, metalness: 0.65 });
+        const strobeLed = this._material('emissiveAmber', { color: 0xfef08a, emissive: 0xf59e0b, emissiveIntensity: 3.5 });
+        // Boîtier blindé étanche anti-crash orange vif
+        root.add(this._box(orangeBox, { x: 0.65, y: 0.45, z: 0.52 }, { x: 0, y: 0.24, z: 0 }, 'flight_recorder_chassis', true));
+        // Poignée de préhension métallique supérieure
+        root.add(this._box(dark, { x: 0.38, y: 0.14, z: 0.06 }, { x: 0, y: 0.52, z: 0 }, 'flight_recorder_handle'));
+        // Balise acoustique sous-marine cylindrique Pinger & LED stroboscopique
+        root.add(this._segment(dark, new T.Vector3(0.2, 0.25, 0.28), new T.Vector3(0.2, 0.25, 0.48), 0.06, 0.05, 'flight_recorder_pinger', 10));
+        root.add(this._ellipsoid(strobeLed, { x: 0.05, y: 0.05, z: 0.05 }, { x: -0.18, y: 0.48, z: 0 }, 'flight_recorder_beacon_led', 8));
+      } else if (normalizedType === 'auxiliary_generator_board' || normalizedType === 'generator_board') {
+        // Chantier 117 : Système de Sabotage du Générateur Auxiliaire & Blackout Total d'Étage (Alien 1979 / Isolation)
+        const panelMat = this._material('industrial', { color: 0x334155, roughness: 0.38, metalness: 0.75 });
+        const copperBus = this._material('chitinWarm', { color: 0xd97706, roughness: 0.25, metalness: 0.95 });
+        const greenLed = this._material('emissiveGreen', { color: 0x22c55e, emissiveIntensity: 2.2 });
+        const redLed = this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 2.2 });
+        // Armoire électrique murale 380V (largeur 2.4m, hauteur 2.8m)
+        root.add(this._box(panelMat, { x: 2.4, y: 2.8, z: 0.65 }, { x: 0, y: 1.4, z: 0 }, 'generator_board_casing', true));
+        // 3 Barres omnibus en cuivre massif sectionnables
+        for (let b = -1; b <= 1; b++) {
+          root.add(this._box(copperBus, { x: 0.16, y: 2.1, z: 0.08 }, { x: b * 0.65, y: 1.4, z: 0.34 }, `generator_copper_bus_${b}`));
+          root.add(this._ellipsoid(greenLed, { x: 0.06, y: 0.06, z: 0.04 }, { x: b * 0.65, y: 2.5, z: 0.35 }, `generator_power_led_${b}`, 8));
+        }
+        // Sectionneur principal rotatif d'urgence
+        root.add(this._ring(redLed, 0.22, 0.04, { x: 0, y: 0.6, z: 0.35 }, { x: 0, y: 0, z: 0 }, 'generator_main_disconnect'));
+      } else if (normalizedType === 'laser_designator_turret' || normalizedType === 'laser_designator') {
+        // Chantier 118 : Tourelle Laser de Pointage & Faisceau de Marquage Orbital USCM (Aliens 1986 / Fireteam Elite)
+        const uscmGreen = this._material('industrial', { color: 0x3f4d2a, roughness: 0.38, metalness: 0.72 });
+        const targetingLaser = this._material('emissiveRed', { color: 0xef4444, emissiveIntensity: 4.8 });
+        // Trépied bas pliant M3
+        for (let leg = 0; leg < 3; leg++) {
+          const ang = (leg / 3) * Math.PI * 2;
+          root.add(this._segment(dark, new T.Vector3(0, 0.45, 0), new T.Vector3(Math.cos(ang) * 0.52, 0.02, Math.sin(ang) * 0.52), 0.04, 0.03, `laser_tripod_leg_${leg}`, 8));
+        }
+        // Tourelle pivotante et optique laser rouge
+        root.add(this._segment(uscmGreen, new T.Vector3(0, 0.45, 0), new T.Vector3(0, 0.95, 0), 0.18, 0.16, 'laser_turret_pivot', 12));
+        root.add(this._box(uscmGreen, { x: 0.35, y: 0.28, z: 0.65 }, { x: 0, y: 0.98, z: 0.1 }, 'laser_sensor_head', true));
+        root.add(this._segment(targetingLaser, new T.Vector3(0, 0.98, 0.42), new T.Vector3(0, 0.98, 1.25), 0.025, 0.02, 'laser_targeting_beam', 8));
+      } else if (normalizedType === 'orbital_docking_clamp' || normalizedType === 'docking_clamp') {
+        // Chantier 120 : Sas d'Amarrage de Module Orbital de Secours & Découplage Explosif (Alien: Romulus 2024)
+        const forgedSteel = this._material('industrial', { color: 0x475569, roughness: 0.3, metalness: 0.92 });
+        const pyroBolt = this._material('emissiveAmber', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 3.5 });
+        // Anneau d'accouplement lourd de 3.2m de diamètre
+        root.add(this._ring(forgedSteel, 1.6, 0.18, { x: 0, y: 1.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'docking_clamp_ring'));
+        // 4 Mâchoires de verrouillage hydrauliques avec boulons pyrotechniques ambrés
+        for (let jaw = 0; jaw < 4; jaw++) {
+          const jang = (jaw / 4) * Math.PI * 2;
+          const jx = Math.cos(jang) * 1.55;
+          const jy = 1.8 + Math.sin(jang) * 1.55;
+          root.add(this._box(dark, { x: 0.38, y: 0.45, z: 0.35 }, { x: jx, y: jy, z: 0.1 }, `docking_jaw_${jaw}`, true));
+          root.add(this._ellipsoid(pyroBolt, { x: 0.08, y: 0.08, z: 0.12 }, { x: jx, y: jy, z: 0.3 }, `pyro_explosive_bolt_${jaw}`, 8));
+        }
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -5945,6 +6089,76 @@
     // -------------------------------------------------------------------------
     createZeroGGenerator() {
       return this.createIndustrialProp('zero_g_gravity_generator');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 111 : Phénotype "The Deacon Adult / Apex Archon" (Prometheus Lore Étendu)
+    // -------------------------------------------------------------------------
+    createDeaconAdult() {
+      return this._createUprightAdult('deacon_adult');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 112 : Chambre de Stase Cryogénique Weyland-Yutani (Alien 1979 / Aliens 1986)
+    // -------------------------------------------------------------------------
+    createCryoStasisPod() {
+      return this.createIndustrialProp('cryo_stasis_pod');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 113 : Système de Pulvérisation de Phéromones de Ruche (Aliens: Genocide)
+    // -------------------------------------------------------------------------
+    createHivePheromoneSpore() {
+      return this.createIndustrialProp('hive_pheromone_spore');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 114 : Unité Tactique USCM "Combat Engineer" (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createCombatEngineer() {
+      return this.createHuman('uscm_combat_engineer');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 114b : Rouleau de Fil Barbelé Rasoir Électrifié (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createBarbedWireSpool() {
+      return this.createIndustrialProp('barbed_wire_spool');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 115 : Composant Diégétique Boîte Noire M7 (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createFlightRecorderBox() {
+      return this.createIndustrialProp('flight_recorder_box');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 116 : Mutated Black Goo Facehugger (Alien: Romulus 2024)
+    // -------------------------------------------------------------------------
+    createBlackGooFacehugger() {
+      return this.createFacehugger('black_goo');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 117 : Sabotage du Générateur Auxiliaire & Blackout (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createAuxiliaryGeneratorBoard() {
+      return this.createIndustrialProp('auxiliary_generator_board');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 118 : Tourelle Laser de Pointage & Faisceau de Marquage (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createLaserDesignatorTurret() {
+      return this.createIndustrialProp('laser_designator_turret');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 120 : Sas d'Amarrage de Module Orbital de Secours (Alien: Romulus 2024)
+    // -------------------------------------------------------------------------
+    createOrbitalDockingClamp() {
+      return this.createIndustrialProp('orbital_docking_clamp');
     }
   }
 

@@ -5883,6 +5883,83 @@
         root.add(this._box(greenCrt, { x: 0.85, y: 0.55, z: 0.05 }, { x: 0, y: 1.35, z: 0.12 }, 'bioscan_crt_display'));
         // Clavier diégétique incliné
         root.add(this._box(keyPanel, { x: 1.2, y: 0.06, z: 0.35 }, { x: 0, y: 1.05, z: 0.28 }, 'bioscan_keyboard'));
+      } else if (normalizedType === 'industrial_water_curtain' || normalizedType === 'water_curtain') {
+        // Chantier 172 : Système de Rideaux d'Eau Industriels & Sas d'Immersion d'Urgence (Alien 1979 / Isolation)
+        const frameMetal = this._material('darkMetal', { color: 0x334155, roughness: 0.45, metalness: 0.8 });
+        const pipeBlue = this._material('industrial', { color: 0x0284c7, roughness: 0.3, metalness: 0.65 });
+        const waterSheet = this._material('resin', { color: 0x38bdf8, roughness: 0.05, opacity: 0.48, transparent: true });
+        // Rampe supérieure suspendue
+        root.add(this._box(frameMetal, { x: 3.2, y: 0.25, z: 0.45 }, { x: 0, y: 2.85, z: 0 }, 'water_curtain_frame', true));
+        // Tuyauterie haute pression bleue
+        root.add(this._cylinder(pipeBlue, 0.08, 0.08, 3.0, { x: 0, y: 2.7, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'water_curtain_pipe'));
+        // Nappe de cascade d'eau translucide
+        root.add(this._box(waterSheet, { x: 2.8, y: 2.6, z: 0.06 }, { x: 0, y: 1.3, z: 0 }, 'water_curtain_sheet'));
+        // Grille de drainage au sol
+        root.add(this._box(frameMetal, { x: 3.0, y: 0.06, z: 0.6 }, { x: 0, y: 0.03, z: 0 }, 'water_drain_grate'));
+      } else if (normalizedType === 'bulkhead_emergency_control_panel' || normalizedType === 'bulkhead_panel') {
+        // Chantier 174 : Poste de Contrôle des SAS Étanches d'Urgence Weyland (Alien: Isolation)
+        const panelSteel = this._material('darkMetal', { color: 0x1e293b, roughness: 0.4, metalness: 0.8 });
+        const redHandle = this._material('emissiveRed', { color: 0xdc2626, emissive: 0x991b1b, emissiveIntensity: 2.0 });
+        const yellowHazard = this._material('hazard', { color: 0xf59e0b, roughness: 0.3 });
+        const greenLock = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.5 });
+        // Boîtier mural
+        root.add(this._box(panelSteel, { x: 0.9, y: 1.3, z: 0.28 }, { x: 0, y: 1.4, z: 0.14 }, 'bulkhead_panel_chassis', true));
+        // Poignée en T rouge d'actionnement d'urgence
+        root.add(this._cylinder(redHandle, 0.03, 0.03, 0.35, { x: 0, y: 1.35, z: 0.34 }, { x: 0, y: 0, z: Math.PI / 2 }, 'bulkhead_t_handle'));
+        // Bandes de danger jaune et voyant vert
+        root.add(this._box(yellowHazard, { x: 0.75, y: 0.12, z: 0.02 }, { x: 0, y: 1.75, z: 0.29 }, 'bulkhead_hazard_stripe'));
+        root.add(this._cylinder(greenLock, 0.04, 0.04, 0.03, { x: 0.28, y: 1.55, z: 0.29 }, { x: Math.PI / 2, y: 0, z: 0 }, 'bulkhead_lock_led'));
+      } else if (normalizedType === 'geothermal_turbine_valve' || normalizedType === 'geothermal_valve') {
+        // Chantier 176 : Générateur d'Énergie Thermique & Soupape de Surpression Fiorina 161 (Alien 3)
+        const castIron = this._material('darkMetal', { color: 0x292524, roughness: 0.65, metalness: 0.8 });
+        const valveWheel = this._material('emissiveRed', { color: 0xb91c1c, roughness: 0.35 });
+        const steamOrange = this._material('emissiveAmber', { color: 0xf97316, emissive: 0xc2410c, emissiveIntensity: 2.2 });
+        // Corps sphérique de turbine géothermique
+        root.add(this._ellipsoid(castIron, { x: 0.85, y: 1.1, z: 0.85 }, { x: 0, y: 1.1, z: 0 }, 'geothermal_body', 14));
+        // Volant de vanne manuel rouge
+        root.add(this._ring(valveWheel, 0.38, 0.05, { x: 0, y: 1.95, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'geothermal_wheel'));
+        // Tuyère d'évacuation de vapeur avec anneau thermique incandescent
+        root.add(this._cylinder(castIron, 0.22, 0.3, 0.6, { x: 0.65, y: 1.3, z: 0 }, { x: 0, y: 0, z: -Math.PI / 3 }, 'geothermal_nozzle'));
+        root.add(this._ring(steamOrange, 0.32, 0.04, { x: 0.95, y: 1.45, z: 0 }, { x: 0, y: 0, z: -Math.PI / 3 }, 'geothermal_heat_ring'));
+      } else if (normalizedType === 'micro_electric_barbed_wire_turret' || normalizedType === 'm24_wire_turret') {
+        // Chantier 177 : Tourelle de Barbelés Micro-Électrifiés M24 USCM (Aliens: Dark Descent)
+        const tripMetal = this._material('darkMetal', { color: 0x334155, roughness: 0.4, metalness: 0.8 });
+        const wireSpool = this._material('industrial', { color: 0x64748b, roughness: 0.35, metalness: 0.9 });
+        const sparkCyan = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 3.0 });
+        // Trépied de déploiement
+        for (let leg = 0; leg < 3; leg++) {
+          const ang = leg * ((Math.PI * 2) / 3);
+          root.add(this._cylinder(tripMetal, 0.03, 0.03, 0.75, { x: Math.cos(ang) * 0.35, y: 0.35, z: Math.sin(ang) * 0.35 }, { x: Math.sin(ang) * 0.45, y: 0, z: -Math.cos(ang) * 0.45 }, `m24_leg_${leg}`));
+        }
+        // Double bobines de fil barbelé
+        root.add(this._cylinder(wireSpool, 0.24, 0.24, 0.55, { x: 0, y: 0.65, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'm24_spool'));
+        // Électrodes d'impulsion électrique 2500V
+        root.add(this._cylinder(sparkCyan, 0.02, 0.02, 0.4, { x: 0, y: 0.95, z: 0 }, { x: 0, y: 0, z: 0 }, 'm24_electrode'));
+      } else if (normalizedType === 'subzero_cryogel_canister' || normalizedType === 'cryogel_canister') {
+        // Chantier 178 : Réservoir Pressurisé de Gel Cryogénique Sub-Zero LN2 (Alien: Romulus)
+        const frostTank = this._material('industrial', { color: 0xbae6fd, roughness: 0.18, metalness: 0.75 });
+        const trolleyBlack = this._material('darkMetal', { color: 0x18181b, roughness: 0.5 });
+        const blueCryo = this._material('emissiveBlue', { color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 2.4 });
+        // Réservoir cylindrique vertical givré
+        root.add(this._cylinder(frostTank, 0.28, 0.28, 1.1, { x: 0, y: 0.85, z: 0 }, { x: 0, y: 0, z: 0 }, 'cryogel_tank', true));
+        // Chariot à 2 roues
+        root.add(this._cylinder(trolleyBlack, 0.12, 0.12, 0.08, { x: -0.32, y: 0.12, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'cryogel_wheel_l'));
+        root.add(this._cylinder(trolleyBlack, 0.12, 0.12, 0.08, { x: 0.32, y: 0.12, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'cryogel_wheel_r'));
+        // Bague cryogénique d'isolation
+        root.add(this._ring(blueCryo, 0.32, 0.03, { x: 0, y: 1.15, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'cryogel_ring'));
+      } else if (normalizedType === 'seegson_diagnostic_alcove' || normalizedType === 'working_joe_alcove') {
+        // Chantier 180 : Console de Diagnostic Synthétique Seegson & Alcôve Working Joe (Alien: Isolation)
+        const alcoveChassis = this._material('darkMetal', { color: 0x1e293b, roughness: 0.45, metalness: 0.75 });
+        const synthJumpsuit = this._material('industrial', { color: 0x64748b, roughness: 0.65 });
+        const synthRubberHead = this._material('resin', { color: 0xf1f5f9, roughness: 0.35 });
+        const amberScreen = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.2 });
+        // Niche capitonnée d'accueil
+        root.add(this._box(alcoveChassis, { x: 1.4, y: 2.4, z: 0.7 }, { x: 0, y: 1.2, z: 0 }, 'joe_alcove_frame', true));
+        // Corps Working Joe inerte en stase
+        root.add(this._box(synthJumpsuit, { x: 0.55, y: 1.0, z: 0.35 }, { x: 0, y: 1.1, z: 0.08 }, 'joe_torso'));
+        root.add(this._ellipsoid(synthRubberHead, { x: 0.18, y: 0.22, z: 0.18 }, { x: 0, y: 1.85, z: 0.08 }, 'joe_head', 14));
+        // Moniteur latéral de diagnostic Seegson
+        root.add(this._box(amberScreen, { x: 0.35, y: 0.25, z: 0.04 }, { x: 0.48, y: 1.5, z: 0.25 }, 'joe_diag_screen'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -7027,6 +7104,129 @@
     // -------------------------------------------------------------------------
     createMuthurBioScanConsole() {
       return this.createIndustrialProp('muthur_bioscan_console');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 171 : Phénotype "The Snake Xenomorph / Alien Ophidien" (Aliens 1992 Kenner / Comics)
+    // -------------------------------------------------------------------------
+    createSnakeDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_snake_drone';
+      const scale = 1.08;
+      const snakeChitin = this._material('chitin', {
+        color: 0x090d16,
+        roughness: 0.18,
+        metalness: 0.58,
+        emissive: 0x1e1b4b,
+        emissiveIntensity: 0.4
+      });
+      const boneDard = this._material('bone', { color: 0xf8fafc, roughness: 0.22, metalness: 0.1 });
+      const fangWhite = this._material('emissiveAmber', { color: 0xf1f5f9, roughness: 0.1, emissiveIntensity: 0.8 });
+
+      // Corps serpentin annelé : 10 segments sinueux décroissants sans pattes postérieures
+      for (let s = 0; s < 10; s++) {
+        const radiusX = (0.34 - s * 0.022) * scale;
+        const radiusY = (0.28 - s * 0.018) * scale;
+        const radiusZ = 0.32 * scale;
+        const segZ = -s * 0.34 * scale;
+        const segY = (0.28 + (s < 3 ? (3 - s) * 0.18 : 0)) * scale;
+        root.add(this._ellipsoid(snakeChitin, { x: radiusX, y: radiusY, z: radiusZ }, { x: 0, y: segY, z: segZ }, `snake_seg_${s}`, 12));
+      }
+
+      // Tête conique allongée ophidienne sans tubes dorsaux
+      root.add(this._ellipsoid(snakeChitin, { x: 0.32 * scale, y: 0.26 * scale, z: 0.82 * scale }, { x: 0, y: 0.95 * scale, z: 0.45 * scale }, 'snake_head', 16));
+      // Collerette écailleuse dorsale recourbée (cobra Alien)
+      root.add(this._box(snakeChitin, { x: 0.68 * scale, y: 0.48 * scale, z: 0.08 * scale }, { x: 0, y: 0.85 * scale, z: 0.12 * scale }, 'snake_hood'));
+      // Crochets ophidiens acérés
+      root.add(this._cylinder(fangWhite, 0.025 * scale, 0.005 * scale, 0.2 * scale, { x: -0.12 * scale, y: 0.78 * scale, z: 0.75 * scale }, { x: 0.25, y: 0, z: 0 }, 'snake_fang_left'));
+      root.add(this._cylinder(fangWhite, 0.025 * scale, 0.005 * scale, 0.2 * scale, { x: 0.12 * scale, y: 0.78 * scale, z: 0.75 * scale }, { x: 0.25, y: 0, z: 0 }, 'snake_fang_right'));
+      // Dard caudal aiguillon venimeux en fin de corps
+      root.add(this._cone(boneDard, 0.08 * scale, 0.38 * scale, { x: 0, y: 0.18 * scale, z: -3.5 * scale }, { x: -Math.PI / 2, y: 0, z: 0 }, 'snake_stinger'));
+
+      // Deux petits bras antérieurs griffus de préhension
+      const armMat = this._material('chitin', { color: 0x090d16, roughness: 0.22, metalness: 0.5 });
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(armMat, new T.Vector3(side * 0.28 * scale, 0.75 * scale, 0.22 * scale), new T.Vector3(side * 0.45 * scale, 0.42 * scale, 0.45 * scale), 0.06 * scale, 0.04 * scale, `snake_arm_${side}`, 8));
+      }
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'snake_drone',
+        height: 1.45 * scale,
+        animationJoints: ['snake_head', 'snake_seg_0', 'snake_seg_2', 'snake_seg_5']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 172 : Rideau d'Eau Industriel & Buse Haute Pression (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createIndustrialWaterCurtain() {
+      return this.createIndustrialProp('industrial_water_curtain');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 174 : Poste de Contrôle des SAS Étanches d'Urgence Weyland (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createBulkheadEmergencyControlPanel() {
+      return this.createIndustrialProp('bulkhead_emergency_control_panel');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 175 : Phénotype Juvénile "Armored Chestburster" (Aliens: Genocide / Comics)
+    // -------------------------------------------------------------------------
+    createArmoredChestburster() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'armored_chestburster';
+      const scale = 0.95;
+      const paleFlesh = this._material('resin', { color: 0xe2e8f0, roughness: 0.35 });
+      const darkArmor = this._material('darkMetal', { color: 0x0f172a, roughness: 0.25, metalness: 0.75 });
+
+      // Corps annelé
+      for (let s = 0; s < 5; s++) {
+        const rad = (0.22 - s * 0.022) * scale;
+        root.add(this._ellipsoid(paleFlesh, { x: rad, y: rad * 0.8, z: 0.28 * scale }, { x: 0, y: 0.22 * scale, z: -s * 0.26 * scale }, `armored_burster_seg_${s}`, 12));
+        // Plaques osseuses dorsales transversales blindées
+        root.add(this._box(darkArmor, { x: (rad * 2.1) * scale, y: 0.06 * scale, z: 0.16 * scale }, { x: 0, y: (rad * 0.85 + 0.22) * scale, z: -s * 0.26 * scale }, `armored_plate_${s}`));
+      }
+      // Tête cuirassée
+      root.add(this._ellipsoid(darkArmor, { x: 0.26 * scale, y: 0.2 * scale, z: 0.52 * scale }, { x: 0, y: 0.3 * scale, z: 0.36 * scale }, 'armored_burster_head', 14));
+
+      return this._finalize(root, {
+        modelType: 'chestburster',
+        caste: 'armored_chestburster',
+        height: 0.78,
+        animationJoints: ['armored_burster_head', 'armored_burster_seg_0']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 176 : Générateur d'Énergie Thermique & Soupape de Surpression Fiorina 161 (Alien 3)
+    // -------------------------------------------------------------------------
+    createGeothermalTurbineValve() {
+      return this.createIndustrialProp('geothermal_turbine_valve');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 177 : Tourelle de Barbelés Micro-Électrifiés M24 USCM (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createMicroElectricBarbedWireTurret() {
+      return this.createIndustrialProp('micro_electric_barbed_wire_turret');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 178 : Réservoir Pressurisé de Gel Cryogénique Sub-Zero LN2 (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    createSubZeroCryoGelCanister() {
+      return this.createIndustrialProp('subzero_cryogel_canister');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 180 : Console de Diagnostic Synthétique Seegson & Alcôve Working Joe (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSeegsonDiagnosticAlcove() {
+      return this.createIndustrialProp('seegson_diagnostic_alcove');
     }
   }
 

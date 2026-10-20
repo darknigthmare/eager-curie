@@ -76,18 +76,16 @@
   // ---------------------------------------------------------------------------
   class HiveModelFactoryRuntime {
     constructor() {
-      this.textures = {
-        resin: null,
-        carapace: null,
-        industrial: null,
-        organicBump: null
-      };
       this.texturePaths = {
-        resin: 'assets/textures/hive-resin.png',
-        carapace: 'assets/textures/carapace.png',
-        industrial: 'assets/textures/industrial-panels.png',
-        organicBump: 'assets/textures/organic-bump.png'
+        resin: 'assets/textures/hive-resin.png', carapace: 'assets/textures/carapace.png',
+        industrial: 'assets/textures/industrial-panels.png', organicBump: 'assets/textures/organic-bump.png',
+        carapaceNormal: 'assets/textures/carapace-normal.png', carapaceRoughness: 'assets/textures/carapace-roughness.png', carapaceAO: 'assets/textures/carapace-ao.png',
+        resinNormal: 'assets/textures/hive-resin-normal.png', resinRoughness: 'assets/textures/hive-resin-roughness.png', resinAO: 'assets/textures/hive-resin-ao.png',
+        industrialNormal: 'assets/textures/industrial-panels-normal.png', industrialRoughness: 'assets/textures/industrial-panels-roughness.png', industrialAO: 'assets/textures/industrial-panels-ao.png', industrialMetalness: 'assets/textures/industrial-panels-metalness.png',
+        fabric: 'assets/textures/fabric-weave.png', fabricNormal: 'assets/textures/fabric-weave-normal.png', fabricRoughness: 'assets/textures/fabric-weave-roughness.png', fabricAO: 'assets/textures/fabric-weave-ao.png',
+        skin: 'assets/textures/skin-tissue.png', skinNormal: 'assets/textures/skin-tissue-normal.png', skinRoughness: 'assets/textures/skin-tissue-roughness.png', skinAO: 'assets/textures/skin-tissue-ao.png'
       };
+      this.textures = Object.fromEntries(Object.keys(this.texturePaths).map((key) => [key, null]));
       this._texturePromise = null;
       this._managedMaterials = new Set();
     }
@@ -136,9 +134,10 @@
           if (!texture) return;
           texture.wrapS = T.RepeatWrapping;
           texture.wrapT = T.RepeatWrapping;
-          texture.repeat.set(key === 'industrial' ? 2 : 1.5, key === 'industrial' ? 2 : 1.5);
+          const repeat = key.startsWith('industrial') ? 2 : (key.startsWith('fabric') ? 3 : 1);
+          texture.repeat.set(repeat, repeat);
           texture.anisotropy = 4;
-          if (key !== 'organicBump' && T.sRGBEncoding !== undefined) {
+          if (['carapace', 'resin', 'industrial', 'fabric', 'skin'].includes(key) && T.sRGBEncoding !== undefined) {
             texture.encoding = T.sRGBEncoding;
           }
           this.textures[key] = texture;
@@ -226,8 +225,13 @@
         }
       };
       const params = Object.assign({}, defaults[kind] || defaults.chitin, options || {});
-      const material = new T.MeshStandardMaterial(params);
+      const wetShell = ['chitin', 'chitinWarm', 'resin', 'skin'].includes(kind);
+      const material = wetShell
+        ? new T.MeshPhysicalMaterial(Object.assign({ clearcoat: kind === 'resin' ? 0.62 : 0.35, clearcoatRoughness: kind === 'skin' ? 0.6 : 0.24 }, params))
+        : new T.MeshStandardMaterial(params);
       material.userData.hiveMaterialKind = kind;
+      material.userData.hiveBaseRoughness = material.roughness;
+      material.userData.hiveBaseMetalness = material.metalness;
       this._applyManagedTexture(material);
       this._managedMaterials.add(material);
       material.addEventListener('dispose', () => this._managedMaterials.delete(material));
@@ -236,18 +240,25 @@
 
     _applyManagedTexture(material) {
       const kind = material.userData.hiveMaterialKind;
-      if (kind === 'chitin' || kind === 'chitinWarm') {
-        material.map = this.textures.carapace || null;
-        material.bumpMap = this.textures.organicBump || null;
-        // The generated cells have steep gradients: large bump amplitudes turn
-        // curved shells into glittering specular noise at the tactical zoom.
-        material.bumpScale = kind === 'chitin' ? 0.018 : 0.025;
-      } else if (kind === 'resin') {
-        material.map = this.textures.resin || null;
-        material.bumpMap = this.textures.organicBump || null;
-        material.bumpScale = 0.055;
-      } else if (kind === 'industrial' || kind === 'darkMetal') {
-        material.map = this.textures.industrial || null;
+      const profile = (kind === 'chitin' || kind === 'chitinWarm') ? 'carapace'
+        : ((kind === 'darkMetal' || kind === 'industrial') ? 'industrial'
+          : (['resin', 'fabric', 'skin'].includes(kind) ? kind : null));
+      if (profile) {
+        material.map = this.textures[profile] || null;
+        material.normalMap = this.textures[`${profile}Normal`] || null;
+        material.roughnessMap = this.textures[`${profile}Roughness`] || null;
+        material.roughness = material.roughnessMap ? 1 : material.userData.hiveBaseRoughness;
+        material.aoMap = this.textures[`${profile}AO`] || null;
+        material.aoMapIntensity = profile === 'industrial' ? 0.42 : 0.32;
+        material.normalScale.setScalar(profile === 'skin' ? 0.28 : (profile === 'fabric' ? 0.38 : 0.55));
+        if (profile === 'industrial') {
+          material.metalnessMap = this.textures.industrialMetalness || null;
+          material.metalness = material.metalnessMap ? 1 : material.userData.hiveBaseMetalness;
+        }
+        // Use the old height map only while full tangent-space normals are absent.
+        material.bumpMap = !material.normalMap && ['carapace', 'resin'].includes(profile)
+          ? this.textures.organicBump || null : null;
+        material.bumpScale = profile === 'resin' ? 0.028 : 0.014;
       }
       material.needsUpdate = true;
     }
@@ -261,7 +272,12 @@
     // -------------------------------------------------------------------------
     _finalize(root, metadata) {
       root.userData = Object.assign(root.userData || {}, metadata || {});
+      global.HiveModelDetail?.decorate?.(this, root, root.userData);
       this._buildAnimationRig(root);
+      if (['adult', 'egg', 'facehugger', 'chestburster'].includes(metadata?.modelType)) {
+        // Keep the egg's captured visibility handle and every declared rig joint.
+        global.HiveModelDetail?.mergeStatic?.(root, { excludeNames: ['apical_seal'] });
+      }
       root.userData.hiveProceduralModel = true;
       root.userData.dispose = () => this.disposeModel(root);
       return root;
@@ -416,6 +432,9 @@
     // -------------------------------------------------------------------------
     _mesh(geometry, material, name) {
       const T = this._three();
+      if (geometry.attributes.uv && !geometry.attributes.uv2) {
+        geometry.setAttribute('uv2', geometry.attributes.uv.clone());
+      }
       const mesh = new T.Mesh(geometry, material);
       mesh.name = name || 'detail';
       mesh.castShadow = true;
@@ -425,7 +444,7 @@
 
     _ellipsoid(material, scale, position, name, segments) {
       const T = this._three();
-      const resolution = segments || 16;
+      const resolution = segments || 24;
       const mesh = this._mesh(
         new T.SphereGeometry(1, resolution, Math.max(8, Math.floor(resolution * 0.75))),
         material,
@@ -474,8 +493,8 @@
           radiusEnd === undefined ? radiusStart : radiusEnd,
           radiusStart,
           length,
-          radialSegments || 8,
-          1,
+          radialSegments || 12,
+          2,
           false
         ),
         material,
@@ -509,6 +528,59 @@
         material,
         name
       );
+    }
+
+    _sweptBody(material, points, radii, name, tubularSegments = 56, radialSegments = 12) {
+      const T = this._three();
+      const curve = new T.CatmullRomCurve3(points.map((p) => new T.Vector3(p.x, p.y, p.z)));
+      const frames = curve.computeFrenetFrames(tubularSegments, false);
+      const positions = [], normals = [], uvs = [], indices = [];
+      for (let i = 0; i <= tubularSegments; i++) {
+        const t = i / tubularSegments;
+        const center = curve.getPointAt(t);
+        const span = t * (radii.length - 1);
+        const section = Math.min(radii.length - 2, Math.floor(span));
+        const radius = T.MathUtils.lerp(radii[section], radii[section + 1], span - section);
+        for (let j = 0; j <= radialSegments; j++) {
+          const angle = j / radialSegments * Math.PI * 2;
+          const normal = frames.normals[i].clone().multiplyScalar(Math.cos(angle))
+            .addScaledVector(frames.binormals[i], Math.sin(angle));
+          const point = center.clone().addScaledVector(normal, radius);
+          positions.push(point.x, point.y, point.z); normals.push(normal.x, normal.y, normal.z);
+          uvs.push(j / radialSegments, t);
+          if (i < tubularSegments && j < radialSegments) {
+            const a = i * (radialSegments + 1) + j, b = a + radialSegments + 1;
+            indices.push(a, b, a + 1, b, b + 1, a + 1);
+          }
+        }
+      }
+      const geometry = new T.BufferGeometry();
+      geometry.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('normal', new T.Float32BufferAttribute(normals, 3));
+      geometry.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices);
+      return this._mesh(geometry, material, name);
+    }
+
+    _addInstancedRings(parent, material, curve, count, radius, name) {
+      const T = this._three();
+      const geometry = new T.TorusGeometry(1, 0.12, 6, 18);
+      geometry.setAttribute('uv2', geometry.attributes.uv.clone());
+      const bands = new T.InstancedMesh(geometry, material, count);
+      bands.name = name;
+      bands.castShadow = true; bands.receiveShadow = true;
+      // Three r128 does not include instance transforms in its culling sphere.
+      bands.frustumCulled = false;
+      const dummy = new T.Object3D();
+      for (let i = 0; i < count; i++) {
+        const t = (i + 1) / (count + 1);
+        dummy.position.copy(curve.getPointAt(t));
+        dummy.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), curve.getTangentAt(t));
+        dummy.scale.setScalar(radius * (1 - t * 0.76));
+        dummy.updateMatrix(); bands.setMatrixAt(i, dummy.matrix);
+      }
+      parent.add(bands);
+      return bands;
     }
 
     _coneAlong(material, base, direction, radius, length, name, radialSegments) {
@@ -631,7 +703,7 @@
       );
       root.add(palm);
 
-      const digits = isFoot ? 4 : 5;
+      const digits = isFoot ? 3 : 6;
       for (let index = 0; index < digits; index++) {
         const spread = (index - (digits - 1) / 2) * 0.13 * s;
         const finger = new T.Group();
@@ -651,7 +723,9 @@
           'terminal_claw',
           6
         ));
-        root.add(finger);
+        // Digits are static relative to their hand/foot joint. Flatten their
+        // identity groups so the material batcher can draw each hand in two calls.
+        while (finger.children.length) root.add(finger.children[0]);
       }
       return root;
     }
@@ -672,7 +746,7 @@
           radii[index],
           radii[index + 1],
           `${name}_segment_${index}`,
-          9
+          14
         ));
         if (index > 0 || index === points.length - 2) {
           limb.add(this._joint(jointMaterial, start, radii[index] * 1.12, `${name}_joint_${index}`));
@@ -708,8 +782,7 @@
 
     _addTail(parent, material, boneMaterial, origin, length, lift, side, thickness) {
       const T = this._three();
-      const tailRoot = new T.Group();
-      tailRoot.name = 'segmented_tail';
+      const tailRoot = new T.Group(); tailRoot.name = 'segmented_tail';
       tailRoot.position.set(origin.x, origin.y, origin.z);
       const points = [
         { x: 0, y: 0, z: 0 },
@@ -718,124 +791,97 @@
         { x: side * length * 0.36, y: lift * 0.15, z: -length * 0.7 },
         { x: side * length * 0.47, y: lift, z: -length }
       ];
-      tailRoot.add(this._tube(material, points, thickness, 'tail_skin', 34, 8));
-      for (let index = 1; index < points.length - 1; index++) {
-        tailRoot.add(this._ring(
-          boneMaterial,
-          thickness * 1.22,
-          thickness * 0.13,
-          points[index],
-          { x: Math.PI / 2, y: 0, z: 0 },
-          `tail_ring_${index}`
-        ));
-      }
+      tailRoot.add(this._sweptBody(material, points,
+        [thickness * 1.45, thickness * 1.16, thickness * 0.83, thickness * 0.5, thickness * 0.24],
+        'tail_skin', 76, 12));
+      const curve = new T.CatmullRomCurve3(points.map((p) => new T.Vector3(p.x, p.y, p.z)));
+      this._addInstancedRings(tailRoot, boneMaterial, curve, 18, thickness * 1.48, 'caudal_vertebrae');
       const tip = points[points.length - 1];
-      tailRoot.add(this._coneAlong(
-        boneMaterial,
-        tip,
-        { x: side * 0.35, y: lift * 0.3, z: -1 },
-        thickness * 1.8,
-        thickness * 6.5,
-        'tail_blade',
-        7
-      ));
-      parent.add(tailRoot);
-      return tailRoot;
+      const blade = this._ellipsoid(boneMaterial,
+        { x: thickness * 1.5, y: thickness * 0.2, z: thickness * 4.4 },
+        { x: tip.x, y: tip.y, z: tip.z - thickness * 2.9 }, 'tail_blade', 24);
+      blade.rotation.y = -side * 0.35;
+      tailRoot.add(blade);
+      parent.add(tailRoot); return tailRoot;
     }
 
     _addCrest(parent, material, size, isRoyal) {
       const T = this._three();
-      const crest = new T.Group();
-      crest.name = isRoyal ? 'royal_crown_crest' : 'guardian_crest';
-      const plates = isRoyal ? 9 : 6;
-      for (let index = 0; index < plates; index++) {
-        const t = plates <= 1 ? 0 : index / (plates - 1);
-        const plate = this._ellipsoid(
-          material,
-          {
-            x: size * (1.05 - t * 0.36),
-            y: size * (0.16 + Math.sin(t * Math.PI) * 0.06),
-            z: size * (0.72 + t * 0.34)
-          },
-          {
-            x: 0,
-            y: size * (0.18 + t * 0.3),
-            z: size * (-0.22 - t * 0.28)
-          },
-          `crest_plate_${index}`,
-          16
-        );
-        plate.rotation.x = -0.3 - t * 0.22;
-        plate.rotation.z = (index % 2 === 0 ? -1 : 1) * 0.025;
-        crest.add(plate);
+      const crest = new T.Group(); crest.name = isRoyal ? 'royal_crown_crest' : 'guardian_crest';
+      // A swept, flared occipital crown belongs on the skull, never at ground level.
+      const positions = [], uvs = [], indices = [], rows = 10, columns = 36;
+      for (let row = 0; row <= rows; row++) {
+        const r = row / rows;
+        for (let col = 0; col <= columns; col++) {
+          const angle = (col / columns - 0.5) * Math.PI * 1.2;
+          const edge = (0.42 + r * 1.3) * size;
+          const scallop = row === rows ? 1 + Math.pow(Math.sin(col / columns * Math.PI * 8), 8) * 0.055 : 1;
+          positions.push(Math.sin(angle) * edge * scallop,
+            (0.09 + Math.sin(r * Math.PI * 0.7) * 0.24 - Math.abs(Math.sin(angle)) * 0.07) * size,
+            -Math.cos(angle) * edge * scallop - size * 0.18);
+          uvs.push(col / columns, r);
+          if (row < rows && col < columns) {
+            const a = row * (columns + 1) + col, b = a + columns + 1;
+            indices.push(a, b, a + 1, b, b + 1, a + 1);
+          }
+        }
       }
-      const edgeCount = isRoyal ? 11 : 7;
-      for (let index = 0; index < edgeCount; index++) {
-        const t = edgeCount <= 1 ? 0 : index / (edgeCount - 1);
-        crest.add(this._coneAlong(
-          material,
-          { x: (t - 0.5) * size * 1.8, y: size * 0.54, z: -size * 0.86 },
-          { x: (t - 0.5) * 0.65, y: 0.2, z: -1 },
-          size * 0.06,
-          size * (0.32 + Math.sin(t * Math.PI) * 0.18),
-          `crest_tooth_${index}`,
-          6
-        ));
+      const geometry = new T.BufferGeometry();
+      geometry.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices); geometry.computeVertexNormals();
+      const crownMaterial = material.clone();
+      crownMaterial.side = T.DoubleSide;
+      this._managedMaterials.add(crownMaterial);
+      crownMaterial.addEventListener('dispose', () => this._managedMaterials.delete(crownMaterial));
+      crest.add(this._mesh(geometry, crownMaterial, 'swept_crown_shell'));
+      for (let rib = 0; rib < (isRoyal ? 9 : 7); rib++) {
+        const angle = (rib / ((isRoyal ? 9 : 7) - 1) - 0.5) * Math.PI * 1.14;
+        crest.add(this._tube(material, [
+          { x: Math.sin(angle) * size * 0.43, y: size * 0.12, z: -Math.cos(angle) * size * 0.43 },
+          { x: Math.sin(angle) * size * 1.04, y: size * 0.31, z: -Math.cos(angle) * size * 1.04 },
+          { x: Math.sin(angle) * size * 1.72, y: size * 0.29, z: -Math.cos(angle) * size * 1.72 - size * 0.18 }
+        ], size * 0.025, `crown_rib_${rib}`, 20, 6));
       }
-      parent.add(crest);
-      return crest;
+      parent.add(crest); return crest;
     }
 
     _addJaw(parent, chitin, bone, position, scale, extended) {
       const T = this._three();
-      const jawRoot = new T.Group();
-      jawRoot.name = 'articulated_jaw';
+      const jawRoot = new T.Group(); jawRoot.name = 'articulated_jaw';
       jawRoot.position.set(position.x, position.y, position.z);
-      jawRoot.add(this._box(
-        chitin,
-        { x: 0.86 * scale, y: 0.22 * scale, z: 0.58 * scale },
-        { x: 0, y: -0.08 * scale, z: 0.08 * scale },
-        'lower_mandible',
-        true
-      ));
-      for (let index = 0; index < 6; index++) {
-        const x = (index - 2.5) * 0.13 * scale;
-        jawRoot.add(this._coneAlong(
-          bone,
-          { x, y: 0.02 * scale, z: 0.32 * scale },
-          { x: 0, y: 0.7, z: 0.12 },
-          0.035 * scale,
-          0.15 * scale,
-          `outer_tooth_${index}`,
-          5
-        ));
+      jawRoot.add(this._ellipsoid(chitin, { x: 0.39 * scale, y: 0.09 * scale, z: 0.3 * scale },
+        { x: 0, y: -0.06 * scale, z: 0.04 * scale }, 'lower_mandible', 28));
+      for (const side of [-1, 1]) {
+        jawRoot.add(this._tube(chitin, [
+          { x: side * 0.34 * scale, y: 0.08 * scale, z: -0.19 * scale },
+          { x: side * 0.32 * scale, y: -0.08 * scale, z: 0.12 * scale },
+          { x: side * 0.15 * scale, y: -0.06 * scale, z: 0.32 * scale }
+        ], 0.045 * scale, `mandibular_rail_${side}`, 20, 8));
+        for (let index = 0; index < 8; index++) {
+          const t = index / 7;
+          jawRoot.add(this._coneAlong(bone,
+            { x: (t - 0.5) * 0.59 * scale, y: side < 0 ? -0.005 * scale : 0.2 * scale, z: (0.27 - Math.abs(t - 0.5) * 0.08) * scale },
+            { x: 0, y: side < 0 ? 1 : -1, z: 0.04 }, 0.022 * scale,
+            (0.075 + Math.sin(t * Math.PI) * 0.025) * scale,
+            `dental_arcade_${side}_${index}`, 8));
+        }
       }
-      const innerLength = (extended ? 1.25 : 0.62) * scale;
-      jawRoot.add(this._segment(
-        chitin,
-        new T.Vector3(0, 0.14 * scale, 0.18 * scale),
-        new T.Vector3(0, 0.14 * scale, 0.18 * scale + innerLength),
-        0.13 * scale,
-        0.1 * scale,
-        'telescopic_inner_jaw',
-        8
-      ));
-      jawRoot.add(this._coneAlong(
-        bone,
-        { x: 0, y: 0.14 * scale, z: 0.18 * scale + innerLength },
-        { x: 0, y: 0, z: 1 },
-        0.16 * scale,
-        0.28 * scale,
-        'inner_jaw_crown',
-        6
-      ));
-      parent.add(jawRoot);
-      return jawRoot;
+      // The secondary pharyngeal jaw rests inside the mouth. It must not read
+      // as a permanent ivory horn projecting from the creature's face.
+      const inner = new T.Group(); inner.name = 'pharyngeal_jaw_slider';
+      inner.position.set(0, 0.095 * scale, -0.2 * scale);
+      inner.add(this._segment(chitin, new T.Vector3(0, 0, 0), new T.Vector3(0, 0, 0.35 * scale),
+        0.065 * scale, 0.048 * scale, 'telescopic_inner_jaw', 12));
+      inner.add(this._ellipsoid(bone, { x: 0.065 * scale, y: 0.045 * scale, z: 0.075 * scale },
+        { x: 0, y: 0, z: 0.36 * scale }, 'inner_jaw_crown', 16));
+      inner.position.z += extended ? 0.64 * scale : 0;
+      inner.userData.retractedZ = -0.2 * scale;
+      inner.userData.extensionLength = 0.7 * scale;
+      jawRoot.add(inner); jawRoot.userData.innerJaw = inner;
+      parent.add(jawRoot); return jawRoot;
     }
 
-    // -------------------------------------------------------------------------
-    // 6. MECHANICAL & HUMANOID DETAIL HELPERS
-    // -------------------------------------------------------------------------
     _addMechanicalLimb(parent, metal, dark, points, radii, name, addClamp) {
       const T = this._three();
       const limb = new T.Group();
@@ -1838,13 +1884,26 @@
         emissiveIntensity: 0.62
       });
 
-      root.add(this._ellipsoid(
-        shell,
-        { x: 1.42, y: 1.95, z: 1.42 },
-        { x: 0, y: 1.55, z: 0 },
-        'shell_body',
-        24
-      ));
+      const shellBody = this._ellipsoid(shell,
+        { x: 1.34, y: 1.95, z: 1.34 }, { x: 0, y: 1.55, z: 0 }, 'shell_body', 48);
+      const skinVertices = shellBody.geometry.attributes.position;
+      for (let i = 0; i < skinVertices.count; i++) {
+        const y = skinVertices.getY(i), angle = Math.atan2(skinVertices.getZ(i), skinVertices.getX(i));
+        const lobe = 1 + Math.sin(angle * 8 + y * 0.8) * 0.024 + Math.max(0, -y) * 0.08;
+        skinVertices.setX(i, skinVertices.getX(i) * lobe);
+        skinVertices.setZ(i, skinVertices.getZ(i) * lobe);
+      }
+      skinVertices.needsUpdate = true; shellBody.geometry.computeVertexNormals();
+      root.add(shellBody);
+      for (let vein = 0; vein < 8; vein++) {
+        const angle = vein / 8 * Math.PI * 2;
+        root.add(this._tube(membrane, [
+          { x: Math.cos(angle) * 1.65, y: 0.04, z: Math.sin(angle) * 1.65 },
+          { x: Math.cos(angle + 0.08) * 1.26, y: 0.46, z: Math.sin(angle + 0.08) * 1.26 },
+          { x: Math.cos(angle + 0.12) * 1.32, y: 1.5, z: Math.sin(angle + 0.12) * 1.32 },
+          { x: Math.cos(angle) * 0.99, y: 2.78, z: Math.sin(angle) * 0.99 }
+        ], 0.042, `longitudinal_shell_fold_${vein}`, 36, 8));
+      }
       root.add(this._ring(
         membrane,
         1.12,
@@ -1878,14 +1937,14 @@
           { x: 0.8, y: 0.18, z: 1.06 },
           { x: 0, y: 0.06, z: 0.64 },
           'petal_shell',
-          20
+          36
         ));
         petalRoot.add(this._ellipsoid(
           membrane,
           { x: 0.59, y: 0.08, z: 0.79 },
           { x: 0, y: 0.2, z: 0.62 },
           'petal_membrane',
-          16
+          28
         ));
         for (let vein = -1; vein <= 1; vein++) {
           petalRoot.add(this._tube(
@@ -1912,7 +1971,7 @@
         { x: 0.84, y: 0.13, z: 0.84 },
         { x: 0, y: 3.25, z: 0 },
         'apical_seal',
-        20
+        32
       );
       root.add(apicalSeal);
 
@@ -1923,7 +1982,7 @@
         { x: 0.72, y: 0.42, z: 0.72 },
         { x: 0, y: 3.24, z: 0 },
         'incubator_core',
-        18
+        28
       ));
       for (let tendril = 0; tendril < 6; tendril++) {
         const angle = tendril / 6 * Math.PI * 2;
@@ -1981,16 +2040,16 @@
       const legJoints = [];
       const kneeJoints = [];
       const ankleJoints = [];
-      const hide = this._material('chitinWarm', { color: 0x7c5b42, roughness: 0.52 });
-      const joints = this._material('resin', { color: 0x5c342b, opacity: 0.96 });
+      const hide = this._material('skin', { color: 0xc5b69b, roughness: 0.58, clearcoat: 0.2 });
+      const joints = this._material('skin', { color: 0x9f8f79, roughness: 0.64, clearcoat: 0.15 });
       const claw = this._material('bone', { color: 0xc6ad79 });
 
       root.add(this._ellipsoid(
         hide,
-        { x: 0.86, y: 0.25, z: 1.06 },
+        { x: 0.69, y: 0.23, z: 1.0 },
         { x: 0, y: 0.48, z: 0 },
         'central_carpal_body',
-        20
+        36
       ));
       for (let plateIndex = 0; plateIndex < 5; plateIndex++) {
         root.add(this._ellipsoid(
@@ -2021,19 +2080,19 @@
         limb.userData.side = side;
         limb.userData.row = row;
         limb.add(this._joint(joints, { x: 0, y: 0, z: 0 }, 0.145, 'hip'));
-        limb.add(this._segment(hide, new T.Vector3(), localKnee, 0.14, 0.1, 'femur', 8));
+        limb.add(this._segment(hide, new T.Vector3(), localKnee, 0.14, 0.1, 'femur', 14));
 
         const kneeJoint = new T.Group();
         kneeJoint.name = `crawler_knee_${legIndex}`;
         kneeJoint.position.copy(localKnee);
         kneeJoint.add(this._joint(joints, { x: 0, y: 0, z: 0 }, 0.13, 'knee'));
-        kneeJoint.add(this._segment(hide, new T.Vector3(), localAnkle, 0.1, 0.065, 'tibia', 8));
+        kneeJoint.add(this._segment(hide, new T.Vector3(), localAnkle, 0.1, 0.065, 'tibia', 12));
 
         const ankleJoint = new T.Group();
         ankleJoint.name = `crawler_ankle_${legIndex}`;
         ankleJoint.position.copy(localAnkle);
         ankleJoint.add(this._joint(joints, { x: 0, y: 0, z: 0 }, 0.085, 'ankle'));
-        ankleJoint.add(this._segment(hide, new T.Vector3(), localToe, 0.06, 0.035, 'tarsus', 7));
+        ankleJoint.add(this._segment(hide, new T.Vector3(), localToe, 0.06, 0.035, 'tarsus', 12));
         ankleJoint.add(this._coneAlong(
           claw,
           localToe,
@@ -2044,6 +2103,11 @@
           6
         ));
         kneeJoint.add(ankleJoint);
+        limb.add(this._tube(joints, [
+          { x: 0, y: -0.035, z: 0 },
+          { x: localKnee.x * 0.48, y: localKnee.y * 0.5 - 0.035, z: localKnee.z * 0.5 },
+          { x: localKnee.x, y: localKnee.y - 0.035, z: localKnee.z }
+        ], 0.025, `crawler_flexor_${legIndex}`, 18, 6));
         limb.add(kneeJoint);
         root.add(limb);
         legJoints.push(limb);
@@ -2068,8 +2132,8 @@
         tailPoints.map((point) => point.clone().sub(tailBase)),
         0.105,
         'prehensile_tail',
-        42,
-        8
+        72,
+        12
       ));
       tailJoint.add(this._coneAlong(
         claw,
@@ -2167,8 +2231,8 @@
       const T = this._three();
       const root = new T.Group();
       root.name = chrysalis ? 'metamorphic_pod' : 'juvenile_serpent';
-      const hide = chrysalis ? null : this._material('chitinWarm', { color: 0x672f2f, roughness: 0.42 });
-      const chitin = this._material('chitin', { color: 0x24151d, roughness: 0.3, metalness: 0.22 });
+      const hide = chrysalis ? null : this._material('skin', { color: 0xc4a48d, roughness: 0.46, clearcoat: 0.45 });
+      const chitin = this._material('chitin', { color: 0x9a9694, roughness: 0.4, metalness: 0.08 });
       const resin = chrysalis ? this._material('resin', {
         color: 0x3b1747,
         emissive: 0x4c1d95,
@@ -2182,7 +2246,7 @@
           { x: 1.18, y: 1.72, z: 1.0 },
           { x: 0, y: 1.42, z: 0 },
           'pod_membrane',
-          24
+          48
         ));
         for (let band = 0; band < 8; band++) {
           const y = 0.35 + band * 0.32;
@@ -2249,10 +2313,10 @@
       }
       root.add(this._ellipsoid(
         chitin,
-        { x: 0.55, y: 0.4, z: 0.82 },
+        { x: 0.4, y: 0.29, z: 1.02 },
         { x: 0, y: 0.78, z: 0.72 },
         'juvenile_head',
-        20
+        40
       ));
       this._addJaw(root, chitin, bone, { x: 0, y: 0.62, z: 1.25 }, 0.56, false);
       for (let side = -1; side <= 1; side += 2) {
@@ -2297,220 +2361,136 @@
 
     _createUprightAdult(caste) {
       const T = this._three();
-      const root = new T.Group();
-      root.name = `adult_${caste}`;
-      const royal = caste === 'queen';
-      const guardian = caste === 'praetorian';
-      const warrior = caste === 'warrior';
+      const root = new T.Group(); root.name = `adult_${caste}`;
+      const royal = caste === 'queen', guardian = caste === 'praetorian', warrior = caste === 'warrior';
       const scale = royal ? 1.42 : (guardian ? 1.18 : (warrior ? 1.06 : 1));
       const primary = this._material('chitin', {
-        color: royal ? 0xa27db5 : (guardian ? 0x9c83b0 : (warrior ? 0x9cabb3 : (caste === 'spitter' ? 0xb6c27f : (caste === 'worker' ? 0x8fc3b1 : 0xa7bbc4)))),
-        roughness: royal ? 0.34 : 0.4,
-        metalness: 0.34,
-        emissive: royal ? 0x10051b : 0x061014,
-        emissiveIntensity: 0.12
+        color: royal ? 0x77718a : (guardian ? 0x777e90 : (warrior ? 0x89959d : (caste === 'spitter' ? 0x909475 : (caste === 'worker' ? 0x809b94 : 0x89999f)))),
+        roughness: 0.42, metalness: 0.16, clearcoat: 0.58, clearcoatRoughness: 0.2
       });
-      const secondary = this._material('resin', {
-        color: royal ? 0x4a214f : 0x263238,
-        opacity: 0.96
-      });
-      const bone = this._material('bone', { color: royal ? 0xc8b6d8 : 0xb9c6a5 });
-      const sensory = this._material(royal ? 'emissiveRed' : 'emissiveGreen', {
-        emissiveIntensity: royal ? 0.42 : 0.32
-      });
-
-      root.add(this._ellipsoid(
-        primary,
-        { x: 0.76 * scale, y: 1.08 * scale, z: 0.5 * scale },
-        { x: 0, y: 3.05 * scale, z: 0 },
-        'thorax',
-        20
-      ));
-      root.add(this._ellipsoid(
-        secondary,
-        { x: 0.62 * scale, y: 0.54 * scale, z: 0.48 * scale },
-        { x: 0, y: 1.88 * scale, z: -0.02 * scale },
-        'pelvic_carapace',
-        18
-      ));
-      root.add(this._ellipsoid(
-        primary,
-        {
-          x: (royal ? 0.92 : 0.7) * scale,
-          y: (royal ? 0.54 : 0.46) * scale,
-          z: (royal ? 1.35 : 1.14) * scale
-        },
-        { x: 0, y: 4.58 * scale, z: 0.36 * scale },
-        'cranial_dome',
-        royal ? 28 : 22
-      ));
-      root.add(this._ellipsoid(
-        secondary,
-        { x: 0.58 * scale, y: 0.23 * scale, z: 0.62 * scale },
-        { x: 0, y: 4.24 * scale, z: 1.02 * scale },
-        'facial_mask',
-        18
-      ));
-      this._addJaw(root, primary, bone, { x: 0, y: 4.08 * scale, z: 1.32 * scale }, scale, royal);
-      this._addRibCage(root, secondary, 3.62 * scale, 0.72 * scale, 0.52 * scale, royal ? 8 : 6);
-      this._addDorsalTubes(root, primary, 2.72 * scale, scale, royal ? 8 : (warrior ? 6 : 4));
-
-      for (let side = -1; side <= 1; side += 2) {
-        const stance = guardian || royal ? 0.22 : 0;
-        this._addSegmentedLimb(
-          root,
-          primary,
-          secondary,
-          [
-            { x: side * 0.7 * scale, y: 3.72 * scale, z: 0 },
-            { x: side * (1.08 + stance) * scale, y: 2.85 * scale, z: 0.18 * scale },
-            { x: side * 0.92 * scale, y: 2.02 * scale, z: 0.62 * scale }
-          ],
-          [0.24 * scale, 0.2 * scale, 0.14 * scale],
-          `arm_${side < 0 ? 'left' : 'right'}`,
-          {
-            material: primary,
-            clawMaterial: bone,
-            side,
-            scale: 0.9 * scale,
-            rotationY: side < 0 ? -0.2 : 0.2
-          }
-        );
-        this._addSegmentedLimb(
-          root,
-          primary,
-          secondary,
-          [
-            { x: side * 0.46 * scale, y: 1.98 * scale, z: 0 },
-            { x: side * 0.67 * scale, y: 1.03 * scale, z: -0.1 * scale },
-            { x: side * 0.58 * scale, y: 0.18 * scale, z: 0.2 * scale }
-          ],
-          [0.32 * scale, 0.27 * scale, 0.19 * scale],
-          `leg_${side < 0 ? 'left' : 'right'}`,
-          {
-            material: primary,
-            clawMaterial: bone,
-            side,
-            isFoot: true,
-            scale: 1.05 * scale,
-            rotationY: side < 0 ? -0.08 : 0.08
-          }
-        );
+      const secondary = this._material('resin', { color: royal ? 0x817083 : 0x728586,
+        opacity: 1, transparent: false, roughness: 0.5, metalness: 0.04 });
+      const bone = this._material('bone', { color: 0x949e93, roughness: 0.36, metalness: 0.1 });
+      const sensory = this._material(royal ? 'emissiveRed' : 'emissiveGreen', { emissiveIntensity: 0.16 });
+      const body = new T.Group(); body.name = 'adult_anatomy'; body.scale.setScalar(scale); root.add(body);
+      body.add(this._ellipsoid(primary, { x: 0.56, y: 0.86, z: 0.39 },
+        { x: 0, y: 3.55, z: 0 }, 'thorax', 36));
+      body.add(this._ellipsoid(secondary, { x: 0.42, y: 0.42, z: 0.32 },
+        { x: 0, y: 2.6, z: -0.07 }, 'pelvic_carapace', 28));
+      body.add(this._segment(secondary, new T.Vector3(0, 4.04, -0.08),
+        new T.Vector3(0, 4.7, -0.17), 0.22, 0.19, 'cervical_column', 20));
+      const head = new T.Group(); head.name = 'cranial_dome'; head.position.set(0, 4.81, 0.02);
+      const skull = this._ellipsoid(primary,
+        { x: royal ? 0.57 : 0.43, y: royal ? 0.4 : 0.34, z: royal ? 1.65 : 1.42 },
+        { x: 0, y: 0.05, z: -0.34 }, 'elongated_cranial_shell', 48);
+      // Taper toward the face while keeping the long occipital silhouette smooth.
+      const vertices = skull.geometry.attributes.position;
+      for (let i = 0; i < vertices.count; i++) {
+        const z = vertices.getZ(i);
+        vertices.setX(i, vertices.getX(i) * (1 - Math.max(0, z) * 0.18));
+        vertices.setY(i, vertices.getY(i) * (1 - Math.max(0, z) * 0.08));
       }
-
-      if (royal) {
-        for (let side = -1; side <= 1; side += 2) {
-          this._addSegmentedLimb(
-            root,
-            secondary,
-            primary,
-            [
-              { x: side * 0.55 * scale, y: 3.32 * scale, z: -0.26 * scale },
-              { x: side * 1.34 * scale, y: 3.02 * scale, z: -0.54 * scale },
-              { x: side * 1.66 * scale, y: 2.42 * scale, z: -0.22 * scale }
-            ],
-            [0.18 * scale, 0.15 * scale, 0.1 * scale],
-            `royal_secondary_arm_${side}`,
-            {
-              material: secondary,
-              clawMaterial: bone,
-              side,
-              scale: 0.72 * scale,
-              rotationY: side < 0 ? -0.32 : 0.32
-            }
-          );
-        }
+      vertices.needsUpdate = true; skull.geometry.computeVertexNormals();
+      head.add(skull); body.add(head);
+      head.add(this._ellipsoid(secondary, { x: 0.36, y: 0.18, z: 0.43 },
+        { x: 0, y: -0.22, z: 0.76 }, 'facial_mask', 32));
+      this._addJaw(body, primary, bone, { x: 0, y: 4.4, z: 0.96 }, 0.72, false);
+      this._addRibCage(body, secondary, 4.06, 0.57, 0.39, royal ? 10 : 8);
+      this._addDorsalTubes(body, primary, 3.05, 0.8, royal ? 8 : (warrior ? 6 : 4));
+      // Segmented sternum, scapular tendons and abdominal plates articulate the
+      // silhouette rather than adding disconnected decorative spheres.
+      for (let segment = 0; segment < 6; segment++) {
+        const t = segment / 5;
+        body.add(this._ellipsoid(primary, { x: 0.31 - t * 0.08, y: 0.105, z: 0.12 },
+          { x: 0, y: 3.39 - t * 0.75, z: 0.29 }, `ventral_plate_${segment}`, 20));
       }
-
-      if (royal || guardian) this._addCrest(root, primary, (royal ? 1.62 : 1.08) * scale, royal);
-      this._addTail(
-        root,
-        primary,
-        bone,
-        { x: 0, y: 1.88 * scale, z: -0.36 * scale },
-        (royal ? 6.4 : 4.8) * scale,
-        royal ? 1.05 * scale : 0.58 * scale,
-        royal ? 0.42 : -0.34,
-        (royal ? 0.19 : 0.14) * scale
-      );
-      this._addCarapaceSpines(root, primary, 4.75 * scale, royal ? 13 : 9, 1.15 * scale, 1.0 * scale, -1);
-      root.add(this._ellipsoid(
-        sensory,
-        { x: 0.12 * scale, y: 0.06 * scale, z: 0.18 * scale },
-        { x: 0, y: 4.3 * scale, z: 1.39 * scale },
-        'sensory_node',
-        12
-      ));
-
-      // Castes must be identifiable from the high tactical camera, even when
-      // their command ring is hidden. Keep anatomy attached to the existing rig.
-      if (caste === 'spitter') {
-        const acid = this._material('emissiveGreen', {
-          color: 0x4d6b25, emissive: 0x8cbe32, emissiveIntensity: 0.5,
-          roughness: 0.34, metalness: 0.05
+      for (const side of [-1, 1]) {
+        body.add(this._tube(secondary, [
+          { x: side * 0.2, y: 4.57, z: -0.17 },
+          { x: side * 0.48, y: 4.2, z: -0.26 },
+          { x: side * 0.61, y: 3.96, z: -0.12 }
+        ], 0.075, `trapezial_tendon_${side}`, 24, 10));
+        const arm = this._addSegmentedLimb(body, primary, secondary, [
+          { x: side * 0.58, y: 4.05, z: 0 },
+          { x: side * (royal || guardian ? 1.05 : 0.91), y: 3.05, z: -0.1 },
+          { x: side * 0.93, y: 2.06, z: 0.36 }
+        ], [0.19, 0.15, 0.1], `arm_${side < 0 ? 'left' : 'right'}`, {
+          material: primary, clawMaterial: bone, side, scale: 0.76,
+          rotationY: side < 0 ? -0.2 : 0.2
         });
-        for (const side of [-1, 1]) {
-          root.add(this._ellipsoid(acid,
-            { x: 0.34, y: 0.5, z: 0.38 },
-            { x: side * 0.68, y: 3.72, z: -0.38 },
-            `acid_reservoir_${side}`, 14));
-          root.add(this._tube(secondary, [
-            { x: side * 0.7, y: 3.8, z: -0.28 },
-            { x: side * 0.57, y: 4.03, z: 0.48 },
-            { x: side * 0.29, y: 4.12, z: 1.13 }
-          ], 0.07, `acid_duct_${side}`, 10, 5));
+        arm.add(this._tube(secondary, [
+          { x: side * 0.08, y: -0.15, z: -0.05 },
+          { x: side * 0.2, y: -1.02, z: -0.16 },
+          { x: side * 0.2, y: -1.74, z: 0.28 }
+        ], 0.035, `forearm_flexor_${side}`, 30, 8));
+        const leg = this._addSegmentedLimb(body, primary, secondary, [
+          { x: side * 0.34, y: 2.64, z: -0.05 },
+          { x: side * 0.5, y: 1.5, z: 0.32 },
+          { x: side * 0.48, y: 0.56, z: -0.23 },
+          { x: side * 0.45, y: 0.14, z: 0.2 }
+        ], [0.235, 0.17, 0.105, 0.085], `leg_${side < 0 ? 'left' : 'right'}`, {
+          material: primary, clawMaterial: bone, side, isFoot: true, scale: 0.82,
+          rotationY: side < 0 ? -0.08 : 0.08
+        });
+        leg.add(this._ellipsoid(primary, { x: 0.15, y: 0.27, z: 0.12 },
+          { x: side * 0.16, y: -1.1, z: 0.48 }, `patellar_plate_${side}`, 24));
+        leg.add(this._tube(secondary, [
+          { x: 0, y: -0.25, z: -0.14 },
+          { x: side * 0.13, y: -1.12, z: 0.14 },
+          { x: side * 0.15, y: -2.1, z: -0.25 }
+        ], 0.047, `achilles_tendon_${side}`, 30, 8));
+        if (caste === 'worker' || warrior || guardian) {
+          arm.add(this._ellipsoid(primary, { x: caste === 'worker' ? 0.31 : 0.27, y: 0.19, z: 0.35 },
+            { x: 0, y: 0.03, z: -0.05 }, `reinforced_shoulder_${side}`, 28));
         }
       }
-      if (caste === 'worker' || warrior || guardian) {
-        for (const side of [-1, 1]) {
-          const shoulder = root.getObjectByName(`arm_${side < 0 ? 'left' : 'right'}`);
-          if (shoulder) {
-            const plate = this._ellipsoid(primary,
-              { x: caste === 'worker' ? 0.42 : 0.37, y: 0.26, z: 0.48 },
-              { x: 0, y: 0.05, z: -0.06 },
-              `reinforced_shoulder_${side}`, 14);
-            shoulder.add(plate);
-          }
+      if (warrior) {
+        for (let rib = 0; rib < 11; rib++) {
+          const z = -1.54 + rib * 0.22;
+          const radius = Math.sqrt(Math.max(0.05, 1 - Math.pow((z + 0.34) / 1.5, 2)));
+          const ridge = this._ring(secondary, 0.34 * radius, 0.031,
+            { x: 0, y: 0.08, z }, { x: 0, y: 0, z: 0 }, `warrior_skull_ridge_${rib}`, Math.PI);
+          ridge.scale.x = 1.22; ridge.rotation.z = 0; head.add(ridge);
         }
       }
-      if (caste === 'worker') {
-        const head = root.getObjectByName('cranial_dome');
-        if (head) head.scale.x *= 1.15;
+      if (royal || guardian) {
+        const crown = this._addCrest(head, primary, royal ? 1.12 : 0.77, royal);
+        crown.position.set(0, 0.19, -0.12);
       }
-
+      if (caste === 'spitter') {
+        const acid = this._material('resin', { color: 0xb0c96e, emissive: 0x425718,
+          emissiveIntensity: 0.36, roughness: 0.3, opacity: 0.94 });
+        for (const side of [-1, 1]) {
+          body.add(this._ellipsoid(acid, { x: 0.26, y: 0.49, z: 0.3 },
+            { x: side * 0.57, y: 3.82, z: -0.3 }, `acid_reservoir_${side}`, 32));
+          body.add(this._tube(secondary, [
+            { x: side * 0.55, y: 3.9, z: -0.24 },
+            { x: side * 0.39, y: 4.2, z: 0.35 },
+            { x: side * 0.2, y: 4.39, z: 0.98 }
+          ], 0.05, `acid_duct_${side}`, 26, 10));
+        }
+      }
+      if (caste === 'worker') head.scale.set(1.12, 0.93, 0.9);
       if (royal) {
-        root.add(this._ellipsoid(
-          secondary,
-          { x: 1.04 * scale, y: 0.88 * scale, z: 1.55 * scale },
-          { x: 0, y: 2.12 * scale, z: -1.62 * scale },
-          'royal_abdomen',
-          22
-        ));
-        for (let band = 0; band < 6; band++) {
-          root.add(this._ring(
-            primary,
-            (0.82 - band * 0.055) * scale,
-            0.055 * scale,
-            { x: 0, y: (2.42 - band * 0.12) * scale, z: (-0.82 - band * 0.32) * scale },
-            { x: Math.PI / 2, y: 0, z: 0 },
-            `royal_abdomen_band_${band}`
-          ));
-        }
+        for (const side of [-1, 1]) this._addSegmentedLimb(body, secondary, primary, [
+          { x: side * 0.4, y: 3.78, z: 0.06 },
+          { x: side * 0.8, y: 3.16, z: 0.36 },
+          { x: side * 0.72, y: 2.7, z: 0.69 }
+        ], [0.12, 0.09, 0.06], `royal_secondary_arm_${side}`, {
+          material: secondary, clawMaterial: bone, side, scale: 0.51
+        });
+        body.add(this._ellipsoid(secondary, { x: 0.54, y: 0.59, z: 0.83 },
+          { x: 0, y: 2.6, z: -0.64 }, 'royal_abdomen', 36));
       }
-
+      this._addTail(body, primary, secondary, { x: 0, y: 2.6, z: -0.35 },
+        royal ? 6.0 : 4.45, royal ? 0.5 : -0.2, royal ? 0.42 : -0.34, royal ? 0.16 : 0.12);
+      body.add(this._ellipsoid(sensory, { x: 0.05, y: 0.035, z: 0.07 },
+        { x: 0, y: 4.55, z: 1.04 }, 'sensory_node', 12));
       return this._finalize(root, {
-        modelType: 'adult',
-        caste,
-        height: (royal ? 7.4 : (guardian ? 6.25 : 5.25)),
-        animationJoints: {
-          head: 'cranial_dome',
-          jaw: 'articulated_jaw',
-          leftArm: 'arm_left',
-          rightArm: 'arm_right',
-          leftLeg: 'leg_left',
-          rightLeg: 'leg_right',
-          tail: 'segmented_tail'
-        }
+        modelType: 'adult', caste, height: 5.35 * scale,
+        animationJoints: { head: 'cranial_dome', jaw: 'articulated_jaw',
+          leftArm: 'arm_left', rightArm: 'arm_right', leftLeg: 'leg_left',
+          rightLeg: 'leg_right', tail: 'segmented_tail' }
       });
     }
 
@@ -2518,8 +2498,8 @@
       const T = this._three();
       const root = new T.Group();
       root.name = 'adult_runner';
-      const primary = this._material('chitin', { color: 0x291a16, roughness: 0.34, metalness: 0.3 });
-      const secondary = this._material('chitinWarm', { color: 0x5a3525 });
+      const primary = this._material('chitin', { color: 0x9a8980, roughness: 0.42, metalness: 0.12, clearcoat: 0.54 });
+      const secondary = this._material('resin', { color: 0x8e8174, opacity: 1, transparent: false });
       const bone = this._material('bone', { color: 0xc7b58b });
 
       root.add(this._ellipsoid(
@@ -2527,14 +2507,14 @@
         { x: 0.68, y: 0.62, z: 1.52 },
         { x: 0, y: 1.55, z: -0.15 },
         'runner_thorax',
-        20
+        36
       ));
       root.add(this._ellipsoid(
         primary,
-        { x: 0.62, y: 0.46, z: 1.0 },
+        { x: 0.42, y: 0.33, z: 1.28 },
         { x: 0, y: 1.72, z: 1.55 },
         'runner_head',
-        20
+        44
       ));
       root.add(this._ellipsoid(
         secondary,
@@ -2571,13 +2551,20 @@
           }
         );
       }
-      this._addTail(root, primary, bone, { x: 0, y: 1.55, z: -1.42 }, 5.5, 0.42, 0.55, 0.13);
+      this._addTail(root, primary, secondary, { x: 0, y: 1.55, z: -1.42 }, 5.5, 0.42, 0.55, 0.13);
       this._addCarapaceSpines(root, primary, 2.05, 11, 0.78, 1.42, -1);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'runner',
         height: 2.55,
-        animationJoints: Array.from({ length: 4 }, (_, index) => `runner_leg_${index}`)
+        animationJoints: {
+          head: 'runner_head', jaw: 'articulated_jaw', tail: 'segmented_tail',
+          legs: Array.from({ length: 4 }, (_, index) => `runner_leg_${index}`)
+        },
+        animationRoles: {
+          locomotion: Array.from({ length: 4 }, (_, index) => `runner_leg_${index}`),
+          attack: ['runner_head', 'articulated_jaw', 'segmented_tail']
+        }
       });
     }
 

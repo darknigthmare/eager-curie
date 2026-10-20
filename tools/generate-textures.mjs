@@ -5,7 +5,7 @@ import { deflateSync, inflateSync } from "node:zlib";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const outputDirectory = path.resolve(scriptDirectory, "..", "assets", "textures");
-const size = 512;
+const size = 1024;
 const channels = 3;
 const tau = Math.PI * 2;
 
@@ -71,60 +71,6 @@ function fractalNoise(u, v, baseCells, octaves, seed) {
     amplitude *= 0.52;
   }
   return value / weight;
-}
-
-function periodicDistance(value, target) {
-  const direct = Math.abs(value - target);
-  return Math.min(direct, 1 - direct);
-}
-
-function toroidalCellDistances(u, v, cellsX, cellsY, seed) {
-  const gridX = Math.floor(u * cellsX);
-  const gridY = Math.floor(v * cellsY);
-  let nearest = Number.POSITIVE_INFINITY;
-  let second = Number.POSITIVE_INFINITY;
-
-  for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
-    for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
-      const cellX = wrap(gridX + offsetX, cellsX);
-      const cellY = wrap(gridY + offsetY, cellsY);
-      const siteU = (cellX + 0.16 + hash2(cellX, cellY, seed) * 0.68) / cellsX;
-      const siteV =
-        (cellY + 0.16 + hash2(cellX, cellY, seed + 47) * 0.68) / cellsY;
-      const deltaU = periodicDistance(u, siteU) * cellsX;
-      const deltaV = periodicDistance(v, siteV) * cellsY;
-      const distance = Math.hypot(deltaU, deltaV);
-
-      if (distance < nearest) {
-        second = nearest;
-        nearest = distance;
-      } else if (distance < second) {
-        second = distance;
-      }
-    }
-  }
-
-  return { nearest, second };
-}
-
-function createRawTexture(shader) {
-  const buffer = Buffer.alloc(size * size * channels);
-  let index = 0;
-
-  // Inclusive endpoints deliberately make opposing edges byte-identical.
-  for (let y = 0; y < size; y += 1) {
-    const v = y / (size - 1);
-    for (let x = 0; x < size; x += 1) {
-      const u = x / (size - 1);
-      const colour = shader(u, v);
-      buffer[index] = Math.round(clamp(colour[0], 0, 255));
-      buffer[index + 1] = Math.round(clamp(colour[1], 0, 255));
-      buffer[index + 2] = Math.round(clamp(colour[2], 0, 255));
-      index += channels;
-    }
-  }
-
-  return buffer;
 }
 
 const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -255,127 +201,177 @@ function inspectPng(pngBuffer) {
   return metadata;
 }
 
-function hiveResin(u, v) {
-  const macro = fractalNoise(u, v, 3, 6, 9101);
-  const detail = fractalNoise(u, v, 15, 4, 9119);
-  const warpU = u + (macro - 0.5) * 0.065;
-  const warpV = v + (detail - 0.5) * 0.025;
-  const tubeA =
-    1 -
-    Math.abs(
-      Math.sin(tau * (3 * warpU + 2 * warpV + Math.sin(tau * 2 * v) * 0.18)),
-    );
-  const tubeB =
-    1 -
-    Math.abs(
-      Math.sin(tau * (5 * warpV - 2 * warpU + Math.sin(tau * 3 * u) * 0.12)),
-    );
-  const resinRidge = Math.pow(clamp(Math.max(tubeA, tubeB)), 6);
-  const wetGlint = Math.pow(clamp(detail * 0.72 + resinRidge * 0.52), 3.2);
-  const cavity = Math.pow(1 - macro, 2.1);
-
-  return [
-    5 + macro * 12 + resinRidge * 11 + wetGlint * 23,
-    13 + macro * 21 + resinRidge * 25 + wetGlint * 32 - cavity * 4,
-    16 + macro * 24 + resinRidge * 32 + wetGlint * 43,
-  ];
+// Material fields share one authored height surface: albedo, microsurface
+// roughness, occlusion and tangent-space normals describe the same features.
+// Colour contains pigment only; specular highlights are produced by lighting.
+function smoothRange(minimum, maximum, value) {
+  return smootherStep(clamp((value - minimum) / (maximum - minimum)));
 }
 
-function carapace(u, v) {
-  const macro = fractalNoise(u, v, 4, 5, 22003);
-  const micro = fractalNoise(u, v, 24, 3, 22037);
-  const verticalSeam = Math.pow(1 - Math.abs(Math.sin(Math.PI * 8 * u)), 14);
-  const horizontalSeam = Math.pow(1 - Math.abs(Math.sin(Math.PI * 6 * v)), 16);
-  const seam = clamp(Math.max(verticalSeam, horizontalSeam));
-  const archedRib =
-    0.5 +
-    0.5 *
-      Math.cos(
-        tau * (8 * u + Math.sin(tau * 3 * v) * 0.24 + (macro - 0.5) * 0.14),
-      );
-  const ribHighlight = Math.pow(archedRib, 7);
-  const pitting = Math.pow(1 - micro, 5);
-  const plate = clamp(0.34 + macro * 0.72 + ribHighlight * 0.58 - seam * 0.83);
-  const iridescence = 0.5 + 0.5 * Math.sin(tau * (2 * u - 3 * v + macro * 0.3));
-
-  return [
-    7 + plate * 25 + iridescence * 6 - pitting * 5,
-    13 + plate * 35 + ribHighlight * 20 + iridescence * 8 - pitting * 6,
-    18 + plate * 45 + ribHighlight * 31 + iridescence * 15 - pitting * 4,
-  ];
+function carapaceMaterial(u, v) {
+  const macro = fractalNoise(u, v, 3, 3, 22003);
+  const grain = periodicNoise(u, v, 84, 22037);
+  // Swept longitudinal cuticle ribs follow an organic shell, rather than a
+  // rectangular tile grid. Narrow sutures and lamellae carry the microrelief.
+  const shellPhase = tau * (3 * u + Math.sin(tau * 2 * v) * 0.14);
+  const shellRib = Math.pow(0.5 + 0.5 * Math.cos(shellPhase), 4);
+  const suturePhase = Math.sin(tau * (2 * u - v + Math.sin(tau * 2 * v) * 0.08));
+  const suture = Math.exp(-suturePhase * suturePhase * 220);
+  const lamella = Math.pow(0.5 + 0.5 * Math.sin(tau * (19 * u + 2 * v + Math.sin(tau * 3 * v) * 0.08)), 9);
+  const hairline = Math.pow(0.5 + 0.5 * Math.sin(tau * 108 * u + Math.sin(tau * 4 * v)), 10);
+  const pigment = (macro - 0.5) * 20 - suture * 8;
+  return {
+    color: [102 + pigment, 117 + pigment, 126 + pigment],
+    height: 0.28 + shellRib * 0.09 + lamella * 0.007 + grain * 0.0012 - suture * 0.018 - hairline * 0.0007,
+    roughness: clamp(0.30 + suture * 0.10 + (macro - 0.5) * 0.07 - shellRib * 0.035),
+    ao: clamp(0.97 - suture * 0.14),
+  };
 }
 
-function industrialPanels(u, v) {
-  const panelsX = 4;
-  const panelsY = 4;
-  const localU = fract(u * panelsX);
-  const localV = fract(v * panelsY);
-  const edgeDistance = Math.min(localU, 1 - localU, localV, 1 - localV);
-  const recessedSeam = Math.exp(-edgeDistance * 76);
-  const bevel = Math.exp(-Math.abs(edgeDistance - 0.034) * 90);
-  const broadNoise = fractalNoise(u, v, 5, 5, 33013);
-  const brushed =
-    0.5 +
-    0.5 *
-      Math.sin(tau * (96 * u + Math.sin(tau * 3 * v) * 0.28)) *
-      (0.38 + fractalNoise(u, v, 32, 2, 33029) * 0.62);
+function resinMaterial(u, v) {
+  const macro = fractalNoise(u, v, 3, 3, 9101);
+  const warp = periodicNoise(u, v, 7, 9119) - 0.5;
+  const pathA = Math.sin(tau * (3 * u + 2 * v + Math.sin(tau * 2 * v) * 0.16 + warp * 0.07));
+  const pathB = Math.sin(tau * (5 * v - 2 * u + Math.sin(tau * 3 * u) * 0.12));
+  const primary = Math.exp(-pathA * pathA * 22);
+  const secondary = Math.exp(-pathB * pathB * 48);
+  const tube = Math.max(primary, secondary * 0.58);
+  const striae = Math.sin(tau * (58 * v + 7 * u + macro * 0.05));
+  const pigment = (macro - 0.5) * 18 + tube * 8;
+  return {
+    color: [73 + pigment, 86 + pigment, 94 + pigment],
+    height: 0.27 + tube * 0.27 + macro * 0.028 + striae * tube * 0.0015,
+    roughness: clamp(0.42 - tube * 0.20 + (macro - 0.5) * 0.06),
+    ao: clamp(0.74 + tube * 0.25),
+  };
+}
 
-  let rivet = 0;
-  for (const cornerU of [0.09, 0.91]) {
-    for (const cornerV of [0.09, 0.91]) {
-      const distance = Math.hypot(localU - cornerU, localV - cornerV);
-      rivet = Math.max(rivet, Math.exp(-distance * distance * 2100));
+function industrialMaterial(u, v) {
+  const localU = fract(u * 2);
+  const localV = fract(v * 2);
+  const panelX = Math.floor(u * 2) % 2;
+  const panelY = Math.floor(v * 2) % 2;
+  const edge = Math.min(localU, 1 - localU, localV, 1 - localV);
+  const plate = smoothRange(0.006, 0.028, edge);
+  const broad = periodicNoise(u, v, 7, 33013);
+  const brushed = Math.sin(tau * (214 * u + Math.sin(tau * 2 * v) * 0.12));
+  let screw = 0;
+  let screwSlot = 0;
+  let socket = 0;
+  for (const x of [0.075, 0.925]) {
+    for (const y of [0.075, 0.925]) {
+      const dx = localU - x;
+      const dy = localV - y;
+      const radius = Math.hypot(dx, dy);
+      screw = Math.max(screw, 1 - smoothRange(0.010, 0.016, radius));
+      socket = Math.max(socket, 1 - smoothRange(0.016, 0.022, radius));
+      const slit = 1 - smoothRange(0.001, 0.003, Math.abs(dx));
+      screwSlot = Math.max(screwSlot, slit * (1 - smoothRange(0.009, 0.012, Math.abs(dy))));
     }
   }
-
-  const scratchA = Math.pow(
-    clamp(1 - Math.abs(Math.sin(tau * (37 * u + 5 * v + broadNoise * 0.15)))),
-    35,
-  );
-  const scratchB = Math.pow(
-    clamp(1 - Math.abs(Math.sin(tau * (53 * v - 3 * u)))),
-    48,
-  );
-  const scratches = clamp(scratchA * 0.65 + scratchB * 0.35);
-  const metal =
-    71 +
-    broadNoise * 65 +
-    brushed * 15 +
-    bevel * 25 +
-    rivet * 56 -
-    recessedSeam * 62 -
-    scratches * 28;
-
-  return [metal * 0.84, metal * 0.91, metal + rivet * 8];
+  const inset = (1 - smoothRange(0.005, 0.011, Math.abs(localU - 0.5)))
+    * smoothRange(0.16, 0.20, localV) * (1 - smoothRange(0.80, 0.84, localV));
+  const scuff = Math.pow(periodicNoise(u, v, 38, 33029), 5);
+  const panelTint = hash2(panelX, panelY, 731) * 8 - 4;
+  const pigment = panelTint * plate + (broad - 0.5) * 8 + brushed * 0.8
+    - (1 - plate) * 43 - socket * 14 + screw * 19 - screwSlot * 32 - inset * 15;
+  return {
+    color: [121 + pigment, 132 + pigment, 140 + pigment],
+    height: 0.34 + plate * 0.075 - socket * 0.018 + screw * 0.032 - screwSlot * 0.012 - inset * 0.010 + brushed * 0.00018,
+    roughness: clamp(0.53 + (1 - plate) * 0.18 + scuff * 0.06 - screw * 0.16),
+    ao: clamp(0.67 + plate * 0.33 - socket * 0.09 - inset * 0.04),
+    metalness: clamp(0.64 + screw * 0.28 - (1 - plate) * 0.38 - scuff * 0.10),
+  };
 }
 
-function organicBump(u, v) {
-  const cells = toroidalCellDistances(u, v, 7, 7, 44017);
-  const membrane = fractalNoise(u, v, 5, 6, 44041);
-  const fine = fractalNoise(u, v, 28, 3, 44053);
-  const cellBoundary = Math.exp(-Math.pow((cells.second - cells.nearest) * 7.5, 2));
-  const cellCore = Math.exp(-cells.nearest * cells.nearest * 9);
-  const sinew =
-    Math.pow(
-      1 -
-        Math.abs(
-          Math.sin(tau * (4 * u + 3 * v + (membrane - 0.5) * 0.34)),
-        ),
-      8,
-    ) *
-    (0.35 + cellCore * 0.65);
-  const pores = Math.pow(1 - fine, 7);
-  const height = clamp(
-    0.2 +
-      membrane * 0.46 +
-      cellCore * 0.22 +
-      sinew * 0.26 -
-      cellBoundary * 0.3 -
-      pores * 0.19,
-  );
-  const encodedHeight = 18 + height * 224;
+function fabricMaterial(u, v) {
+  const warpPhase = tau * 64 * u;
+  const weftPhase = tau * 64 * v;
+  const warp = Math.pow(0.5 + 0.5 * Math.cos(warpPhase), 2);
+  const weft = Math.pow(0.5 + 0.5 * Math.cos(weftPhase), 2);
+  const over = 0.5 + 0.5 * Math.sin(tau * 32 * u) * Math.sin(tau * 32 * v);
+  const thread = mix(warp * 0.78 + weft * 0.22, weft * 0.78 + warp * 0.22, over);
+  const dye = periodicNoise(u, v, 4, 50021) - 0.5;
+  const pigment = dye * 9 + thread * 9;
+  return {
+    color: [154 + pigment, 160 + pigment, 161 + pigment],
+    height: 0.45 + thread * 0.016,
+    roughness: 0.82 + (1 - thread) * 0.09,
+    ao: 0.91 + thread * 0.09,
+  };
+}
 
-  return [encodedHeight, encodedHeight, encodedHeight];
+function skinMaterial(u, v) {
+  const tissue = fractalNoise(u, v, 3, 3, 44041);
+  const fine = periodicNoise(u, v, 64, 44053);
+  const pore = Math.pow(clamp(1 - Math.abs(Math.sin(tau * 36 * u + Math.sin(tau * 3 * v)))
+    * Math.abs(Math.sin(tau * 36 * v + Math.sin(tau * 2 * u)))), 14);
+  const crease = Math.pow(0.5 + 0.5 * Math.sin(tau * (5 * u + 3 * v + tissue * 0.04)), 24);
+  const perfusion = (tissue - 0.5) * 17;
+  return {
+    color: [197 + perfusion + fine * 1.5, 155 + perfusion * 0.63, 139 + perfusion * 0.48],
+    height: 0.46 + tissue * 0.008 + fine * 0.0012 - pore * 0.004 - crease * 0.002,
+    roughness: clamp(0.57 + (tissue - 0.5) * 0.08 - pore * 0.04),
+    ao: 0.96 + (1 - pore) * 0.04,
+  };
+}
+
+function encodeColor(value) {
+  return Math.round(clamp(value, 0, 255));
+}
+
+function copyPeriodicEdges(buffer) {
+  // The endpoint duplicates the start; copying avoids floating-point rounding
+  // differences and leaves an exact matching border for every derived map.
+  for (let y = 0; y < size - 1; y += 1) {
+    for (let channel = 0; channel < channels; channel += 1) {
+      buffer[(y * size + size - 1) * channels + channel] = buffer[y * size * channels + channel];
+    }
+  }
+  buffer.copy(buffer, (size - 1) * size * channels, 0, size * channels);
+}
+
+function buildMaterial(shader, normalStrength) {
+  const height = new Float32Array(size * size);
+  const maps = {
+    color: Buffer.alloc(size * size * channels),
+    normal: Buffer.alloc(size * size * channels),
+    roughness: Buffer.alloc(size * size * channels),
+    ao: Buffer.alloc(size * size * channels),
+  };
+  let hasMetalness = false;
+  const metalness = Buffer.alloc(size * size * channels);
+  for (let y = 0; y < size - 1; y += 1) {
+    for (let x = 0; x < size - 1; x += 1) {
+      const sample = shader(x / (size - 1), y / (size - 1));
+      const index = y * size + x;
+      height[index] = sample.height;
+      for (let channel = 0; channel < channels; channel += 1) {
+        maps.color[index * channels + channel] = encodeColor(sample.color[channel]);
+        maps.roughness[index * channels + channel] = encodeColor(sample.roughness * 255);
+        maps.ao[index * channels + channel] = encodeColor(sample.ao * 255);
+        if (sample.metalness !== undefined) metalness[index * channels + channel] = encodeColor(sample.metalness * 255);
+      }
+      hasMetalness ||= sample.metalness !== undefined;
+    }
+  }
+  const period = size - 1;
+  for (let y = 0; y < period; y += 1) {
+    for (let x = 0; x < period; x += 1) {
+      const dx = (height[y * size + (x + 1) % period] - height[y * size + wrap(x - 1, period)]) * period * 0.5 * normalStrength;
+      const dy = (height[((y + 1) % period) * size + x] - height[wrap(y - 1, period) * size + x]) * period * 0.5 * normalStrength;
+      const inverseLength = 1 / Math.hypot(dx, dy, 1);
+      const index = (y * size + x) * channels;
+      maps.normal[index] = encodeColor((-dx * inverseLength * 0.5 + 0.5) * 255);
+      // Image rows run downwards; UV V runs upwards with Three.js flipY.
+      // Positive green therefore encodes the OpenGL tangent +Y direction.
+      maps.normal[index + 1] = encodeColor((dy * inverseLength * 0.5 + 0.5) * 255);
+      maps.normal[index + 2] = encodeColor((inverseLength * 0.5 + 0.5) * 255);
+    }
+  }
+  if (hasMetalness) maps.metalness = metalness;
+  for (const buffer of Object.values(maps)) copyPeriodicEdges(buffer);
+  return { maps, height };
 }
 
 function assertTileableEdges(buffer, name) {
@@ -400,29 +396,42 @@ function assertTileableEdges(buffer, name) {
   }
 }
 
-const textures = [
-  ["hive-resin.png", hiveResin],
-  ["carapace.png", carapace],
-  ["industrial-panels.png", industrialPanels],
-  ["organic-bump.png", organicBump],
+const materials = [
+  { name: "carapace", shader: carapaceMaterial, normalStrength: 0.16 },
+  { name: "hive-resin", shader: resinMaterial, normalStrength: 0.12 },
+  { name: "industrial-panels", shader: industrialMaterial, normalStrength: 0.11 },
+  { name: "fabric-weave", shader: fabricMaterial, normalStrength: 0.14 },
+  { name: "skin-tissue", shader: skinMaterial, normalStrength: 0.18 },
 ];
 
 await fs.mkdir(outputDirectory, { recursive: true });
 
-for (const [fileName, shader] of textures) {
-  const buffer = createRawTexture(shader);
-  assertTileableEdges(buffer, fileName);
-  const outputPath = path.join(outputDirectory, fileName);
-  await fs.writeFile(outputPath, encodePngRgb(buffer, size, size));
-
+async function saveMap(name, buffer) {
+  assertTileableEdges(buffer, name);
+  const outputPath = path.join(outputDirectory, name);
+  const png = encodePngRgb(buffer, size, size);
+  await fs.writeFile(outputPath, png);
   const writtenPng = await fs.readFile(outputPath);
   const metadata = inspectPng(writtenPng);
-  if (metadata.width !== size || metadata.height !== size) {
-    throw new Error(`${fileName}: dimensions inattendues`);
-  }
-  console.log(
-    `${fileName}: ${metadata.width}x${metadata.height}, PNG RGB 8 bits tileable, ${writtenPng.length} octets`,
-  );
+  if (metadata.width !== size || metadata.height !== size) throw new Error(`${name}: dimensions inattendues`);
+  console.log(`${name}: ${size}x${size}, RGB8, coutures exactes, CRC vérifiés, ${writtenPng.length} octets`);
 }
 
-console.log("Encodeur utilisé: Node.js natif (zlib + CRC32), aucune dépendance externe");
+for (const material of materials) {
+  const { maps, height } = buildMaterial(material.shader, material.normalStrength);
+  for (const [kind, buffer] of Object.entries(maps)) {
+    await saveMap(`${material.name}${kind === "color" ? "" : `-${kind}`}.png`, buffer);
+  }
+  if (material.name === "hive-resin") {
+    // Compatibility with legacy callers that still use a scalar bump map.
+    const legacyHeight = Buffer.alloc(size * size * channels);
+    for (let index = 0; index < height.length; index += 1) {
+      const value = encodeColor(height[index] * 255);
+      legacyHeight.fill(value, index * channels, index * channels + channels);
+    }
+    copyPeriodicEdges(legacyHeight);
+    await saveMap("organic-bump.png", legacyHeight);
+  }
+}
+
+console.log("5 matériaux PBR / 22 cartes déterministes ; couleurs sRGB, normales et scalaires linéaires. Encodeur Node.js natif zlib + CRC32.");

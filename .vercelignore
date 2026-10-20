@@ -7,6 +7,7 @@ start.bat
 tools/
 .tools/
 QA_REPORT.md
+GRAPHICS_UPGRADE.md
 GAME_AUDIT.md
 
 # Earlier modular prototype; the live page uses src/game.js and src/css/style.css.

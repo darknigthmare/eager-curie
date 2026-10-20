@@ -12,6 +12,7 @@ Jeu de survie et de stratégie biologique en cinq actes, jouable dans un navigat
 - Modèles 3D procéduraux détaillés, décors industriels, résine, éclairage, SFX et VFX.
 - Codex, sauvegarde locale, difficulté, pause, son, contraste élevé et réduction des mouvements.
 - Textures originales générées localement et reproductibles avec `tools/generate-textures.mjs`.
+- Matériaux PBR en 1024 px, anatomies différenciées, décor industriel instancié et reflets d’environnement.
 
 Le catalogue narratif et les règles biologiques sont centralisés dans `src/content.js`. L’audit de contenu et de cohérence se trouve dans `GAME_AUDIT.md`.
 
@@ -64,6 +65,23 @@ node tools/qa-models.cjs
 Le premier script produit son rapport JSON et ses captures dans `.tools/qa/`. Les tests automatisés couvrent des parcours d’interface et des scénarios ciblés ; l’initialisation des actes par API ne constitue pas une campagne intégralement jouée. Les résultats et limites sont décrits dans `QA_REPORT.md`.
 
 Pour renouveler les dépendances statiques épinglées : `python3 tools/vendor-assets.py`. Cet outil vérifie l’intégrité SHA-512 des archives npm avant d’écrire les fichiers ; `assets/vendor/provenance.json` enregistre leurs versions et empreintes.
+
+## Qualité graphique
+
+Les paramètres du jeu proposent Automatique, Équilibré, Élevé et Ultra. Le choix est conservé après rechargement. Les textures restent détaillées dans tous les modes ; les profils ajustent la résolution de rendu, les ombres et les effets. Automatique privilégie le profil Équilibré sur une interface tactile ou un petit écran.
+
+Les cinq familles de matériaux — carapace, résine, métal industriel, tissu et peau — disposent de cartes couleur, normales, rugosité et occlusion. Le métal dispose aussi d’une carte métallique. Les 22 cartes sont locales, en 1024 × 1024. Les reflets filtrés, les contacts par profondeur et le bloom discret complètent l’éclairage ; les cloisons devant la créature restent transparentes.
+
+Pour reproduire les contrôles graphiques (les scripts de captures utilisent aussi Pillow) :
+
+```sh
+node tools/qa-model-detail.cjs
+python3 tools/qa-textures.py --regenerate
+python3 tools/qa-render.py
+python3 tools/qa-graphics.py --url http://127.0.0.1:8082/
+```
+
+Le contrôle des textures vérifie notamment l’intégrité PNG, les coutures et une régénération identique. Les comparaisons et budgets de scène figurent dans `GRAPHICS_UPGRADE.md`. Les mesures sous WebGL logiciel ne sont pas des mesures de fréquence d’image sur un GPU de jeu.
 
 ## Contrôles
 

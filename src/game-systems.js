@@ -158,10 +158,11 @@
       this.defaults = {
         volume: 70,
         brightness: 100,
-        scanlines: true,
+        scanlines: false,
         reducedMotion: prefersReducedMotion,
         highContrast: false,
-        muted: false
+        muted: false,
+        graphicsQuality: 'auto'
       };
       this.values = this.read();
       this.game = null;
@@ -187,6 +188,9 @@
       for (const key of ['scanlines', 'reducedMotion', 'highContrast', 'muted']) {
         if (typeof parsed[key] === 'boolean') values[key] = parsed[key];
       }
+      if (['auto', 'mobile', 'high', 'ultra'].includes(parsed.graphicsQuality)) {
+        values.graphicsQuality = parsed.graphicsQuality;
+      }
       return values;
     }
 
@@ -205,7 +209,8 @@
         brightness: document.getElementById('setting-brightness'),
         scanlines: document.getElementById('setting-scanlines'),
         reducedMotion: document.getElementById('setting-reduced-motion'),
-        highContrast: document.getElementById('setting-high-contrast')
+        highContrast: document.getElementById('setting-high-contrast'),
+        graphicsQuality: document.getElementById('setting-graphics')
       };
 
       if (controls.volume) controls.volume.value = this.values.volume;
@@ -213,6 +218,7 @@
       if (controls.scanlines) controls.scanlines.checked = this.values.scanlines;
       if (controls.reducedMotion) controls.reducedMotion.checked = this.values.reducedMotion;
       if (controls.highContrast) controls.highContrast.checked = this.values.highContrast;
+      if (controls.graphicsQuality) controls.graphicsQuality.value = this.values.graphicsQuality;
 
       const sync = () => {
         this.values = {
@@ -221,7 +227,8 @@
           scanlines: !!controls.scanlines?.checked,
           reducedMotion: !!controls.reducedMotion?.checked,
           highContrast: !!controls.highContrast?.checked,
-          muted: this.values.muted
+          muted: this.values.muted,
+          graphicsQuality: controls.graphicsQuality?.value || this.values.graphicsQuality
         };
         this.apply();
         this.write();
@@ -249,6 +256,7 @@
       if (audioButton) audioButton.textContent = this.values.muted ? 'SON COUPÉ' : 'SON';
       this.game?.setMasterVolume?.(this.values.volume / 100);
       this.game?.setReducedMotion?.(this.values.reducedMotion);
+      this.game?.setGraphicsQuality?.(this.values.graphicsQuality);
       this.vfx?.setReducedMotion?.(this.values.reducedMotion);
     }
   }

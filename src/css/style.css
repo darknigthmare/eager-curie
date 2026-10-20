@@ -142,6 +142,13 @@ button {
   color: #39ff14;
   letter-spacing: 2px;
   text-shadow: 0 0 10px rgba(57, 255, 20, 0.7);
+  white-space: nowrap;
+}
+
+@media (min-width: 1051px) {
+  .hud-left { min-width: 0; gap: 12px; }
+  .hud-left .brand-title { flex-shrink: 0; }
+  .hud-left .stage-badge { max-width: 280px; font-size: 10px; line-height: 1.35; }
 }
 
 .stage-badge {
@@ -797,6 +804,23 @@ button {
   color: #94a3b8;
   font-size: 10px;
   letter-spacing: 1px;
+}
+
+.settings-grid select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: #e2edf0;
+  background: #0b141d;
+  border: 1px solid #425465;
+  border-radius: 5px;
+  font: inherit;
+}
+
+.settings-help {
+  color: #a5b8c5;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .campaign-options select {

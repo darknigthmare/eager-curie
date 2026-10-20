@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#040609">
   <link rel="icon" type="image/svg+xml" href="assets/hive-icon.svg">
   <link rel="stylesheet" href="assets/fonts/fonts.css">
-  <link rel="stylesheet" href="src/css/style.css?v=20261020">
+  <link rel="stylesheet" href="src/css/style.css?v=20261020-visual">
 
   <!-- Pinned, integrity-verified runtime served locally; no external CDN required. -->
   <script defer src="assets/vendor/three.r128.min.js"></script>
@@ -291,9 +291,18 @@
           <button type="button" id="btn-close-settings" class="close-system-btn">FERMER</button>
         </header>
         <div class="settings-grid">
+          <label for="setting-graphics">QUALITÉ GRAPHIQUE
+            <select id="setting-graphics" aria-describedby="graphics-quality-help">
+              <option value="auto">AUTOMATIQUE — selon l’appareil</option>
+              <option value="mobile">ÉQUILIBRÉ — privilégier la fluidité</option>
+              <option value="high">ÉLEVÉ — détails et éclairage</option>
+              <option value="ultra">ULTRA — ombres et résolution maximales</option>
+            </select>
+          </label>
+          <p id="graphics-quality-help" class="settings-help">Les textures détaillées restent actives dans tous les modes. Le réglage ajuste les ombres, les effets et la résolution.</p>
           <label>VOLUME PRINCIPAL <input type="range" id="setting-volume" min="0" max="100" value="70"></label>
           <label>LUMINOSITÉ <input type="range" id="setting-brightness" min="70" max="140" value="100"></label>
-          <label class="toggle-row"><input type="checkbox" id="setting-scanlines" checked><span>Effet de scan</span></label>
+          <label class="toggle-row"><input type="checkbox" id="setting-scanlines"><span>Effet de scan</span></label>
           <label class="toggle-row"><input type="checkbox" id="setting-reduced-motion"><span>Réduire les mouvements</span></label>
           <label class="toggle-row"><input type="checkbox" id="setting-high-contrast"><span>Contraste renforcé</span></label>
         </div>
@@ -316,9 +325,12 @@
   </div>
 
   <!-- Data, asset factories and systems are loaded before the standalone game. -->
-  <script defer src="src/content.js?v=20261020"></script>
-  <script defer src="src/models.js?v=20261020"></script>
-  <script defer src="src/game-systems.js?v=20261020"></script>
-  <script defer src="src/game.js?v=20261020"></script>
+  <script defer src="src/content.js?v=20261020-visual"></script>
+  <script defer src="src/model-detail.js?v=20261020-visual"></script>
+  <script defer src="src/models.js?v=20261020-visual"></script>
+  <script defer src="src/render-quality.js?v=20261020-visual"></script>
+  <script defer src="src/station-detail.js?v=20261020-visual"></script>
+  <script defer src="src/game-systems.js?v=20261020-visual"></script>
+  <script defer src="src/game.js?v=20261020-visual"></script>
 </body>
 </html>

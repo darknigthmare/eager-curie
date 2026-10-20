@@ -59,7 +59,7 @@ def run(url, chromium):
         assert save["unlockedCodex"] == ["drone"], "Codex data must filter invalid entries"
         assert save["campaignCharacters"]["asterRho"]["maskAttachments"] == 2
         assert settings["volume"] == 100 and settings["brightness"] == 70
-        assert settings["scanlines"] is True and values["audio"] == "true"
+        assert settings["scanlines"] is False and values["audio"] == "true"
         page.click("#btn-continue-campaign")
         page.wait_for_function("""gameInstance.currentStageIndex === 3 &&
             gameInstance.campaignConfig.difficulty === 'survivor'""")

@@ -644,6 +644,9 @@
       this.groundPlane = null;
       this.wallVisibilityRay = null;
       this.reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.graphicsQuality = 'auto';
+      this.renderQuality = null;
+      this.stationDetail = null;
     }
 
     init(canvas) {
@@ -667,32 +670,37 @@
       this.renderer.setSize(this.width, this.height);
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       this.renderer.outputEncoding = THREE.sRGBEncoding;
+      this.renderer.physicallyCorrectLights = true;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.05;
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-      const ambient = new THREE.AmbientLight(0x172033, 1.05);
+      const ambient = new THREE.AmbientLight(0xb1c5d6, 0.28);
       this.scene.add(ambient);
 
-      const hemisphere = new THREE.HemisphereLight(0x294861, 0x08030e, 0.75);
+      const hemisphere = new THREE.HemisphereLight(0xc1d5e1, 0x302b28, 0.7);
       this.scene.add(hemisphere);
 
-      const dirLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
+      const dirLight = new THREE.DirectionalLight(0xd4e3ed, 2.6);
       dirLight.position.set(30, 60, 30);
       dirLight.castShadow = true;
+      dirLight.shadow.bias = -0.00012;
+      dirLight.shadow.normalBias = 0.035;
+      dirLight.shadow.radius = 2;
       dirLight.shadow.mapSize.set(1024, 1024);
       dirLight.shadow.camera.left = -75;
       dirLight.shadow.camera.right = 75;
       dirLight.shadow.camera.top = 75;
       dirLight.shadow.camera.bottom = -75;
       this.scene.add(dirLight);
+      this.scene.add(dirLight.target);
 
-      const redEmergency = new THREE.PointLight(0xff0055, 3.5, 50);
+      const redEmergency = new THREE.PointLight(0xf27453, 75, 50, 2);
       redEmergency.position.set(-20, 10, -25);
       this.scene.add(redEmergency);
 
-      const bioGreen = new THREE.PointLight(0x39ff14, 2.8, 40);
+      const bioGreen = new THREE.PointLight(0x8bbb7d, 55, 40, 2);
       bioGreen.position.set(15, 8, 10);
       this.scene.add(bioGreen);
 
@@ -705,6 +713,11 @@
       this.scene.add(this.propsGroup);
       this.scene.add(this.resinGroup);
 
+      this.createReflectionEnvironment();
+      this.renderQuality = window.HiveRenderQuality?.create(this.renderer, this.scene, this.camera, {
+        quality: this.graphicsQuality
+      }) || null;
+
       window.addEventListener('resize', () => this.onWindowResize());
     }
 
@@ -713,7 +726,50 @@
       this.height = window.innerHeight;
       this.camera.aspect = this.width / this.height;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(this.width, this.height);
+      if (this.renderQuality) {
+        this.renderQuality.setQuality(this.graphicsQuality);
+        this.renderQuality.setSize(this.width, this.height);
+        this.stationDetail?.setQuality(this.renderQuality.getDiagnostics().quality);
+      } else this.renderer.setSize(this.width, this.height);
+    }
+
+    createReflectionEnvironment() {
+      // A local light probe supplies broad reflections to the PBR surfaces.
+      // It is filtered once rather than adding costly lights to every room.
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 256;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      const sky = context.createLinearGradient(0, 0, 0, 256);
+      sky.addColorStop(0, '#8fabbc');
+      sky.addColorStop(0.36, '#586a75');
+      sky.addColorStop(0.58, '#26343e');
+      sky.addColorStop(1, '#39342c');
+      context.fillStyle = sky;
+      context.fillRect(0, 0, 512, 256);
+      for (const x of [32, 186, 352]) {
+        context.fillStyle = '#edf4f1';
+        context.fillRect(x, 44, 78, 12);
+        context.fillStyle = '#9bb4c0';
+        context.fillRect(x, 60, 78, 6);
+      }
+      const source = new THREE.CanvasTexture(canvas);
+      source.encoding = THREE.sRGBEncoding;
+      source.mapping = THREE.EquirectangularReflectionMapping;
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      pmrem.compileEquirectangularShader();
+      this.environmentTarget = pmrem.fromEquirectangular(source);
+      this.scene.environment = this.environmentTarget.texture;
+      source.dispose();
+      pmrem.dispose();
+    }
+
+    setGraphicsQuality(quality = 'auto') {
+      this.graphicsQuality = ['auto', 'mobile', 'high', 'ultra'].includes(quality) ? quality : 'auto';
+      this.renderQuality?.setQuality(this.graphicsQuality);
+      const resolved = this.renderQuality?.getDiagnostics().quality || this.graphicsQuality;
+      this.stationDetail?.setQuality(resolved);
     }
 
     setCameraTarget(x, z, heightOffset = 0, isRTS = false, deltaSeconds = 1 / 60) {
@@ -727,11 +783,11 @@
         this.camera.updateProjectionMatrix();
       }
       if (this.scene?.fog) this.scene.fog.density = isRTS ? 0.0045 : 0.012;
-      if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.34 : 1.05;
+      if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.22 : 1.12;
       // La vue de commandement cadre toute la station afin que les trois relais
       // restent réellement ciblables sans caméra libre ni mini-carte.
-      const targetY = isRTS ? 120 : 46 + heightOffset;
-      const targetZ = isRTS ? z + 70 : z + 20;
+      const targetY = isRTS ? 120 : 37 + heightOffset;
+      const targetZ = isRTS ? z + 70 : z + 18;
       const smoothing = 1 - Math.pow(0.92, Math.max(0, deltaSeconds) * 60);
 
       this.camera.position.x += (x - this.camera.position.x) * smoothing;
@@ -739,6 +795,14 @@
       this.camera.position.y += (targetY - this.camera.position.y) * smoothing;
 
       this.camera.lookAt(x, isRTS ? 0 : 1.2, z);
+      const key = this.lights.dirLight;
+      const extent = isRTS ? 82 : 38;
+      key.position.set(x + 30, 60, z + 30);
+      key.target.position.set(x, 0, z);
+      if (key.shadow.camera.right !== extent) {
+        Object.assign(key.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent });
+        key.shadow.camera.updateProjectionMatrix();
+      }
     }
 
     setCinematicCamera({ position, target, fov = 72, near = 0.025, exposure = 1.18 }, deltaSeconds = 1 / 60) {
@@ -848,12 +912,14 @@
 
     render() {
       if (this.lights.redEmergency && !this.reduceMotion) {
-        this.lights.redEmergency.intensity = 2.5 + Math.sin(Date.now() * 0.005) * 1.0;
+        this.lights.redEmergency.intensity = 65 + Math.sin(Date.now() * 0.002) * 10;
       }
       if (this.lights.bioGreen && !this.reduceMotion) {
-        this.lights.bioGreen.intensity = 2.0 + Math.sin(Date.now() * 0.003) * 0.6;
+        this.lights.bioGreen.intensity = 48 + Math.sin(Date.now() * 0.0014) * 7;
       }
-      this.renderer.render(this.scene, this.camera);
+      this.stationDetail?.update(Date.now() / 1000);
+      if (this.renderQuality) this.renderQuality.render();
+      else this.renderer.render(this.scene, this.camera);
     }
   }
 
@@ -1037,18 +1103,20 @@
 
       const floorMat = new THREE.MeshStandardMaterial({
         map: floorTex,
-        color: 0x768195,
-        roughness: 0.56,
-        metalness: 0.72
+        color: 0xc1c6c7,
+        roughness: 1,
+        metalness: 1
       });
       const wallMat = new THREE.MeshStandardMaterial({
         map: wallTex,
-        color: 0x596579,
-        roughness: 0.48,
-        metalness: 0.78
+        color: 0xb4bfc3,
+        roughness: 1,
+        metalness: 1
       });
+      const wallMaterials = [wallMat];
 
       const floorGeo = new THREE.PlaneGeometry(160, 160);
+      floorGeo.setAttribute('uv2', floorGeo.attributes.uv.clone());
       const floorMesh = new THREE.Mesh(floorGeo, floorMat);
       floorMesh.rotation.x = -Math.PI / 2;
       floorMesh.receiveShadow = true;
@@ -1056,7 +1124,9 @@
 
       const addWall = (x, z, width, height, depth) => {
         const wallGeo = new THREE.BoxGeometry(width, height, depth);
+        wallGeo.setAttribute('uv2', wallGeo.attributes.uv.clone());
         const wallMaterial = wallMat.clone();
+        wallMaterials.push(wallMaterial);
         wallMaterial.transparent = true;
         const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
         wallMesh.position.set(x, height / 2, z);
@@ -1198,6 +1268,33 @@
       addProp(-24, 6, 6, 3.2, 3, 0x334155, 0x000000, 'crate');
       addProp(25, 13, 5, 3.2, 4, 0x334155, 0x000000, 'crate');
       this.addWayfinding();
+      window.HiveModelFactory?.loadTextures?.().then((textures) => {
+        const bindPBR = (material, repeatX, repeatY, normalStrength) => {
+          for (const [slot, key] of [
+            ['normalMap', 'industrialNormal'], ['roughnessMap', 'industrialRoughness'],
+            ['aoMap', 'industrialAO'], ['metalnessMap', 'industrialMetalness']
+          ]) {
+            if (!textures[key]) continue;
+            const map = textures[key].clone();
+            map.repeat.set(repeatX, repeatY);
+            map.anisotropy = Math.min(8, rendererEngine.renderer.capabilities.getMaxAnisotropy());
+            map.needsUpdate = true;
+            material[slot] = map;
+          }
+          material.normalScale.set(normalStrength, normalStrength);
+          material.aoMapIntensity = 0.65;
+          material.needsUpdate = true;
+        };
+        bindPBR(floorMat, 12, 12, 0.35);
+        // Wall clones share the same PBR maps while keeping independent opacity.
+        bindPBR(wallMat, 5, 2, 0.3);
+        for (const material of wallMaterials.slice(1)) {
+          for (const slot of ['normalMap', 'roughnessMap', 'aoMap', 'metalnessMap']) material[slot] = wallMat[slot];
+          material.normalScale.copy(wallMat.normalScale);
+          material.aoMapIntensity = wallMat.aoMapIntensity;
+          material.needsUpdate = true;
+        }
+      });
     }
 
     addWayfinding() {
@@ -1624,6 +1721,15 @@
       joint.rotation.x -= envelope * (0.24 + index % 3 * 0.05);
       joint.rotation.z += envelope * (index % 2 === 0 ? 0.18 : -0.18);
     });
+
+    if (!Object.prototype.hasOwnProperty.call(model.userData, 'runtimeInnerJaw')) {
+      model.userData.runtimeInnerJaw = model.getObjectByName('pharyngeal_jaw_slider') || null;
+    }
+    const innerJaw = model.userData.runtimeInnerJaw;
+    if (innerJaw) {
+      const extension = Math.sin(Math.min(1, Math.max(0, attack)) * Math.PI);
+      innerJaw.position.z = innerJaw.userData.retractedZ + extension * innerJaw.userData.extensionLength;
+    }
 
     if (crouch > 0) {
       model.position.y -= Math.sin(Math.min(1, crouch) * Math.PI) * 0.22;
@@ -5273,6 +5379,14 @@
         }
       });
       stationMap.buildMap(); resinGrid.init();
+      rendererEngine.stationDetail = window.HiveStationDetail?.build({
+        THREE,
+        scene: rendererEngine.scene,
+        mapGroup: rendererEngine.mapGroup,
+        propsGroup: rendererEngine.propsGroup,
+        walls: stationMap.walls,
+        quality: rendererEngine.renderQuality?.getDiagnostics().quality || 'high'
+      }) || null;
       this.ensureStageOneHost(true);
       playerCreature.createMesh();
       this.loadStage(1);
@@ -5478,6 +5592,10 @@
 
     setReducedMotion(value) {
       rendererEngine.reduceMotion = !!value || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    setGraphicsQuality(value) {
+      rendererEngine.setGraphicsQuality(value);
     }
 
     getDifficultyDamageModifier() {

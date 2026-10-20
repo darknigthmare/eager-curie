@@ -359,7 +359,9 @@
     }
 
     disposeModel(root) {
-      if (!root || !root.traverse) return;
+      if (!root || !root.traverse || root.userData?.hiveFactoryDisposed) return;
+      root.userData.hiveFactoryDisposed = true;
+      global.HiveAssetLibrary?.disposeObject?.(root, { disposeResources: false });
       const geometries = new Set();
       const materials = new Set();
       root.traverse((child) => {
@@ -397,6 +399,9 @@
       let hierarchyRoot = root;
       while (hierarchyRoot.parent) hierarchyRoot = hierarchyRoot.parent;
       hierarchyRoot.updateMatrixWorld(true);
+      if (global.HiveAssetLibrary?.handlesRoot?.(root)) {
+        return global.HiveAssetLibrary.getModelBounds(root, bounds);
+      }
       return bounds.setFromObject(root);
     }
 
@@ -2907,6 +2912,41 @@
       if (normalizedType === 'powerloader') return this._createExosuit();
       if (normalizedType === 'labhound') return this._createServiceAnimal(requestedType);
       if (normalizedType === 'labrodent') return this._createLaboratoryRodent(requestedType);
+
+      const imported = global.HiveAssetLibrary?.instantiate?.(normalizedType, { height: 4.25 });
+      if (imported) {
+        Object.assign(imported.userData, {
+          modelType: 'human', subtype: normalizedType, requestedSubtype: requestedType,
+          forwardAxis: '+Z', height: 4.25, hiveImportedModel: true
+        });
+        const hand = global.HiveAssetLibrary.getRuntime(imported)?.bindings.rightHand;
+        if (hand && ['guard', 'marine', 'smartgunner', 'incinerator', 'commando'].includes(normalizedType)) {
+          const T = this._three();
+          const metal = this._material('industrial', { color: 0x56616b });
+          const dark = this._material('darkMetal', { color: 0x20282d });
+          const accent = this._material('emissiveAmber', { emissiveIntensity: 0.25 });
+          const weapon = this._createEquipmentWeapon(normalizedType, metal, dark, accent);
+          global.HiveModelDetail?.mergeStatic?.(weapon);
+          const usedMaterials = new Set();
+          weapon.traverse(object => {
+            if (object.material) (Array.isArray(object.material) ? object.material : [object.material]).forEach(material => usedMaterials.add(material));
+          });
+          for (const material of [metal, dark, accent]) if (!usedMaterials.has(material)) material.dispose();
+          imported.updateMatrixWorld(true);
+          const grip = new T.Group(); grip.name = 'imported_weapon_grip';
+          const handScale = hand.getWorldScale(new T.Vector3());
+          grip.scale.set(1 / handScale.x, 1 / handScale.y, 1 / handScale.z);
+          const carried = imported.getWorldQuaternion(new T.Quaternion())
+            .multiply(new T.Quaternion().setFromEuler(new T.Euler(0.42, 0, 0)));
+          grip.quaternion.copy(hand.getWorldQuaternion(new T.Quaternion()).invert().multiply(carried));
+          weapon.position.set(0, 0.08, 0.12);
+          weapon.scale.setScalar(0.76);
+          grip.add(weapon); hand.add(grip);
+          imported.userData.equipmentType = normalizedType;
+        }
+        imported.userData.dispose = () => this.disposeModel(imported);
+        return imported;
+      }
 
       const root = this._createHumanFigure(normalizedType, false);
       return this._finalize(root, {

@@ -12,6 +12,12 @@ HEADERS = json.loads((ROOT / 'vercel.json').read_text())['headers'][0]['headers'
 
 
 class GameHandler(SimpleHTTPRequestHandler):
+    extensions_map = dict(SimpleHTTPRequestHandler.extensions_map, **{
+        '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json',
+        '.bin': 'application/octet-stream', '.hdr': 'image/vnd.radiance',
+        '.webp': 'image/webp',
+    })
+
     def send_head(self):
         path = unquote(urlsplit(self.path).path)
         parts = Path(path.lstrip('/')).parts
@@ -19,7 +25,7 @@ class GameHandler(SimpleHTTPRequestHandler):
         allowed = path in ('/', '/index.html') or (
             bool(parts) and parts[0] in ('assets', 'src')
             and not any(part.startswith('.') for part in parts)
-            and target.suffix.lower() in ('.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.woff2', '.txt')
+            and target.suffix.lower() in ('.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.woff2', '.txt', '.glb', '.gltf', '.bin', '.hdr', '.webp')
         )
         if not allowed or not target.is_relative_to(ROOT):
             self.send_error(404)

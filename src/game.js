@@ -888,6 +888,7 @@
     removeObject(object) {
       if (!object) return;
       if (object.parent) object.parent.remove(object);
+      window.HiveAssetLibrary?.disposeObject?.(object, { disposeResources: false });
       object.traverse((child) => {
         if (child.geometry) child.geometry.dispose();
         if (!child.material) return;
@@ -1692,7 +1693,7 @@
   function getAnimationModel(container) {
     let model = null;
     container?.traverse((child) => {
-      if (!model && child.userData?.animationRig) model = child;
+      if (!model && (child.userData?.animationRig || window.HiveAssetLibrary?.handlesRoot?.(child))) model = child;
     });
     return model;
   }
@@ -1705,6 +1706,10 @@
     pulse = 0
   } = {}) {
     const model = getAnimationModel(container);
+    if (window.HiveAssetLibrary?.handlesRoot?.(model)) {
+      window.HiveAssetLibrary.setState(model, { phase, movement, attack, crouch, pulse, frozen: false });
+      return;
+    }
     const rig = model?.userData?.animationRig;
     if (!rig) return;
     if (!model.userData.runtimeBasePose) {
@@ -2401,6 +2406,14 @@
     }
 
     addFaceAnchor(group) {
+      let importedAnchor = null;
+      group.traverse((child) => {
+        if (!importedAnchor && child.userData?.faceAnchor?.isObject3D) importedAnchor = child.userData.faceAnchor;
+      });
+      if (importedAnchor) {
+        this.faceAnchor = importedAnchor;
+        return;
+      }
       const anchor = new THREE.Group();
       anchor.name = 'face_attachment_anchor';
       const helmetJoint = group.getObjectByName('helmet_and_comms');
@@ -2546,7 +2559,11 @@
     }
 
     update(deltaSeconds = 1 / 60) {
-      if (!this.mesh || this.isBursting || this.isCocooned || this.isIncapacitated) return;
+      if (!this.mesh || this.isBursting || this.isCocooned || this.isIncapacitated) {
+        const model = getAnimationModel(this.mesh);
+        if (window.HiveAssetLibrary?.handlesRoot?.(model)) window.HiveAssetLibrary.setState(model, { frozen: true });
+        return;
+      }
       const safeDelta = Math.max(0, deltaSeconds);
       this.attackAnimation = Math.max(0, this.attackAnimation - safeDelta * 2.8);
       if (this.isRestrained) {
@@ -5674,6 +5691,7 @@
           }
         }
         window.HiveSystems?.update(deltaSeconds);
+        window.HiveAssetLibrary?.update?.(deltaSeconds);
         if (!this.isRunning) return;
       }
 
@@ -5703,16 +5721,49 @@
     }
   }
 
-  window.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('DOMContentLoaded', async () => {
+    const bootScreen = document.getElementById('boot-screen');
+    const bootStatus = document.getElementById('boot-loading-status');
+    const bootButtons = Array.from(bootScreen?.querySelectorAll('button') || []);
+    const buttonStates = bootButtons.map(button => button.disabled);
+    bootScreen?.setAttribute('aria-busy', 'true');
+    bootButtons.forEach(button => { button.disabled = true; });
     try {
       if (typeof THREE === 'undefined') throw new Error('Three.js indisponible');
+      let assetWarning = false;
+      if (window.HiveAssetLibrary) {
+        try {
+          await window.HiveAssetLibrary.loadManifest('assets/models/manifest.json');
+          const assets = await window.HiveAssetLibrary.preload();
+          assetWarning = assets.failed.length > 0;
+          if (assetWarning) console.warn('[HIVE ASSETS] Some local character assets could not load.', assets.failed);
+        } catch (error) {
+          assetWarning = true;
+          console.warn('[HIVE ASSETS] Character library unavailable; using procedural models.', error);
+        }
+      }
+      bootButtons.forEach((button, index) => { button.disabled = buttonStates[index]; });
       const game = new GameMaster();
       game.init();
+      bootScreen?.setAttribute('aria-busy', 'false');
+      if (bootStatus) {
+        bootStatus.hidden = !assetWarning;
+        bootStatus.textContent = assetWarning
+          ? 'Certains modèles détaillés n’ont pas pu charger. Rechargez la page pour les retrouver.' : '';
+      }
     } catch (error) {
       console.error('[HIVE ASCENSION] Initialisation impossible', error);
+      bootScreen?.setAttribute('aria-busy', 'false');
+      if (bootStatus) bootStatus.textContent = 'La station n’a pas pu démarrer. Vérifiez WebGL, puis rechargez la page.';
+      const bootRetry = document.getElementById('btn-new-campaign');
+      if (bootRetry) {
+        bootRetry.disabled = false;
+        bootRetry.textContent = 'RECHARGER LE JEU';
+        bootRetry.onclick = () => window.location.reload();
+      }
       const instructions = document.getElementById('stage-instructions');
       const actions = document.getElementById('action-buttons-container');
-      if (instructions) instructions.textContent = 'Le moteur 3D n\'a pas pu démarrer. Vérifiez WebGL et la connexion au CDN Three.js, puis rechargez la page.';
+      if (instructions) instructions.textContent = 'Le moteur 3D n\'a pas pu démarrer. Vérifiez WebGL, puis rechargez la page.';
       if (actions) actions.innerHTML = '<button type="button" class="act-btn" id="btn-reload-game">RECHARGER LE JEU</button>';
       const reloadButton = document.getElementById('btn-reload-game');
       if (reloadButton) reloadButton.onclick = () => window.location.reload();

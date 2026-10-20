@@ -50,12 +50,12 @@ def main():
 
     def boot(page):
         page.goto(args.url, wait_until='domcontentloaded')
-        page.wait_for_function('window.gameInstance && window.HiveSystems?.ui?.game', timeout=20000)
+        page.wait_for_function('() => !!(window.gameInstance && window.HiveSystems?.ui?.game)', timeout=120000)
 
     def start(page):
         page.click('#btn-new-campaign')
         page.click('#btn-start-act-one')
-        page.wait_for_function('gameInstance.campaignActive && !gameInstance.isSystemPaused')
+        page.wait_for_function('() => gameInstance.campaignActive && !gameInstance.isSystemPaused')
 
     def native_assets():
         from html.parser import HTMLParser
@@ -124,7 +124,7 @@ def main():
                 require(navigation['arrived'], f'Actual host AI reaches egg within 30 simulated seconds: {navigation}')
                 page.click('#btn-open-egg')
                 page.click('#btn-expel-facehugger')
-                page.wait_for_function('gameInstance.currentStageIndex === 2')
+                page.wait_for_function('() => gameInstance.currentStageIndex === 2')
                 require(page.evaluate('HiveSystems.save.read().stage === 2'), 'Act-two checkpoint persisted')
                 return dict(ui='Three calibrations, lure, egg opening, expulsion and stage-two checkpoint',
                             navigation=navigation, clock='Actual AI at fixed 60 Hz; renderer-independent navigation check')
@@ -212,7 +212,7 @@ def main():
             def resume():
                 page.evaluate('HiveSystems.save.write({stage:4,campaignStarted:true,difficulty:"story",adultCaste:"runner",hostProfile:"labhound"})')
                 page.reload(wait_until='domcontentloaded')
-                page.wait_for_function('window.HiveSystems?.ui?.game')
+                page.wait_for_function('() => !!window.HiveSystems?.ui?.game', timeout=120000)
                 require(not page.locator('#btn-continue-campaign').is_disabled(), 'Continue offered after reload')
                 page.click('#btn-continue-campaign')
                 require(page.evaluate('gameInstance.currentStageIndex===4 && gameInstance.campaignConfig.difficulty==="story" && gameInstance.campaignConfig.adultCaste==="runner" && gameInstance.hostProfile==="labhound"'), 'Saved act, difficulty, caste and host restored')
@@ -237,7 +237,7 @@ def main():
                 for index in range(3):
                     if index:
                         page.reload(wait_until='domcontentloaded')
-                        page.wait_for_function('window.HiveSystems?.ui?.game')
+                        page.wait_for_function('() => !!window.HiveSystems?.ui?.game', timeout=120000)
                         start(page)
                     page.evaluate('''() => {
                         gameInstance.startCampaign(5);

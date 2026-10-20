@@ -35,7 +35,7 @@ def run(url, chromium):
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.goto(url, wait_until="domcontentloaded")
-            page.wait_for_function("window.HiveSystems?.ui.game")
+            page.wait_for_function("() => !!window.HiveSystems?.ui.game", timeout=120000)
             return context, page, errors
 
         context, page, errors = new_page("""
@@ -61,7 +61,7 @@ def run(url, chromium):
         assert settings["volume"] == 100 and settings["brightness"] == 70
         assert settings["scanlines"] is False and values["audio"] == "true"
         page.click("#btn-continue-campaign")
-        page.wait_for_function("""gameInstance.currentStageIndex === 3 &&
+        page.wait_for_function("""() => gameInstance.currentStageIndex === 3 &&
             gameInstance.campaignConfig.difficulty === 'survivor'""")
         assert not errors, errors
         results.append("Malformed save/settings normalize; act III resumes; saved mute applies")
@@ -112,7 +112,7 @@ def run(url, chromium):
         page.click("#btn-audio-toggle")
         assert page.evaluate("HiveSystems.settings.values.muted") is True
         page.reload(wait_until="domcontentloaded")
-        page.wait_for_function("window.HiveSystems?.ui.game")
+        page.wait_for_function("() => !!window.HiveSystems?.ui.game", timeout=120000)
         assert page.evaluate("HiveSystems.settings.values.muted") is True
         assert page.locator("#btn-audio-toggle").get_attribute("aria-pressed") == "true"
         assert not errors, errors

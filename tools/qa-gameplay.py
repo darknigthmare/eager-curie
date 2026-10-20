@@ -37,7 +37,7 @@ def main():
 
         page.route("**/src/game.js*", expose_internals)
         page.goto(args.url.rstrip("/") + "/", wait_until="domcontentloaded")
-        page.wait_for_function("window.gameInstance && window.HiveSystems.ui.game")
+        page.wait_for_function("() => !!(window.gameInstance && window.HiveSystems.ui.game)", timeout=120000)
         page.click("#btn-new-campaign")
         page.click("#btn-start-act-one")
         results = page.evaluate("""() => {

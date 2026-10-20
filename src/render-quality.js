@@ -1,10 +1,12 @@
 /* HIVE ASCENSION — local linear rendering and restrained photographic finishing.
- * THREE r128, no addons or network requests.
+ * THREE r128, local RGBE HDR probe; no runtime CDN requests.
  *
  * const pipeline = HiveRenderQuality.create(renderer, scene, camera, {quality:'auto'});
  * pipeline.render(); pipeline.setSize(cssWidth, cssHeight);
  * pipeline.setQuality('auto'|'mobile'|'high'|'ultra');
+ * await pipeline.environmentReady; // wait for local HDR + shared PMREM
  * pipeline.getDiagnostics(); pipeline.dispose();
+ * Use {environment:false} to preserve a caller-owned studio environment.
  *
  * Scene shading happens in linear HDR when the GPU supports a renderable half
  * float target. ACES and sRGB conversion happen exactly once in the final pass.
@@ -18,6 +20,105 @@
     high: Object.freeze({ pixelRatio: 1.5, scale: 1, shadowSize: 1024, bloomScale: 0.5, bloom: 0.11, ao: 0.3, samples: 8 }),
     ultra: Object.freeze({ pixelRatio: 2, scale: 1, shadowSize: 2048, bloomScale: 0.5, bloom: 0.13, ao: 0.36, samples: 12 })
   });
+
+  const ENVIRONMENT = Object.freeze({
+    name: 'Empty Warehouse 01', license: 'CC0-1.0',
+    source: 'assets/environments/empty-warehouse-01-1k.hdr',
+    sourcePage: 'https://polyhaven.com/a/empty_warehouse_01',
+    width: 1024, height: 512, bytes: 1672140, exposureStops: -2,
+    sha256: '9b3d611cadc32c3a0c7e084ce5611c0650293881c4a041e7fa13748fe0dc6451'
+  });
+  // GPU targets belong to a renderer/context. Reference-counted scene bindings
+  // prevent one preview pipeline from disposing another pipeline's light probe.
+  const environmentCache = new WeakMap();
+
+  function acquireEnvironment(renderer, scene) {
+    let entry = environmentCache.get(renderer);
+    if (!entry) {
+      entry = { refs: 0, scenes: new Map(), status: 'pending', target: null,
+        error: null, elapsedMs: null, released: false };
+      environmentCache.set(renderer, entry);
+      const started = performance.now();
+      entry.ready = new Promise((resolve) => {
+        const fail = (error) => {
+          entry.status = 'failed';
+          entry.error = error?.message || String(error?.type || error || 'Unknown HDR loading error');
+          entry.elapsedMs = performance.now() - started;
+          console.warn('[HIVE HDR] Local CC0 environment unavailable; keeping the existing light probe.', entry.error);
+          resolve(entry);
+        };
+        if (typeof THREE.RGBELoader !== 'function') {
+          fail(new Error('THREE.RGBELoader r128 is not loaded.'));
+          return;
+        }
+        try {
+          new THREE.RGBELoader().setDataType(THREE.UnsignedByteType).load(ENVIRONMENT.source, (source) => {
+            let generator = null;
+            try {
+              if (entry.released) { entry.status = 'disposed'; resolve(entry); return; }
+              // Calibrate the daylight capture to the station's existing key
+              // and practical lights. Changing the RGBE exponent preserves its
+              // relative radiance and highlight range; the source file remains
+              // unchanged and no display-space filter is involved.
+              const rgbe = source.image.data;
+              for (let offset = 3; offset < rgbe.length; offset += 4) {
+                if (rgbe[offset]) rgbe[offset] = Math.max(1, rgbe[offset] + ENVIRONMENT.exposureStops);
+              }
+              source.needsUpdate = true;
+              source.mapping = THREE.EquirectangularReflectionMapping;
+              generator = new THREE.PMREMGenerator(renderer);
+              generator.compileEquirectangularShader();
+              entry.target = generator.fromEquirectangular(source);
+              entry.target.texture.name = 'CC0 Empty Warehouse 01 / local RGBE PMREM';
+              entry.status = 'loaded';
+              entry.elapsedMs = performance.now() - started;
+              resolve(entry);
+            } catch (error) { fail(error); }
+            finally { source.dispose(); generator?.dispose(); }
+          }, undefined, fail);
+        } catch (error) { fail(error); }
+      });
+    }
+    entry.refs += 1;
+    let binding = entry.scenes.get(scene);
+    if (!binding) {
+      binding = { refs: 0, original: scene.environment };
+      entry.scenes.set(scene, binding);
+    }
+    binding.refs += 1;
+    return entry;
+  }
+
+  function releaseEnvironment(renderer, scene, entry) {
+    const binding = entry.scenes.get(scene);
+    if (binding && --binding.refs === 0) {
+      if (scene.environment === entry.target?.texture) scene.environment = binding.original;
+      entry.scenes.delete(scene);
+    }
+    entry.refs -= 1;
+    if (entry.refs > 0) return;
+    entry.released = true;
+    entry.target?.dispose();
+    entry.target = null;
+    if (environmentCache.get(renderer) === entry) environmentCache.delete(renderer);
+  }
+
+  function environmentDiagnostics(entry, status) {
+    const target = entry?.target;
+    const type = target?.texture.type;
+    const bytesPerChannel = type === THREE.FloatType ? 4 : type === THREE.HalfFloatType ? 2 : 1;
+    return {
+      ...ENVIRONMENT, status: status || entry?.status || 'disabled',
+      inputFormat: 'Radiance RGBE / linear HDR, station calibration -2 EV',
+      pmremWidth: target?.width || 0, pmremHeight: target?.height || 0,
+      textureType: type === THREE.HalfFloatType ? 'HalfFloatType'
+        : type === THREE.FloatType ? 'FloatType' : target ? 'UnsignedByteType' : null,
+      gpuBytes: target ? target.width * target.height * 4 * bytesPerChannel : 0,
+      refs: entry?.refs || 0, sceneRefs: entry?.scenes.size || 0,
+      elapsedMs: entry?.elapsedMs ?? null, error: entry?.error || null,
+      fallbackRetained: entry?.status === 'failed'
+    };
+  }
 
   const VERTEX = `varying vec2 vUv;
     void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}`;
@@ -147,7 +248,7 @@
       this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
       this.quad.frustumCulled = false;
       this.postScene.add(this.quad);
-      const material = (fragmentShader, uniforms, extensions) => new THREE.ShaderMaterial({
+      const material = (fragmentShader, uniforms, extensions = {}) => new THREE.ShaderMaterial({
         vertexShader: VERTEX, fragmentShader, uniforms, extensions,
         depthTest: false, depthWrite: false, toneMapped: false
       });
@@ -167,6 +268,23 @@
       }, { derivatives: true });
       this.setQuality(options.quality || 'auto');
       this.lastSceneInfo = { calls: 0, triangles: 0, points: 0, lines: 0 };
+      this.environmentEntry = null;
+      this.environmentReady = options.environment === false
+        ? Promise.resolve(environmentDiagnostics(null, 'disabled')) : this.loadEnvironment();
+    }
+
+    loadEnvironment() {
+      if (this.disposed) return Promise.resolve(environmentDiagnostics(null, 'disposed'));
+      if (this.environmentEntry) return this.environmentReady;
+      const entry = acquireEnvironment(this.renderer, this.scene);
+      this.environmentEntry = entry;
+      this.environmentReady = entry.ready.then(() => {
+        if (!this.disposed && this.environmentEntry === entry && entry.status === 'loaded') {
+          this.scene.environment = entry.target.texture;
+        }
+        return environmentDiagnostics(entry, this.disposed ? 'disposed' : null);
+      });
+      return this.environmentReady;
     }
 
     createTarget(width, height, withDepth = false) {
@@ -301,13 +419,21 @@
         aoSamples: this.profile.samples, passes: 5, disposed: this.disposed,
         scene: { ...this.lastSceneInfo },
         sceneDrawCalls: this.lastSceneInfo.calls, sceneTriangles: this.lastSceneInfo.triangles,
-        memory: { ...this.renderer.info.memory }
+        memory: { ...this.renderer.info.memory },
+        environment: {
+          ...environmentDiagnostics(this.environmentEntry, this.disposed ? 'disposed' : null),
+          applied: !!this.environmentEntry?.target && this.scene.environment === this.environmentEntry.target.texture
+        }
       };
     }
 
     dispose() {
       if (this.disposed) return;
       this.disposed = true;
+      if (this.environmentEntry) {
+        releaseEnvironment(this.renderer, this.scene, this.environmentEntry);
+        this.environmentEntry = null;
+      }
       this.colorTarget.dispose(); this.bloomA.dispose(); this.bloomB.dispose();
       this.extractMaterial.dispose(); this.blurMaterial.dispose(); this.finalMaterial.dispose();
       this.quad.geometry.dispose();
@@ -320,6 +446,7 @@
 
   window.HiveRenderQuality = Object.freeze({
     profiles: PROFILES,
+    environment: ENVIRONMENT,
     create(renderer, scene, camera, options) { return new RenderQuality(renderer, scene, camera, options); }
   });
 })();

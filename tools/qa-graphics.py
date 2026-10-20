@@ -24,6 +24,37 @@ Math.random=(()=>{let seed=93841;return()=>{seed=(Math.imul(seed,1664525)+101390
 '''
 
 
+def prepare_resources(page, diagnostics=None, require_assets=False, require_hdr=False):
+    """Await real local resources; never substitute requests or template assets."""
+    state=page.evaluate('''async([requireAssets,requireHDR])=>{
+        const F=HiveModelFactory,L=window.HiveAssetLibrary;
+        let imported=null;
+        if(L){
+            const report=await L.preload();
+            if(report.failed.length)throw Error('Imported asset preload failed: '+JSON.stringify(report.failed));
+            imported=L.getDiagnostics();
+            if(requireAssets&&(!report.ready.length||imported.fallbacks.length))
+                throw Error('Imported models unavailable or fallback used: '+JSON.stringify(imported));
+        }else if(requireAssets)throw Error('HiveAssetLibrary is unavailable');
+        const textures=await F.loadTextures();
+        const count=Object.values(textures).filter(Boolean).length;
+        if(count!==Object.keys(F.texturePaths).length)throw Error('Incomplete texture set');
+        const pipeline=__graphicsQA.rendererEngine.renderQuality;
+        if(pipeline?.environmentReady)await pipeline.environmentReady;
+        const environment=pipeline?.getDiagnostics().environment||null;
+        if(requireHDR&&(environment?.status!=='loaded'||!environment.applied))
+            throw Error('HDR is unavailable or not applied: '+JSON.stringify(environment));
+        return {count,dimensions:Object.fromEntries(Object.entries(textures).map(([key,texture])=>[key,[texture.image.width,texture.image.height]])),
+            imported,environment};
+    }''',[require_assets,require_hdr])
+    if diagnostics is not None:
+        diagnostics['texture_count']=state['count']
+        diagnostics['texture_dimensions']=state['dimensions']
+        diagnostics['imported_assets']=state['imported']
+        diagnostics['environment']=state['environment']
+    return state
+
+
 def save_diagnostics(args, output, diagnostics):
     if args.label!='before':
         matches={path:hashlib.sha256(Path(path.lstrip('/')).read_bytes()).hexdigest()==digest
@@ -31,9 +62,15 @@ def save_diagnostics(args, output, diagnostics):
         diagnostics['source_matches_checkout']=matches
         assert all(matches.values()),'Runtime changed during capture: '+repr(matches)
         assert not diagnostics['runtime_changed_during_capture'],'Runtime changed between page reloads during capture'
+        asset_matches={path:hashlib.sha256(Path(path.lstrip('/')).read_bytes()).hexdigest()==digest
+                       for path,digest in diagnostics.get('asset_hashes',{}).items()}
+        diagnostics['asset_matches_checkout']=asset_matches
+        assert all(asset_matches.values()),'Imported resource changed during capture: '+repr(asset_matches)
+        assert not diagnostics.get('asset_changed_during_capture',False),'Imported resource changed between requests'
     if args.merge_diagnostics and (output/'diagnostics.json').exists():
         previous=json.loads((output/'diagnostics.json').read_text())
         assert previous['source_hashes']==diagnostics['source_hashes'],'Cannot merge checks from different runtime versions'
+        assert previous.get('asset_hashes',{})==diagnostics.get('asset_hashes',{}),'Cannot merge checks from different asset versions'
         merged={**previous,**diagnostics}
         key_functions={'portraits':lambda row:(row['kind'],row['name'],row['angle'],row['framing']),
                        'captures':lambda row:row['file'],'checks':lambda row:row['name'],
@@ -75,8 +112,8 @@ def portraits(page, diagnostics, capture, subjects=None, frames=None, reference=
         const texture=new T.CanvasTexture(probe);texture.encoding=T.sRGBEncoding;texture.mapping=T.EquirectangularReflectionMapping;
         const pmrem=new T.PMREMGenerator(r),environment=pmrem.fromEquirectangular(texture);
         scene.environment=environment.texture;pmrem.dispose();texture.dispose();
-        const pipeline=HiveRenderQuality.create(r,scene,camera,{quality:'high'});
-        const maskTarget=new T.WebGLRenderTarget(240,150),maskMaterial=new T.MeshBasicMaterial({color:0xffffff});
+        const pipeline=HiveRenderQuality.create(r,scene,camera,{quality:'high',environment:false});
+        const maskTarget=new T.WebGLRenderTarget(240,150),maskMaterial=new T.MeshBasicMaterial({color:0xffffff,skinning:true,morphTargets:true});
         window.__portraitStudio={scene,camera,pipeline,environment,maskTarget,maskMaterial,model:null};
         window.__graphicsGalleryRender=()=>pipeline.render();
     }''')
@@ -101,10 +138,25 @@ def portraits(page, diagnostics, capture, subjects=None, frames=None, reference=
             const s=__portraitStudio,F=HiveModelFactory,T=THREE,r=__graphicsQA.rendererEngine.renderer;
             if(s.model){s.scene.remove(s.model);F.disposeModel(s.model)}
             const model=kind==='adult'?F.createAdult(name):F.createHuman(name);s.model=model;s.scene.add(model);
+            const library=window.HiveAssetLibrary,runtime=library?.getRuntime(model);
+            if(library?.has(name)&&!runtime)throw Error('Expected imported portrait uses fallback: '+name);
+            if(runtime){
+                library.setState(model,{movement:0,attack:0});
+                for(let frame=0;frame<12;frame++)library.updateModel(model,.05);
+            }
             model.updateMatrixWorld(true);
-            const full=new T.Box3().setFromObject(model),head=framing==='face'?model.getObjectByName('head'):null;
-            const bounds=head?new T.Box3().setFromObject(head):full,size=bounds.getSize(new T.Vector3());
-            const target=head?bounds.getCenter(new T.Vector3()):new T.Vector3(0,full.min.y+size.y*.53,0);
+            const full=F.getModelBounds?F.getModelBounds(model):new T.Box3().setFromObject(model);
+            const head=framing==='face'?model.getObjectByName('head'):null;
+            let faceTarget=null,bounds=full;
+            if(framing==='face'&&runtime){
+                const anchor=runtime.faceAnchor||runtime.bindings.head;
+                if(!anchor)throw Error('Imported human has no face anchor or head binding: '+name);
+                faceTarget=anchor.getWorldPosition(new T.Vector3());
+                const h=(model.userData.height||full.max.y-full.min.y)*.17;
+                bounds=new T.Box3().setFromCenterAndSize(faceTarget,new T.Vector3(h*.85,h,h*.8));
+            }else if(head&&!head.isBone)bounds=new T.Box3().setFromObject(head);
+            const size=bounds.getSize(new T.Vector3());
+            const target=faceTarget||((head&&!head.isBone)?bounds.getCenter(new T.Vector3()):new T.Vector3(0,full.min.y+size.y*.53,0));
             const direction=new T.Vector3(...(angle==='side'?[3,.13,.35]:[1.35,.18,2.6])).normalize();
             let distance=size.y*.5/Math.tan(T.MathUtils.degToRad(18))/.76;
             const pixels=new Uint8Array(240*150*4);
@@ -127,9 +179,14 @@ def portraits(page, diagnostics, capture, subjects=None, frames=None, reference=
             s.pipeline.render();
             let meshes=0;model.traverse(o=>meshes+=o.isMesh?1:0);
             const q=s.pipeline.getDiagnostics();
+            let skinnedMeshes=0;model.traverse(o=>skinnedMeshes+=o.isSkinnedMesh?1:0);
             return {kind,name,angle,framing,subject_height_fraction:coverage,meshes,calls:q.sceneDrawCalls,triangles:q.sceneTriangles,
                 camera:s.camera.position.toArray(),target:target.toArray(),fov:s.camera.fov,
-                bounds:size.toArray(),baseline_camera_reused:!!reference};
+                bounds:size.toArray(),baseline_camera_reused:!!reference,imported:!!runtime,
+                asset:runtime?{assetId:runtime.assetId,url:runtime.sourceUrl,skinnedMeshes,
+                    bones:runtime.record.statistics.bones,clips:runtime.record.statistics.clips,
+                    animationMode:runtime.mode,mixerTime:runtime.mixer?.time??null,
+                    faceAnchorPosition:runtime.faceAnchor?.getWorldPosition(new T.Vector3()).toArray()||null}:null};
         }''',[kind,name,angle,framing,ref])
         if ref:
             assert stats['camera']==ref['camera'] and stats['target']==ref['target'] and stats['fov']==ref['fov']
@@ -166,8 +223,8 @@ def matched_inspection(page, diagnostics, capture):
 def camera_controls(page, diagnostics, capture):
     """Check actual inspection controls, guards, saved state and close framing."""
     page.reload(wait_until='domcontentloaded')
-    page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
-    page.evaluate('async()=>await HiveModelFactory.loadTextures()')
+    page.wait_for_function('() => !!(window.__graphicsQA && window.HiveSystems?.ui?.game)')
+    prepare_resources(page)
     page.click('#btn-new-campaign');page.click('#btn-start-act-one')
     page.evaluate('gameInstance.startCampaign(4)')
     page.click('#btn-pause-game');page.click('#btn-open-settings')
@@ -206,7 +263,7 @@ def camera_controls(page, diagnostics, capture):
     assert page.evaluate('!!gameInstance.currentStage.getCameraOverride()')
     wheel(300,55)
     page.reload(wait_until='domcontentloaded')
-    page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
+    page.wait_for_function('() => !!(window.__graphicsQA && window.HiveSystems?.ui?.game)')
     assert page.evaluate('HiveSystems.settings.values.cameraDistance===55 && __graphicsQA.rendererEngine.cameraDistance===.55')
     recovery=[]
     for value,expected in (('invalid',100),(900,135),(-100,50)):
@@ -215,11 +272,11 @@ def camera_controls(page, diagnostics, capture):
             settings.cameraDistance=value;localStorage.setItem(key,JSON.stringify(settings));
         }''',value)
         page.reload(wait_until='domcontentloaded')
-        page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
+        page.wait_for_function('() => !!(window.__graphicsQA && window.HiveSystems?.ui?.game)')
         actual=page.evaluate('HiveSystems.settings.values.cameraDistance')
         assert actual==expected,dict(value=value,expected=expected,actual=actual)
         recovery.append({'input':value,'restored':actual})
-    page.evaluate('async()=>await HiveModelFactory.loadTextures()')
+    prepare_resources(page)
     page.click('#btn-continue-campaign')
     for width,height in ((1440,900),(390,844)):
         page.set_viewport_size({'width':width,'height':height})
@@ -239,8 +296,12 @@ def camera_controls(page, diagnostics, capture):
 def comparison_boards(context, root, diagnostics):
     """Arrange original PNGs at native size; no rendering or image retouching."""
     diagnostics['comparisons']=[]
+    baseline_path=root/'before'/'diagnostics.json'
+    baseline=json.loads(baseline_path.read_text()) if baseline_path.exists() else {}
+    baseline_ref=str(baseline.get('baseline_commit','736f595'))[:7]
     for name,filename in (('drone','portrait-drone-body-three-quarter.png'),
-                          ('scientist','portrait-scientist-face-three-quarter.png')):
+                          ('scientist','portrait-scientist-face-three-quarter.png'),
+                          ('station','matched-inspect50-1440x900.png')):
         before,after=root/'before'/filename,root/'after'/filename
         if not before.exists() or not after.exists():
             continue
@@ -251,9 +312,9 @@ def comparison_boards(context, root, diagnostics):
             *{box-sizing:border-box}body{margin:0;background:#090e15;color:#d9e5ec;font:24px monospace;display:flex}
             article{width:1440px}header{height:50px;padding:10px 25px;letter-spacing:3px;border-bottom:1px solid #293747}
             img{width:1440px;height:900px;display:block}</style>'''+
-            f'<article><header>AVANT · 736f595</header><img src="data:image/png;base64,{sources[0]}"></article>'+
-            f'<article><header>APRÈS · SURFACES SCULPTÉES</header><img src="data:image/png;base64,{sources[1]}"></article>')
-        board.wait_for_function('Array.from(document.images).every(image=>image.complete&&image.naturalWidth===1440)')
+            f'<article><header>AVANT · {baseline_ref}</header><img src="data:image/png;base64,{sources[0]}"></article>'+
+            f'<article><header>APRÈS</header><img src="data:image/png;base64,{sources[1]}"></article>')
+        board.wait_for_function('() => Array.from(document.images).every(image=>image.complete&&image.naturalWidth===1440)')
         target=root/f'comparison-{name}.png'
         board.screenshot(path=str(target));board.close()
         diagnostics['comparisons'].append({'file':str(target),'sources':[str(before),str(after)],
@@ -272,12 +333,14 @@ def main():
     parser.add_argument('--matched-inspection', action='store_true', help='Add identical old/new in-game50% inspection framing')
     parser.add_argument('--portrait-frames', help='Optional comma-separated body/face portrait framing')
     parser.add_argument('--merge-diagnostics', action='store_true', help='Refresh selected captures while retaining checks from identical runtime')
+    parser.add_argument('--require-assets', action='store_true', help='Require loaded imported assets with no fallback')
+    parser.add_argument('--require-hdr', action='store_true', help='Require the real local HDR environment to have loaded')
     args = parser.parse_args()
     reference_path=Path(args.output)/'before'/'diagnostics.json'
     reference=json.loads(reference_path.read_text()) if args.label!='before' and reference_path.exists() else None
     output = Path(args.output)/args.label
     output.mkdir(parents=True, exist_ok=True)
-    diagnostics = {'label': args.label, 'url': args.url, 'stages': [], 'galleries': [], 'captures': [], 'checks': [], 'source_hashes': {}, 'runtime_changed_during_capture':False, 'uncaught_errors': [], 'console_errors': [], 'failed_local_assets': [], 'external_requests': [],
+    diagnostics = {'label': args.label, 'url': args.url, 'stages': [], 'galleries': [], 'captures': [], 'checks': [], 'source_hashes': {}, 'runtime_changed_during_capture':False, 'asset_hashes':{}, 'asset_changed_during_capture':False, 'uncaught_errors': [], 'console_errors': [], 'failed_local_assets': [], 'external_requests': [],
                    'instrumentation': 'Existing internal object export only; deterministic random seed; fixed cameras; simulation paused for matched captures',
                    'timing_scope': 'Synchronous renderer.render + gl.finish in Chromium SwiftShader; software diagnostics, not real GPU or gameplay FPS'}
     with sync_playwright() as playwright:
@@ -292,6 +355,18 @@ def main():
                 if response.status>=400 and response.url.startswith(args.url) else None)
         page.on('request', lambda request: diagnostics['external_requests'].append(request.url)
                 if request.url.startswith(('http:','https:')) and not request.url.startswith(args.url) else None)
+        def record_import(response):
+            path=urlparse(response.url).path
+            if response.status>=400 or not response.url.startswith(args.url):
+                return
+            if Path(path).suffix.lower() not in ('.glb','.gltf','.bin','.hdr') and path!='/assets/models/manifest.json':
+                return
+            digest=hashlib.sha256(response.body()).hexdigest()
+            previous=diagnostics['asset_hashes'].get(path)
+            if previous and previous!=digest:
+                diagnostics['asset_changed_during_capture']=True
+            diagnostics['asset_hashes'][path]=digest
+        page.on('response',record_import)
         def expose(route):
             response=route.fetch()
             source=response.text()
@@ -307,15 +382,9 @@ def main():
             route.fulfill(response=response,body=source)
         page.route('**/src/*.js*',expose)
         page.goto(args.url,wait_until='domcontentloaded')
-        page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
-        texture_state=page.evaluate('''async()=>{
-            const textures=await HiveModelFactory.loadTextures();
-            const count=Object.values(textures).filter(Boolean).length;
-            if(count!==Object.keys(HiveModelFactory.texturePaths).length)throw Error('Incomplete texture set');
-            return {count,dimensions:Object.fromEntries(Object.entries(textures).map(([key,texture])=>[key,[texture.image.width,texture.image.height]]))};
-        }''')
-        diagnostics['texture_count']=texture_state['count']
-        diagnostics['texture_dimensions']=texture_state['dimensions']
+        # Cold software shader compilation can exceed 30 s in this container.
+        page.wait_for_function('() => !!(window.__graphicsQA && window.HiveSystems?.ui?.game)', timeout=120000)
+        prepare_resources(page,diagnostics,args.require_assets,args.require_hdr)
         page.click('#btn-new-campaign')
         page.click('#btn-start-act-one')
         page.evaluate('gameInstance.setSystemPaused(true)')
@@ -511,7 +580,7 @@ def main():
             # Exercise actual settings controls and persistence in a fresh app
             # after disposing the diagnostic render instance above.
             page.reload(wait_until='domcontentloaded')
-            page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
+            page.wait_for_function('() => !!(window.__graphicsQA && window.HiveSystems?.ui?.game)')
             page.click('#btn-new-campaign');page.click('#btn-start-act-one')
             page.click('#btn-pause-game');page.click('#btn-open-settings')
             selected=[]
@@ -525,13 +594,13 @@ def main():
                 selected.append(state)
             page.select_option('#setting-graphics','ultra')
             page.reload(wait_until='domcontentloaded')
-            page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
+            page.wait_for_function('() => !!(window.__graphicsQA && window.HiveSystems?.ui?.game)')
             restored=page.evaluate('''()=>({saved:HiveSystems.settings.values.graphicsQuality,
                 resolved:__graphicsQA.rendererEngine.renderQuality.getDiagnostics().quality})''')
             assert restored=={'saved':'ultra','resolved':'ultra'},restored
             page.evaluate('''localStorage.setItem('hive-ascension-settings-v2',JSON.stringify({graphicsQuality:'obsolete-mode',scanlines:true,volume:45}))''')
             page.reload(wait_until='domcontentloaded')
-            page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
+            page.wait_for_function('() => !!(window.__graphicsQA && window.HiveSystems?.ui?.game)')
             recovered=page.evaluate('''()=>({saved:HiveSystems.settings.values.graphicsQuality,
                 resolved:__graphicsQA.rendererEngine.renderQuality.getDiagnostics().quality,
                 scanlines:HiveSystems.settings.values.scanlines,volume:HiveSystems.settings.values.volume})''')

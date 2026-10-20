@@ -3089,15 +3089,17 @@
       const bodyburster = caste === 'bodyburster';
       const predalien = caste === 'predalien';
       const deaconAdult = caste === 'deacon_adult';
-      const deacon = caste === 'deacon' || deaconAdult;
+      const deaconess = caste === 'deaconess';
+      const deacon = caste === 'deacon' || deaconAdult || deaconess;
       const neomorph = caste === 'neomorph';
       const alpha = caste === 'alpha';
       const abomination = caste === 'abomination';
 
-      const scale = king ? 1.62 : (raven ? 1.48 : (abomination ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (deaconAdult ? 1.34 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1)))))))))))))))));
+      const scale = king ? 1.62 : (deaconess ? 1.55 : (raven ? 1.48 : (abomination ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (deaconAdult ? 1.34 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1))))))))))))))))));
       let chitinColor = 0x0b1518;
       if (royal) chitinColor = 0x221033;
       else if (king) chitinColor = 0x7f1d1d; // Chitine royale cramoisie sombre Rouge de Charon (Aliens: Rogue 1993)
+      else if (deaconess) chitinColor = 0x0a1128; // Bleu nuit abyssal royal iridescente Deaconess Proto-Queen (Fire and Stone)
       else if (bodyburster) chitinColor = 0xfef2f2; // Membrane translucide pâle d'éruption dorsale (Alien: Covenant 2017)
       else if (deaconAdult) chitinColor = 0x0f172a; // Bleu cobalt ébène profond Apex Archon (Prometheus lore étendu)
       else if (abomination) chitinColor = 0xf1f5f9; // Peau d'albâtre cireuse cadavérique Offspring Adulte Géant (Alien: Romulus 2024)
@@ -3185,6 +3187,23 @@
         premaxGroup.add(this._box(primary, { x: 0.34 * scale, y: 0.2 * scale, z: 0.45 * scale }, { x: 0, y: 0, z: 0.2 * scale }, 'premax_frame', true));
         premaxGroup.add(this._box(bone, { x: 0.3 * scale, y: 0.08 * scale, z: 0.38 * scale }, { x: 0, y: -0.06 * scale, z: 0.22 * scale }, 'premax_teeth'));
         root.add(premaxGroup);
+
+        if (deaconess) {
+          // Chantier 141 : Couronne crânienne royale pointue Deaconess Proto-Queen (Fire and Stone)
+          const royalCrestMat = this._material('chitin', { color: 0x1e3a8a, roughness: 0.18, metalness: 0.45 });
+          for (let sp = 0; sp < 5; sp++) {
+            const angle = (sp - 2) * 0.22;
+            root.add(this._segment(
+              royalCrestMat,
+              new T.Vector3(Math.sin(angle) * 0.6 * scale, 4.8 * scale, -0.4 * scale),
+              new T.Vector3(Math.sin(angle) * 1.1 * scale, 5.4 * scale, -1.5 * scale),
+              0.08 * scale,
+              0.02 * scale,
+              `deaconess_crest_spine_${sp}`,
+              10
+            ));
+          }
+        }
       }
 
       if (isDrone) {
@@ -5621,6 +5640,86 @@
         }
         // Gyrophare d'alarme rouge d'évacuation générale
         root.add(this._cylinder(sirenBeacon, 0.16, 0.18, 0.28, { x: 0, y: 1.25, z: 0 }, { x: 0, y: 0, z: 0 }, 'evacuation_alarm_siren'));
+      } else if (normalizedType === 'subzero_coolant_panel' || normalizedType === 'coolant_panel') {
+        // Chantier 142 : Panneau de Réfrigération Cryogénique Sub-Zero Coolant (Alien 1979 / Romulus)
+        const cryoMetal = this._material('darkMetal', { color: 0x0f172a, roughness: 0.25, metalness: 0.9 });
+        const frostedPipe = this._material('industrial', { color: 0x38bdf8, roughness: 0.2, metalness: 0.85 });
+        const pressureGauge = this._material('emissiveBlue', { color: 0x0284c7, emissive: 0x38bdf8, emissiveIntensity: 2.4 });
+        root.add(this._box(cryoMetal, { x: 1.6, y: 2.2, z: 0.55 }, { x: 0, y: 1.1, z: 0 }, 'coolant_chassis', true));
+        // Réservoir cryogénique vertical cylindrique LN2
+        root.add(this._cylinder(frostedPipe, 0.35, 0.35, 1.8, { x: 0, y: 1.1, z: 0.35 }, { x: 0, y: 0, z: 0 }, 'ln2_coolant_cylinder'));
+        // Manomètre de pression 120 bars
+        root.add(this._cylinder(pressureGauge, 0.18, 0.18, 0.08, { x: 0.45, y: 1.6, z: 0.32 }, { x: Math.PI / 2, y: 0, z: 0 }, 'gauge_120bars'));
+      } else if (normalizedType === 'm42a_sniper_post' || normalizedType === 'sniper_post') {
+        // Chantier 143 : Fusil de Sniper Smart-Scoped M42A Scoped Pulse Rifle sur Trépied (Colonial Marines / Fireteam Elite)
+        const rifleMetal = this._material('darkMetal', { color: 0x18181b, roughness: 0.3, metalness: 0.85 });
+        const uscmGreen = this._material('industrial', { color: 0x166534, roughness: 0.4, metalness: 0.6 });
+        const thermalScope = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.8 });
+        // Trépied de maintien
+        for (let leg = 0; leg < 3; leg++) {
+          const a = (leg / 3) * Math.PI * 2;
+          root.add(this._segment(rifleMetal, new T.Vector3(0, 1.15, 0), new T.Vector3(Math.cos(a) * 0.55, 0, Math.sin(a) * 0.55), 0.03, 0.02, `tripod_leg_${leg}`, 8));
+        }
+        // Boîtier M42A 10x30mm long
+        root.add(this._box(uscmGreen, { x: 0.16, y: 0.22, z: 1.4 }, { x: 0, y: 1.25, z: 0.1 }, 'm42a_body', true));
+        root.add(this._cylinder(rifleMetal, 0.04, 0.04, 1.2, { x: 0, y: 1.28, z: 0.95 }, { x: Math.PI / 2, y: 0, z: 0 }, 'm42a_barrel'));
+        // Viseur optique thermique rouge
+        root.add(this._box(thermalScope, { x: 0.12, y: 0.14, z: 0.45 }, { x: 0, y: 1.45, z: 0.05 }, 'm42a_thermal_scope'));
+      } else if (normalizedType === 'underfloor_grate' || normalizedType === 'floor_grate') {
+        // Chantier 144 : Trappe de Plancher de Conduits Techniques (Alien 3 / Isolation)
+        const grateMetal = this._material('darkMetal', { color: 0x334155, roughness: 0.55, metalness: 0.75 });
+        const pitDarkness = this._material('darkMetal', { color: 0x020617, roughness: 0.95, metalness: 0.05 });
+        // Fosse sous-plancher
+        root.add(this._box(pitDarkness, { x: 1.8, y: 0.8, z: 1.8 }, { x: 0, y: -0.4, z: 0 }, 'underfloor_pit', true));
+        // Cadre de caillebotis avec barres métalliques ajourées
+        root.add(this._box(grateMetal, { x: 1.9, y: 0.06, z: 1.9 }, { x: 0, y: 0.03, z: 0 }, 'grate_frame', true));
+        for (let bar = -4; bar <= 4; bar++) {
+          root.add(this._box(grateMetal, { x: 1.7, y: 0.05, z: 0.08 }, { x: 0, y: 0.04, z: bar * 0.18 }, `grate_bar_${bar}`));
+        }
+      } else if (normalizedType === 'bulkhead_blast_shutter_console' || normalizedType === 'shutter_console') {
+        // Chantier 145 : Console de Contrôle des Volets Anti-Souffle de Confinement (Alien 1979 / Aliens 1986)
+        const consoleChassis = this._material('industrial', { color: 0x475569, roughness: 0.4, metalness: 0.65 });
+        const yellowLight = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.5 });
+        root.add(this._box(consoleChassis, { x: 1.35, y: 1.3, z: 0.7 }, { x: 0, y: 0.65, z: 0 }, 'shutter_console_chassis', true));
+        root.add(this._box(dark, { x: 1.15, y: 0.6, z: 0.15 }, { x: 0, y: 1.35, z: -0.1 }, 'shutter_console_panel', true));
+        // 3 Voyants d'état de sas étanches
+        for (let ind = 0; ind < 3; ind++) {
+          root.add(this._cylinder(yellowLight, 0.06, 0.06, 0.04, { x: (ind - 1) * 0.32, y: 1.38, z: 0.02 }, { x: Math.PI / 2, y: 0, z: 0 }, `shutter_indicator_${ind}`));
+        }
+      } else if (normalizedType === 'synthetic_charging_bay' || normalizedType === 'charging_bay') {
+        // Chantier 147 : Module de Recharge pour Androïdes Seegson (Alien: Isolation)
+        const seegsonMetal = this._material('darkMetal', { color: 0x1e293b, roughness: 0.35, metalness: 0.8 });
+        const synthFluid = this._material('chitinWarm', { color: 0xf8fafc, roughness: 0.1, metalness: 0.1 });
+        const coilAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xb45309, emissiveIntensity: 2.2 });
+        // Alcôve verticale 2.5m
+        root.add(this._box(seegsonMetal, { x: 1.2, y: 2.6, z: 0.8 }, { x: 0, y: 1.3, z: -0.2 }, 'charging_alcove', true));
+        // Flacon collecteur de liquide laiteux synthétique blanc
+        root.add(this._cylinder(synthFluid, 0.15, 0.15, 0.85, { x: 0.45, y: 1.4, z: 0.2 }, { x: 0, y: 0, z: 0 }, 'synthetic_fluid_canister'));
+        // Bobines électromagnétiques de charge 400V
+        root.add(this._cylinder(coilAmber, 0.25, 0.25, 0.12, { x: 0, y: 2.2, z: 0.1 }, { x: 0, y: 0, z: 0 }, 'charging_coil_top'));
+      } else if (normalizedType === 'holographic_decoy_projector' || normalizedType === 'decoy_projector') {
+        // Chantier 148 : Projecteurs Holographiques Tactiques de Fausse Piste (Aliens: Dark Descent)
+        const emitterMetal = this._material('darkMetal', { color: 0x09090b, roughness: 0.4, metalness: 0.85 });
+        const blueLaser = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 3.5 });
+        // Socle sur trépied
+        for (let l = 0; l < 3; l++) {
+          const la = (l / 3) * Math.PI * 2;
+          root.add(this._segment(emitterMetal, new T.Vector3(0, 0.65, 0), new T.Vector3(Math.cos(la) * 0.4, 0, Math.sin(la) * 0.4), 0.025, 0.02, `decoy_leg_${l}`, 6));
+        }
+        // Lentille holographique rotative émettrice
+        root.add(this._cylinder(emitterMetal, 0.22, 0.28, 0.4, { x: 0, y: 0.75, z: 0 }, { x: 0, y: 0, z: 0 }, 'emitter_housing'));
+        root.add(this._sphere(blueLaser, 0.16, { x: 0, y: 1.0, z: 0 }, 'holo_emitter_lens'));
+      } else if (normalizedType === 'atmospheric_depression_console' || normalizedType === 'depression_console') {
+        // Chantier 150 : Console de Purge Atmosphérique M.U.T.H.U.R. & Dépression N2/O2 (Alien 1979 / Romulus)
+        const muthurConsole = this._material('darkMetal', { color: 0x0f172a, roughness: 0.28, metalness: 0.88 });
+        const gasCyan = this._material('emissiveBlue', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 2.6 });
+        const redLever = this._material('emissiveRed', { color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 2.0 });
+        root.add(this._box(muthurConsole, { x: 1.5, y: 1.4, z: 0.75 }, { x: 0, y: 0.7, z: 0 }, 'muthur_atmo_chassis', true));
+        // Manomètres O2 / N2 circulaires rétro
+        root.add(this._cylinder(gasCyan, 0.15, 0.15, 0.05, { x: -0.35, y: 1.45, z: 0.25 }, { x: Math.PI / 2, y: 0, z: 0 }, 'o2_gauge'));
+        root.add(this._cylinder(gasCyan, 0.15, 0.15, 0.05, { x: 0.35, y: 1.45, z: 0.25 }, { x: Math.PI / 2, y: 0, z: 0 }, 'n2_gauge'));
+        // Levier guillotine d'évacuation d'urgence
+        root.add(this._box(redLever, { x: 0.08, y: 0.4, z: 0.08 }, { x: 0, y: 1.48, z: 0.32 }, 'emergency_dump_lever'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -6550,6 +6649,62 @@
     // -------------------------------------------------------------------------
     createReactorDisconnectConsole() {
       return this.createIndustrialProp('reactor_disconnect_console');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 141 : Phénotype The Deacon Proto-Queen / Deaconess (Fire and Stone)
+    // -------------------------------------------------------------------------
+    createDeaconess() {
+      return this._createUprightAdult('deaconess');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 142 : Panneau de Réfrigération Cryogénique Sub-Zero Coolant (Alien 1979 / Romulus)
+    // -------------------------------------------------------------------------
+    createSubZeroCoolantPanel() {
+      return this.createIndustrialProp('subzero_coolant_panel');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 143 : Fusil de Sniper Smart-Scoped M42A USCM sur Trépied (Colonial Marines)
+    // -------------------------------------------------------------------------
+    createM42ASniperPost() {
+      return this.createIndustrialProp('m42a_sniper_post');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 144 : Trappe de Plancher de Conduits Techniques (Alien 3 / Isolation)
+    // -------------------------------------------------------------------------
+    createUnderfloorGrate() {
+      return this.createIndustrialProp('underfloor_grate');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 145 : Poste de Contrôle des Volets Anti-Souffle de Confinement (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createBulkheadBlastShutterConsole() {
+      return this.createIndustrialProp('bulkhead_blast_shutter_console');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 147 : Module de Recharge pour Androïdes Seegson (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSyntheticChargingBay() {
+      return this.createIndustrialProp('synthetic_charging_bay');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 148 : Projecteurs Holographiques Tactiques de Fausse Piste (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createHolographicDecoyProjector() {
+      return this.createIndustrialProp('holographic_decoy_projector');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 150 : Console de Purge Atmosphérique M.U.T.H.U.R. & Dépression N2/O2 (Alien 1979 / Romulus)
+    // -------------------------------------------------------------------------
+    createAtmosphericDepressionConsole() {
+      return this.createIndustrialProp('atmospheric_depression_console');
     }
   }
 

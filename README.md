@@ -12,7 +12,7 @@ Jeu de survie et de stratégie biologique en cinq actes, jouable dans un navigat
 - Modèles 3D procéduraux détaillés, décors industriels, résine, éclairage, SFX et VFX.
 - Codex, sauvegarde locale, difficulté, pause, son, contraste élevé et réduction des mouvements.
 - Textures originales générées localement et reproductibles avec `tools/generate-textures.mjs`.
-- Matériaux PBR en 1024 px, anatomies différenciées, décor industriel instancié et reflets d’environnement.
+- Surfaces anatomiques continues, matériaux PBR jusqu’à 2048 px, décor industriel instancié et reflets d’environnement.
 
 Le catalogue narratif et les règles biologiques sont centralisés dans `src/content.js`. L’audit de contenu et de cohérence se trouve dans `GAME_AUDIT.md`.
 
@@ -70,18 +70,22 @@ Pour renouveler les dépendances statiques épinglées : `python3 tools/vendor-a
 
 Les paramètres du jeu proposent Automatique, Équilibré, Élevé et Ultra. Le choix est conservé après rechargement. Les textures restent détaillées dans tous les modes ; les profils ajustent la résolution de rendu, les ombres et les effets. Automatique privilégie le profil Équilibré sur une interface tactile ou un petit écran.
 
-Les cinq familles de matériaux — carapace, résine, métal industriel, tissu et peau — disposent de cartes couleur, normales, rugosité et occlusion. Le métal dispose aussi d’une carte métallique. Les 22 cartes sont locales, en 1024 × 1024. Les reflets filtrés, les contacts par profondeur et le bloom discret complètent l’éclairage ; les cloisons devant la créature restent transparentes.
+Les cinq familles de matériaux — carapace, résine, métal industriel, tissu et peau — disposent de cartes couleur, normales, rugosité et occlusion. Le métal dispose aussi d’une carte métallique. Les 22 cartes sont locales : carapace et peau en 2048 × 2048, autres matériaux en 1024 × 1024. Les crânes, torses, ventres et membres utilisent des profils sculptés continus ; les plis des vêtements et les traits du visage sont modelés dans la géométrie. Une finition de surface ajoute de fines variations de relief et de rugosité aux cartes PBR. Les reflets filtrés, les contacts par profondeur et le bloom discret complètent l’éclairage ; les cloisons devant la créature restent transparentes.
+
+La molette et le réglage « Distance de caméra » permettent de rapprocher la vue de suivi de 50 à 135 %. Ce choix est conservé après rechargement ; la vue stratégique de la Ruche et les séquences cinématiques conservent leur cadrage.
 
 Pour reproduire les contrôles graphiques (les scripts de captures utilisent aussi Pillow) :
 
 ```sh
 node tools/qa-model-detail.cjs
+node tools/qa-organic.cjs
+python3 tools/qa-surface.py
 python3 tools/qa-textures.py --regenerate
 python3 tools/qa-render.py
-python3 tools/qa-graphics.py --url http://127.0.0.1:8082/
+python3 tools/qa-graphics.py --url http://127.0.0.1:8082/ --portraits --matched-inspection
 ```
 
-Le contrôle des textures vérifie notamment l’intégrité PNG, les coutures et une régénération identique. Les comparaisons et budgets de scène figurent dans `GRAPHICS_UPGRADE.md`. Les mesures sous WebGL logiciel ne sont pas des mesures de fréquence d’image sur un GPU de jeu.
+Le contrôle des textures vérifie notamment l’intégrité PNG, les coutures et une régénération identique. Les derniers gros plans et budgets figurent dans `SCULPT_UPGRADE.md` ; `GRAPHICS_UPGRADE.md` décrit la passe graphique précédente. Les mesures sous WebGL logiciel ne sont pas des mesures de fréquence d’image sur un GPU de jeu.
 
 ## Contrôles
 
@@ -90,6 +94,7 @@ Le contrôle des textures vérifie notamment l’intégrité PNG, les coutures e
 - Actions contextuelles : boutons à l’écran ou raccourcis indiqués dans chaque acte.
 - Codex : `C`.
 - Pause : `Échap`.
+- Distance de caméra : molette ou curseur dans les réglages (hors vue stratégique).
 - Ruche : ordres synaptiques et création de castes depuis la barre d’actions.
 
 ## Architecture
@@ -97,7 +102,11 @@ Le contrôle des textures vérifie notamment l’intégrité PNG, les coutures e
 `index.html` charge, dans l’ordre :
 
 - `src/content.js` : narration, castes, ennemis, boss, codex et fins ;
-- `src/models.js` : modèles 3D procéduraux et matériaux ;
+- `src/organic-sculpt.js` : surfaces anatomiques continues et gabarits de géométrie ;
+- `src/surface-detail.js` : finition des matériaux PBR ;
+- `src/model-detail.js` : visages, vêtements et accessoires ;
+- `src/models.js` : fabriques de modèles 3D et matériaux ;
+- `src/render-quality.js` et `src/station-detail.js` : profils de rendu et détails de station ;
 - `src/game-systems.js` : sauvegarde, réglages, VFX et interfaces ;
 - `src/game.js` : moteur Three.js et cinq actes jouables.
 

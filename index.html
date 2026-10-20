@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#040609">
   <link rel="icon" type="image/svg+xml" href="assets/hive-icon.svg">
   <link rel="stylesheet" href="assets/fonts/fonts.css">
-  <link rel="stylesheet" href="src/css/style.css?v=20261020-visual">
+  <link rel="stylesheet" href="src/css/style.css?v=20261020-sculpt">
 
   <!-- Pinned, integrity-verified runtime served locally; no external CDN required. -->
   <script defer src="assets/vendor/three.r128.min.js"></script>
@@ -300,6 +300,10 @@
             </select>
           </label>
           <p id="graphics-quality-help" class="settings-help">Les textures détaillées restent actives dans tous les modes. Le réglage ajuste les ombres, les effets et la résolution.</p>
+          <label for="setting-camera-distance">DISTANCE DE CAMÉRA <output id="camera-distance-value">100 %</output>
+            <input type="range" id="setting-camera-distance" min="50" max="135" step="5" value="100" aria-describedby="camera-distance-help">
+          </label>
+          <p id="camera-distance-help" class="settings-help">Rapprochez la caméra pour observer les détails. La molette ajuste aussi la distance pendant le jeu. La Ruche conserve sa vue d’ensemble.</p>
           <label>VOLUME PRINCIPAL <input type="range" id="setting-volume" min="0" max="100" value="70"></label>
           <label>LUMINOSITÉ <input type="range" id="setting-brightness" min="70" max="140" value="100"></label>
           <label class="toggle-row"><input type="checkbox" id="setting-scanlines"><span>Effet de scan</span></label>
@@ -325,12 +329,14 @@
   </div>
 
   <!-- Data, asset factories and systems are loaded before the standalone game. -->
-  <script defer src="src/content.js?v=20261020-visual"></script>
-  <script defer src="src/model-detail.js?v=20261020-visual"></script>
-  <script defer src="src/models.js?v=20261020-visual"></script>
-  <script defer src="src/render-quality.js?v=20261020-visual"></script>
-  <script defer src="src/station-detail.js?v=20261020-visual"></script>
-  <script defer src="src/game-systems.js?v=20261020-visual"></script>
-  <script defer src="src/game.js?v=20261020-visual"></script>
+  <script defer src="src/content.js?v=20261020-sculpt"></script>
+  <script defer src="src/organic-sculpt.js?v=20261020-sculpt"></script>
+  <script defer src="src/surface-detail.js?v=20261020-sculpt"></script>
+  <script defer src="src/model-detail.js?v=20261020-sculpt"></script>
+  <script defer src="src/models.js?v=20261020-sculpt"></script>
+  <script defer src="src/render-quality.js?v=20261020-sculpt"></script>
+  <script defer src="src/station-detail.js?v=20261020-sculpt"></script>
+  <script defer src="src/game-systems.js?v=20261020-sculpt"></script>
+  <script defer src="src/game.js?v=20261020-sculpt"></script>
 </body>
 </html>

@@ -52,6 +52,40 @@
       cylinder(parent, material, at, radius, length, rotation, segments = 16) {
         add(parent, material, new T.CylinderGeometry(radius, radius, length, segments, 1), at, [1, 1, 1], rotation);
       },
+      path(parent, material, points, radii, segments = 24, radial = 10) {
+        const curve = new T.CatmullRomCurve3(points.map(p => new T.Vector3(...p)), false, 'centripetal');
+        const geometry = new T.TubeGeometry(curve, segments, 1, radial, false);
+        const position = geometry.attributes.position;
+        for (let row = 0; row <= segments; row++) {
+          const t = row / segments, center = curve.getPointAt(t);
+          const scaled = t * (radii.length - 1), lo = Math.min(radii.length - 2, Math.floor(scaled));
+          const radius = T.MathUtils.lerp(radii[lo], radii[lo + 1], scaled - lo);
+          for (let col = 0; col <= radial; col++) {
+            const i = row * (radial + 1) + col;
+            position.setXYZ(i, center.x + (position.getX(i) - center.x) * radius,
+              center.y + (position.getY(i) - center.y) * radius, center.z + (position.getZ(i) - center.z) * radius);
+          }
+        }
+        geometry.computeVertexNormals();
+        add(parent, material, geometry, [0,0,0], [1,1,1]);
+      },
+      panel(parent, material, at, size, rotation, bulge = .014) {
+        const w = size[0], h = size[1], d = size[2];
+        const shape = new T.Shape();
+        const r = Math.min(w,h) * .13;
+        shape.moveTo(-w/2+r,-h/2);shape.lineTo(w/2-r,-h/2);shape.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);
+        shape.lineTo(w/2,h/2-r);shape.quadraticCurveTo(w/2,h/2,w/2-r,h/2);
+        shape.lineTo(-w/2+r,h/2);shape.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);
+        shape.lineTo(-w/2,-h/2+r);shape.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);
+        const geometry = new T.ExtrudeGeometry(shape,{depth:d,bevelEnabled:true,bevelSize:r*.32,bevelThickness:r*.2,bevelSegments:3,curveSegments:8,steps:1});
+        const positions = geometry.attributes.position;
+        for(let i=0;i<positions.count;i++) {
+          const x=positions.getX(i),y=positions.getY(i);
+          positions.setZ(i,positions.getZ(i)+bulge*Math.max(0,1-Math.pow(x/(w*.52),2))*Math.max(0,1-Math.pow(y/(h*.52),2)));
+        }
+        geometry.computeVertexNormals();
+        add(parent,material,geometry,at,[1,1,1],rotation);
+      },
       tube(parent, material, points, radius) {
         const curve = new T.CatmullRomCurve3(points.map(p => new T.Vector3(...p)));
         add(parent, material, new T.TubeGeometry(curve, 28, radius, 8, false), [0, 0, 0], [1, 1, 1]);
@@ -143,16 +177,23 @@
     };
     const section = (mesh, rings) => {
       const vertices = [], uv = [], indices = [];
-      const radial = 48;
-      for (let row = 0; row < rings.length; row++) {
-        const [y, width, depth, edgeDip = 0] = rings[row];
+      const radial = 64, rows = mesh.name === 'torso' ? 72 : 28;
+      const cubic = (a,b,c,d,t) => .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t);
+      for (let row = 0; row <= rows; row++) {
+        const scaled = row / rows * (rings.length-1), segment = Math.min(rings.length-2,Math.floor(scaled)), t = scaled-segment;
+        const a=rings[Math.max(0,segment-1)],b=rings[segment],c=rings[segment+1],d=rings[Math.min(rings.length-1,segment+2)];
+        const y=cubic(a[0],b[0],c[0],d[0],t),width=cubic(a[1],b[1],c[1],d[1],t),depth=cubic(a[2],b[2],c[2],d[2],t);
+        const edgeDip=T.MathUtils.lerp(b[3]||0,c[3]||0,t);
         for (let col = 0; col <= radial; col++) {
           const angle = col / radial * Math.PI * 2;
-          const x = Math.sin(angle) * width;
-          const z = Math.cos(angle) * depth;
+          const waist=Math.exp(-Math.pow((y-1.96)/.16,2));
+          const armpit=Math.exp(-Math.pow((y-2.99)/.2,2))*Math.pow(Math.abs(Math.sin(angle)),4);
+          const fold=.008*Math.sin((y-1.8)*57+Math.sin(angle)*2.5)*waist+.006*Math.sin(y*46-angle*2.2)*armpit;
+          const x = Math.sin(angle) * (width+fold);
+          const z = Math.cos(angle) * (depth+fold);
           vertices.push(x / mesh.scale.x, (y - mesh.position.y - Math.abs(Math.sin(angle)) * edgeDip) / mesh.scale.y, z / mesh.scale.z);
-          uv.push(col / radial, row / (rings.length - 1));
-          if (row < rings.length - 1 && col < radial) {
+          uv.push(col / radial, row / rows);
+          if (row < rows && col < radial) {
             const a = row * (radial + 1) + col;
             const b = a + radial + 1;
             if (rings[rings.length - 1][0] > rings[0][0]) indices.push(a, a + 1, b, b, a + 1, b + 1);
@@ -169,7 +210,7 @@
     const torso = root.getObjectByName('torso');
     const pelvis = root.getObjectByName('pelvis');
     const torsoY = torso?.position.y || 2.75;
-    if (torso) section(torso, [
+    const torsoRings = [
       [1.75, profile.pelvis.x * .94, profile.pelvis.z * .95],
       [1.9, profile.torso.x * .72, profile.torso.z * .79],
       [2.12, profile.torso.x * .76, profile.torso.z * .85],
@@ -179,7 +220,8 @@
       [3.18, profile.torso.x * .93, profile.torso.z * .79],
       [3.34, profile.torso.x * .48, profile.torso.z * .55],
       [3.46, .17, .14]
-    ]);
+    ];
+    if (torso) section(torso,torsoRings);
     if (pelvis) section(pelvis, [
       [1.82, profile.pelvis.x * .96, profile.pelvis.z * .96],
       [1.74, profile.pelvis.x * 1.06, profile.pelvis.z * 1.05],
@@ -224,7 +266,7 @@
         if (!segment) return;
         for (const child of [...parent.children]) if (child !== segment && /(_segment_[1-9]|_joint_|_terminal_joint)/.test(child.name)) discard(child);
         const curve = new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p)), false, 'centripetal');
-        const tubular = 36, radial = 24;
+        const tubular = 72, radial = 32;
         const geometry = new T.TubeGeometry(curve, tubular, 1, radial, false);
         const position = geometry.attributes.position;
         for (let row = 0; row <= tubular; row++) {
@@ -235,10 +277,16 @@
           const radius = T.MathUtils.lerp(radii[lo], radii[lo + 1], scaled - lo);
           for (let col = 0; col <= radial; col++) {
             const i = row * (radial + 1) + col;
+            const theta=col/radial*Math.PI*2;
+            const joint=Math.exp(-Math.pow((t-.52)/.125,2));
+            const cuff=Math.exp(-Math.pow((t-.9)/.065,2));
+            const compression=.009*Math.sin(t*103+Math.sin(theta)*1.8)*joint*(.3+.7*Math.max(0,Math.cos(theta)));
+            const tension=.006*Math.sin(t*122+theta*.4)*cuff;
+            const section=radius+compression+tension;
             position.setXYZ(i,
-              center.x + (position.getX(i) - center.x) * radius,
-              center.y + (position.getY(i) - center.y) * radius,
-              center.z + (position.getZ(i) - center.z) * radius);
+              center.x + (position.getX(i) - center.x) * section,
+              center.y + (position.getY(i) - center.y) * section,
+              center.z + (position.getZ(i) - center.z) * section);
           }
         }
         replace(segment, geometry);
@@ -246,8 +294,11 @@
         segment.quaternion.identity();
         segment.scale.set(1,1,1);
       };
-      smoothLimb(arm, [[0,0,0],[side * .19,-.35,.025],[side * .24,-.65,.08],[side * .15,-1.04,.22],[side * .1,-1.3,.3]],
+      const carrying = side > 0 && (combat || ['scientist','synthetic'].includes(type));
+      const wrist=carrying? [combat?-.18:.08,-1.02,.68]:[side*.1,-1.3,.3];
+      smoothLimb(arm, [[0,0,0],[side * .14,-.32,.025],[side * .2,-.64,.1],[wrist[0]*.8,-.94,wrist[2]*.75],wrist],
         [combat ? .195 : .175, combat ? .19 : .17, .145, .16, .12]);
+      if(arm) arm.userData.restWrist=wrist;
       smoothLimb(leg, [[0,0,0],[side * .025,-.35,side * .035],[side * .06,-.8,side * .08],[side * .035,-1.2,.055],[side * .02,-1.54,.04]],
         [combat ? .255 : .23, combat ? .24 : .215, .17, .18, .125]);
       const pauldron = root.getObjectByName(`${type}_pauldron_${suffix}`);
@@ -262,7 +313,12 @@
       const helmet = root.getObjectByName('helmet_and_comms');
       for (const name of ['helmet_shell','visor','comms_module','microphone_boom']) discard(helmet?.getObjectByName(name));
     }
-    return { bareHead, removedMaterials };
+    return { bareHead, removedMaterials, frontAt(x,y) {
+      const segment=Math.max(0,Math.min(torsoRings.length-2,torsoRings.findIndex(r=>r[0]>y)-1));
+      const a=torsoRings[segment],b=torsoRings[segment+1],t=T.MathUtils.clamp((y-a[0])/(b[0]-a[0]),0,1);
+      const width=T.MathUtils.lerp(a[1],b[1],t),depth=T.MathUtils.lerp(a[2],b[2],t);
+      return depth*Math.sqrt(Math.max(.04,1-Math.pow(x/width,2)));
+    } };
   }
 
   function humanDetail(factory, root, type, T) {
@@ -303,101 +359,276 @@
     // A helmet should not turn a person into a five-head-tall toy. Retain the
     // existing world height and shoulder rig while using adult head proportions.
     if (helmet) helmet.scale.multiplyScalar(silhouette.bareHead ? .72 : .74);
-    const sculptedHead = new T.SphereGeometry(1, 56, 40);
-    const points = sculptedHead.attributes.position;
-    for (let i = 0; i < points.count; i++) {
-      let x = points.getX(i), y = points.getY(i), z = points.getZ(i);
-      const front = Math.pow(Math.max(0, z), 6);
-      const gaussian = (cx, cy, sx, sy) => Math.exp(-Math.pow((x - cx) / sx, 2) - Math.pow((y - cy) / sy, 2));
-      // Continuous facial planes: sockets, bridge, cheekbones and muzzle. These
-      // live in one skin surface instead of separate balloon-shaped features.
-      z += front * (0.27 * gaussian(0, -0.15, 0.16, 0.22)
-        + 0.06 * gaussian(-0.36, -0.23, 0.23, 0.24)
-        + 0.06 * gaussian(0.36, -0.23, 0.23, 0.24)
-        - 0.055 * gaussian(-0.3, 0.13, 0.21, 0.15)
-        - 0.055 * gaussian(0.3, 0.13, 0.21, 0.15));
-      const jaw = Math.max(0, Math.min(1, (-y - 0.25) / 0.62));
-      x *= 1 - jaw * 0.27;
-      points.setXYZ(i, x, y, z);
-    }
-    sculptedHead.computeVertexNormals();
-    sculptedHead.setAttribute('uv2', sculptedHead.attributes.uv.clone());
-    head.geometry.dispose();
-    head.geometry = sculptedHead;
+    head.scale.x *= .9; head.scale.y *= 1.045;
     const faceParent = helmet || root;
     const headAt = head.position.clone();
     const sx = profile.helmetScale;
     const face = (x, y, z) => [headAt.x + x * sx, headAt.y + y * sx, headAt.z + z * sx];
-    // Broad cheeks, nasal bridge and a tapered jaw read as a face at close range;
-    // the eyes sit beneath the protective brow instead of glowing on the skin.
-    batches.oval(faceParent, faceShadow, face(0, -0.205, 0.306), [0.084 * sx, 0.009 * sx, 0.012 * sx], null, 16);
-    for (const side of [-1, 1]) {
-      batches.oval(faceParent, skin, face(side * 0.335, -0.015, 0.015), [0.043 * sx, 0.098 * sx, 0.038 * sx], null, 20);
-      batches.oval(faceParent, faceShadow, face(side * 0.12, 0.022, 0.306), [0.073 * sx, 0.028 * sx, 0.02 * sx], null, 20);
-      batches.oval(faceParent, skin, face(side * 0.116, 0.068, 0.286), [0.09 * sx, 0.028 * sx, 0.03 * sx], [0, 0, side * -0.1], 20);
+    const sculptPoint = (x, y, z) => {
+      const front = Math.pow(Math.max(0, z), 3);
+      const g = (cx, cy, rx, ry) => Math.exp(-Math.pow((x-cx)/rx,2)-Math.pow((y-cy)/ry,2));
+      z += front * (-.08*g(0,0,1.3,.9)
+        + .12*g(-.35,.27,.3,.13)+.12*g(.35,.27,.3,.13)
+        - .09*g(-.36,.095,.23,.14)-.09*g(.36,.095,.23,.14)
+        + .34*g(0,-.10,.13,.30)+.19*g(0,-.27,.19,.12)
+        + .11*g(-.085,-.27,.075,.09)+.11*g(.085,-.27,.075,.09)
+        + .13*g(-.4,-.20,.27,.25)+.13*g(.4,-.20,.27,.25)
+        + .10*g(0,-.5,.37,.17)+.16*g(0,-.75,.32,.14)
+        - .025*g(-.23,-.44,.09,.2)-.025*g(.23,-.44,.09,.2));
+      const jaw = T.MathUtils.smoothstep(-y,.29,.91);
+      x *= (1-jaw*.245)*(1+.085*Math.exp(-Math.pow((y+.45)/.17,2)));
+      if(z<0) z *= .94;
+      return [x,y,z];
+    };
+    // A regular ring layout joins jaw and neck; stretching the final sphere
+    // pole into a throat would create skinny triangles and a serrated seam.
+    const headVertices=[],headUV=[],headIndices=[],headRadial=104,faceRows=88,neckRows=24,headRows=faceRows+neckRows;
+    for(let row=0;row<=headRows;row++)for(let col=0;col<=headRadial;col++){
+      const phi=col/headRadial*Math.PI*2,cut=-.72-.22*Math.max(0,Math.sin(phi));
+      const angle=Math.acos(cut),radius=Math.sqrt(1-cut*cut);
+      let vertex;
+      if(row<=faceRows){
+        const theta=row/faceRows*angle;
+        vertex=sculptPoint(-Math.cos(phi)*Math.sin(theta),Math.cos(theta),Math.sin(phi)*Math.sin(theta));
+      }else{
+        const t=(row-faceRows)/neckRows,smooth=t*t*(3-2*t);
+        const atCut=sculptPoint(-Math.cos(phi)*radius,cut,Math.sin(phi)*radius);
+        const nx=-Math.cos(phi)*(.235/head.scale.x),nz=Math.sin(phi)*(.195/head.scale.z)-.035/head.scale.z;
+        vertex=[T.MathUtils.lerp(atCut[0],nx,smooth),T.MathUtils.lerp(cut,-.76/head.scale.y,t),T.MathUtils.lerp(atCut[2],nz,smooth)];
+      }
+      headVertices.push(...vertex);headUV.push(col/headRadial,1-row/headRows);
+      if(row<headRows&&col<headRadial){const n=row*(headRadial+1)+col,m=n+headRadial+1;headIndices.push(n,m,n+1,m,m+1,n+1);}
     }
-    if (silhouette.bareHead) {
-      const hair = factory._material('skin', { color: type === 'scientist' ? 0x1d1713 : 0x141313, roughness:.9, metalness:0 });
-      const scalp = new T.SphereGeometry(1, 40, 24, 0, Math.PI * 2, 0, Math.PI * .49);
-      const cap = new T.Mesh(scalp, hair);
-      cap.position.copy(headAt);
-      cap.scale.copy(head.scale).multiplyScalar(1.018);
-      batches.mesh(faceParent, cap);
-      scalp.dispose();
-      const eyeWhite = factory._material('skin', {color:0xaeb4b1,roughness:.52,metalness:0});
-      for (const side of [-1,1]) {
-        batches.oval(faceParent,eyeWhite,face(side*.113,.025,.317),[.048*sx,.017*sx,.014*sx],null,16);
-        batches.oval(faceParent,faceShadow,face(side*.113,.025,.329),[.015*sx,.016*sx,.008*sx],null,16);
+    const sculptedHead=new T.BufferGeometry();sculptedHead.setAttribute('position',new T.Float32BufferAttribute(headVertices,3));
+    sculptedHead.setAttribute('uv',new T.Float32BufferAttribute(headUV,2));sculptedHead.setIndex(headIndices);
+    sculptedHead.computeVertexNormals();
+    sculptedHead.setAttribute('uv2',sculptedHead.attributes.uv.clone());
+    head.geometry.dispose();head.geometry=sculptedHead;head.userData.hiveDetailFitted=true;
+    const lip = factory._material('lip',{color:synthetic?0x8b9390:0x8d5a50,roughness:.53,metalness:0});
+    const eyeWhite=factory._material('eye',{color:synthetic?0x969f9d:0xc1c4b8,roughness:.24,metalness:0});
+    const iris=factory._material('iris',{color:synthetic?0x596e72:0x4d5a47,roughness:.34,metalness:0});
+    const pupil=factory._material('pupil',{color:0x0a0f0c,roughness:.25,metalness:0});
+    const hair=factory._material('hair',{color:type==='scientist'?0x241b15:0x181615,roughness:.78,metalness:0});
+    for(const material of [lip,eyeWhite,iris,pupil,hair]) material.color.convertSRGBToLinear();
+    // Fine groomed fibres break the cap's highlight without a second material
+    // or an external image. The texture belongs to this model's hair material.
+    const hairPixels=new Uint8Array(128*256*3);
+    for(let y=0;y<256;y++)for(let x=0;x<128;x++){
+      const strand=x+.75*Math.sin(y*.035)+.28*Math.sin(y*.083+x*.11);
+      const intensity=Math.max(0,Math.min(255,Math.round(190+26*Math.sin(strand*3.4)+18*Math.sin(strand*6.9)+6*Math.sin(y*.13+strand*2.1))));
+      const i=(y*128+x)*3;hairPixels[i]=intensity;hairPixels[i+1]=intensity;hairPixels[i+2]=intensity;
+    }
+    const hairTexture=new T.DataTexture(hairPixels,128,256,T.RGBFormat);
+    hairTexture.wrapS=hairTexture.wrapT=T.RepeatWrapping;hairTexture.minFilter=T.LinearMipmapLinearFilter;
+    hairTexture.generateMipmaps=true;hairTexture.anisotropy=4;hairTexture.needsUpdate=true;
+    hair.map=hairTexture;hair.bumpMap=hairTexture;hair.bumpScale=.0004;
+    hair.addEventListener('dispose',()=>hairTexture.dispose());
+    const skinFront=(x,y)=>{
+      const nx=x*sx/head.scale.x,ny=y*sx/head.scale.y;
+      const nz=Math.sqrt(Math.max(.0001,1-nx*nx-ny*ny));
+      return sculptPoint(nx,ny,nz)[2]*head.scale.z/sx;
+    };
+    // Eye globes sit inside a sculpted orbit. Separate upper/lower lid rims and
+    // a tear duct frame the sclera, iris and cornea instead of a painted dot.
+    for(const side of [-1,1]) {
+      const cx=side*.119,cy=.035;
+      batches.oval(faceParent,eyeWhite,face(cx,cy,.260),[.048*sx,.022*sx,.029*sx],null,32);
+      batches.oval(faceParent,iris,face(cx,cy,.288),[.0165*sx,.017*sx,.005*sx],null,28);
+      batches.oval(faceParent,pupil,face(cx,cy,.292),[.007*sx,.010*sx,.003*sx],null,24);
+      batches.oval(faceParent,eyeWhite,face(cx-.006,cy+.007,.295),[.003*sx,.003*sx,.002*sx],null,16);
+      const upper=[],lower=[],brow=[],crease=[];
+      for(let k=0;k<=12;k++) {
+        const t=k/12,a=Math.PI*t;
+        const x=cx+(t-.5)*.106;
+        upper.push(face(x,cy+.014*Math.sin(a),.261+.021*Math.sin(a)));
+        lower.push(face(x,cy-.012*Math.sin(a),.260+.023*Math.sin(a)));
+        const bx=cx+(t-.5)*.135,by=cy+.061+.013*Math.sin(a);
+        brow.push(face(bx,by,skinFront(bx,by)+.003));
+        crease.push(face(x,cy-.031-.003*Math.sin(a),.282+.006*Math.sin(a)));
+      }
+      batches.path(faceParent,skin,upper,[.0035,.0045,.003],24,8);
+      batches.path(faceParent,skin,lower,[.0025,.0035,.002],24,8);
+      // The skin between the globe opening and outer orbit is a continuous lid
+      // annulus, not a floating wire around a white sphere.
+      const lidVertices=[],lidUV=[],lidIndices=[],steps=64,rings=8;
+      for(let row=0;row<=rings;row++)for(let col=0;col<=steps;col++){
+        const a=col/steps*Math.PI*2,t=row/rings;
+        const ix=cx+Math.cos(a)*.052,iy=cy+Math.sin(a)*(Math.sin(a)>0?.014:.012);
+        const ox=cx+Math.cos(a)*.062,oy=cy+Math.sin(a)*(Math.sin(a)>0?.029:.026);
+        const iz=.260+.023*Math.abs(Math.sin(a));
+        const x=T.MathUtils.lerp(ix,ox,t),y=T.MathUtils.lerp(iy,oy,t);
+        const z=T.MathUtils.lerp(iz,Math.min(.300,skinFront(ox,oy)+.001),T.MathUtils.smoothstep(t,0,1))+.001*Math.sin(t*Math.PI);
+        lidVertices.push(...face(x,y,z));lidUV.push(col/steps,t);
+        if(row<rings&&col<steps){const n=row*(steps+1)+col,m=n+steps+1;lidIndices.push(n,m,n+1,m,m+1,n+1);}
+      }
+      const lidGeo=new T.BufferGeometry();lidGeo.setAttribute('position',new T.Float32BufferAttribute(lidVertices,3));lidGeo.setAttribute('uv',new T.Float32BufferAttribute(lidUV,2));lidGeo.setIndex(lidIndices);lidGeo.computeVertexNormals();
+      const lidMesh=new T.Mesh(lidGeo,skin);batches.mesh(faceParent,lidMesh);lidGeo.dispose();
+      batches.path(faceParent,hair,brow,[.0025,.0035,.001],24,6);
+      batches.oval(faceParent,lip,face(cx-side*.05,cy-.001,.264),[.009*sx,.007*sx,.007*sx],null,20);
+      // Pinna, concha, antihelix and tragus form a folded ear shell.
+      batches.oval(faceParent,skin,face(side*.326,-.015,.006),[.046*sx,.103*sx,.041*sx],null,32);
+      const helix=[];
+      for(let k=0;k<=20;k++) {
+        const a=-.35+k/20*Math.PI*1.8;
+        helix.push(face(side*(.335+.018*Math.cos(a)),-.016+.082*Math.sin(a),.035+.018*Math.cos(a)));
+      }
+      batches.path(faceParent,skin,helix,[.007,.010,.006],32,8);
+      batches.oval(faceParent,faceShadow,face(side*.339,-.023,.046),[.013*sx,.041*sx,.012*sx],null,24);
+      batches.path(faceParent,skin,[face(side*.338,-.063,.058),face(side*.348,-.01,.06),face(side*.336,.035,.05)],[.006,.008,.004],20,8);
+      batches.oval(faceParent,skin,face(side*.314,-.026,.052),[.007*sx,.016*sx,.008*sx],null,24);
+      // Small alar volumes overlap the bridge; nostrils turn under the tip.
+      batches.oval(faceParent,faceShadow,face(side*.024,-.116,skinFront(side*.024,-.116)+.003),[.010*sx,.005*sx,.007*sx],[.5,side*.18,0],24);
+    }
+    const upperLip=[],lowerLip=[],mouth=[];
+    for(let k=0;k<=18;k++) {
+      const t=k/18,x=(t-.5)*.158;
+      const arch=Math.sin(Math.PI*t);
+      const cupid=Math.exp(-Math.pow(x/.018,2));
+      const uy=-.209+.012*arch-.004*cupid,ly=-.214-.010*arch,my=-.212+.002*arch;
+      upperLip.push(face(x,uy,skinFront(x,uy)+.005));
+      lowerLip.push(face(x,ly,skinFront(x,ly)+.005));
+      mouth.push(face(x,my,skinFront(x,my)+.007));
+    }
+    batches.path(faceParent,lip,upperLip,[.0015,.0045,.0015],32,8);
+    batches.path(faceParent,lip,lowerLip,[.0015,.0055,.0015],32,8);
+    batches.path(faceParent,faceShadow,mouth,[.001,.0017,.001],32,6);
+    // Sternomastoid/clavicle transitions connect a face to the collar, avoiding
+    // the cylinder-on-a-box neck present in the prototype.
+    const neck=root.getObjectByName('neck');
+    if(neck) neck.visible=false; // The continuous head/throat mesh owns this volume now.
+    if(silhouette.bareHead) {
+      const vertices=[],uv=[],indices=[];const radial=88,rows=36;
+      const capPoint=(phi,t)=>{
+        const end=1.58-.65*Math.max(0,Math.sin(phi))+.32*Math.max(0,-Math.sin(phi))+.007*Math.sin(phi*53);
+        const theta=t*end;
+        const v=sculptPoint(-Math.cos(phi)*Math.sin(theta),Math.cos(theta),Math.sin(phi)*Math.sin(theta));
+        const ridge=1.018+.004*Math.sin(phi*44+theta*18);
+        return [headAt.x+v[0]*head.scale.x*ridge,headAt.y+v[1]*head.scale.y*ridge,headAt.z+v[2]*head.scale.z*ridge];
+      };
+      for(let r=0;r<=rows;r++)for(let c=0;c<=radial;c++) {
+        vertices.push(...capPoint(c/radial*Math.PI*2,r/rows));uv.push(c/radial,r/rows);
+        if(r<rows&&c<radial){const a=r*(radial+1)+c,b=a+radial+1;indices.push(a,b,a+1,b,b+1,a+1);}
+      }
+      const scalp=new T.BufferGeometry();scalp.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
+      scalp.setAttribute('uv',new T.Float32BufferAttribute(uv,2));scalp.setIndex(indices);scalp.computeVertexNormals();
+      const cap=new T.Mesh(scalp,hair);batches.mesh(faceParent,cap);scalp.dispose();
+      for(let strand=0;strand<72;strand++) {
+        const phi=strand/72*Math.PI*2,path=[];
+        for(let k=0;k<9;k++) path.push(capPoint(phi+.18*(1-k/8),.12+k/8*.84));
+        batches.path(faceParent,hair,path,[.00025,.0008,.0002],24,5);
       }
     }
+    root.userData.humanFaceSculpt={version:2,eyelids:true,continuousPlanes:true,foldedEars:true};
     // Garment construction: zipper, collars, tension seams and load-bearing
     // webbing. Batches follow the body or the appropriate shoulder joint.
-    batches.box(root, dark, [0, torsoY - 0.03, profile.torso.z + 0.015], [0.027, 1.22, 0.026]);
-    for (let zip = 0; zip < 20; zip++) batches.box(root, armor, [(zip % 2 ? -1 : 1) * 0.022, torsoY - 0.52 + zip * 0.055, profile.torso.z + 0.033], [0.022, 0.018, 0.014]);
-    batches.box(root,dark,[0,1.79,profile.pelvis.z*1.1],[.14,.075,.035]);
+    const zipper=[];
+    for(let k=0;k<=24;k++){const y=2.09+k/24*1.22;zipper.push([0,y,silhouette.frontAt(0,y)+.009]);}
+    batches.path(root,uniform,zipper,[.005,.006,.004],40,8);
+    for(let zip=0;zip<22;zip++) {
+      const y=2.12+zip*.05;
+      batches.panel(root,armor,[(zip%2?-1:1)*.012,y,silhouette.frontAt(0,y)+.014],[.014,.012,.006],null,.001);
+    }
+    batches.panel(root,dark,[0,1.79,profile.pelvis.z*1.1],[.14,.075,.024],null,.006);
     for (const side of [-1, 1]) {
-      batches.box(root, uniform, [side * 0.19, torsoY + 0.64, 0.19], [0.28, 0.14, 0.1], [0.18, 0, side * 0.22]);
-      batches.box(root, dark, [side * profile.shoulderX * 0.63, torsoY + 0.08, profile.torso.z + profile.chest.z * 0.6], [0.075, 1.19, 0.055], [0, 0, side * -0.1]);
-      batches.box(root, armor, [side * profile.shoulderX * 0.65, torsoY - 0.16, profile.torso.z + profile.chest.z * 0.68], [0.13, 0.12, 0.055]);
+      batches.panel(root,uniform,[side*.18,torsoY+.64,.17],[.24,.12,.025],[.2,0,side*.27],.012);
+      const strap=[];
+      for(let k=0;k<=16;k++) {
+        const y=2.2+k/16*1.12,x=side*profile.shoulderX*(.56+.06*k/16);
+        let z=silhouette.frontAt(x,y)+.018;
+        if(combat&&y>torsoY+.1-profile.chest.y*.52&&y<torsoY+.1+profile.chest.y*.54) z=Math.max(z,profile.torso.z*.98+.058-Math.pow(x/(profile.chest.x*.49),2)*.13);
+        strap.push([x,y,z]);
+      }
+      for(let k=0;k<strap.length-1;k++) {
+        const a=strap[k],b=strap[k+1],dy=b[1]-a[1],dz=b[2]-a[2],dx=b[0]-a[0];
+        batches.panel(root,dark,[(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2],[.063,Math.hypot(dy,dz)+.008,.012],[Math.atan2(dz,dy),0,-Math.atan2(dx,dy)],.001);
+      }
+      const buckle=strap[6];
+      batches.panel(root,armor,[buckle[0],buckle[1],buckle[2]+.012],[.105,.09,.015],null,.003);
       const arm = root.getObjectByName(`arm_${side < 0 ? 'left' : 'right'}`);
       const leg = root.getObjectByName(`leg_${side < 0 ? 'left' : 'right'}`);
       const hand = moveWithJoint(root, `hand_${side}`, arm);
       const boot = moveWithJoint(root, `boot_${side}`, leg);
       moveWithJoint(root, `${type}_pauldron_${side < 0 ? 'left' : 'right'}`, arm);
       if (arm) {
-        batches.box(arm, dark, [side * 0.15, -0.36, 0.19], [0.24, 0.16, 0.06], [0, 0, side * -0.08]);
-        batches.box(arm, armor, [side * 0.15, -0.39, 0.225], [0.16, 0.06, 0.03]);
+        batches.panel(arm,dark,[side*.15,-.36,.19],[.22,.14,.025],[0,0,side*-.08],.012);
+        batches.panel(arm,armor,[side*.15,-.39,.225],[.15,.055,.018],null,.004);
         if (combat) {
           for (let ridge = 0; ridge < 5; ridge++) batches.box(arm, dark, [side * 0.2, -0.66 + ridge * 0.045, 0.18], [0.24, 0.018, 0.035]);
         }
       }
       if (hand && arm) {
-        const at = hand.position;
-        const gloveMaterial = combat ? dark : skin;
-        if (combat) hand.material = dark;
-        for (let finger = 0; finger < 4; finger++) {
-          const spread = (finger - 1.5) * 0.057;
-          batches.oval(arm, gloveMaterial, [at.x + spread, at.y - 0.18, at.z + 0.055], [0.027, 0.12 - Math.abs(finger - 1.5) * 0.011, 0.034], [0.14, 0, (finger - 1.5) * -0.055], 16);
-          if (combat) batches.oval(arm, armor, [at.x + spread, at.y + 0.015, at.z + 0.115], [0.027, 0.041, 0.016], null, 16);
+        const wrist=arm.userData.restWrist;
+        if(wrist) hand.position.set(wrist[0],wrist[1]-.115,wrist[2]+.03);
+        const at=hand.position;
+        const gloveMaterial=combat?dark:skin;
+        hand.material=gloveMaterial;hand.scale.set(.115,.135,.072);
+        const palm=new T.SphereGeometry(1,40,28),pp=palm.attributes.position;
+        for(let i=0;i<pp.count;i++) {
+          const x=pp.getX(i),y=pp.getY(i),z=pp.getZ(i);
+          pp.setXYZ(i,x*(1-.16*Math.max(0,-y)),y,z*(.91+.06*Math.cos(x*6)));
         }
-        batches.oval(arm, gloveMaterial, [at.x - side * 0.13, at.y - 0.015, at.z + 0.065], [0.044, 0.1, 0.042], [0.15, 0, side * -0.42], 16);
+        palm.computeVertexNormals();palm.setAttribute('uv2',palm.attributes.uv.clone());
+        hand.geometry.dispose();hand.geometry=palm;hand.userData.hiveDetailFitted=true;
+        for(let finger=0;finger<4;finger++) {
+          const spread=(finger-1.5)*.051,length=[.163,.18,.169,.139][finger];
+          const bend=.022+(finger===3?.01:0);
+          const path=[[at.x+spread,at.y-.082,at.z+.014],[at.x+spread,at.y-.112,at.z+.027],
+            [at.x+spread*.98,at.y-.09-length*.55,at.z+bend],[at.x+spread*.95,at.y-.09-length,at.z+bend+.025]];
+          batches.path(arm,gloveMaterial,path,[.024,.022,.019,.016],24,10);
+          batches.oval(arm,gloveMaterial,[at.x+spread,at.y-.105,at.z+.055],[.026,.027,.016],null,24);
+          if(combat) batches.panel(arm,armor,[at.x+spread,at.y-.105,at.z+.067],[.031,.034,.005],null,.002);
+          else {
+            batches.oval(arm,lip,[at.x+spread*.95,at.y-.09-length+.022,at.z+bend+.039],[.014,.022,.003],null,20);
+            batches.path(arm,faceShadow,[[at.x+spread-.012,at.y-.16,at.z+.046],[at.x+spread,at.y-.166,at.z+.048],[at.x+spread+.012,at.y-.16,at.z+.046]],[.0012,.0018,.0012],12,6);
+          }
+        }
+        batches.path(arm,gloveMaterial,[[at.x-side*.083,at.y+.01,at.z+.015],[at.x-side*.137,at.y-.035,at.z+.062],[at.x-side*.126,at.y-.108,at.z+.088]],
+          [.035,.028,.018],24,12);
+        // Thenar pad and wrist creases create a palm rather than a mitten.
+        batches.oval(arm,gloveMaterial,[at.x-side*.066,at.y-.025,at.z+.043],[.05,.072,.026],[.1,0,side*-.22],28);
+        for(let crease=0;crease<2;crease++) batches.path(arm,combat?uniform:faceShadow,
+          [[at.x-.073,at.y+.10+crease*.019,at.z+.039],[at.x,at.y+.108+crease*.019,at.z+.049],[at.x+.073,at.y+.10+crease*.019,at.z+.039]],
+          [combat?.003:.0012,combat?.003:.0016,combat?.003:.0012],20,6);
       }
       if (boot && leg) {
-        const at = boot.position;
-        batches.box(leg, dark, [at.x, at.y - 0.06, at.z + 0.02], [0.46, 0.065, 0.8]);
-        for (let tread = 0; tread < 6; tread++) batches.box(leg, armor, [at.x, at.y - 0.095, at.z - 0.26 + tread * 0.115], [0.43, 0.026, 0.035]);
-        for (let lace = 0; lace < 4; lace++) batches.box(leg, uniform, [at.x, at.y + 0.08, at.z + lace * 0.07], [0.19, 0.017, 0.023]);
-        if (combat) {
-          batches.oval(leg, armor, [side * 0.05, -0.78, 0.23], [0.17, 0.19, 0.04], null, 24);
-          batches.box(leg, dark, [side * 0.05, -0.8, 0.31], [0.26, 0.045, 0.025]);
+        const at=boot.position;
+        const bootGeometry=(sole=false)=>{
+          const sections=[[-.36,.14,sole?-.116:-.07,sole?-.062:.145],[-.24,.205,sole?-.125:-.075,sole?-.059:.17],
+            [-.02,.218,sole?-.13:-.075,sole?-.06:.14],[.24,.222,sole?-.122:-.071,sole?-.055:.09],[.39,.165,sole?-.10:-.06,sole?-.045:.055],[.43,.025,sole?-.07:-.045,sole?-.04:.012]];
+          const verts=[],uv=[],indices=[],radial=40;
+          for(let row=0;row<sections.length;row++) {
+            const[z,w,bottom,top]=sections[row];
+            for(let col=0;col<=radial;col++) {
+              const a=col/radial*Math.PI*2,x=Math.sin(a)*w,y=(top+bottom)/2+Math.cos(a)*(top-bottom)/2;
+              verts.push(x/boot.scale.x,y/boot.scale.y,z/boot.scale.z);uv.push(col/radial,row/(sections.length-1));
+              if(row<sections.length-1&&col<radial){const n=row*(radial+1)+col,m=n+radial+1;indices.push(n,m,n+1,m,m+1,n+1);}
+            }
+          }
+          const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();geo.setAttribute('uv2',geo.attributes.uv.clone());return geo;
+        };
+        boot.geometry.dispose();boot.geometry=bootGeometry();boot.userData.hiveDetailFitted=true;
+        const outsole=new T.Mesh(bootGeometry(true),dark);outsole.position.copy(at);outsole.scale.copy(boot.scale);batches.mesh(leg,outsole);outsole.geometry.dispose();
+        batches.oval(leg,dark,[at.x,at.y+.16,at.z-.12],[.145,.18,.16],null,32);
+        // Curved welt, toe-cap stitching and crossed laces follow the shoe last.
+        const toe=[];for(let k=0;k<=16;k++){const a=-Math.PI*.46+k/16*Math.PI*.92;toe.push([at.x+Math.sin(a)*.202,at.y-.025,at.z+.19+Math.cos(a)*.185]);}
+        batches.path(leg,uniform,toe,[.003,.004,.003],32,8);
+        for(let lace=0;lace<5;lace++) {
+          const y=at.y+.11-lace*.012,z=at.z-.015+lace*.052;
+          batches.path(leg,uniform,[[at.x-.085,y,z-.014],[at.x,y+.012,z+.014],[at.x+.085,y,z+.031]],[.004,.005,.004],16,6);
+        }
+        for(let tread=0;tread<5;tread++) batches.panel(leg,dark,[at.x,at.y-.124,at.z-.24+tread*.125],[.3,.025,.033],[Math.PI/2,0,(tread%2?1:-1)*.08],.002);
+        if(combat) {
+          batches.panel(leg,armor,[side*.05,-.78,.215],[.28,.30,.025],null,.032);
+          batches.path(leg,dark,[[side*.05-.1,-.8,.265],[side*.05,-.83,.278],[side*.05+.1,-.8,.265]],[.007,.01,.007],20,8);
         }
       }
     }
     if (type === 'scientist') {
       // Split protective overcoat and medical badge retain the slender silhouette.
       for (const side of [-1, 1]) {
-        batches.box(root, uniform, [side * 0.26, 1.92, 0.16], [0.43, 0.62, 0.06], [0, side * -0.06, side * -0.06]);
-        batches.box(root, armor, [side * 0.33, torsoY - 0.25, 0.365], [0.21, 0.22, 0.035]);
+        batches.panel(root,uniform,[side*.26,1.92,.16],[.43,.62,.024],[0,side*-.06,side*-.06],.027);
+        batches.panel(root,uniform,[side*.16,3.2,silhouette.frontAt(side*.16,3.2)+.018],[.16,.34,.018],[.12,0,side*.27],.012);
+        batches.panel(root,uniform,[side*.33,torsoY-.25,silhouette.frontAt(side*.33,torsoY-.25)+.018],[.21,.22,.02],null,.025);
       }
       batches.box(root, dark, [-0.26, torsoY + 0.36, 0.414], [0.16, 0.22, 0.02]);
       if (accent) batches.box(root, accent, [-0.26, torsoY + 0.36, 0.43], [0.11, 0.06, 0.014]);
@@ -407,9 +638,13 @@
           batches.box(root, dark, [(col - 1.5) * 0.19, torsoY + 0.02 + row * 0.14, profile.torso.z + profile.chest.z * 0.75], [0.12, 0.022, 0.018]);
         }
       }
-      const equipment = root.children.find(object => object.userData?.equipmentType);
-      const rightArm = root.getObjectByName('arm_right');
-      if (equipment && rightArm) moveWithJoint(root, equipment.name, rightArm);
+
+    }
+    const equipment=root.children.find(object=>object.userData?.equipmentType),rightArm=root.getObjectByName('arm_right');
+    if(equipment&&rightArm){
+      moveWithJoint(root,equipment.name,rightArm);
+      const hand=root.getObjectByName('hand_1');
+      if(hand) equipment.position.set(hand.position.x+.05,hand.position.y+.06,hand.position.z+.1);
     }
     if (helmet && !silhouette.bareHead) {
       for (const side of [-1, 1]) {

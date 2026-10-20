@@ -2,6 +2,8 @@
 'use strict';
 const assert = require('node:assert/strict');
 global.THREE = require('../assets/vendor/three.r128.min.js');
+require('../src/organic-sculpt.js');
+require('../src/surface-detail.js');
 require('../src/model-detail.js');
 require('../src/models.js');
 const factory = global.HiveModelFactory;

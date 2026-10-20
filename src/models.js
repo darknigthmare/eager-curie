@@ -233,6 +233,7 @@
       material.userData.hiveBaseRoughness = material.roughness;
       material.userData.hiveBaseMetalness = material.metalness;
       this._applyManagedTexture(material);
+      global.HiveSurfaceDetail?.apply?.(material, kind);
       this._managedMaterials.add(material);
       material.addEventListener('dispose', () => this._managedMaterials.delete(material));
       return material;
@@ -261,6 +262,7 @@
         material.bumpScale = profile === 'resin' ? 0.028 : 0.014;
       }
       material.needsUpdate = true;
+      global.HiveSurfaceDetail?.apply?.(material, kind);
     }
 
     _refreshManagedMaterials() {
@@ -444,12 +446,27 @@
 
     _ellipsoid(material, scale, position, name, segments) {
       const T = this._three();
+      const sculpt = global.HiveOrganicSculpt;
+      let kind = null;
+      if (name === 'thorax') kind = 'chest';
+      else if (name === 'elongated_cranial_shell' || name === 'juvenile_head') kind = 'skull';
+      else if (name === 'warrior_cranial_shell') kind = 'warriorSkull';
+      else if (name === 'runner_head') kind = 'runnerSkull';
+      else if (name === 'shell_body') kind = 'egg';
+      else if (name === 'pod_membrane') kind = 'cocoon';
+      else if (name === 'petal_shell' || name === 'petal_membrane') kind = 'petal';
+      else if (name === 'central_carpal_body' || name === 'runner_thorax') kind = 'crawler';
+      else if (name === 'palm_plate') kind = 'palm';
+      else if (name === 'pelvic_carapace' || name === 'royal_abdomen') kind = 'pelvis';
+      else if (/reinforced_shoulder|patellar_plate/.test(name || '')) kind = 'shoulder';
+      else if (name === 'knuckle') kind = 'knuckle';
+      else if (/^(hip|knee|ankle)$|_joint_|_terminal_joint/.test(name || '')) kind = 'joint';
       const resolution = segments || 24;
-      const mesh = this._mesh(
-        new T.SphereGeometry(1, resolution, Math.max(8, Math.floor(resolution * 0.75))),
-        material,
-        name
-      );
+      const geometry = kind && sculpt
+        ? sculpt.surface(T, kind)
+        : new T.SphereGeometry(1, resolution, Math.max(8, Math.floor(resolution * 0.75)));
+      if (kind && sculpt) sculpt.fitUV(geometry, scale);
+      const mesh = this._mesh(geometry, material, name);
       mesh.scale.set(scale.x, scale.y, scale.z);
       mesh.position.set(position.x, position.y, position.z);
       return mesh;
@@ -488,23 +505,26 @@
       const T = this._three();
       const direction = new T.Vector3().subVectors(end, start);
       const length = Math.max(0.001, direction.length());
-      const mesh = this._mesh(
-        new T.CylinderGeometry(
-          radiusEnd === undefined ? radiusStart : radiusEnd,
-          radiusStart,
-          length,
-          radialSegments || 12,
-          2,
-          false
-        ),
-        material,
-        name
-      );
+      const sculpt = global.HiveOrganicSculpt;
+      let anatomy = null;
+      if (/phalanx|tarsus/.test(name || '')) anatomy = 'digit';
+      else if (/^(arm|leg|runner_leg|juvenile_arm).*segment_/.test(name || '')) {
+        anatomy = /segment_0$/.test(name) ? 'upper' : (/^leg|^runner_leg/.test(name) ? 'shin' : 'forearm');
+      } else if (name === 'femur') anatomy = 'upper';
+      else if (name === 'tibia') anatomy = 'shin';
+      else if (name === 'cervical_column') anatomy = 'forearm';
+      let geometry;
+      if (anatomy && sculpt) {
+        geometry = sculpt.limb(T, anatomy, (radiusEnd === undefined ? radiusStart : radiusEnd) / radiusStart);
+        geometry.scale(radiusStart, length, radiusStart);
+        sculpt.fitUV(geometry);
+      } else {
+        geometry = new T.CylinderGeometry(radiusEnd === undefined ? radiusStart : radiusEnd,
+          radiusStart, length, radialSegments || 12, 2, false);
+      }
+      const mesh = this._mesh(geometry, material, name);
       mesh.position.copy(start).add(end).multiplyScalar(0.5);
-      mesh.quaternion.setFromUnitVectors(
-        new T.Vector3(0, 1, 0),
-        direction.normalize()
-      );
+      mesh.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), direction.normalize());
       return mesh;
     }
 
@@ -545,13 +565,31 @@
           const angle = j / radialSegments * Math.PI * 2;
           const normal = frames.normals[i].clone().multiplyScalar(Math.cos(angle))
             .addScaledVector(frames.binormals[i], Math.sin(angle));
-          const point = center.clone().addScaledVector(normal, radius);
+          let surfaceRadius = radius;
+          if (name === 'tail_skin' || name === 'larval_trunk') {
+            const dorsal = Math.max(0, Math.sin(angle));
+            const scute = Math.pow(Math.max(0,Math.cos(t * Math.PI * (name === 'tail_skin' ? 38 : 24) + Math.cos(angle) * .8)), 6);
+            surfaceRadius *= 1 + .12 * scute * (.4 + dorsal) - .045 * Math.pow(Math.cos(angle * 3 + t * 4), 8);
+          }
+          const point = center.clone().addScaledVector(normal, surfaceRadius);
           positions.push(point.x, point.y, point.z); normals.push(normal.x, normal.y, normal.z);
           uvs.push(j / radialSegments, t);
           if (i < tubularSegments && j < radialSegments) {
             const a = i * (radialSegments + 1) + j, b = a + radialSegments + 1;
-            indices.push(a, b, a + 1, b, b + 1, a + 1);
+            indices.push(a, a + 1, b, b, a + 1, b + 1);
           }
+        }
+      }
+      // Closed root/tip capfans prevent cut-open tubes during close inspection.
+      for (const end of [0, tubularSegments]) {
+        const center = curve.getPointAt(end / tubularSegments);
+        const ci = positions.length / 3;
+        positions.push(center.x, center.y, center.z); uvs.push(.5,end/tubularSegments);
+        normals.push(0,0,1);
+        const offset=end*(radialSegments+1);
+        for(let side=0;side<radialSegments;side++) {
+          if(end===0)indices.push(ci,offset+side+1,offset+side);
+          else indices.push(ci,offset+side,offset+side+1);
         }
       }
       const geometry = new T.BufferGeometry();
@@ -559,6 +597,7 @@
       geometry.setAttribute('normal', new T.Float32BufferAttribute(normals, 3));
       geometry.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2));
       geometry.setIndex(indices);
+      geometry.computeVertexNormals();
       return this._mesh(geometry, material, name);
     }
 
@@ -642,30 +681,9 @@
     }
 
     _addRibCage(parent, material, centerY, width, depth, count) {
-      const T = this._three();
-      for (let index = 0; index < count; index++) {
-        const t = count <= 1 ? 0 : index / (count - 1);
-        const rib = this._ring(
-          material,
-          width * (0.78 + Math.sin(t * Math.PI) * 0.22),
-          0.065,
-          { x: 0, y: centerY - t * 1.45, z: depth * 0.08 },
-          { x: Math.PI / 2, y: 0, z: Math.PI * 0.22 },
-          `rib_${index}`,
-          Math.PI * 1.55
-        );
-        rib.scale.z = depth / Math.max(0.01, width);
-        parent.add(rib);
-      }
-      parent.add(this._segment(
-        material,
-        new T.Vector3(0, centerY + 0.12, depth * 0.7),
-        new T.Vector3(0, centerY - 1.45, depth * 0.72),
-        0.08,
-        0.055,
-        'sternum_keel',
-        7
-      ));
+      // Rib arches, sternum and pectoral transitions are embedded in the chest
+      // loft. Separate torus hoops would float over this continuous anatomy.
+      return parent;
     }
 
     _addDorsalTubes(parent, material, baseY, size, count) {
@@ -709,8 +727,9 @@
         const finger = new T.Group();
         finger.name = `digit_${index}`;
         const base = new T.Vector3(spread, 0, 0.34 * s);
-        const knuckle = new T.Vector3(spread * 1.14, -0.025 * s, (0.59 + Math.abs(spread) * 0.18) * s);
-        const tip = new T.Vector3(spread * 1.28, -0.09 * s, (0.82 - Math.abs(spread) * 0.2) * s);
+        const lengthBias = 1 - Math.abs(index - (digits - 1) / 2) / digits * 0.24;
+        const knuckle = new T.Vector3(spread * 1.14, (isFoot ? -0.025 : -0.09) * s, 0.57 * lengthBias * s);
+        const tip = new T.Vector3(spread * 1.22, (isFoot ? -0.07 : -0.27) * s, 0.78 * lengthBias * s);
         finger.add(this._segment(material, base, knuckle, 0.065 * s, 0.05 * s, 'proximal_phalanx', 7));
         finger.add(this._joint(material, knuckle, 0.064 * s, 'knuckle'));
         finger.add(this._segment(material, knuckle, tip, 0.05 * s, 0.035 * s, 'distal_phalanx', 7));
@@ -793,9 +812,9 @@
       ];
       tailRoot.add(this._sweptBody(material, points,
         [thickness * 1.45, thickness * 1.16, thickness * 0.83, thickness * 0.5, thickness * 0.24],
-        'tail_skin', 76, 12));
+        'tail_skin', 128, 24));
       const curve = new T.CatmullRomCurve3(points.map((p) => new T.Vector3(p.x, p.y, p.z)));
-      this._addInstancedRings(tailRoot, boneMaterial, curve, 18, thickness * 1.48, 'caudal_vertebrae');
+      // Vertebral scutes are relief in the tapered tail surface, not ring beads.
       const tip = points[points.length - 1];
       const blade = this._ellipsoid(boneMaterial,
         { x: thickness * 1.5, y: thickness * 0.2, z: thickness * 4.4 },
@@ -808,41 +827,52 @@
     _addCrest(parent, material, size, isRoyal) {
       const T = this._three();
       const crest = new T.Group(); crest.name = isRoyal ? 'royal_crown_crest' : 'guardian_crest';
-      // A swept, flared occipital crown belongs on the skull, never at ground level.
-      const positions = [], uvs = [], indices = [], rows = 10, columns = 36;
-      for (let row = 0; row <= rows; row++) {
-        const r = row / rows;
-        for (let col = 0; col <= columns; col++) {
-          const angle = (col / columns - 0.5) * Math.PI * 1.2;
-          const edge = (0.42 + r * 1.3) * size;
-          const scallop = row === rows ? 1 + Math.pow(Math.sin(col / columns * Math.PI * 8), 8) * 0.055 : 1;
-          positions.push(Math.sin(angle) * edge * scallop,
-            (0.09 + Math.sin(r * Math.PI * 0.7) * 0.24 - Math.abs(Math.sin(angle)) * 0.07) * size,
-            -Math.cos(angle) * edge * scallop - size * 0.18);
-          uvs.push(col / columns, r);
-          if (row < rows && col < columns) {
-            const a = row * (columns + 1) + col, b = a + columns + 1;
-            indices.push(a, b, a + 1, b, b + 1, a + 1);
+      const positions = [], uvs = [], indices = [], rows = 22, columns = 72;
+      const stride = columns + 1, layerSize = (rows + 1) * stride;
+      for (let layer = 0; layer < 2; layer++) {
+        for (let row = 0; row <= rows; row++) {
+          const r = row / rows;
+          for (let col = 0; col <= columns; col++) {
+            const angle = (col / columns - .5) * Math.PI * 1.2;
+            const fluting = Math.pow(Math.max(0,Math.cos(angle * 8 + r * 1.6)),5);
+            const edgeRadius = (.27 + r * 1.55) * size;
+            const scallop = 1 + .055 * Math.cos(angle * 9) * Math.pow(r,5);
+            const dome = .2 + .29 * Math.sin(r * Math.PI * .9) - .09 * Math.abs(Math.sin(angle));
+            const keel = .11 * Math.exp(-Math.pow(angle/.23,2)) * Math.sin(r*Math.PI);
+            const grooves = -.055 * fluting * Math.sin(r*Math.PI);
+            const thickness = (.11 + .08 * Math.sin(r * Math.PI)) * size;
+            positions.push(Math.sin(angle) * edgeRadius * scallop,
+              (dome + keel + grooves) * size + (layer === 0 ? thickness / 2 : -thickness / 2),
+              -Math.cos(angle) * edgeRadius * scallop - size * .18);
+            uvs.push(col / columns,r);
+            if (row < rows && col < columns) {
+              const a = layer*layerSize+row*stride+col,b=a+stride;
+              if(layer===0)indices.push(a,a+1,b,b,a+1,b+1);
+              else indices.push(a,b,a+1,b,b+1,a+1);
+            }
           }
         }
+      }
+      // Weld top and underside around every edge into a closed, thick shield.
+      for(let col=0;col<columns;col++) {
+        for(const row of [0,rows]) {
+          const a=row*stride+col,b=a+1,c=a+layerSize,d=b+layerSize;
+          if(row===0)indices.push(a,c,b,b,c,d);else indices.push(a,b,c,b,d,c);
+        }
+      }
+      for(let row=0;row<rows;row++)for(const col of [0,columns]) {
+        const a=row*stride+col,b=a+stride,c=a+layerSize,d=b+layerSize;
+        if(col===0)indices.push(a,b,c,b,d,c);else indices.push(a,c,b,b,c,d);
       }
       const geometry = new T.BufferGeometry();
       geometry.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
       geometry.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2));
       geometry.setIndex(indices); geometry.computeVertexNormals();
-      const crownMaterial = material.clone();
-      crownMaterial.side = T.DoubleSide;
+      const crownMaterial = material.clone(); crownMaterial.side = T.DoubleSide;
+      global.HiveSurfaceDetail?.apply?.(crownMaterial, material.userData.hiveMaterialKind);
       this._managedMaterials.add(crownMaterial);
       crownMaterial.addEventListener('dispose', () => this._managedMaterials.delete(crownMaterial));
-      crest.add(this._mesh(geometry, crownMaterial, 'swept_crown_shell'));
-      for (let rib = 0; rib < (isRoyal ? 9 : 7); rib++) {
-        const angle = (rib / ((isRoyal ? 9 : 7) - 1) - 0.5) * Math.PI * 1.14;
-        crest.add(this._tube(material, [
-          { x: Math.sin(angle) * size * 0.43, y: size * 0.12, z: -Math.cos(angle) * size * 0.43 },
-          { x: Math.sin(angle) * size * 1.04, y: size * 0.31, z: -Math.cos(angle) * size * 1.04 },
-          { x: Math.sin(angle) * size * 1.72, y: size * 0.29, z: -Math.cos(angle) * size * 1.72 - size * 0.18 }
-        ], size * 0.025, `crown_rib_${rib}`, 20, 6));
-      }
+      crest.add(this._mesh(geometry, crownMaterial, 'sculpted_crown_shield'));
       parent.add(crest); return crest;
     }
 
@@ -1895,15 +1925,6 @@
       }
       skinVertices.needsUpdate = true; shellBody.geometry.computeVertexNormals();
       root.add(shellBody);
-      for (let vein = 0; vein < 8; vein++) {
-        const angle = vein / 8 * Math.PI * 2;
-        root.add(this._tube(membrane, [
-          { x: Math.cos(angle) * 1.65, y: 0.04, z: Math.sin(angle) * 1.65 },
-          { x: Math.cos(angle + 0.08) * 1.26, y: 0.46, z: Math.sin(angle + 0.08) * 1.26 },
-          { x: Math.cos(angle + 0.12) * 1.32, y: 1.5, z: Math.sin(angle + 0.12) * 1.32 },
-          { x: Math.cos(angle) * 0.99, y: 2.78, z: Math.sin(angle) * 0.99 }
-        ], 0.042, `longitudinal_shell_fold_${vein}`, 36, 8));
-      }
       root.add(this._ring(
         membrane,
         1.12,
@@ -1912,17 +1933,6 @@
         { x: Math.PI / 2, y: 0, z: 0 },
         'root_collar'
       ));
-      for (let ringIndex = 0; ringIndex < 5; ringIndex++) {
-        root.add(this._ring(
-          membrane,
-          1.18 - ringIndex * 0.12,
-          0.055,
-          { x: 0, y: 0.66 + ringIndex * 0.42, z: 0 },
-          { x: Math.PI / 2, y: 0, z: 0 },
-          `shell_vein_ring_${ringIndex}`
-        ));
-      }
-
       for (let petalIndex = 0; petalIndex < 4; petalIndex++) {
         const angle = petalIndex * Math.PI / 2;
         const petalRoot = new T.Group();
@@ -2300,17 +2310,10 @@
         });
       }
 
-      for (let segmentIndex = 0; segmentIndex < 8; segmentIndex++) {
-        const t = segmentIndex / 7;
-        const radius = 0.42 - t * 0.19;
-        root.add(this._ellipsoid(
-          segmentIndex % 2 === 0 ? hide : chitin,
-          { x: radius, y: radius * 0.78, z: 0.48 },
-          { x: 0, y: 0.58 + Math.sin(t * Math.PI) * 0.18, z: -0.18 - t * 0.62 },
-          `body_segment_${segmentIndex}`,
-          14
-        ));
-      }
+      root.add(this._sweptBody(hide, [
+        { x: 0, y: 0.58, z: -0.96 }, { x: 0.02, y: 0.7, z: -0.58 },
+        { x: 0, y: 0.77, z: -0.05 }, { x: 0, y: 0.7, z: 0.53 }
+      ], [0.19, 0.29, 0.37, 0.3], 'larval_trunk', 88, 28));
       root.add(this._ellipsoid(
         chitin,
         { x: 0.4, y: 0.29, z: 1.02 },
@@ -2382,15 +2385,7 @@
       const head = new T.Group(); head.name = 'cranial_dome'; head.position.set(0, 4.81, 0.02);
       const skull = this._ellipsoid(primary,
         { x: royal ? 0.57 : 0.43, y: royal ? 0.4 : 0.34, z: royal ? 1.65 : 1.42 },
-        { x: 0, y: 0.05, z: -0.34 }, 'elongated_cranial_shell', 48);
-      // Taper toward the face while keeping the long occipital silhouette smooth.
-      const vertices = skull.geometry.attributes.position;
-      for (let i = 0; i < vertices.count; i++) {
-        const z = vertices.getZ(i);
-        vertices.setX(i, vertices.getX(i) * (1 - Math.max(0, z) * 0.18));
-        vertices.setY(i, vertices.getY(i) * (1 - Math.max(0, z) * 0.08));
-      }
-      vertices.needsUpdate = true; skull.geometry.computeVertexNormals();
+        { x: 0, y: 0.05, z: -0.34 }, warrior ? 'warrior_cranial_shell' : 'elongated_cranial_shell', 48);
       head.add(skull); body.add(head);
       head.add(this._ellipsoid(secondary, { x: 0.36, y: 0.18, z: 0.43 },
         { x: 0, y: -0.22, z: 0.76 }, 'facial_mask', 32));
@@ -2399,11 +2394,6 @@
       this._addDorsalTubes(body, primary, 3.05, 0.8, royal ? 8 : (warrior ? 6 : 4));
       // Segmented sternum, scapular tendons and abdominal plates articulate the
       // silhouette rather than adding disconnected decorative spheres.
-      for (let segment = 0; segment < 6; segment++) {
-        const t = segment / 5;
-        body.add(this._ellipsoid(primary, { x: 0.31 - t * 0.08, y: 0.105, z: 0.12 },
-          { x: 0, y: 3.39 - t * 0.75, z: 0.29 }, `ventral_plate_${segment}`, 20));
-      }
       for (const side of [-1, 1]) {
         body.add(this._tube(secondary, [
           { x: side * 0.2, y: 4.57, z: -0.17 },
@@ -2416,7 +2406,7 @@
           { x: side * 0.93, y: 2.06, z: 0.36 }
         ], [0.19, 0.15, 0.1], `arm_${side < 0 ? 'left' : 'right'}`, {
           material: primary, clawMaterial: bone, side, scale: 0.76,
-          rotationY: side < 0 ? -0.2 : 0.2
+          rotationY: side < 0 ? -0.2 : 0.2, rotationX: Math.PI * .34
         });
         arm.add(this._tube(secondary, [
           { x: side * 0.08, y: -0.15, z: -0.05 },
@@ -2444,15 +2434,6 @@
             { x: 0, y: 0.03, z: -0.05 }, `reinforced_shoulder_${side}`, 28));
         }
       }
-      if (warrior) {
-        for (let rib = 0; rib < 11; rib++) {
-          const z = -1.54 + rib * 0.22;
-          const radius = Math.sqrt(Math.max(0.05, 1 - Math.pow((z + 0.34) / 1.5, 2)));
-          const ridge = this._ring(secondary, 0.34 * radius, 0.031,
-            { x: 0, y: 0.08, z }, { x: 0, y: 0, z: 0 }, `warrior_skull_ridge_${rib}`, Math.PI);
-          ridge.scale.x = 1.22; ridge.rotation.z = 0; head.add(ridge);
-        }
-      }
       if (royal || guardian) {
         const crown = this._addCrest(head, primary, royal ? 1.12 : 0.77, royal);
         crown.position.set(0, 0.19, -0.12);
@@ -2477,7 +2458,7 @@
           { x: side * 0.8, y: 3.16, z: 0.36 },
           { x: side * 0.72, y: 2.7, z: 0.69 }
         ], [0.12, 0.09, 0.06], `royal_secondary_arm_${side}`, {
-          material: secondary, clawMaterial: bone, side, scale: 0.51
+          material: secondary, clawMaterial: bone, side, scale: 0.51, rotationX: .8
         });
         body.add(this._ellipsoid(secondary, { x: 0.54, y: 0.59, z: 0.83 },
           { x: 0, y: 2.6, z: -0.64 }, 'royal_abdomen', 36));

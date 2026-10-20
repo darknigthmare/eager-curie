@@ -162,7 +162,8 @@
         reducedMotion: prefersReducedMotion,
         highContrast: false,
         muted: false,
-        graphicsQuality: 'auto'
+        graphicsQuality: 'auto',
+        cameraDistance: 100
       };
       this.values = this.read();
       this.game = null;
@@ -185,6 +186,7 @@
       const values = { ...this.defaults };
       values.volume = boundedNumber(parsed.volume, this.defaults.volume, 0, 100);
       values.brightness = boundedNumber(parsed.brightness, this.defaults.brightness, 70, 140);
+      values.cameraDistance = Math.round(boundedNumber(parsed.cameraDistance, 100, 50, 135));
       for (const key of ['scanlines', 'reducedMotion', 'highContrast', 'muted']) {
         if (typeof parsed[key] === 'boolean') values[key] = parsed[key];
       }
@@ -210,7 +212,8 @@
         scanlines: document.getElementById('setting-scanlines'),
         reducedMotion: document.getElementById('setting-reduced-motion'),
         highContrast: document.getElementById('setting-high-contrast'),
-        graphicsQuality: document.getElementById('setting-graphics')
+        graphicsQuality: document.getElementById('setting-graphics'),
+        cameraDistance: document.getElementById('setting-camera-distance')
       };
 
       if (controls.volume) controls.volume.value = this.values.volume;
@@ -219,6 +222,7 @@
       if (controls.reducedMotion) controls.reducedMotion.checked = this.values.reducedMotion;
       if (controls.highContrast) controls.highContrast.checked = this.values.highContrast;
       if (controls.graphicsQuality) controls.graphicsQuality.value = this.values.graphicsQuality;
+      if (controls.cameraDistance) controls.cameraDistance.value = this.values.cameraDistance;
 
       const sync = () => {
         this.values = {
@@ -228,7 +232,8 @@
           reducedMotion: !!controls.reducedMotion?.checked,
           highContrast: !!controls.highContrast?.checked,
           muted: this.values.muted,
-          graphicsQuality: controls.graphicsQuality?.value || this.values.graphicsQuality
+          graphicsQuality: controls.graphicsQuality?.value || this.values.graphicsQuality,
+          cameraDistance: Number(controls.cameraDistance?.value ?? this.values.cameraDistance)
         };
         this.apply();
         this.write();
@@ -257,7 +262,25 @@
       this.game?.setMasterVolume?.(this.values.volume / 100);
       this.game?.setReducedMotion?.(this.values.reducedMotion);
       this.game?.setGraphicsQuality?.(this.values.graphicsQuality);
+      this.applyCameraDistance();
       this.vfx?.setReducedMotion?.(this.values.reducedMotion);
+    }
+
+    applyCameraDistance() {
+      this.game?.setCameraDistance?.(this.values.cameraDistance);
+      const control = document.getElementById('setting-camera-distance');
+      if (control) {
+        control.value = this.values.cameraDistance;
+        control.setAttribute('aria-valuetext', `${this.values.cameraDistance} %`);
+      }
+      const value = document.getElementById('camera-distance-value');
+      if (value) value.textContent = `${this.values.cameraDistance} %`;
+    }
+
+    setCameraDistance(value) {
+      this.values.cameraDistance = Math.round(boundedNumber(value, 100, 50, 135));
+      this.applyCameraDistance();
+      this.write();
     }
   }
 

@@ -7,6 +7,7 @@ Requires Python Playwright, Pillow and system Chromium; optional QA tooling only
 """
 
 import argparse
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -23,13 +24,257 @@ Math.random=(()=>{let seed=93841;return()=>{seed=(Math.imul(seed,1664525)+101390
 '''
 
 
+def save_diagnostics(args, output, diagnostics):
+    if args.label!='before':
+        matches={path:hashlib.sha256(Path(path.lstrip('/')).read_bytes()).hexdigest()==digest
+                 for path,digest in diagnostics['source_hashes'].items()}
+        diagnostics['source_matches_checkout']=matches
+        assert all(matches.values()),'Runtime changed during capture: '+repr(matches)
+        assert not diagnostics['runtime_changed_during_capture'],'Runtime changed between page reloads during capture'
+    if args.merge_diagnostics and (output/'diagnostics.json').exists():
+        previous=json.loads((output/'diagnostics.json').read_text())
+        assert previous['source_hashes']==diagnostics['source_hashes'],'Cannot merge checks from different runtime versions'
+        merged={**previous,**diagnostics}
+        key_functions={'portraits':lambda row:(row['kind'],row['name'],row['angle'],row['framing']),
+                       'captures':lambda row:row['file'],'checks':lambda row:row['name'],
+                       'comparisons':lambda row:row['file']}
+        for field,key in key_functions.items():
+            rows={key(row):row for row in previous.get(field,[])}
+            rows.update({key(row):row for row in diagnostics.get(field,[])})
+            merged[field]=list(rows.values())
+        for field in ('stages','galleries','matched_inspection'):
+            if not diagnostics.get(field):merged[field]=previous.get(field,[])
+        for field in ('uncaught_errors','console_errors','failed_local_assets','external_requests'):
+            merged[field]=list(dict.fromkeys(previous.get(field,[])+diagnostics.get(field,[])))
+        merged['capture_refresh']={'subjects':args.portrait_subjects,'frames':args.portrait_frames,'baseline_camera':True}
+        diagnostics.clear();diagnostics.update(merged)
+    (output/'diagnostics.json').write_text(json.dumps(diagnostics,ensure_ascii=False,indent=2)+'\n')
+    for field in ('uncaught_errors','console_errors','failed_local_assets','external_requests'):
+        assert not diagnostics[field],diagnostics[field]
+
+
+def portraits(page, diagnostics, capture, subjects=None, frames=None, reference=None):
+    """Large single-subject portraits under a fixed neutral studio rig."""
+    page.set_viewport_size({'width':1440,'height':900})
+    page.evaluate('''()=>{
+        gameInstance.isRunning=false;
+        document.querySelector('#app-container').classList.remove('game-paused');
+        const e=__graphicsQA.rendererEngine,r=e.renderer,T=THREE;
+        e.onWindowResize();
+        r.toneMapping=T.ACESFilmicToneMapping;r.outputEncoding=T.sRGBEncoding;r.toneMappingExposure=1.2;
+        const scene=new T.Scene();scene.background=new T.Color(0x0b1017);
+        const camera=new T.PerspectiveCamera(36,innerWidth/innerHeight,.02,250);
+        scene.add(new T.HemisphereLight(0xc9d4dc,0x343139,.65));
+        for(const [color,intensity,x,y,z] of [[0xe9edf2,3,6,10,10],[0x9aafc1,.8,-7,4,5],[0xa0b6c6,1.5,-4,6,-9]]){
+            const light=new T.DirectionalLight(color,intensity);light.position.set(x,y,z);scene.add(light);
+        }
+        const probe=document.createElement('canvas');probe.width=512;probe.height=256;
+        const ctx=probe.getContext('2d'),gradient=ctx.createLinearGradient(0,0,0,256);
+        gradient.addColorStop(0,'#8f9ba4');gradient.addColorStop(.5,'#515c64');gradient.addColorStop(1,'#252b30');
+        ctx.fillStyle=gradient;ctx.fillRect(0,0,512,256);ctx.fillStyle='#d5dce1';ctx.fillRect(44,50,92,15);ctx.fillRect(300,40,72,12);
+        const texture=new T.CanvasTexture(probe);texture.encoding=T.sRGBEncoding;texture.mapping=T.EquirectangularReflectionMapping;
+        const pmrem=new T.PMREMGenerator(r),environment=pmrem.fromEquirectangular(texture);
+        scene.environment=environment.texture;pmrem.dispose();texture.dispose();
+        const pipeline=HiveRenderQuality.create(r,scene,camera,{quality:'high'});
+        const maskTarget=new T.WebGLRenderTarget(240,150),maskMaterial=new T.MeshBasicMaterial({color:0xffffff});
+        window.__portraitStudio={scene,camera,pipeline,environment,maskTarget,maskMaterial,model:null};
+        window.__graphicsGalleryRender=()=>pipeline.render();
+    }''')
+    page.add_style_tag(content='#app-container > :not(#game-canvas){visibility:hidden!important}')
+    cases=[]
+    for caste in ('drone','warrior','runner','queen'):
+        for angle in ('three-quarter','side'):
+            cases.append(('adult',caste,angle,'body'))
+    for archetype in ('scientist','marine','synthetic'):
+        cases.extend([('human',archetype,'three-quarter','body'),('human',archetype,'three-quarter','face')])
+    if subjects:
+        cases=[case for case in cases if case[1] in subjects]
+        assert cases,'No matching portrait subjects'
+    if frames:
+        cases=[case for case in cases if case[3] in frames]
+        assert cases,'No matching portrait framing'
+    diagnostics['portraits']=[]
+    for kind,name,angle,framing in cases:
+        ref=next((row for row in (reference or {}).get('portraits',[]) if row['kind']==kind and row['name']==name
+                  and row['angle']==angle and row['framing']==framing),None) if framing=='face' else None
+        stats=page.evaluate('''([kind,name,angle,framing,reference])=>{
+            const s=__portraitStudio,F=HiveModelFactory,T=THREE,r=__graphicsQA.rendererEngine.renderer;
+            if(s.model){s.scene.remove(s.model);F.disposeModel(s.model)}
+            const model=kind==='adult'?F.createAdult(name):F.createHuman(name);s.model=model;s.scene.add(model);
+            model.updateMatrixWorld(true);
+            const full=new T.Box3().setFromObject(model),head=framing==='face'?model.getObjectByName('head'):null;
+            const bounds=head?new T.Box3().setFromObject(head):full,size=bounds.getSize(new T.Vector3());
+            const target=head?bounds.getCenter(new T.Vector3()):new T.Vector3(0,full.min.y+size.y*.53,0);
+            const direction=new T.Vector3(...(angle==='side'?[3,.13,.35]:[1.35,.18,2.6])).normalize();
+            let distance=size.y*.5/Math.tan(T.MathUtils.degToRad(18))/.76;
+            const pixels=new Uint8Array(240*150*4);
+            let coverage=0;
+            for(let attempt=0;attempt<3;attempt++){
+                if(reference){
+                    s.camera.position.fromArray(reference.camera);target.fromArray(reference.target);
+                    s.camera.fov=reference.fov;s.camera.updateProjectionMatrix();
+                }else s.camera.position.copy(target).addScaledVector(direction,distance);
+                s.camera.lookAt(target);s.camera.updateMatrixWorld(true);
+                const background=s.scene.background;s.scene.background=new T.Color(0);s.scene.overrideMaterial=s.maskMaterial;
+                r.setRenderTarget(s.maskTarget);r.render(s.scene,s.camera);r.readRenderTargetPixels(s.maskTarget,0,0,240,150,pixels);
+                r.setRenderTarget(null);s.scene.overrideMaterial=null;s.scene.background=background;
+                let min=150,max=-1;for(let y=0;y<150;y++)for(let x=0;x<240;x++)if(pixels[(y*240+x)*4]>40){min=Math.min(min,y);max=Math.max(max,y)}
+                coverage=max>=min?(max-min+1)/150:0;
+                if(coverage>=.6||framing==='face'||reference)break;
+                distance*=.82;
+            }
+            if(coverage<.6)throw Error(`Subject too small: ${name} ${framing} ${coverage}`);
+            s.pipeline.render();
+            let meshes=0;model.traverse(o=>meshes+=o.isMesh?1:0);
+            const q=s.pipeline.getDiagnostics();
+            return {kind,name,angle,framing,subject_height_fraction:coverage,meshes,calls:q.sceneDrawCalls,triangles:q.sceneTriangles,
+                camera:s.camera.position.toArray(),target:target.toArray(),fov:s.camera.fov,
+                bounds:size.toArray(),baseline_camera_reused:!!reference};
+        }''',[kind,name,angle,framing,ref])
+        if ref:
+            assert stats['camera']==ref['camera'] and stats['target']==ref['target'] and stats['fov']==ref['fov']
+        filename=f'portrait-{name}-{framing}-{angle}.png'
+        capture(filename,gallery=True)
+        diagnostics['portraits'].append(stats)
+        print('Captured',filename,'subject height',round(stats['subject_height_fraction'],3),flush=True)
+    page.evaluate('''()=>{
+        const s=__portraitStudio;s.scene.remove(s.model);HiveModelFactory.disposeModel(s.model);
+        s.pipeline.dispose();s.environment.dispose();s.maskTarget.dispose();s.maskMaterial.dispose();
+        window.__graphicsGalleryRender=null;window.__portraitStudio=null;
+    }''')
+
+
+def matched_inspection(page, diagnostics, capture):
+    """Hold the new 50% inspection camera identical on old and new assets."""
+    diagnostics['matched_inspection']=[]
+    for width,height in ((1440,900),(390,844)):
+        page.set_viewport_size({'width':width,'height':height})
+        state=page.evaluate('''()=>{
+            const g=gameInstance,e=__graphicsQA.rendererEngine;
+            g.startCampaign(4);g.setSystemPaused(true);g.isRunning=false;
+            document.querySelector('#app-container').classList.remove('game-paused');
+            e.onWindowResize();e.renderQuality?.setQuality(innerWidth<680?'mobile':'high');
+            e.camera.position.set(-20,15.5,-22.5);e.camera.fov=40;e.camera.near=.1;
+            e.camera.updateProjectionMatrix();e.camera.lookAt(-20,1.6,-35);
+            e.updateWallVisibility?.({x:-20,y:1.6,z:-35},4);e.render();
+            return {position:e.camera.position.toArray(),target:[-20,1.6,-35],fov:40,viewport:[innerWidth,innerHeight]};
+        }''')
+        capture(f'matched-inspect50-{width}x{height}.png')
+        diagnostics['matched_inspection'].append(state)
+
+
+def camera_controls(page, diagnostics, capture):
+    """Check actual inspection controls, guards, saved state and close framing."""
+    page.reload(wait_until='domcontentloaded')
+    page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
+    page.evaluate('async()=>await HiveModelFactory.loadTextures()')
+    page.click('#btn-new-campaign');page.click('#btn-start-act-one')
+    page.evaluate('gameInstance.startCampaign(4)')
+    page.click('#btn-pause-game');page.click('#btn-open-settings')
+    slider=page.locator('#setting-camera-distance')
+    slider.focus();slider.press('Home')
+    assert slider.input_value()=='50'
+    assert page.locator('#camera-distance-value').inner_text()=='50 %'
+    assert page.evaluate('HiveSystems.settings.values.cameraDistance===50 && __graphicsQA.rendererEngine.cameraDistance===.5')
+    slider.press('End')
+    assert slider.input_value()=='135'
+    assert page.evaluate('HiveSystems.settings.values.cameraDistance===135 && __graphicsQA.rendererEngine.cameraDistance===1.35')
+    slider.press('Home');slider.press('ArrowRight')
+    assert slider.input_value()=='55'
+    page.click('#btn-close-settings');page.click('#btn-resume-game')
+    def wheel(delta, expected):
+        page.mouse.move(720,450)
+        page.mouse.wheel(0,delta)
+        page.wait_for_timeout(125)
+        value=page.evaluate('HiveSystems.settings.values.cameraDistance')
+        assert value==expected,dict(delta=delta,expected=expected,actual=value)
+    wheel(-300,50);wheel(-300,50);wheel(300,55)
+    page.evaluate('gameInstance.setSystemPaused(true)')
+    wheel(300,55)
+    page.evaluate('gameInstance.setSystemPaused(false);gameInstance.startCampaign(5)')
+    wheel(-300,55)
+    rts=page.evaluate('''()=>{
+        const e=__graphicsQA.rendererEngine;e.snapCameraTarget(20,10,0,true);
+        return {distance:HiveSystems.settings.values.cameraDistance,position:e.camera.position.toArray()};
+    }''')
+    assert abs(rts['position'][1]-120)<.001,rts
+    page.evaluate('''()=>{
+        gameInstance.startCampaign(3);
+        const s=gameInstance.currentStage,h=gameInstance.humans[0];
+        s.step='READY_TO_BURST';s.thoracicView.activate(h.x,h.z);
+    }''')
+    assert page.evaluate('!!gameInstance.currentStage.getCameraOverride()')
+    wheel(300,55)
+    page.reload(wait_until='domcontentloaded')
+    page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
+    assert page.evaluate('HiveSystems.settings.values.cameraDistance===55 && __graphicsQA.rendererEngine.cameraDistance===.55')
+    recovery=[]
+    for value,expected in (('invalid',100),(900,135),(-100,50)):
+        page.evaluate('''value=>{
+            const key='hive-ascension-settings-v2',settings=JSON.parse(localStorage.getItem(key)||'{}');
+            settings.cameraDistance=value;localStorage.setItem(key,JSON.stringify(settings));
+        }''',value)
+        page.reload(wait_until='domcontentloaded')
+        page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
+        actual=page.evaluate('HiveSystems.settings.values.cameraDistance')
+        assert actual==expected,dict(value=value,expected=expected,actual=actual)
+        recovery.append({'input':value,'restored':actual})
+    page.evaluate('async()=>await HiveModelFactory.loadTextures()')
+    page.click('#btn-continue-campaign')
+    for width,height in ((1440,900),(390,844)):
+        page.set_viewport_size({'width':width,'height':height})
+        page.evaluate('''()=>{
+            const g=gameInstance,e=__graphicsQA.rendererEngine;
+            g.startCampaign(4);g.setSystemPaused(true);g.isRunning=false;
+            document.querySelector('#app-container').classList.remove('game-paused');
+            e.onWindowResize();e.snapCameraTarget(-20,-35);
+            e.updateWallVisibility?.({x:-20,y:1.6,z:-35},4);e.render();
+        }''')
+        capture(f'inspect-camera-50-{width}x{height}.png')
+    diagnostics['checks'].append({'name':'Inspection slider, wheel guards/clamps, persistence, invalid settings and in-game closeups',
+        'passed':True,'detail':{'slider':[50,135,55],'wheel':[50,50,55],
+            'paused_and_cinematic_unchanged':55,'rts':rts,'reloaded':55,'recovery':recovery}})
+
+
+def comparison_boards(context, root, diagnostics):
+    """Arrange original PNGs at native size; no rendering or image retouching."""
+    diagnostics['comparisons']=[]
+    for name,filename in (('drone','portrait-drone-body-three-quarter.png'),
+                          ('scientist','portrait-scientist-face-three-quarter.png')):
+        before,after=root/'before'/filename,root/'after'/filename
+        if not before.exists() or not after.exists():
+            continue
+        sources=[base64.b64encode(path.read_bytes()).decode() for path in (before,after)]
+        board=context.new_page()
+        board.set_viewport_size({'width':2880,'height':950})
+        board.set_content('''<!doctype html><meta charset="utf-8"><style>
+            *{box-sizing:border-box}body{margin:0;background:#090e15;color:#d9e5ec;font:24px monospace;display:flex}
+            article{width:1440px}header{height:50px;padding:10px 25px;letter-spacing:3px;border-bottom:1px solid #293747}
+            img{width:1440px;height:900px;display:block}</style>'''+
+            f'<article><header>AVANT · 736f595</header><img src="data:image/png;base64,{sources[0]}"></article>'+
+            f'<article><header>APRÈS · SURFACES SCULPTÉES</header><img src="data:image/png;base64,{sources[1]}"></article>')
+        board.wait_for_function('Array.from(document.images).every(image=>image.complete&&image.naturalWidth===1440)')
+        target=root/f'comparison-{name}.png'
+        board.screenshot(path=str(target));board.close()
+        diagnostics['comparisons'].append({'file':str(target),'sources':[str(before),str(after)],
+                                           'source_sha256':[hashlib.sha256(path.read_bytes()).hexdigest() for path in (before,after)]})
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--url', default='http://127.0.0.1:8082/')
     parser.add_argument('--label', default='after')
     parser.add_argument('--output', default='.tools/graphics')
     parser.add_argument('--chromium', default='/usr/bin/chromium')
+    parser.add_argument('--portraits', action='store_true', help='Also capture large neutral character portraits')
+    parser.add_argument('--portraits-only', action='store_true', help='Capture only large neutral portraits')
+    parser.add_argument('--portrait-subjects', help='Optional comma-separated portrait subjects')
+    parser.add_argument('--matched-inspection', action='store_true', help='Add identical old/new in-game50% inspection framing')
+    parser.add_argument('--portrait-frames', help='Optional comma-separated body/face portrait framing')
+    parser.add_argument('--merge-diagnostics', action='store_true', help='Refresh selected captures while retaining checks from identical runtime')
     args = parser.parse_args()
+    reference_path=Path(args.output)/'before'/'diagnostics.json'
+    reference=json.loads(reference_path.read_text()) if args.label!='before' and reference_path.exists() else None
     output = Path(args.output)/args.label
     output.mkdir(parents=True, exist_ok=True)
     diagnostics = {'label': args.label, 'url': args.url, 'stages': [], 'galleries': [], 'captures': [], 'checks': [], 'source_hashes': {}, 'runtime_changed_during_capture':False, 'uncaught_errors': [], 'console_errors': [], 'failed_local_assets': [], 'external_requests': [],
@@ -63,12 +308,14 @@ def main():
         page.route('**/src/*.js*',expose)
         page.goto(args.url,wait_until='domcontentloaded')
         page.wait_for_function('window.__graphicsQA && window.HiveSystems?.ui?.game')
-        diagnostics['texture_count']=page.evaluate('''async()=>{
+        texture_state=page.evaluate('''async()=>{
             const textures=await HiveModelFactory.loadTextures();
             const count=Object.values(textures).filter(Boolean).length;
             if(count!==Object.keys(HiveModelFactory.texturePaths).length)throw Error('Incomplete texture set');
-            return count;
+            return {count,dimensions:Object.fromEntries(Object.entries(textures).map(([key,texture])=>[key,[texture.image.width,texture.image.height]]))};
         }''')
+        diagnostics['texture_count']=texture_state['count']
+        diagnostics['texture_dimensions']=texture_state['dimensions']
         page.click('#btn-new-campaign')
         page.click('#btn-start-act-one')
         page.evaluate('gameInstance.setSystemPaused(true)')
@@ -97,6 +344,18 @@ def main():
             coverage=sum(max(pixel)>20 for pixel in pixels)/len(pixels)
             diagnostics['captures'].append({'file':filename,'world_nonblack_fraction':round(coverage,4)})
             assert coverage>.03, f'World absent from capture {filename}: nonblack coverage={coverage:.4f}'
+
+        if args.matched_inspection:
+            matched_inspection(page,diagnostics,capture)
+        if args.portraits_only:
+            portraits(page,diagnostics,capture,set(args.portrait_subjects.split(',')) if args.portrait_subjects else None,
+                      set(args.portrait_frames.split(',')) if args.portrait_frames else None,reference)
+            if args.label=='after':
+                comparison_boards(context,Path(args.output),diagnostics)
+            browser.close()
+            save_diagnostics(args,output,diagnostics)
+            print('Portrait capture complete:',output,flush=True)
+            return
 
         for width,height in ((1440,900),(390,844)):
             page.set_viewport_size({'width':width,'height':height})
@@ -290,18 +549,16 @@ def main():
                 resized.append(state)
             diagnostics['checks'].append({'name':'Actual graphics settings, persisted ultra and invalid legacy settings recovery',
                                           'passed':True,'detail':{'selected':selected,'restored':restored,'recovered':recovered,'auto_resize':resized}})
+        if args.portraits:
+            page.set_viewport_size({'width':1440,'height':900})
+            portraits(page,diagnostics,capture,set(args.portrait_subjects.split(',')) if args.portrait_subjects else None,
+                      set(args.portrait_frames.split(',')) if args.portrait_frames else None,reference)
+            if args.label!='before':
+                camera_controls(page,diagnostics,capture)
+            if args.label=='after':
+                comparison_boards(context,Path(args.output),diagnostics)
         browser.close()
-    if args.label!='before':
-        matches={path:hashlib.sha256(Path(path.lstrip('/')).read_bytes()).hexdigest()==digest
-                 for path,digest in diagnostics['source_hashes'].items()}
-        diagnostics['source_matches_checkout']=matches
-        assert all(matches.values()),'Runtime changed during capture: '+repr(matches)
-        assert not diagnostics['runtime_changed_during_capture'],'Runtime changed between page reloads during capture'
-    (output/'diagnostics.json').write_text(json.dumps(diagnostics,ensure_ascii=False,indent=2)+'\n')
-    assert not diagnostics['uncaught_errors'],diagnostics['uncaught_errors']
-    assert not diagnostics['console_errors'],diagnostics['console_errors']
-    assert not diagnostics['failed_local_assets'],diagnostics['failed_local_assets']
-    assert not diagnostics['external_requests'],diagnostics['external_requests']
+    save_diagnostics(args,output,diagnostics)
     print('Graphics capture complete:',output,flush=True)
 
 

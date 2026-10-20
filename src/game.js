@@ -647,6 +647,8 @@
       this.graphicsQuality = 'auto';
       this.renderQuality = null;
       this.stationDetail = null;
+      this.cameraDistance = 1;
+      this.lastWheelZoom = 0;
     }
 
     init(canvas) {
@@ -719,6 +721,16 @@
       }) || null;
 
       window.addEventListener('resize', () => this.onWindowResize());
+      canvas.addEventListener('wheel', (event) => {
+        const game = window.gameInstance;
+        if (event.ctrlKey || event.metaKey || !game?.campaignActive || game.isSystemPaused || game.currentStageIndex === 5 ||
+          game.currentStage?.getCameraOverride?.() || event.deltaY === 0) return;
+        event.preventDefault();
+        const now = performance.now();
+        if (now - this.lastWheelZoom < 70) return;
+        this.lastWheelZoom = now;
+        window.HiveSystems?.settings?.setCameraDistance(this.cameraDistance * 100 + Math.sign(event.deltaY) * 5);
+      }, { passive: false });
     }
 
     onWindowResize() {
@@ -786,15 +798,15 @@
       if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.22 : 1.12;
       // La vue de commandement cadre toute la station afin que les trois relais
       // restent réellement ciblables sans caméra libre ni mini-carte.
-      const targetY = isRTS ? 120 : 37 + heightOffset;
-      const targetZ = isRTS ? z + 70 : z + 18;
+      const targetY = isRTS ? 120 : (31 + heightOffset) * this.cameraDistance;
+      const targetZ = isRTS ? z + 70 : z + 25 * this.cameraDistance;
       const smoothing = 1 - Math.pow(0.92, Math.max(0, deltaSeconds) * 60);
 
       this.camera.position.x += (x - this.camera.position.x) * smoothing;
       this.camera.position.z += (targetZ - this.camera.position.z) * smoothing;
       this.camera.position.y += (targetY - this.camera.position.y) * smoothing;
 
-      this.camera.lookAt(x, isRTS ? 0 : 1.2, z);
+      this.camera.lookAt(x, isRTS ? 0 : 1.6, z);
       const key = this.lights.dirLight;
       const extent = isRTS ? 82 : 38;
       key.position.set(x + 30, 60, z + 30);
@@ -5596,6 +5608,10 @@
 
     setGraphicsQuality(value) {
       rendererEngine.setGraphicsQuality(value);
+    }
+
+    setCameraDistance(value) {
+      rendererEngine.cameraDistance = Math.max(0.5, Math.min(1.35, Number(value) / 100 || 1));
     }
 
     getDifficultyDamageModifier() {

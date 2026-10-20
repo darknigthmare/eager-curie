@@ -2,6 +2,8 @@
 'use strict';
 const assert = require('node:assert/strict');
 global.THREE = require('../assets/vendor/three.r128.min.js');
+require('../src/organic-sculpt.js');
+require('../src/surface-detail.js');
 require('../src/model-detail.js');
 require('../src/models.js');
 const T = global.THREE;
@@ -33,6 +35,21 @@ for (const type of ['civilian', 'scientist', 'guard', 'marine', 'smartgunner', '
     assert(before.distanceTo(hand.getWorldPosition(new T.Vector3())) > 0.2, `${type}: hand moves with animated sleeve`);
   }
   assert.equal(root.getObjectByName('head').parent.name, 'helmet_and_comms', `${type}: skin and helmet move together`);
+  const detailKinds = new Set();
+  let hairTexture = null, hairTextureDisposed = false;
+  root.traverse(object => {
+    if (!object.material || Array.isArray(object.material)) return;
+    const kind = object.material.userData.hiveMaterialKind;
+    detailKinds.add(kind);
+    if (kind === 'hair') hairTexture = object.material.map;
+  });
+  for (const kind of ['eye','iris','pupil','lip','hair']) assert(detailKinds.has(kind), `${type}: authored ${kind} surface present`);
+  assert(hairTexture?.isDataTexture, `${type}: groomed hair fibres owned by model material`);
+  hairTexture.addEventListener('dispose', () => { hairTextureDisposed = true; });
+  const shoe = root.getObjectByName('boot_1'), shoePositions = shoe.geometry.attributes.position, shoeNormals = shoe.geometry.attributes.normal;
+  const uppers = [];
+  for(let i=0;i<shoePositions.count;i++) if(shoePositions.getY(i)>.4) uppers.push(shoeNormals.getY(i));
+  assert(uppers.length && uppers.reduce((a,b)=>a+b,0)/uppers.length>.2, `${type}: curved shoe upper faces outward`);
   let meshCount = 0;
   root.traverse(object => {
     if (!object.isMesh) return;
@@ -42,6 +59,7 @@ for (const type of ['civilian', 'scientist', 'guard', 'marine', 'smartgunner', '
   });
   assert(meshCount < 40, `${type}: bounded draw-call budget (${meshCount})`);
   factory.disposeModel(root);
+  assert(hairTextureDisposed, `${type}: hair fibre texture released with model`);
   assert.equal(factory._managedMaterials.size, 0, `${type}: material ownership restored`);
   console.log(`PASS human ${type}: ${meshCount} mesh calls`);
   passed++;

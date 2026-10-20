@@ -16,6 +16,7 @@ MATERIALS = ('carapace', 'hive-resin', 'industrial-panels', 'fabric-weave', 'ski
 NAMES = [f'{material}{suffix}.png' for material in MATERIALS
          for suffix in ('', '-normal', '-roughness', '-ao')]
 NAMES += ['industrial-panels-metalness.png', 'organic-bump.png']
+EXPECTED_SIZE = {name: 2048 if name.startswith(('carapace', 'skin-tissue')) else 1024 for name in NAMES}
 
 
 def decode(file):
@@ -35,7 +36,7 @@ def decode(file):
         elif kind == b'IEND':
             ended = True
         offset += length + 12
-    assert ended and offset == len(png) and metadata == (1024, 1024, 8, 2, 0, 0, 0), f'{file.name}: PNG format'
+    assert ended and offset == len(png) and metadata == (EXPECTED_SIZE[file.name], EXPECTED_SIZE[file.name], 8, 2, 0, 0, 0), f'{file.name}: PNG format'
     width, height = metadata[:2]
     decoded = zlib.decompress(b''.join(compressed))
     stride = width * 3
@@ -65,7 +66,8 @@ def validate():
                 assert vector[2] > 0, f'{name}: inverted normal'
         else:
             assert min(pixels) + 8 < max(pixels), f'{name}: constant albedo'
-        results.append({'file': name, 'size': '1024x1024', 'bytes': byte_count})
+        results.append({'file': name, 'size': f'{EXPECTED_SIZE[name]}x{EXPECTED_SIZE[name]}', 'bytes': byte_count})
+    assert sum(row['bytes'] for row in results) < 20_000_000, 'Compressed texture budget exceeds 20 MB'
     return results
 
 

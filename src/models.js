@@ -3066,6 +3066,7 @@
       const normalizedCaste = String(caste || 'drone').toLowerCase();
       if (normalizedCaste === 'runner') return this._createRunner();
       if (normalizedCaste === 'crusher') return this._createCrusher();
+      if (normalizedCaste === 'mantis_drone' || normalizedCaste === 'mantis') return this.createMantisDrone();
       return this._createUprightAdult(normalizedCaste);
     }
 
@@ -5960,6 +5961,72 @@
         root.add(this._ellipsoid(synthRubberHead, { x: 0.18, y: 0.22, z: 0.18 }, { x: 0, y: 1.85, z: 0.08 }, 'joe_head', 14));
         // Moniteur latéral de diagnostic Seegson
         root.add(this._box(amberScreen, { x: 0.35, y: 0.25, z: 0.04 }, { x: 0.48, y: 1.5, z: 0.25 }, 'joe_diag_screen'));
+      } else if (normalizedType === 'acoustic_jammer_m20' || normalizedType === 'm20_jammer') {
+        // Chantier 182 : Système de Brouilleur Acoustique Ultrasonique USCM M20 (Aliens: Dark Descent)
+        const jammerChassis = this._material('industrial', { color: 0x3f4f2c, roughness: 0.45, metalness: 0.6 });
+        const dishMetal = this._material('darkMetal', { color: 0x64748b, roughness: 0.35, metalness: 0.85 });
+        const cyanEmitter = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 3.2 });
+        // Socle mural USCM
+        root.add(this._box(jammerChassis, { x: 0.7, y: 0.9, z: 0.35 }, { x: 0, y: 1.2, z: 0.15 }, 'jammer_chassis', true));
+        // Antenne parabolique ultrasonique
+        root.add(this._cylinder(dishMetal, 0.35, 0.15, 0.25, { x: 0, y: 1.45, z: 0.35 }, { x: Math.PI / 2, y: 0, z: 0 }, 'jammer_horn'));
+        // Dôme d'émission 22 kHz cyan pulsant
+        root.add(this._ellipsoid(cyanEmitter, { x: 0.12, y: 0.12, z: 0.1 }, { x: 0, y: 1.45, z: 0.45 }, 'jammer_emitter_core', 10));
+      } else if (normalizedType === 'cryo_sterilization_unit' || normalizedType === 'sterilization_unit') {
+        // Chantier 184 : Unité Autonome de Décontamination Cryo-Stérilisante (Alien 3 / Romulus)
+        const tankGalva = this._material('darkMetal', { color: 0x94a3b8, roughness: 0.25, metalness: 0.8 });
+        const sprayYellow = this._material('hazard', { color: 0xf59e0b, roughness: 0.3 });
+        const fluidAmber = this._material('resin', { color: 0xd97706, roughness: 0.1, opacity: 0.65, transparent: true });
+        // Cuve suspendue de décontamination
+        root.add(this._cylinder(tankGalva, 0.45, 0.45, 1.4, { x: 0, y: 2.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'sterilizer_tank', true));
+        // Jauge de liquide stérilisant ambré
+        root.add(this._cylinder(fluidAmber, 0.08, 0.08, 1.0, { x: 0.46, y: 2.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'sterilizer_sight_glass'));
+        // 4 Buses de pulvérisation orientées vers le bas
+        for (let b = 0; b < 4; b++) {
+          const ang = b * (Math.PI / 2);
+          root.add(this._cylinder(sprayYellow, 0.04, 0.07, 0.2, { x: Math.cos(ang) * 0.35, y: 1.4, z: Math.sin(ang) * 0.35 }, { x: Math.sin(ang) * 0.3, y: 0, z: -Math.cos(ang) * 0.3 }, `sterilizer_nozzle_${b}`));
+        }
+      } else if (normalizedType === 'eev_type37_console' || normalizedType === 'eev_console') {
+        // Chantier 186 : Poste de Contrôle des SAS d'Éjection de Capsule EEV Type 37 (Alien 3)
+        const consoleGrey = this._material('darkMetal', { color: 0x334155, roughness: 0.4, metalness: 0.75 });
+        const leverHazard = this._material('hazard', { color: 0xeab308, roughness: 0.35 });
+        const pyroRed = this._material('emissiveRed', { color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 2.5 });
+        // Console angulaire
+        root.add(this._box(consoleGrey, { x: 1.3, y: 1.2, z: 0.65 }, { x: 0, y: 0.6, z: 0 }, 'eev_chassis', true));
+        // Deux gros leviers d'éjection pyrotechnique manuelle
+        root.add(this._cylinder(leverHazard, 0.04, 0.04, 0.35, { x: -0.28, y: 1.25, z: 0.15 }, { x: -0.3, y: 0, z: 0 }, 'eev_lever_1'));
+        root.add(this._cylinder(leverHazard, 0.04, 0.04, 0.35, { x: 0.28, y: 1.25, z: 0.15 }, { x: -0.3, y: 0, z: 0 }, 'eev_lever_2'));
+        // Voyant d'alarme d'abandon de bord EEV
+        root.add(this._ellipsoid(pyroRed, { x: 0.08, y: 0.06, z: 0.06 }, { x: 0, y: 1.35, z: 0.25 }, 'eev_alarm_strobe', 10));
+      } else if (normalizedType === 'm20b_napalm_trap' || normalizedType === 'napalm_trap') {
+        // Chantier 187 : Piège Déployable USCM : Mine Antipersonnel Incendiaire M20B (Aliens: Fireteam Elite)
+        const trapMetal = this._material('industrial', { color: 0x27272a, roughness: 0.5, metalness: 0.8 });
+        const napalmOrange = this._material('emissiveAmber', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 3.0 });
+        // Corps de mine circulaire bas
+        root.add(this._cylinder(trapMetal, 0.42, 0.46, 0.18, { x: 0, y: 0.09, z: 0 }, { x: 0, y: 0, z: 0 }, 'napalm_mine_body', true));
+        // Cellule thermique centrale d'amorçage
+        root.add(this._cylinder(napalmOrange, 0.18, 0.18, 0.08, { x: 0, y: 0.19, z: 0 }, { x: 0, y: 0, z: 0 }, 'napalm_mine_core'));
+      } else if (normalizedType === 'ammonia_pipe' || normalizedType === 'ammonia_conduit') {
+        // Chantier 188 : Réseau de Canalisations d'Ammoniac Industriel (Alien 1979 / Isolation)
+        const yellowPipe = this._material('hazard', { color: 0xeab308, roughness: 0.35, metalness: 0.6 });
+        const darkClamp = this._material('darkMetal', { color: 0x18181b, roughness: 0.5, metalness: 0.9 });
+        const toxGreen = this._material('emissiveGreen', { color: 0x84cc16, emissive: 0x4d7c0f, emissiveIntensity: 2.2 });
+        // Conduit horizontal sous 60 bars
+        root.add(this._cylinder(yellowPipe, 0.16, 0.16, 2.6, { x: 0, y: 2.1, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'ammonia_pipe_body', true));
+        // Colliers de serrage haute pression
+        for (let c = -1; c <= 1; c++) {
+          root.add(this._ring(darkClamp, 0.22, 0.04, { x: c * 0.85, y: 2.1, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, `ammonia_clamp_${c}`));
+        }
+        // Soupape toxique avec indicateur chimique
+        root.add(this._box(toxGreen, { x: 0.12, y: 0.12, z: 0.08 }, { x: 0, y: 1.88, z: 0.14 }, 'ammonia_purge_indicator'));
+      } else if (normalizedType === 'biocore_nursery_interface' || normalizedType === 'biocore_interface') {
+        // Chantier 190 : Terminal de Surveillance de Ruche "Bio-Core Nursery Interface" (Aliens: Genocide)
+        const resinDark = this._material('chitin', { color: 0x1e1035, roughness: 0.35, metalness: 0.4 });
+        const royalJellyGlow = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 3.5 });
+        // Pilier biomécanique en résine torsadée
+        root.add(this._cylinder(resinDark, 0.55, 0.75, 1.6, { x: 0, y: 0.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'biocore_pedestal', true));
+        // Réservoir alvéolé de Gelée Royale
+        root.add(this._ellipsoid(royalJellyGlow, { x: 0.32, y: 0.22, z: 0.32 }, { x: 0, y: 1.65, z: 0 }, 'biocore_royal_jelly_core', 14));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -7227,6 +7294,131 @@
     // -------------------------------------------------------------------------
     createSeegsonDiagnosticAlcove() {
       return this.createIndustrialProp('seegson_diagnostic_alcove');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 181 : Phénotype "The Mantis Xenomorph / Alien Mante Religieuse" (Aliens 1992 Kenner)
+    // -------------------------------------------------------------------------
+    createMantisDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_mantis_drone';
+      const scale = 1.12;
+      const mantisChitin = this._material('chitin', {
+        color: 0x14532d,
+        roughness: 0.16,
+        metalness: 0.65,
+        emissive: 0x052e16,
+        emissiveIntensity: 0.5
+      });
+      const scytheBlade = this._material('bone', { color: 0xf1f5f9, roughness: 0.18, metalness: 0.75 });
+
+      // Buste svelte élancé et abdomen conique étiré
+      root.add(this._ellipsoid(mantisChitin, { x: 0.32 * scale, y: 0.45 * scale, z: 0.3 * scale }, { x: 0, y: 1.25 * scale, z: 0 }, 'mantis_torso', 12));
+      root.add(this._ellipsoid(mantisChitin, { x: 0.28 * scale, y: 0.35 * scale, z: 0.65 * scale }, { x: 0, y: 0.85 * scale, z: -0.4 * scale }, 'mantis_abdomen', 14));
+
+      // Tête cunéiforme triangulaire avec crête crânienne dentée
+      root.add(this._ellipsoid(mantisChitin, { x: 0.26 * scale, y: 0.22 * scale, z: 0.75 * scale }, { x: 0, y: 1.7 * scale, z: 0.3 * scale }, 'mantis_head', 16));
+      root.add(this._box(mantisChitin, { x: 0.52 * scale, y: 0.18 * scale, z: 0.4 * scale }, { x: 0, y: 1.8 * scale, z: 0.05 * scale }, 'mantis_crest'));
+
+      // Double pinces falciformes antérieures géantes (lames de mante)
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(mantisChitin, new T.Vector3(side * 0.25 * scale, 1.45 * scale, 0.1 * scale), new T.Vector3(side * 0.55 * scale, 1.85 * scale, 0.35 * scale), 0.07 * scale, 0.05 * scale, `mantis_arm_upper_${side}`, 8));
+        root.add(this._segment(scytheBlade, new T.Vector3(side * 0.55 * scale, 1.85 * scale, 0.35 * scale), new T.Vector3(side * 0.4 * scale, 0.95 * scale, 0.65 * scale), 0.06 * scale, 0.02 * scale, `mantis_scythe_${side}`, 8));
+        for (let sp = 0; sp < 3; sp++) {
+          root.add(this._cone(scytheBlade, 0.025 * scale, 0.12 * scale, { x: side * 0.46 * scale, y: (1.2 + sp * 0.18) * scale, z: 0.5 * scale }, { x: 0, y: 0, z: side * (Math.PI / 3) }, `mantis_spine_${side}_${sp}`));
+        }
+      }
+
+      // Pattes postérieures digitigrades allongées
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(mantisChitin, new T.Vector3(side * 0.22 * scale, 0.85 * scale, -0.1 * scale), new T.Vector3(side * 0.38 * scale, 0.5 * scale, -0.3 * scale), 0.08 * scale, 0.05 * scale, `mantis_thigh_${side}`, 8));
+        root.add(this._segment(mantisChitin, new T.Vector3(side * 0.38 * scale, 0.5 * scale, -0.3 * scale), new T.Vector3(side * 0.32 * scale, 0, 0.05 * scale), 0.05 * scale, 0.03 * scale, `mantis_shin_${side}`, 8));
+      }
+
+      // Dard caudal aiguillon
+      root.add(this._cone(scytheBlade, 0.06 * scale, 0.35 * scale, { x: 0, y: 0.75 * scale, z: -1.05 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'mantis_tail_stinger'));
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'mantis_drone',
+        height: 1.85 * scale,
+        animationJoints: ['mantis_head', 'mantis_torso']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 182 : Système de Brouilleur Acoustique Ultrasonique USCM M20 (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createAcousticJammerM20() {
+      return this.createIndustrialProp('acoustic_jammer_m20');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 184 : Unité Autonome de Décontamination Cryo-Stérilisante (Alien 3 / Romulus)
+    // -------------------------------------------------------------------------
+    createCryoSterilizationUnit() {
+      return this.createIndustrialProp('cryo_sterilization_unit');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 185 : Phénotype Juvénile "Cloaked Runner Burster" (Alien: Romulus / Comics)
+    // -------------------------------------------------------------------------
+    createCloakedRunnerBurster() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'cloaked_runner_burster';
+      const scale = 0.88;
+      const ghostChitin = this._material('resin', {
+        color: 0x64748b,
+        roughness: 0.15,
+        opacity: 0.58,
+        transparent: true
+      });
+      const eyeGlow = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.8 });
+
+      // Corps fuselé transparent
+      for (let s = 0; s < 5; s++) {
+        const rad = (0.2 - s * 0.02) * scale;
+        root.add(this._ellipsoid(ghostChitin, { x: rad, y: rad * 0.75, z: 0.25 * scale }, { x: 0, y: 0.18 * scale, z: -s * 0.24 * scale }, `cloaked_seg_${s}`, 10));
+      }
+      root.add(this._ellipsoid(ghostChitin, { x: 0.24 * scale, y: 0.18 * scale, z: 0.48 * scale }, { x: 0, y: 0.25 * scale, z: 0.32 * scale }, 'cloaked_head', 12));
+      root.add(this._box(eyeGlow, { x: 0.08 * scale, y: 0.04 * scale, z: 0.12 * scale }, { x: 0, y: 0.24 * scale, z: 0.46 * scale }, 'cloaked_optic'));
+
+      return this._finalize(root, {
+        modelType: 'chestburster',
+        caste: 'cloaked_runner_burster',
+        height: 0.7,
+        animationJoints: ['cloaked_head', 'cloaked_seg_0']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 186 : Poste de Contrôle des SAS d'Éjection de Capsule EEV Type 37 (Alien 3)
+    // -------------------------------------------------------------------------
+    createEevType37ControlConsole() {
+      return this.createIndustrialProp('eev_type37_console');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 187 : Mine Antipersonnel Incendiaire M20B Napalm Trap (Aliens: Fireteam Elite)
+    // -------------------------------------------------------------------------
+    createM20BNapalmTrap() {
+      return this.createIndustrialProp('m20b_napalm_trap');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 188 : Réseau de Canalisations d'Ammoniac Industriel (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createAmmoniaPipe() {
+      return this.createIndustrialProp('ammonia_pipe');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 190 : Terminal de Surveillance de Ruche "Bio-Core Nursery Interface" (Aliens: Genocide)
+    // -------------------------------------------------------------------------
+    createBioCoreNurseryInterface() {
+      return this.createIndustrialProp('biocore_nursery_interface');
     }
   }
 

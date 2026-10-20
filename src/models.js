@@ -3094,11 +3094,13 @@
       const neomorph = caste === 'neomorph';
       const alpha = caste === 'alpha';
       const abomination = caste === 'abomination';
+      const redDrone = caste === 'red_drone';
 
-      const scale = king ? 1.62 : (deaconess ? 1.55 : (raven ? 1.48 : (abomination ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (deaconAdult ? 1.34 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1))))))))))))))))));
+      const scale = king ? 1.62 : (deaconess ? 1.55 : (raven ? 1.48 : (abomination ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (newborn ? 1.35 : (deaconAdult ? 1.34 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (deacon ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (warrior ? 1.06 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1)))))))))))))))))));
       let chitinColor = 0x0b1518;
       if (royal) chitinColor = 0x221033;
       else if (king) chitinColor = 0x7f1d1d; // Chitine royale cramoisie sombre Rouge de Charon (Aliens: Rogue 1993)
+      else if (redDrone) chitinColor = 0x991b1b; // Chitine rouge écarlate sanglante Guerre Civile des Ruches (Aliens: Genocide 1991)
       else if (deaconess) chitinColor = 0x0a1128; // Bleu nuit abyssal royal iridescente Deaconess Proto-Queen (Fire and Stone)
       else if (bodyburster) chitinColor = 0xfef2f2; // Membrane translucide pâle d'éruption dorsale (Alien: Covenant 2017)
       else if (deaconAdult) chitinColor = 0x0f172a; // Bleu cobalt ébène profond Apex Archon (Prometheus lore étendu)
@@ -5720,6 +5722,86 @@
         root.add(this._cylinder(gasCyan, 0.15, 0.15, 0.05, { x: 0.35, y: 1.45, z: 0.25 }, { x: Math.PI / 2, y: 0, z: 0 }, 'n2_gauge'));
         // Levier guillotine d'évacuation d'urgence
         root.add(this._box(redLever, { x: 0.08, y: 0.4, z: 0.08 }, { x: 0, y: 1.48, z: 0.32 }, 'emergency_dump_lever'));
+      } else if (normalizedType === 'sadar_rocket_launcher' || normalizedType === 'sadar_launcher') {
+        // Chantier 152 : Affût Lance-Roquettes M83A2 SADAR USCM (Aliens 1986 / Dark Descent)
+        const tubeOlive = this._material('industrial', { color: 0x3f4f2c, roughness: 0.45, metalness: 0.6 });
+        const darkMech = this._material('darkMetal', { color: 0x18181b, roughness: 0.3, metalness: 0.85 });
+        const rocketTip = this._material('hazard', { color: 0xeab308, roughness: 0.35, metalness: 0.7 });
+        // Trépied de support
+        for (let l = 0; l < 3; l++) {
+          const la = (l / 3) * Math.PI * 2;
+          root.add(this._segment(darkMech, new T.Vector3(0, 0.7, 0), new T.Vector3(Math.cos(la) * 0.55, 0, Math.sin(la) * 0.55), 0.035, 0.025, `sadar_leg_${l}`, 6));
+        }
+        // Tube lanceur 80mm
+        root.add(this._cylinder(tubeOlive, 0.16, 0.16, 1.6, { x: 0, y: 0.85, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'sadar_tube'));
+        // Tête de roquette prête au tir
+        root.add(this._cylinder(rocketTip, 0.14, 0.02, 0.28, { x: 0, y: 0.85, z: 0.9 }, { x: Math.PI / 2, y: 0, z: 0 }, 'sadar_rocket_head'));
+      } else if (normalizedType === 'hydraulic_oil_pipe' || normalizedType === 'oil_pipe') {
+        // Chantier 153 : Réseau de Canalisations d'Huile Hydraulique & Nappe Inflammable (Alien 1979 / Isolation)
+        const pipeMetal = this._material('darkMetal', { color: 0x334155, roughness: 0.35, metalness: 0.85 });
+        const redValve = this._material('emissiveRed', { color: 0xdc2626, emissive: 0x991b1b, emissiveIntensity: 1.8 });
+        const oilSlick = this._material('chitin', { color: 0x09090b, roughness: 0.08, metalness: 0.95 });
+        // Colonne de conduite verticale
+        root.add(this._cylinder(pipeMetal, 0.18, 0.18, 2.8, { x: 0, y: 1.4, z: 0 }, { x: 0, y: 0, z: 0 }, 'hydraulic_pipe_main'));
+        // Vanne quart-de-tour rouge
+        root.add(this._cylinder(redValve, 0.22, 0.22, 0.08, { x: 0.22, y: 1.5, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'hydraulic_pipe_valve'));
+        // Nappe de carter d'huile au sol
+        root.add(this._cylinder(oilSlick, 1.4, 1.4, 0.02, { x: 0, y: 0.01, z: 0 }, { x: 0, y: 0, z: 0 }, 'oil_slick_puddle'));
+      } else if (normalizedType === 'laser_decon_arch' || normalizedType === 'decon_arch') {
+        // Chantier 154 : SAS de Quarantaine Médicale avec Champ Laser Bio-Sécurisé (Alien 3 / Romulus)
+        const medFrame = this._material('industrial', { color: 0xf8fafc, roughness: 0.25, metalness: 0.65 });
+        const uvLaser = this._material('emissiveBlue', { color: 0xc084fc, emissive: 0xa855f7, emissiveIntensity: 3.5 });
+        // Portique arche 2.8m
+        root.add(this._box(medFrame, { x: 0.25, y: 2.8, z: 0.3 }, { x: -1.2, y: 1.4, z: 0 }, 'arch_pillar_left', true));
+        root.add(this._box(medFrame, { x: 0.25, y: 2.8, z: 0.3 }, { x: 1.2, y: 1.4, z: 0 }, 'arch_pillar_right', true));
+        root.add(this._box(medFrame, { x: 2.65, y: 0.28, z: 0.3 }, { x: 0, y: 2.7, z: 0 }, 'arch_lintel', true));
+        // Rideau de lasers ultraviolets
+        for (let b = -4; b <= 4; b++) {
+          root.add(this._cylinder(uvLaser, 0.015, 0.015, 2.5, { x: b * 0.24, y: 1.35, z: 0 }, { x: 0, y: 0, z: 0 }, `uv_beam_${b}`));
+        }
+      } else if (normalizedType === 'magnetic_crane_container' || normalizedType === 'crane_container') {
+        // Chantier 156 : Grue de Levage Magnétique & Conteneur Suspendu 10 Tonnes (Alien 1979 / Aliens 1986)
+        const craneSteel = this._material('industrial', { color: 0x475569, roughness: 0.45, metalness: 0.8 });
+        const cargoYellow = this._material('hazard', { color: 0xd97706, roughness: 0.5, metalness: 0.65 });
+        const cableMetal = this._material('darkMetal', { color: 0x0f172a, roughness: 0.2, metalness: 0.95 });
+        // Électro-aimant cylindrique suspendu
+        root.add(this._cylinder(craneSteel, 0.65, 0.65, 0.45, { x: 0, y: 4.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'magnet_head'));
+        // 4 Câbles de suspension en acier
+        for (let c = -1; c <= 1; c += 2) {
+          root.add(this._cylinder(cableMetal, 0.02, 0.02, 2.2, { x: c * 0.8, y: 3.6, z: 0.6 }, { x: 0, y: 0, z: 0 }, `suspension_cable_${c}_f`));
+          root.add(this._cylinder(cableMetal, 0.02, 0.02, 2.2, { x: c * 0.8, y: 3.6, z: -0.6 }, { x: 0, y: 0, z: 0 }, `suspension_cable_${c}_r`));
+        }
+        // Conteneur de fret Weyland 10T suspendu à 2m du sol
+        root.add(this._box(cargoYellow, { x: 2.4, y: 1.8, z: 1.8 }, { x: 0, y: 2.2, z: 0 }, 'cargo_container_10t', true));
+      } else if (normalizedType === 'zx76_shotgun_rack' || normalizedType === 'shotgun_rack') {
+        // Chantier 157 : Fusil à Pompe Lourd ZX-76 Trench Shotgun sur Râtelier (Alien: Isolation)
+        const rackWood = this._material('darkMetal', { color: 0x1e293b, roughness: 0.5, metalness: 0.75 });
+        const shotgunMetal = this._material('industrial', { color: 0x09090b, roughness: 0.3, metalness: 0.9 });
+        root.add(this._box(rackWood, { x: 1.4, y: 1.8, z: 0.25 }, { x: 0, y: 1.2, z: 0 }, 'shotgun_rack_board', true));
+        // 2 Fusils ZX-76 suspendus
+        for (let g = 0; g < 2; g++) {
+          const gy = 1.0 + g * 0.45;
+          root.add(this._box(shotgunMetal, { x: 1.1, y: 0.12, z: 0.08 }, { x: 0, y: gy, z: 0.15 }, `zx76_shotgun_${g}`));
+        }
+      } else if (normalizedType === 'halon_gas_generator' || normalizedType === 'halon_generator') {
+        // Chantier 158 : Générateur de Brouillard Halon Anti-Incendie (Alien 1979 / Isolation)
+        const halonBox = this._material('industrial', { color: 0x94a3b8, roughness: 0.35, metalness: 0.7 });
+        const greenLed = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.2 });
+        root.add(this._box(halonBox, { x: 0.9, y: 1.2, z: 0.4 }, { x: 0, y: 1.6, z: 0 }, 'halon_generator_chassis', true));
+        // Voyant de charge verte
+        root.add(this._cylinder(greenLed, 0.06, 0.06, 0.04, { x: 0.25, y: 1.9, z: 0.22 }, { x: Math.PI / 2, y: 0, z: 0 }, 'halon_led'));
+        // 3 Buses de diffusion orientées vers le bas
+        for (let nz = -1; nz <= 1; nz++) {
+          root.add(this._cylinder(halonBox, 0.08, 0.05, 0.25, { x: nz * 0.25, y: 0.9, z: 0.1 }, { x: 0, y: 0, z: 0 }, `halon_nozzle_${nz}`));
+        }
+      } else if (normalizedType === 'surveillance_radio_console' || normalizedType === 'radio_console') {
+        // Chantier 160 : Terminal Central de Surveillance Weyland & Radio USCM (Aliens 1986 / Isolation)
+        const radioChassis = this._material('darkMetal', { color: 0x1e1b4b, roughness: 0.4, metalness: 0.85 });
+        const screenAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.4 });
+        root.add(this._box(radioChassis, { x: 1.6, y: 1.3, z: 0.8 }, { x: 0, y: 0.65, z: 0 }, 'radio_console_desk', true));
+        // Double écran CRT ambré
+        root.add(this._box(screenAmber, { x: 0.6, y: 0.45, z: 0.08 }, { x: -0.38, y: 1.35, z: 0.1 }, 'radio_screen_left'));
+        root.add(this._box(screenAmber, { x: 0.6, y: 0.45, z: 0.08 }, { x: 0.38, y: 1.35, z: 0.1 }, 'radio_screen_right'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -6705,6 +6787,90 @@
     // -------------------------------------------------------------------------
     createAtmosphericDepressionConsole() {
       return this.createIndustrialProp('atmospheric_depression_console');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 151 : Phénotype The Red Xenomorph Drone / Guerrier Rouge (Genocide 1991)
+    // -------------------------------------------------------------------------
+    createRedDrone() {
+      return this._createUprightAdult('red_drone');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 152 : Affût Lance-Roquettes M83A2 SADAR USCM (Aliens 1986 / Dark Descent)
+    // -------------------------------------------------------------------------
+    createSadarRocketLauncher() {
+      return this.createIndustrialProp('sadar_rocket_launcher');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 153 : Réseau de Canalisations d'Huile Hydraulique (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createHydraulicOilPipe() {
+      return this.createIndustrialProp('hydraulic_oil_pipe');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 154 : SAS de Quarantaine Médicale avec Champ Laser Bio-Sécurisé (Alien 3 / Romulus)
+    // -------------------------------------------------------------------------
+    createLaserDeconArch() {
+      return this.createIndustrialProp('laser_decon_arch');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 155 : Phénotype Juvénile "Chestburster Métamorphe Épineux" (Alien 3)
+    // -------------------------------------------------------------------------
+    createSpinedBurster() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'spined_burster';
+      const paleChitin = this._material('chitinWarm', { color: 0x451a03, roughness: 0.35, metalness: 0.3 });
+      const spineBone = this._material('bone', { color: 0xfef08a });
+      const scale = 0.95;
+
+      for (let s = 0; s < 7; s++) {
+        const rad = (0.28 - s * 0.03) * scale;
+        root.add(this._ellipsoid(paleChitin, { x: rad, y: rad * 0.7, z: 0.35 * scale }, { x: 0, y: 0.28 * scale, z: -s * 0.32 * scale }, `spined_seg_${s}`, 12));
+        // Épines dorsales le long du rachis
+        root.add(this._box(spineBone, { x: 0.03 * scale, y: 0.16 * scale, z: 0.04 * scale }, { x: 0, y: (0.42 - s * 0.02) * scale, z: -s * 0.32 * scale }, `spine_${s}`));
+      }
+      root.add(this._ellipsoid(paleChitin, { x: 0.34 * scale, y: 0.26 * scale, z: 0.52 * scale }, { x: 0, y: 0.38 * scale, z: 0.42 * scale }, 'spined_head', 14));
+      this._addJaw(root, paleChitin, spineBone, { x: 0, y: 0.28 * scale, z: 0.72 * scale }, 0.4 * scale, false);
+
+      return this._finalize(root, {
+        modelType: 'chestburster',
+        caste: 'spined_burster',
+        height: 0.85,
+        animationJoints: ['spined_head', 'spined_seg_0', 'spined_seg_3']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 156 : Grue de Levage Magnétique & Conteneur Suspendu 10 Tonnes (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createMagneticCraneContainer() {
+      return this.createIndustrialProp('magnetic_crane_container');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 157 : Fusil à Pompe Lourd ZX-76 Trench Shotgun sur Râtelier (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createZX76ShotgunRack() {
+      return this.createIndustrialProp('zx76_shotgun_rack');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 158 : Générateur de Brouillard Halon Anti-Incendie (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createHalonGasGenerator() {
+      return this.createIndustrialProp('halon_gas_generator');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 160 : Terminal Central de Surveillance Weyland & Radio USCM (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createSurveillanceRadioConsole() {
+      return this.createIndustrialProp('surveillance_radio_console');
     }
   }
 

@@ -642,11 +642,13 @@
       this.height = window.innerHeight;
       this.raycaster = null;
       this.groundPlane = null;
+      this.wallVisibilityRay = null;
       this.reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
 
     init(canvas) {
       this.raycaster = new THREE.Raycaster();
+      this.wallVisibilityRay = new THREE.Raycaster();
       this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       this.scene = new THREE.Scene();
       this.scene.background = new THREE.Color(0x040609);
@@ -766,6 +768,29 @@
 
     snapCinematicCamera(override) {
       this.setCinematicCamera(override, 4);
+    }
+
+    updateWallVisibility(target, deltaSeconds = 1 / 60) {
+      if (!target || !this.camera || !this.wallVisibilityRay) return;
+      const blockingWalls = new Set();
+      // A small bundle around the creature silhouette prevents a narrow limb
+      // or the egg's upper petals from disappearing behind a bulkhead edge.
+      for (const [offsetX, offsetZ] of [[0, 0], [-1, 0], [1, 0], [0, -0.8], [0, 0.8]]) {
+        const point = new THREE.Vector3(target.x + offsetX, target.y || 1.4, target.z + offsetZ);
+        const direction = point.sub(this.camera.position);
+        this.wallVisibilityRay.far = Math.max(0, direction.length() - 0.15);
+        this.wallVisibilityRay.set(this.camera.position, direction.normalize());
+        for (const hit of this.wallVisibilityRay.intersectObjects(stationMap.walls, false)) {
+          blockingWalls.add(hit.object);
+        }
+      }
+      const blend = 1 - Math.exp(-16 * Math.max(0, deltaSeconds));
+      for (const wall of stationMap.walls) {
+        const targetOpacity = blockingWalls.has(wall) ? 0.2 : 1;
+        wall.material.opacity += (targetOpacity - wall.material.opacity) * blend;
+        if (Math.abs(wall.material.opacity - targetOpacity) < 0.005) wall.material.opacity = targetOpacity;
+        wall.material.depthWrite = wall.material.opacity >= 0.99;
+      }
     }
 
     screenToGround(screenX, screenY) {
@@ -1031,7 +1056,9 @@
 
       const addWall = (x, z, width, height, depth) => {
         const wallGeo = new THREE.BoxGeometry(width, height, depth);
-        const wallMesh = new THREE.Mesh(wallGeo, wallMat);
+        const wallMaterial = wallMat.clone();
+        wallMaterial.transparent = true;
+        const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
         wallMesh.position.set(x, height / 2, z);
         wallMesh.castShadow = true;
         wallMesh.receiveShadow = true;
@@ -1165,6 +1192,76 @@
       addProp(-18, 58, 3, 4, 3, 0x334155, 0x0284c7, 'console');
       addProp(61, 12, 3, 7, 3, 0x334155, 0x000000, 'vent');
       addProp(-61, -12, 3, 7, 3, 0x334155, 0x000000, 'vent');
+      // Offset cargo islands break up the exposed central hall. Their two
+      // approaches create cover/flanking choices without closing the service
+      // lanes or the laboratory exits used by the biological campaign.
+      addProp(-24, 6, 6, 3.2, 3, 0x334155, 0x000000, 'crate');
+      addProp(25, 13, 5, 3.2, 4, 0x334155, 0x000000, 'crate');
+      this.addWayfinding();
+    }
+
+    addWayfinding() {
+      // Flat decals keep the five sectors legible without adding navigation
+      // obstacles or expensive dynamic lights to the station.
+      const addFloorMark = (width, depth, x, z, color, opacity = 0.7) => {
+        const mark = new THREE.Mesh(
+          new THREE.PlaneGeometry(width, depth),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false })
+        );
+        mark.rotation.x = -Math.PI / 2;
+        mark.position.set(x, 0.025, z);
+        rendererEngine.mapGroup.add(mark);
+      };
+      const sectors = [
+        { code: '01', title: 'XÉNOBIOLOGIE', subtitle: 'CHAMBRE DE CONFINEMENT', x: -28, z: -47, color: '#54dce6' },
+        { code: '02', title: 'MÉDICAL', subtitle: 'QUARANTAINE / KAPPA', x: 28, z: -47, color: '#8cb8ff' },
+        { code: '03', title: 'TRANSIT', subtitle: 'MNEMOSYNE · PONT A', x: 0, z: 9, color: '#e9c47c' },
+        { code: '04', title: 'LOGISTIQUE', subtitle: 'FRET / MAINTENANCE', x: -32, z: 50, color: '#ffb56b' },
+        { code: '05', title: 'RÉACTEUR', subtitle: 'ACCÈS RESTREINT', x: 29, z: 49, color: '#bf97ff' }
+      ];
+      for (const sector of sectors) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 320;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+        ctx.fillStyle = 'rgba(5, 13, 23, 0.8)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = sector.color;
+        ctx.fillRect(0, 0, 10, canvas.height);
+        ctx.font = 'bold 155px monospace';
+        ctx.fillText(sector.code, 28, 183);
+        ctx.font = 'bold 48px monospace';
+        ctx.fillText(sector.title, 254, 117);
+        ctx.font = '24px monospace';
+        ctx.fillText(sector.subtitle, 258, 165);
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(256, 193, 680, 3);
+        ctx.font = '22px monospace';
+        ctx.fillText('→ AXE CENTRAL / ÉVACUATION', 258, 245);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.encoding = THREE.sRGBEncoding;
+        const sign = new THREE.Mesh(
+          new THREE.PlaneGeometry(26, 8.125),
+          new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0.85, depthWrite: false })
+        );
+        sign.rotation.x = -Math.PI / 2;
+        sign.position.set(sector.x, 0.035, sector.z);
+        rendererEngine.mapGroup.add(sign);
+      }
+      // Continuous service lanes show the safe approaches around the central
+      // generator and the openings between laboratory bulkheads.
+      for (const x of [-10, 10]) {
+        addFloorMark(0.13, 112, x, 0, 0x54dce6, 0.45);
+        for (let z = -51; z <= 51; z += 12) {
+          addFloorMark(1.1, 0.28, x + (x < 0 ? -0.65 : 0.65), z, 0x9be9ed, 0.55);
+        }
+      }
+      for (const z of [-3, 26]) addFloorMark(112, 0.13, 0, z, 0x54dce6, 0.3);
+      for (let index = -4; index <= 4; index++) {
+        addFloorMark(0.8, 1.5, index * 1.15, -20.3, index % 2 ? 0x111827 : 0xe9c47c, 0.85);
+        addFloorMark(0.8, 1.5, index * 1.15, -9.7, index % 2 ? 0x111827 : 0xe9c47c, 0.85);
+      }
     }
 
     segmentIntersectsCollider(startX, startZ, endX, endZ, collider, padding = 0) {
@@ -1200,6 +1297,8 @@
     }
 
     checkCollision(nextX, nextZ, padding = 0) {
+      if (!Number.isFinite(nextX) || !Number.isFinite(nextZ)) return true;
+      if (Math.abs(nextX) >= 73.4 - padding || Math.abs(nextZ) >= 73.4 - padding) return true;
       for (const col of this.colliders) {
         if (
           nextX > col.minX - padding &&
@@ -1219,7 +1318,13 @@
       min = -70,
       max = 70
     } = {}) {
-      const destination = { x: endX, z: endZ };
+      if (![startX, startZ, endX, endZ].every(Number.isFinite)) return [];
+      const destination = {
+        x: Math.max(min, Math.min(max, endX)),
+        z: Math.max(min, Math.min(max, endZ))
+      };
+      endX = destination.x;
+      endZ = destination.z;
       if (
         !this.checkCollision(endX, endZ, padding) &&
         this.hasLineOfSight(startX, startZ, endX, endZ, padding)
@@ -2111,6 +2216,8 @@
     }
 
     choosePatrolWaypoint() {
+      this.navigationGoal = null;
+      this.pathWaypoints = [];
       this.targetPos = this.findFreeWaypoint(20);
       this.aiState = 'PATROL';
       this.patrolWait = 0;
@@ -2383,7 +2490,14 @@
       // pursue a detected biological target while civilians keep patrolling.
       if (!this.isLured && isCombatant && biologicalTargetDetectable && distToPlayer <= 26) {
         this.aiState = hasLineOfSight && distToPlayer <= 12 ? 'ATTACK' : 'CHASE';
-        this.targetPos = { x: combatTarget.x, z: combatTarget.z };
+        if (this.aiState === 'CHASE') {
+          if (!this.navigationGoal || this.navigationRepathTimer <= 0) {
+            this.planNavigation(combatTarget.x, combatTarget.z, true);
+          }
+          this.updateNavigation(safeDelta);
+        } else {
+          this.targetPos = { x: combatTarget.x, z: combatTarget.z };
+        }
       } else if (!this.isLured && (this.aiState === 'CHASE' || this.aiState === 'ATTACK')) {
         this.choosePatrolWaypoint();
       }
@@ -2565,6 +2679,9 @@
       this.movementBlend = 0;
       this.isDestroyed = false;
       this.attachedToOvipositor = caste === 'queen';
+      this.navigationGoal = null;
+      this.navigationWaypoints = [];
+      this.navigationCooldown = 0;
     }
 
     createMesh() {
@@ -2671,6 +2788,40 @@
       return moved;
     }
 
+    moveTowards(x, z, deltaSeconds = 1 / 60, speedMultiplier = 1) {
+      const distance = Math.hypot(x - this.x, z - this.z);
+      if (distance <= 0.15) return false;
+      this.navigationCooldown = Math.max(0, this.navigationCooldown - Math.max(0, deltaSeconds));
+      const clearRoute = stationMap.hasLineOfSight(this.x, this.z, x, z, 0.35);
+      if (clearRoute) {
+        this.navigationWaypoints = [];
+      } else if (
+        !this.navigationGoal ||
+        (this.navigationCooldown <= 0 && (
+          Math.hypot(x - this.navigationGoal.x, z - this.navigationGoal.z) > 2 ||
+          this.navigationWaypoints.length === 0
+        ))
+      ) {
+        this.navigationGoal = { x, z };
+        this.navigationWaypoints = stationMap.findPath(this.x, this.z, x, z, { padding: 0.4 });
+        this.navigationCooldown = 0.7;
+      }
+      while (this.navigationWaypoints.length && Math.hypot(
+        this.navigationWaypoints[0].x - this.x,
+        this.navigationWaypoints[0].z - this.z
+      ) <= 0.4) this.navigationWaypoints.shift();
+      const waypoint = this.navigationWaypoints[0] || (clearRoute ? { x, z } : null);
+      if (!waypoint) return false;
+      const remaining = Math.hypot(waypoint.x - this.x, waypoint.z - this.z);
+      return this.moveDirect(
+        (waypoint.x - this.x) / remaining,
+        (waypoint.z - this.z) / remaining,
+        deltaSeconds,
+        remaining,
+        speedMultiplier
+      );
+    }
+
     update(deltaSeconds = 1 / 60, humans = []) {
       if (!this.mesh || this.isDestroyed) return;
       this.attackCooldown -= deltaSeconds;
@@ -2682,7 +2833,8 @@
         const nearbyThreat = humans.find((human) => (
           !human.isCocooned &&
           !human.isIncapacitated &&
-          Math.hypot(human.x - this.x, human.z - this.z) <= this.attackRange
+          Math.hypot(human.x - this.x, human.z - this.z) <= this.attackRange &&
+          stationMap.hasLineOfSight(this.x, this.z, human.x, human.z)
         ));
         if (nearbyThreat && this.attackCooldown <= 0) {
           this.attackCooldown = 1.35;
@@ -2741,15 +2893,10 @@
         const stopRadius = target.human && isAttackOrder
           ? this.attackRange
           : (activeZone.command === 'DEFEND' ? 4 : (activeZone.command === 'CAPTURE' ? 1.5 : 2));
-        if (dist > stopRadius) {
+        const canReachTarget = !target.human || stationMap.hasLineOfSight(this.x, this.z, target.x, target.z);
+        if (dist > stopRadius || !canReachTarget) {
           const speedMultiplier = activeZone.command === 'HUNT' ? 1.15 : (activeZone.command === 'DEFEND' ? 0.75 : 1);
-          this.moveDirect(
-            (target.x - this.x) / dist,
-            (target.z - this.z) / dist,
-            deltaSeconds,
-            dist,
-            speedMultiplier
-          );
+          this.moveTowards(target.x, target.z, deltaSeconds, speedMultiplier);
         } else if (target.human) {
           if (activeZone.command === 'CAPTURE' && target.human.isIncapacitated) {
             if (target.human.cocoonInResin()) resinGrid.addResinPatch(target.human.x, target.human.z);
@@ -3410,6 +3557,10 @@
       if (!closestHost || closestDistance > 16) {
         showToast('Aucun hôte à portée : rapprochez-vous du secteur ciblé.');
         appendSensorLog('[FACEHUGGER] Bond impossible : aucun visage à portée.', 'alert');
+        return;
+      }
+      if (!stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, closestHost.x, closestHost.z, 0.12)) {
+        showToast('La structure bloque le bond : contournez la cloison.');
         return;
       }
 
@@ -4083,6 +4234,10 @@
         this.log(`[${profile.huntAction}] Aucun signal mobile à portée sensorielle.`);
         return;
       }
+      if (playerCreature.isLeaping || !stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, target.x, target.z, 0.12)) {
+        showToast('L’approche est bloquée : contournez la structure avant de bondir.');
+        return;
+      }
       const preferredAngle = Math.atan2(playerCreature.z - target.z, playerCreature.x - target.x);
       let landing = null;
       for (let attempt = 0; attempt < 12; attempt++) {
@@ -4123,13 +4278,17 @@
     }
 
     executeInnerJaw() {
-      if (!this.canUseAbility('jaw', 620)) return;
       const profile = playerCreature.getAdultProfile();
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 4.3) {
         this.log('[MÂCHOIRE] Cible hors de portée. Utilisez une embuscade ou approchez-vous.');
         return;
       }
+      if (!stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, target.x, target.z)) {
+        showToast('La cloison bloque cette attaque.');
+        return;
+      }
+      if (!this.canUseAbility('jaw', 620)) return;
       playerCreature.triggerAttack('inner-jaw');
       target.takeDamage(profile.jawDamage);
       audioManager.playBoneCrunch();
@@ -4149,13 +4308,17 @@
     }
 
     executeTailImpale() {
-      if (!this.canUseAbility('tail', 720)) return;
       const profile = playerCreature.getAdultProfile();
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 7) {
         this.log('[QUEUE] Cible hors de portée.');
         return;
       }
+      if (!stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, target.x, target.z)) {
+        showToast('La cloison bloque cette attaque.');
+        return;
+      }
+      if (!this.canUseAbility('tail', 720)) return;
       playerCreature.triggerAttack('tail');
       target.takeDamage(profile.tailDamage);
       audioManager.playBoneCrunch();
@@ -4182,7 +4345,7 @@
         human.hostEligibility !== 'none'
       ));
 
-      if (target && distance < 6) {
+      if (target && distance < 6 && stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, target.x, target.z)) {
         if (!target.cocoonInResin()) return;
         this.capturedHosts++;
         document.getElementById('hive-hosts').textContent = this.capturedHosts;
@@ -4195,7 +4358,7 @@
         window.HiveSystems?.updateObjective(4, Math.min(2, this.capturedHosts), 'Neutraliser les menaces puis engager un véritable cycle royal.');
         this.updateRoyalButton();
       } else if (target) {
-        this.log('[NURSERIE] Cible trop éloignée : approchez-vous à moins de 6 m.');
+        this.log('[NURSERIE] Rejoignez la cible par un passage libre à moins de 6 m.');
       } else {
         this.log('[NURSERIE] Aucun hôte viable neutralisé à proximité.');
       }
@@ -4776,7 +4939,8 @@
         const bossStatus = this.mantisBoss?.isIncapacitated
           ? 'MANTIS NEUTRALISÉ'
           : `MANTIS PHASE ${this.mantisBoss?.bossPhase || 1}`;
-        conquestButton.textContent = `ISOLER PALIMPSESTE — RELAIS ${this.relayCount}/3 · ${bossStatus} · MENACES ${activeThreats} · PURGE ${Math.ceil(this.purgeRemaining)}s`;
+        const purgeStatus = this.relayCount >= 3 ? 'PURGE INTERROMPUE' : `PURGE ${Math.ceil(this.purgeRemaining)}s`;
+        conquestButton.textContent = `ISOLER PALIMPSESTE — RELAIS ${this.relayCount}/3 · ${bossStatus} · MENACES ${activeThreats} · ${purgeStatus}`;
         conquestButton.title = conquestButton.disabled
           ? 'Neutralisez les menaces et désactivez les trois relais.'
           : 'Choisir le destin final de la ruche.';
@@ -4805,6 +4969,10 @@
     handleCanvasClick(screenX, screenY) {
       const worldPoint = rendererEngine.screenToGround(screenX, screenY);
       if (!worldPoint) return;
+      if (Math.abs(worldPoint.x) > 70 || Math.abs(worldPoint.z) > 70) {
+        showToast('Sélectionnez un point à l’intérieur de la station.');
+        return;
+      }
 
       if (pheromoneSystem.possessionMode) {
         let closestUnit = null;
@@ -4863,6 +5031,10 @@
             ? `Désactiver encore ${3 - this.relayCount} relais de PALIMPSESTE.`
             : 'Neutraliser les dernières forces de réponse humaine.');
           this.log(`[PALIMPSESTE] Relais ${this.relayCount}/3 isolé du réseau de purge.`);
+          if (this.relayCount >= 3) {
+            this.log('[PALIMPSESTE] Réseau de purge interrompu. Neutralisez les dernières menaces.');
+            window.HiveSystems?.narrative('PALIMPSESTE', 'Liaison avec le cœur perdue. Autodestruction interrompue.');
+          }
         }
       }
       this.log(`[PHÉROMONE ${command}] Marque posée en X:${worldPoint.x.toFixed(1)} Z:${worldPoint.z.toFixed(1)}.`);
@@ -4930,7 +5102,11 @@
             dy = (this.possessedMoveTarget.z - this.possessedUnit.z) / distance;
           }
         }
-        this.possessedUnit.moveDirect(dx, dy, deltaSeconds, remainingDistance);
+        if (this.possessedMoveTarget) {
+          this.possessedUnit.moveTowards(this.possessedMoveTarget.x, this.possessedMoveTarget.z, deltaSeconds);
+        } else {
+          this.possessedUnit.moveDirect(dx, dy, deltaSeconds, remainingDistance);
+        }
       }
       for (const unit of this.rtsUnits) {
         if (unit !== this.possessedUnit || !pheromoneSystem.possessionMode) unit.update(deltaSeconds, humans);
@@ -4958,13 +5134,13 @@
         this.updateStats();
       }
 
-      this.purgeRemaining = Math.max(0, this.purgeRemaining - deltaSeconds);
+      if (this.relayCount < 3) this.purgeRemaining = Math.max(0, this.purgeRemaining - deltaSeconds);
       const purgeSecond = Math.ceil(this.purgeRemaining);
       if (purgeSecond !== this.lastPurgeSecond) {
         this.lastPurgeSecond = purgeSecond;
         this.updateStats();
       }
-      if (this.purgeRemaining <= 0 && !this.isCompleted) {
+      if (this.purgeRemaining <= 0 && this.relayCount < 3 && !this.isCompleted) {
         window.gameInstance?.showEndModal(
           'PURGE DE MNEMOSYNE',
           'PALIMPSESTE a déclenché la fusion du cœur avant l’isolement des trois relais.'
@@ -5025,7 +5201,7 @@
         sidebar.inert = !expanded;
         sidebar.setAttribute('aria-hidden', String(!expanded));
         toggleButton.setAttribute('aria-expanded', String(expanded));
-        toggleButton.textContent = expanded ? 'MASQUER HUD' : 'AFFICHER HUD';
+        toggleButton.textContent = expanded ? 'MASQUER LES ACTIONS' : 'ACTIONS / OBJECTIFS';
         if (!expanded) document.getElementById('game-canvas')?.focus({ preventScroll: true });
       };
 
@@ -5133,7 +5309,7 @@
       else if (index === 5) this.currentStage = new StageHiveRTS();
       if (this.currentStage) {
         this.currentStage.init();
-        if (this.mobileHudMedia?.matches && this.setHudExpanded) this.setHudExpanded(index === 1);
+        if (this.mobileHudMedia?.matches && this.setHudExpanded) this.setHudExpanded(false);
         this.focusPrimaryAction();
       }
     }
@@ -5360,7 +5536,7 @@
           activeStage.update(deltaSeconds);
           if (!this.isRunning) return;
           if (activeStage === this.currentStage && activeStage.isCompleted && this.currentStageIndex < 5) {
-            this.loadStage(this.currentStageIndex + 1);
+            this.advanceStage(activeStage);
           }
         }
         window.HiveSystems?.update(deltaSeconds);
@@ -5382,6 +5558,12 @@
           deltaSeconds
         );
       }
+      const visibleCreature = this.currentStageIndex === 5 ? this.currentStage?.queen : playerCreature;
+      if (visibleCreature) rendererEngine.updateWallVisibility({
+        x: visibleCreature.x,
+        z: visibleCreature.z,
+        y: this.currentStageIndex === 5 ? 3 : 1.4
+      }, deltaSeconds);
       rendererEngine.render();
       requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
     }

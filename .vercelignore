@@ -4,6 +4,10 @@
 README.md
 server.ps1
 start.bat
+tools/
+.tools/
+QA_REPORT.md
+GAME_AUDIT.md
 
 # Earlier modular prototype; the live page uses src/game.js and src/css/style.css.
 src/main.js

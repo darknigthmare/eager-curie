@@ -38,6 +38,33 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\server.ps1 -Port 8090 -NoB
 
 Le serveur n’écoute que sur la machine locale et exclut les fichiers privés et scripts de lancement.
 
+## Lancement sous Linux, macOS et dans le cloud
+
+Python 3.9 ou ultérieur suffit. Depuis la racine du dépôt :
+
+```sh
+python3 tools/serve.py
+```
+
+Le port par défaut est 8080 ; `--port 8090` permet de le changer. Ce serveur reste sur l’interface locale, applique les en-têtes de sécurité Vercel et exclut les fichiers privés et les outils de développement.
+
+Aucune compilation, installation npm, clé API ou base de données n’est nécessaire. Le moteur Three.js r128 et les polices sont inclus dans `assets/`, avec leurs licences. La page de jeu ne dépend d’aucun CDN.
+
+## Vérifications QA
+
+Avec Python Playwright et Chromium installés, démarrer `python3 tools/serve.py --port 8082`, puis exécuter :
+
+```sh
+python3 tools/qa-browser.py --url http://127.0.0.1:8082/
+python3 tools/qa-persistence.py --url http://127.0.0.1:8082/
+python3 tools/qa-gameplay.py --url http://127.0.0.1:8082/
+node tools/qa-models.cjs
+```
+
+Le premier script produit son rapport JSON et ses captures dans `.tools/qa/`. Les tests automatisés couvrent des parcours d’interface et des scénarios ciblés ; l’initialisation des actes par API ne constitue pas une campagne intégralement jouée. Les résultats et limites sont décrits dans `QA_REPORT.md`.
+
+Pour renouveler les dépendances statiques épinglées : `python3 tools/vendor-assets.py`. Cet outil vérifie l’intégrité SHA-512 des archives npm avant d’écrire les fichiers ; `assets/vendor/provenance.json` enregistre leurs versions et empreintes.
+
 ## Contrôles
 
 - Déplacement : `ZQSD`, `WASD`, flèches, clic ou toucher sur le terrain.
@@ -56,6 +83,6 @@ Le serveur n’écoute que sur la machine locale et exclut les fichiers privés 
 - `src/game-systems.js` : sauvegarde, réglages, VFX et interfaces ;
 - `src/game.js` : moteur Three.js et cinq actes jouables.
 
-Three.js r128 et les polices sont chargés depuis des CDN. Une erreur lisible est affichée lorsque WebGL ou la dépendance réseau est indisponible.
+Three.js r128 et les polices sont servis localement. Une erreur lisible est affichée lorsque WebGL est indisponible.
 
 > Ce dépôt n’est pas le projet SNL sous Unreal Engine 5.7 : il ne contient ni `.uproject`, ni Blueprint, ni réplication multijoueur.

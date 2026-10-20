@@ -155,9 +155,9 @@
       const T = this._three();
       const defaults = {
         chitin: {
-          color: 0x111827,
-          roughness: 0.28,
-          metalness: 0.48
+          color: 0x263b45,
+          roughness: 0.3,
+          metalness: 0.34
         },
         chitinWarm: {
           color: 0x3f2a23,
@@ -239,11 +239,13 @@
       if (kind === 'chitin' || kind === 'chitinWarm') {
         material.map = this.textures.carapace || null;
         material.bumpMap = this.textures.organicBump || null;
-        material.bumpScale = kind === 'chitin' ? 0.16 : 0.1;
+        // The generated cells have steep gradients: large bump amplitudes turn
+        // curved shells into glittering specular noise at the tactical zoom.
+        material.bumpScale = kind === 'chitin' ? 0.018 : 0.025;
       } else if (kind === 'resin') {
         material.map = this.textures.resin || null;
         material.bumpMap = this.textures.organicBump || null;
-        material.bumpScale = 0.22;
+        material.bumpScale = 0.055;
       } else if (kind === 'industrial' || kind === 'darkMetal') {
         material.map = this.textures.industrial || null;
       }
@@ -436,11 +438,29 @@
 
     _box(material, size, position, name, bevelHint) {
       const T = this._three();
-      const mesh = this._mesh(
-        new T.BoxGeometry(size.x, size.y, size.z, bevelHint ? 2 : 1, bevelHint ? 2 : 1, bevelHint ? 2 : 1),
-        material,
-        name
-      );
+      // Subdividing a BoxGeometry does not soften its silhouette. A real,
+      // single-segment chamfer catches the station lights with a modest budget.
+      let geometry;
+      if (bevelHint) {
+        const bevel = Math.min(size.x, size.y, size.z) * 0.08;
+        const halfX = size.x / 2 - bevel;
+        const halfY = size.y / 2 - bevel;
+        const outline = new T.Shape();
+        outline.moveTo(-halfX, -halfY);
+        outline.lineTo(halfX, -halfY);
+        outline.lineTo(halfX, halfY);
+        outline.lineTo(-halfX, halfY);
+        outline.closePath();
+        geometry = new T.ExtrudeGeometry(outline, {
+          depth: size.z - bevel * 2, steps: 1,
+          bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel,
+          bevelSegments: 1, curveSegments: 1
+        });
+        geometry.translate(0, 0, -size.z / 2 + bevel);
+      } else {
+        geometry = new T.BoxGeometry(size.x, size.y, size.z);
+      }
+      const mesh = this._mesh(geometry, material, name);
       mesh.position.set(position.x, position.y, position.z);
       return mesh;
     }
@@ -2147,14 +2167,14 @@
       const T = this._three();
       const root = new T.Group();
       root.name = chrysalis ? 'metamorphic_pod' : 'juvenile_serpent';
-      const hide = this._material('chitinWarm', { color: 0x672f2f, roughness: 0.42 });
+      const hide = chrysalis ? null : this._material('chitinWarm', { color: 0x672f2f, roughness: 0.42 });
       const chitin = this._material('chitin', { color: 0x24151d, roughness: 0.3, metalness: 0.22 });
-      const resin = this._material('resin', {
+      const resin = chrysalis ? this._material('resin', {
         color: 0x3b1747,
         emissive: 0x4c1d95,
         emissiveIntensity: 0.44
-      });
-      const bone = this._material('bone', { color: 0xd6c58b });
+      }) : null;
+      const bone = chrysalis ? null : this._material('bone', { color: 0xd6c58b });
 
       if (chrysalis) {
         root.add(this._ellipsoid(
@@ -2284,9 +2304,11 @@
       const warrior = caste === 'warrior';
       const scale = royal ? 1.42 : (guardian ? 1.18 : (warrior ? 1.06 : 1));
       const primary = this._material('chitin', {
-        color: royal ? 0x221033 : (guardian ? 0x2d163d : (warrior ? 0x111827 : 0x0b1518)),
-        roughness: royal ? 0.22 : 0.28,
-        metalness: 0.46
+        color: royal ? 0xa27db5 : (guardian ? 0x9c83b0 : (warrior ? 0x9cabb3 : (caste === 'spitter' ? 0xb6c27f : (caste === 'worker' ? 0x8fc3b1 : 0xa7bbc4)))),
+        roughness: royal ? 0.34 : 0.4,
+        metalness: 0.34,
+        emissive: royal ? 0x10051b : 0x061014,
+        emissiveIntensity: 0.12
       });
       const secondary = this._material('resin', {
         color: royal ? 0x4a214f : 0x263238,
@@ -2419,6 +2441,42 @@
         'sensory_node',
         12
       ));
+
+      // Castes must be identifiable from the high tactical camera, even when
+      // their command ring is hidden. Keep anatomy attached to the existing rig.
+      if (caste === 'spitter') {
+        const acid = this._material('emissiveGreen', {
+          color: 0x4d6b25, emissive: 0x8cbe32, emissiveIntensity: 0.5,
+          roughness: 0.34, metalness: 0.05
+        });
+        for (const side of [-1, 1]) {
+          root.add(this._ellipsoid(acid,
+            { x: 0.34, y: 0.5, z: 0.38 },
+            { x: side * 0.68, y: 3.72, z: -0.38 },
+            `acid_reservoir_${side}`, 14));
+          root.add(this._tube(secondary, [
+            { x: side * 0.7, y: 3.8, z: -0.28 },
+            { x: side * 0.57, y: 4.03, z: 0.48 },
+            { x: side * 0.29, y: 4.12, z: 1.13 }
+          ], 0.07, `acid_duct_${side}`, 10, 5));
+        }
+      }
+      if (caste === 'worker' || warrior || guardian) {
+        for (const side of [-1, 1]) {
+          const shoulder = root.getObjectByName(`arm_${side < 0 ? 'left' : 'right'}`);
+          if (shoulder) {
+            const plate = this._ellipsoid(primary,
+              { x: caste === 'worker' ? 0.42 : 0.37, y: 0.26, z: 0.48 },
+              { x: 0, y: 0.05, z: -0.06 },
+              `reinforced_shoulder_${side}`, 14);
+            shoulder.add(plate);
+          }
+        }
+      }
+      if (caste === 'worker') {
+        const head = root.getObjectByName('cranial_dome');
+        if (head) head.scale.x *= 1.15;
+      }
 
       if (royal) {
         root.add(this._ellipsoid(
@@ -2900,11 +2958,15 @@
       const normalizedType = String(type || 'crate').toLowerCase();
       const root = new T.Group();
       root.name = `industrial_prop_${normalizedType}`;
-      const metal = this._material('industrial', { color: 0x475569 });
-      const dark = this._material('darkMetal', { color: 0x111827 });
-      const hazard = this._material('emissiveAmber', { emissiveIntensity: 0.7 });
-      const screen = this._material('emissiveGreen', { emissiveIntensity: 0.92 });
-      const warning = this._material('emissiveRed', { emissiveIntensity: 0.82 });
+      // Allocate only materials actually owned by this prop. Unused materials
+      // cannot be found by disposeModel and otherwise accumulate on each spawn.
+      const metal = normalizedType === 'lamp' ? null : this._material('industrial', { color: 0x617585 });
+      const dark = this._material('darkMetal', { color: 0x24333d });
+      const hazard = ['barrel', 'lamp'].includes(normalizedType) ? null : this._material('emissiveAmber', { emissiveIntensity: 0.7 });
+      const screen = ['console', 'door', 'lamp'].includes(normalizedType)
+        ? this._material('emissiveGreen', { emissiveIntensity: 0.92 }) : null;
+      const warning = ['console', 'barrel'].includes(normalizedType)
+        ? this._material('emissiveRed', { emissiveIntensity: 0.82 }) : null;
 
       if (normalizedType === 'console') {
         root.add(this._box(metal, { x: 2.2, y: 1.35, z: 0.82 }, { x: 0, y: 0.68, z: 0 }, 'console_body', true));
@@ -3049,6 +3111,25 @@
           for (let cornerY = -1; cornerY <= 1; cornerY += 2) {
             this._addBolt(root, dark, { x: cornerX * 0.72, y: 0.96 + cornerY * 0.7, z: 1.02 }, 0.075, `crate_fastener_${cornerX}_${cornerY}`);
           }
+        }
+      }
+
+      if (normalizedType === 'console') {
+        // A display is readable as instrumentation instead of a solid green slab.
+        for (let row = 0; row < 4; row++) {
+          const line = this._box(dark,
+            { x: 0.45 + (row % 3) * 0.18, y: 0.025, z: 0.012 },
+            { x: -0.17, y: 1.43 + row * 0.12, z: 0.38 - row * 0.04 },
+            `display_telemetry_${row}`);
+          line.rotation.x = -0.35;
+          root.add(line);
+        }
+      } else if (normalizedType === 'door') {
+        for (const side of [-1, 1]) {
+          root.add(this._box(dark, { x: 1.38, y: 0.055, z: 0.04 },
+            { x: side * 0.87, y: 1.14, z: 0.236 }, `door_panel_seam_${side}`));
+          root.add(this._box(hazard, { x: 0.54, y: 0.075, z: 0.04 },
+            { x: side * 0.97, y: 3.64, z: 0.236 }, `door_clearance_marker_${side}`));
         }
       }
 

@@ -5543,6 +5543,243 @@
       osc.start(now);
       osc.stop(now + 0.12);
     }
+
+    // -------------------------------------------------------------------------
+    // Chantier 231 : Éclaboussures d'Eau et Écoulement du Puisard (Aliens 1986)
+    // -------------------------------------------------------------------------
+    playSumpWaterSplashing(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.3);
+      gain.gain.setValueAtTime(0.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 232 : Escalade de Gaines et Grincement Carrefour Ventilation (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    playVentDuctClamber(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.25);
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      osc.connect(gain);
+      this.connect(gain, x, z, 60);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 233 : Cycle de Décontamination Sas Biologique Alpha (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    playDeconAirlockCycle(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(950, now);
+      osc.frequency.exponentialRampToValueAtTime(250, now + 0.65);
+      gain.gain.setValueAtTime(0.75, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.65);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 234 : Ronronnement Magnétique Cœur de Réacteur Nostromo (Alien 1979)
+    // -------------------------------------------------------------------------
+    playReactorMagneticHum(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(55, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.5);
+      gain.gain.setValueAtTime(0.9, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain);
+      this.connect(gain, x, z, 80);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 235 : Sifflement Gyroscopique Centrifugeuse Orbitale (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    playCentrifugeWhine(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.exponentialRampToValueAtTime(780, now + 0.45);
+      gain.gain.setValueAtTime(0.6, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now);
+      osc.stop(now + 0.45);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 236 : Réarmement Métallique Bunker Armurerie USCM (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    playArmoryResupplyClang(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(680, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.28);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now);
+      osc.stop(now + 0.28);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 237 : Geyser de Vapeur Géothermique Haute-Pression (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    playGeothermalFlueBlast(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1400, now);
+      osc.frequency.exponentialRampToValueAtTime(280, now + 0.55);
+      gain.gain.setValueAtTime(1.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.55);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 238 : Craquement Organique & Torsion Bio-Spire (Aliens 1986 / AvP)
+    // -------------------------------------------------------------------------
+    playBioSpireResinCreak(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(210, now);
+      osc.frequency.exponentialRampToValueAtTime(75, now + 0.4);
+      gain.gain.setValueAtTime(0.65, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 239 : Armement Pyrotechnique Boulons d'Éjection (Alien 1979 / Romulus)
+    // -------------------------------------------------------------------------
+    playExplosiveBoltArming(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1760, now + 0.35);
+      gain.gain.setValueAtTime(0.9, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc.connect(gain);
+      this.connect(gain, x, z, 85);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 240 : Bouillonnement du Plomb en Fusion Fiorina 161 (Alien 3)
+    // -------------------------------------------------------------------------
+    playMoltenLeadBubbling(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(240, now + 0.4);
+      gain.gain.setValueAtTime(0.8, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+
+    // -------------------------------------------------------------------------
+    // Audit QA #68 : Réverbération Acoustique Spatiale Dynamique
+    // -------------------------------------------------------------------------
+    setAcousticReverbProfile(profile = 'corridor') {
+      if (!this.initialized || !this.reverbDelay || !this.reverbFilter || !this.reverbGain) return;
+      const now = this.ctx.currentTime;
+      let delay = 0.048;
+      let freq = 3400;
+      let gainVal = 0.28;
+      if (profile === 'duct') {
+        delay = 0.014;
+        freq = 1400;
+        gainVal = 0.08;
+      } else if (profile === 'sump') {
+        delay = 0.065;
+        freq = 2400;
+        gainVal = 0.36;
+      } else if (profile === 'reactor') {
+        delay = 0.160;
+        freq = 4800;
+        gainVal = 0.58;
+      } else if (profile === 'foundry') {
+        delay = 0.125;
+        freq = 3800;
+        gainVal = 0.48;
+      } else if (profile === 'bunker') {
+        delay = 0.035;
+        freq = 2100;
+        gainVal = 0.18;
+      }
+      try {
+        this.reverbDelay.delayTime.setTargetAtTime(delay, now, 0.2);
+        this.reverbFilter.frequency.setTargetAtTime(freq, now, 0.2);
+        this.reverbGain.gain.setTargetAtTime(gainVal, now, 0.2);
+      } catch (_) {}
+    }
   }
 
   const audioManager = new AudioManager();
@@ -5560,6 +5797,7 @@
       this.statusEl = document.getElementById('tracker-status');
       this.toggleBtn = document.getElementById('btn-toggle-tracker');
       this.modeBtn = document.getElementById('btn-tracker-mode');
+      this.blueprintBtn = document.getElementById('btn-toggle-blueprint');
       this.sweepAngle = 0;
       this.isCollapsed = false;
       this.focusedMode = false;
@@ -5570,6 +5808,9 @@
       }
       if (this.modeBtn) {
         this.modeBtn.onclick = () => this.toggleFocusedMode();
+      }
+      if (this.blueprintBtn) {
+        this.blueprintBtn.onclick = () => stationMap.toggleBlueprintOverlay();
       }
     }
 
@@ -5822,6 +6063,71 @@
             ctx.fillText('SWM', sx + 3, sy + 2);
           }
         }
+      }
+
+      // Audit QA #66 : Traçage 3D Holographique des Conduits Verticaux & Splitters
+      const allVents = [...(stationMap.vents || []), ...(stationMap.sevastopolDuctSplitters || [])];
+      for (const v of allVents) {
+        const vDist = Math.hypot(v.x - player.x, v.z - player.z);
+        if (vDist <= maxRange) {
+          const worldAngle = Math.atan2(v.x - player.x, v.z - player.z);
+          const relAngle = worldAngle - playerFacing;
+          const normDist = (vDist / maxRange) * radius;
+          const vx = cx + Math.sin(relAngle) * normDist;
+          const vy = cy - Math.cos(relAngle) * normDist;
+
+          ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
+          ctx.setLineDash([2, 4]);
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(vx, vy);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = '#06b6d4';
+          ctx.shadowColor = '#06b6d4';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(vx, vy, 2.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.font = '700 7px monospace';
+          ctx.fillText('VENT', vx + 3, vy + 2);
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      // Audit QA #70 : Schéma Tactique Holo-Blueprint Multi-Ponts
+      if (stationMap.showBlueprintOverlay) {
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.94)';
+        ctx.fillRect(0, 0, w, h);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(10, 10, w - 20, h - 20);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '700 11px monospace';
+        ctx.fillText('WY-APOLLO TACTICAL BLUEPRINT', 16, 26);
+        ctx.font = '600 8px monospace';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('DECK A: HABITATION / CRYO [OK 101 kPa]', 16, 42);
+        ctx.fillText('DECK B: CENTRIFUGE / REACTOR [MAG: 8.4T]', 16, 54);
+        ctx.fillText('DECK C: SUB-3 SUMP / FOUNDRY [TEMP: 1480C]', 16, 66);
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+        ctx.strokeRect(20, 75, w - 40, 28);
+        ctx.strokeRect(20, 110, w - 40, 28);
+        ctx.strokeRect(20, 145, w - 40, 28);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('[DECK A] SAS EVAC (68,0) | CRYO (-45,-50)', 24, 92);
+        ctx.fillText('[DECK B] CENTRIFUGE (45,10) | REACTOR (35,-45)', 24, 127);
+        ctx.fillText('[DECK C] PUISARD (-40,-15) | FONDR (-20,50)', 24, 162);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(cx, cy + 20, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillText(`ALIEN COORD: (${Math.round(player.x)}, ${Math.round(player.z)})`, 16, h - 16);
       }
 
       // Rendu des lignes de balayage cathodique CRT & lueur phosphorescente (Aliens 1986 / Isolation)
@@ -6584,6 +6890,19 @@
       this.muthurTerminals = [];
       this.whitePhosphorusPatches = [];
       this.cryoNets = [];
+      // Chantiers 231 à 240 (Level Design 1:1)
+      this.hadleyDrainageSumps = [];
+      this.sevastopolDuctSplitters = [];
+      this.biocontainmentVaults = [];
+      this.nostromoReactorRings = [];
+      this.orbitalCentrifuges = [];
+      this.uscmMunitionsBunkers = [];
+      this.geothermalVentFlues = [];
+      this.hiveBioSpires = [];
+      this.jettisonConsoles = [];
+      this.fiorinaLeadChannels = [];
+      this.grateAmbushNodes = [];
+      this.showBlueprintOverlay = false;
     }
 
     buildMap() {
@@ -8989,6 +9308,166 @@
         }
         this.colliders.push({ minX: a.x - 1.2, maxX: a.x + 1.2, minZ: a.z - 1.2, maxZ: a.z + 1.2, isJoeAlcove: true, alcoveRef: a });
       });
+
+      // Chantier 231 : Hadley's Hope Sub-Level 3 Drainage Sump & Catwalks (Aliens 1986)
+      this.hadleyDrainageSumps = [
+        { id: 'hadley_sump_1', name: "Puisard Inondé Sous-Niveau 3 Hadley's Hope", x: -40, z: -15, mesh: null }
+      ];
+      this.hadleyDrainageSumps.forEach((s) => {
+        const mesh = window.HiveModelFactory?.createHadleyDrainageSump?.();
+        if (mesh) {
+          mesh.position.set(s.x, 0, s.z);
+          rendererEngine.propsGroup.add(mesh);
+          s.mesh = mesh;
+        }
+        this.colliders.push({ minX: s.x - 2.5, maxX: s.x + 2.5, minZ: s.z - 1.9, maxZ: s.z + 1.9, isHadleySump: true, sumpRef: s });
+      });
+
+      // Chantier 232 : Sevastopol Habitation Duct Splitter & Multi-Vent Hub (Alien: Isolation)
+      this.sevastopolDuctSplitters = [
+        { id: 'duct_splitter_1', name: "Carrefour Multi-Conduits Sevastopol", x: 15, z: -25, mesh: null }
+      ];
+      this.sevastopolDuctSplitters.forEach((d) => {
+        const mesh = window.HiveModelFactory?.createSevastopolDuctSplitter?.();
+        if (mesh) {
+          mesh.position.set(d.x, 0, d.z);
+          rendererEngine.propsGroup.add(mesh);
+          d.mesh = mesh;
+        }
+        this.colliders.push({ minX: d.x - 1.4, maxX: d.x + 1.4, minZ: d.z - 1.4, maxZ: d.z + 1.4, isDuctSplitter: true, splitterRef: d });
+      });
+
+      // Chantier 233 : Weyland-Yutani Xenobiology Specimen Isolation Vault Alpha (Alien: Romulus)
+      this.biocontainmentVaults = [
+        { id: 'bio_vault_1', name: "Chambre d'Isolation Spécimen Alpha Weyland-Yutani", x: -30, z: 35, isCycling: false, deconTimer: 0, mesh: null }
+      ];
+      this.biocontainmentVaults.forEach((v) => {
+        const mesh = window.HiveModelFactory?.createBiocontainmentVaultAlpha?.();
+        if (mesh) {
+          mesh.position.set(v.x, 0, v.z);
+          rendererEngine.propsGroup.add(mesh);
+          v.mesh = mesh;
+        }
+        this.colliders.push({ minX: v.x - 1.7, maxX: v.x + 1.7, minZ: v.z - 1.0, maxZ: v.z + 1.0, isBiocontainmentVault: true, vaultRef: v });
+      });
+
+      // Chantier 234 : Nostromo Class M Reactor Magnetic Shielding Ring (Alien 1979)
+      this.nostromoReactorRings = [
+        { id: 'reactor_ring_1', name: "Anneau Toroïdal Réacteur Classe M Nostromo", x: 35, z: -45, isSabotaged: false, empCooldown: 0, mesh: null }
+      ];
+      this.nostromoReactorRings.forEach((r) => {
+        const mesh = window.HiveModelFactory?.createNostromoReactorRing?.();
+        if (mesh) {
+          mesh.position.set(r.x, 0, r.z);
+          rendererEngine.propsGroup.add(mesh);
+          r.mesh = mesh;
+        }
+        this.colliders.push({ minX: r.x - 1.8, maxX: r.x + 1.8, minZ: r.z - 1.8, maxZ: r.z + 1.8, isReactorRing: true, reactorRef: r });
+      });
+
+      // Chantier 235 : Renaissance Station Orbital Centrifuge Lab (Alien: Romulus)
+      this.orbitalCentrifuges = [
+        { id: 'centrifuge_1', name: "Laboratoire Centrifuge Orbital Renaissance", x: 45, z: 10, rotationAngle: 0, mesh: null }
+      ];
+      this.orbitalCentrifuges.forEach((c) => {
+        const mesh = window.HiveModelFactory?.createOrbitalCentrifugeLab?.();
+        if (mesh) {
+          mesh.position.set(c.x, 0, c.z);
+          rendererEngine.propsGroup.add(mesh);
+          c.mesh = mesh;
+        }
+        this.colliders.push({ minX: c.x - 2.5, maxX: c.x + 2.5, minZ: c.z - 2.5, maxZ: c.z + 2.5, isCentrifuge: true, centrifugeRef: c });
+      });
+
+      // Chantier 236 : USCM Armory & Fortified Munitions Bunker (Aliens: Dark Descent)
+      this.uscmMunitionsBunkers = [
+        { id: 'uscm_bunker_1', name: "Bunker Fortifié de Munitions USCM", x: -15, z: -60, isBreached: false, ammoStock: 10, mesh: null }
+      ];
+      this.uscmMunitionsBunkers.forEach((b) => {
+        const mesh = window.HiveModelFactory?.createUscmMunitionsBunker?.();
+        if (mesh) {
+          mesh.position.set(b.x, 0, b.z);
+          rendererEngine.propsGroup.add(mesh);
+          b.mesh = mesh;
+        }
+        this.colliders.push({ minX: b.x - 1.8, maxX: b.x + 1.8, minZ: b.z - 1.2, maxZ: b.z + 1.2, isMunitionsBunker: true, bunkerRef: b });
+      });
+
+      // Chantier 237 : Sevastopol Engineering Geothermal Venting Flue (Alien: Isolation)
+      this.geothermalVentFlues = [
+        { id: 'geo_flue_1', name: "Cheminée d'Évacuation Géothermique Sevastopol", x: -50, z: 15, isVenting: false, cycleTimer: 0, mesh: null }
+      ];
+      this.geothermalVentFlues.forEach((f) => {
+        const mesh = window.HiveModelFactory?.createGeothermalVentFlue?.();
+        if (mesh) {
+          mesh.position.set(f.x, 0, f.z);
+          rendererEngine.propsGroup.add(mesh);
+          f.mesh = mesh;
+        }
+        this.colliders.push({ minX: f.x - 1.1, maxX: f.x + 1.1, minZ: f.z - 1.1, maxZ: f.z + 1.1, isVentFlue: true, flueRef: f });
+      });
+
+      // Chantier 238 : Hive Central Bio-Spire Catwalk Anchor (Aliens 1986 / AvP)
+      this.hiveBioSpires = [
+        { id: 'bio_spire_1', name: "Flèche Centrale de Bio-Résine Organique", x: 0, z: -35, mesh: null }
+      ];
+      this.hiveBioSpires.forEach((sp) => {
+        const mesh = window.HiveModelFactory?.createHiveBioSpire?.();
+        if (mesh) {
+          mesh.position.set(sp.x, 0, sp.z);
+          rendererEngine.propsGroup.add(mesh);
+          sp.mesh = mesh;
+        }
+        this.colliders.push({ minX: sp.x - 1.5, maxX: sp.x + 1.5, minZ: sp.z - 1.5, maxZ: sp.z + 1.5, isBioSpire: true, spireRef: sp });
+      });
+
+      // Chantier 239 : Orbital Module Jettison Explosive Bolt Console (Alien 1979 / Romulus)
+      this.jettisonConsoles = [
+        { id: 'jettison_console_1', name: "Pupitre d'Éjection Pyrotechnique Weyland-Yutani", x: 25, z: -15, isArming: false, isJettisoned: false, armingTimer: 0, mesh: null }
+      ];
+      this.jettisonConsoles.forEach((jc) => {
+        const mesh = window.HiveModelFactory?.createJettisonBoltConsole?.();
+        if (mesh) {
+          mesh.position.set(jc.x, 0, jc.z);
+          rendererEngine.propsGroup.add(mesh);
+          jc.mesh = mesh;
+        }
+        this.colliders.push({ minX: jc.x - 0.7, maxX: jc.x + 0.7, minZ: jc.z - 0.7, maxZ: jc.z + 0.7, isJettisonConsole: true, consoleRef: jc });
+      });
+
+      // Chantier 240 : Fiorina 161 Foundry Lead Smelting Channel (Alien 3)
+      this.fiorinaLeadChannels = [
+        { id: 'lead_channel_1', name: "Rigole de Coulée de Plomb Fiorina 161", x: -20, z: 50, isBreached: false, heatTimer: 0, mesh: null }
+      ];
+      this.fiorinaLeadChannels.forEach((lc) => {
+        const mesh = window.HiveModelFactory?.createFiorinaLeadChannel?.();
+        if (mesh) {
+          mesh.position.set(lc.x, 0, lc.z);
+          rendererEngine.propsGroup.add(mesh);
+          lc.mesh = mesh;
+        }
+        this.colliders.push({ minX: lc.x - 2.9, maxX: lc.x + 2.9, minZ: lc.z - 1.2, maxZ: lc.z + 1.2, isLeadChannel: true, channelRef: lc });
+      });
+
+      // Audit QA #69 : Grilles de Sol Destructibles & Embuscade Verticale
+      this.grateAmbushNodes = [
+        { id: 'grate_ambush_1', name: 'Grille Caillebotis Sol Puisard Nord', x: -25, z: 0, isShattered: false },
+        { id: 'grate_ambush_2', name: 'Grille Caillebotis Sol Couloir Sud', x: 10, z: 30, isShattered: false },
+        { id: 'grate_ambush_3', name: 'Grille Caillebotis Sol Entrée Armurerie', x: -15, z: -15, isShattered: false }
+      ];
+
+      // Audit QA #67 : Ombres Portées Procédurales de Caillebotis
+      const shadowGrateMat = new THREE.MeshBasicMaterial({ color: 0x05070a, transparent: true, opacity: 0.45 });
+      const shadowGeo1 = new THREE.PlaneGeometry(4.8, 3.6);
+      const shadowGrate1 = new THREE.Mesh(shadowGeo1, shadowGrateMat);
+      shadowGrate1.rotation.x = -Math.PI / 2;
+      shadowGrate1.position.set(-40, 0.02, -15);
+      rendererEngine.mapGroup.add(shadowGrate1);
+      const shadowGeo2 = new THREE.PlaneGeometry(5.6, 2.2);
+      const shadowGrate2 = new THREE.Mesh(shadowGeo2, shadowGrateMat);
+      shadowGrate2.rotation.x = -Math.PI / 2;
+      shadowGrate2.position.set(-20, 0.02, 50);
+      rendererEngine.mapGroup.add(shadowGrate2);
     }
 
     setBlastDoorState(door, open, silent = false) {
@@ -9523,6 +10002,16 @@
       this.updateResinCamouflageWalls(safeDelta);
       this.updateMaintenanceJackSockets(safeDelta);
       this.updateWorkingJoeAlcoves(safeDelta);
+      this.updateHadleyDrainageSumps(safeDelta);
+      this.updateSevastopolDuctSplitters(safeDelta);
+      this.updateBiocontainmentVaults(safeDelta);
+      this.updateNostromoReactorRings(safeDelta);
+      this.updateOrbitalCentrifuges(safeDelta);
+      this.updateUscmMunitionsBunkers(safeDelta);
+      this.updateGeothermalVentFlues(safeDelta);
+      this.updateHiveBioSpires(safeDelta);
+      this.updateJettisonConsoles(safeDelta);
+      this.updateFiorinaLeadChannels(safeDelta);
 
       // Audit QA #25 : Frustum culling optimisé et masquage automatique des props hors champ à plus de 45m
       this.cullingTimer = (this.cullingTimer || 0) + safeDelta;
@@ -9588,6 +10077,16 @@
           ...(this.resinCamouflageWalls || []),
           ...(this.maintenanceJackSockets || []),
           ...(this.workingJoeAlcoves || []),
+          ...(this.hadleyDrainageSumps || []),
+          ...(this.sevastopolDuctSplitters || []),
+          ...(this.biocontainmentVaults || []),
+          ...(this.nostromoReactorRings || []),
+          ...(this.orbitalCentrifuges || []),
+          ...(this.uscmMunitionsBunkers || []),
+          ...(this.geothermalVentFlues || []),
+          ...(this.hiveBioSpires || []),
+          ...(this.jettisonConsoles || []),
+          ...(this.fiorinaLeadChannels || []),
           ...(this.reactorDisconnectConsoles || []),
           ...(this.m577APCs || []),
           ...(this.thermalSurveillancePosts || [])
@@ -13973,6 +14472,303 @@
           a.surgeTimer -= safeDelta;
         }
       });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 231 : Hadley's Hope Sub-Level 3 Drainage Sump & Catwalks (Aliens 1986)
+    // -------------------------------------------------------------------------
+    updateHadleyDrainageSumps(safeDelta) {
+      (this.hadleyDrainageSumps || []).forEach((s) => {
+        const humans = window.gameInstance?.humans || [];
+        humans.forEach((h) => {
+          if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - s.x, h.z - s.z) <= 3.8) {
+            h.speedModifier = Math.min(h.speedModifier || 1.0, 0.60);
+            if (Math.random() < 0.04) {
+              audioManager.playSumpWaterSplashing?.(h.x, h.z);
+              window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0x14532d, 6, 0.15, 0.5);
+            }
+          }
+        });
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 232 : Sevastopol Habitation Duct Splitter & Multi-Vent Hub (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    updateSevastopolDuctSplitters(safeDelta) {
+      (this.sevastopolDuctSplitters || []).forEach((d) => {
+        if (Math.hypot(playerCreature.x - d.x, playerCreature.z - d.z) <= 2.2) {
+          playerCreature.speedModifier = Math.max(playerCreature.speedModifier || 1.0, 1.35);
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 233 : Weyland-Yutani Xenobiology Specimen Isolation Vault Alpha (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    triggerBiocontainmentDecon(vault) {
+      if (!vault || vault.isCycling) return false;
+      vault.isCycling = true;
+      vault.deconTimer = 3.5;
+      audioManager.playDeconAirlockCycle?.(vault.x, vault.z);
+      rendererEngine.addScreenShake?.(0.35, 0.25);
+      window.HiveSystems?.vfx?.burst?.(vault.x, vault.z, 0x38bdf8, 38, 0.28, 2.5);
+      window.HiveSystems?.vfx?.ring?.(vault.x, vault.z, 0x0284c7, 7.5);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - vault.x, h.z - vault.z) <= 5.5) {
+          h.takeDamage?.(65, playerCreature);
+          h.staggerTimer = 2.5;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-65 STÉRILISATION CHIMIQUE !', '#38bdf8', true);
+        }
+      });
+      showToast('SAS BIOCONTAINMENT ALPHA ACTIVÉ : Cycle de stérilisation et purge chimique !');
+      appendSensorLog('[QUARANTINE PROTOCOL] Sas décontamination Alpha pressurisé. Brume biocide injectée.', 'alert');
+      return true;
+    }
+
+    updateBiocontainmentVaults(safeDelta) {
+      (this.biocontainmentVaults || []).forEach((v) => {
+        if (v.isCycling) {
+          v.deconTimer -= safeDelta;
+          if (v.deconTimer <= 0) v.isCycling = false;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 234 : Nostromo Class M Reactor Magnetic Shielding Ring (Alien 1979)
+    // -------------------------------------------------------------------------
+    sabotageReactorRing(ring) {
+      if (!ring || ring.isSabotaged) return false;
+      ring.isSabotaged = true;
+      ring.empCooldown = 12.0;
+      audioManager.playReactorMagneticHum?.(ring.x, ring.z);
+      rendererEngine.addScreenShake?.(0.7, 0.45);
+      window.HiveSystems?.vfx?.burst?.(ring.x, ring.z, 0x06b6d4, 52, 0.35, 3.2);
+      window.HiveSystems?.vfx?.ring?.(ring.x, ring.z, 0x0891b2, 14.0);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - ring.x, h.z - ring.z) <= 12.0) {
+          h.takeDamage?.(175, playerCreature);
+          h.staggerTimer = 4.5;
+          h.stress = 100;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, '-175 DÉCHARGE MAGNÉTIQUE EMP !', '#06b6d4', true);
+        }
+      });
+      showToast('ANNEAU RÉACTEUR NOSTROMO SURCHARGÉ : Onde de choc électromagnétique et flash ionique !');
+      appendSensorLog('[REACTOR CORE] Surcharge statorique sur l\'anneau magnétique Classe M. Impulsion EMP.', 'alert');
+      return true;
+    }
+
+    updateNostromoReactorRings(safeDelta) {
+      (this.nostromoReactorRings || []).forEach((r) => {
+        if (r.empCooldown > 0) r.empCooldown -= safeDelta;
+        if (Math.hypot(playerCreature.x - r.x, playerCreature.z - r.z) <= 10.0) {
+          if (Math.random() < 0.05) audioManager.playReactorMagneticHum?.(r.x, r.z);
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 235 : Renaissance Station Orbital Centrifuge Lab (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    updateOrbitalCentrifuges(safeDelta) {
+      (this.orbitalCentrifuges || []).forEach((c) => {
+        c.rotationAngle = (c.rotationAngle || 0) + safeDelta * 0.45;
+        if (c.mesh) {
+          c.mesh.rotation.y = c.rotationAngle;
+        }
+        const dist = Math.hypot(playerCreature.x - c.x, playerCreature.z - c.z);
+        if (dist <= 6.5) {
+          playerCreature.speedModifier = Math.max(playerCreature.speedModifier || 1.0, 1.40);
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 236 : USCM Armory & Fortified Munitions Bunker (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    updateUscmMunitionsBunkers(safeDelta) {
+      (this.uscmMunitionsBunkers || []).forEach((b) => {
+        const humans = window.gameInstance?.humans || [];
+        humans.forEach((h) => {
+          if (!h.isIncapacitated && !h.isCocooned && h.stress >= 75 && Math.hypot(h.x - b.x, h.z - b.z) <= 5.0) {
+            h.stress = Math.max(0, h.stress - safeDelta * 25);
+            if (Math.random() < 0.02) audioManager.playArmoryResupplyClang?.(b.x, b.z);
+          }
+        });
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 237 : Sevastopol Engineering Geothermal Venting Flue (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    triggerGeothermalVentFlue(flue) {
+      if (!flue || flue.isVenting) return false;
+      flue.isVenting = true;
+      flue.cycleTimer = 3.0;
+      audioManager.playGeothermalFlueBlast?.(flue.x, flue.z);
+      rendererEngine.addScreenShake?.(0.4, 0.3);
+      window.HiveSystems?.vfx?.burst?.(flue.x, flue.z, 0xf97316, 42, 0.35, 3.0);
+      window.HiveSystems?.vfx?.ring?.(flue.x, flue.z, 0xea580c, 8.5);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - flue.x, h.z - flue.z) <= 6.5) {
+          h.takeDamage?.(120, playerCreature);
+          h.staggerTimer = 3.0;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.1, h.z, '-120 GEYSER GÉOTHERMIQUE 250°C !', '#f97316', true);
+        }
+      });
+      showToast('CHEMINÉE GÉOTHERMIQUE DÉCHARGÉE : Geyser de vapeur brûlante 250°C !');
+      appendSensorLog('[THERMAL EXHAUST] Décompression géothermique forcée. Vapeur surchauffée active.', 'alert');
+      return true;
+    }
+
+    updateGeothermalVentFlues(safeDelta) {
+      (this.geothermalVentFlues || []).forEach((f) => {
+        f.cycleTimer = (f.cycleTimer || 0) + safeDelta;
+        if (!f.isVenting && f.cycleTimer >= 7.0) {
+          f.isVenting = true;
+          f.cycleTimer = 0;
+          audioManager.playGeothermalFlueBlast?.(f.x, f.z);
+          window.HiveSystems?.vfx?.burst?.(f.x, f.z, 0xf97316, 25, 0.3, 2.0);
+        } else if (f.isVenting && f.cycleTimer >= 2.5) {
+          f.isVenting = false;
+          f.cycleTimer = 0;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 238 : Hive Central Bio-Spire Catwalk Anchor (Aliens 1986 / AvP)
+    // -------------------------------------------------------------------------
+    updateHiveBioSpires(safeDelta) {
+      (this.hiveBioSpires || []).forEach((sp) => {
+        const dist = Math.hypot(playerCreature.x - sp.x, playerCreature.z - sp.z);
+        if (dist <= 4.0 && !sp.creaked) {
+          sp.creaked = true;
+          audioManager.playBioSpireResinCreak?.(sp.x, sp.z);
+        } else if (dist > 6.0) {
+          sp.creaked = false;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 239 : Orbital Module Jettison Explosive Bolt Console (Alien 1979 / Romulus)
+    // -------------------------------------------------------------------------
+    triggerJettisonExplosiveBolts(console) {
+      if (!console || console.isArming || console.isJettisoned) return false;
+      console.isArming = true;
+      console.armingTimer = 3.0;
+      audioManager.playExplosiveBoltArming?.(console.x, console.z);
+      rendererEngine.addScreenShake?.(0.65, 0.45);
+      showToast('DÉCOUPLAGE MODULE ORBITAL ARMÉ : Détonation pyrotechnique dans 3 secondes !');
+      appendSensorLog('[EXPLOSIVE DECOUPLER] Procédure de largage pyrotechnique initiée.', 'alert');
+      return true;
+    }
+
+    updateJettisonConsoles(safeDelta) {
+      (this.jettisonConsoles || []).forEach((jc) => {
+        if (jc.isArming && !jc.isJettisoned) {
+          jc.armingTimer -= safeDelta;
+          if (jc.armingTimer <= 0) {
+            jc.isArming = false;
+            jc.isJettisoned = true;
+            audioManager.playExplosiveBoltArming?.(jc.x, jc.z);
+            rendererEngine.addScreenShake?.(1.0, 0.6);
+            window.HiveSystems?.vfx?.burst?.(jc.x, jc.z, 0xef4444, 60, 0.45, 4.0);
+            window.HiveSystems?.vfx?.ring?.(jc.x, jc.z, 0xdc2626, 18.0);
+
+            const humans = window.gameInstance?.humans || [];
+            humans.forEach((h) => {
+              if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - jc.x, h.z - jc.z) <= 14.0) {
+                h.takeDamage?.(240, playerCreature);
+                h.staggerTimer = 5.0;
+                window.HiveSystems?.vfx?.floatingText?.(h.x, 3.4, h.z, '-240 DÉCOMPRESSION EXPLOSIVE !', '#ef4444', true);
+              }
+            });
+            showToast('MODULE ORBITAL ÉJECTÉ : Souffle explosif et dépressurisation cataclysmique !');
+            appendSensorLog('[JETTISON COMPLETE] Module largué dans le vide spatial. Secteur purgé.', 'alert');
+          }
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 240 : Fiorina 161 Foundry Lead Smelting Channel (Alien 3)
+    // -------------------------------------------------------------------------
+    breachFiorinaLeadSluice(channel) {
+      if (!channel || channel.isBreached) return false;
+      channel.isBreached = true;
+      audioManager.playMoltenLeadBubbling?.(channel.x, channel.z);
+      rendererEngine.addScreenShake?.(0.75, 0.5);
+      window.HiveSystems?.vfx?.burst?.(channel.x, channel.z, 0xf97316, 55, 0.4, 3.5);
+      window.HiveSystems?.vfx?.ring?.(channel.x, channel.z, 0xea580c, 12.0);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - channel.x, h.z - channel.z) <= 8.5) {
+          h.takeDamage?.(500, playerCreature);
+          h.staggerTimer = 4.0;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.5, h.z, '-500 PLOMB EN FUSION 1500°C !', '#f97316', true);
+        }
+      });
+      showToast('VANNE DE PLOMB FIORINA BRISÉE : Coulée de métal en fusion déversée !');
+      appendSensorLog('[FOUNDRY HAZARD] Rupture de la vanne de scories. Plomb liquide à 1500°C libéré.', 'alert');
+      return true;
+    }
+
+    updateFiorinaLeadChannels(safeDelta) {
+      (this.fiorinaLeadChannels || []).forEach((lc) => {
+        lc.heatTimer = (lc.heatTimer || 0) + safeDelta;
+        if (lc.heatTimer >= 2.0) {
+          lc.heatTimer = 0;
+          if (Math.hypot(playerCreature.x - lc.x, playerCreature.z - lc.z) <= 12.0) {
+            audioManager.playMoltenLeadBubbling?.(lc.x, lc.z);
+          }
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Audit QA #69 : Destructible Floor Grates for Vertical Ambush Takedowns
+    // -------------------------------------------------------------------------
+    executeVerticalGrateAmbush() {
+      const nearNode = (this.grateAmbushNodes || []).find((g) => !g.isShattered && Math.hypot(g.x - playerCreature.x, g.z - playerCreature.z) <= 4.8);
+      if (!nearNode) {
+        showToast('Aucune grille de sol fragilisée à portée immédiate [V].');
+        return false;
+      }
+      const humans = window.gameInstance?.humans || [];
+      const victim = humans.find((h) => !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - nearNode.x, h.z - nearNode.z) <= 4.2);
+      if (!victim) {
+        showToast('Attendez qu\'une proie humaine passe au-dessus de la grille caillebotis.');
+        return false;
+      }
+
+      nearNode.isShattered = true;
+      audioManager.playVentDuctClamber?.(nearNode.x, nearNode.z);
+      rendererEngine.addScreenShake?.(0.65, 0.4);
+      window.HiveSystems?.vfx?.burst?.(nearNode.x, nearNode.z, 0xef4444, 48, 0.35, 2.8);
+      window.HiveSystems?.vfx?.ring?.(nearNode.x, nearNode.z, 0x991b1b, 6.0);
+
+      victim.takeDamage?.(250, playerCreature);
+      victim.staggerTimer = 4.0;
+      window.HiveSystems?.vfx?.floatingText?.(victim.x, 3.2, victim.z, '-250 EMBUSCADE CAILLEBOTIS VERTICALE !', '#ef4444', true);
+      showToast('EMBUSCADE VERTICALE : Grille caillebotis arrachée et proie entraînée dans le sous-niveau !');
+      appendSensorLog('[AMBUSH] Rupture de grille technique inférieure. Perte soudaine d\'un effectif.', 'alert');
+      return true;
+    }
+
+    // Audit QA #70 : Schéma Tactique Holo-Blueprint Multi-Ponts
+    toggleBlueprintOverlay() {
+      this.showBlueprintOverlay = !this.showBlueprintOverlay;
+      showToast(this.showBlueprintOverlay ? 'HOLO-BLUEPRINT DÉPLOYÉ [Touche L / P]' : 'HOLO-BLUEPRINT FERMÉ');
     }
 
     // Audit QA #30 : Garbage Collection Proactif Three.js (Libération systématique RAM)
@@ -21870,6 +22666,18 @@
       const distJoeAlcove = (stationMap.workingJoeAlcoves || []).find((a) => !a.isSabotaged && Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) <= 15);
       if (distJoeAlcove) stationMap.sabotageWorkingJoeAlcove(distJoeAlcove);
 
+      // Chantiers 233, 234, 237, 239, 240 : Crachat acide balistique sur props Vague 24
+      const distBioVaultAlpha = (stationMap.biocontainmentVaults || []).find((v) => !v.isCycling && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 15);
+      if (distBioVaultAlpha) stationMap.triggerBiocontainmentDecon(distBioVaultAlpha);
+      const distReactorRing = (stationMap.nostromoReactorRings || []).find((r) => !r.isSabotaged && Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 15);
+      if (distReactorRing) stationMap.sabotageReactorRing(distReactorRing);
+      const distVentFlue = (stationMap.geothermalVentFlues || []).find((f) => !f.isVenting && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 15);
+      if (distVentFlue) stationMap.triggerGeothermalVentFlue(distVentFlue);
+      const distJettisonConsole = (stationMap.jettisonConsoles || []).find((jc) => !jc.isArming && !jc.isJettisoned && Math.hypot(jc.x - playerCreature.x, jc.z - playerCreature.z) <= 15);
+      if (distJettisonConsole) stationMap.triggerJettisonExplosiveBolts(distJettisonConsole);
+      const distLeadChannel = (stationMap.fiorinaLeadChannels || []).find((lc) => !lc.isBreached && Math.hypot(lc.x - playerCreature.x, lc.z - playerCreature.z) <= 15);
+      if (distLeadChannel) stationMap.breachFiorinaLeadSluice(distLeadChannel);
+
       this.updateCooldownBadges();
       this.updateRoyalButton();
     }
@@ -22397,7 +23205,37 @@
         stationMap.sabotageWorkingJoeAlcove(nearJoeAlcove);
         return true;
       }
-      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur, brouilleur m56, cryo c60, arc-furnace weyland, torche éthylène, casai seegson, bio-stasis pathogène noir, transit mag-lev, halon 1301, mine claymore m20, échangeur ap14, camouflage résine, sevastopol jack, charge 15kv working joe) à portée immédiate.');
+      // 88. Chambre d'Isolation Spécimen Alpha Weyland-Yutani (Chantier 233)
+      const nearVault = (stationMap.biocontainmentVaults || []).find((v) => !v.isCycling && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
+      if (nearVault) {
+        stationMap.triggerBiocontainmentDecon(nearVault);
+        return true;
+      }
+      // 89. Anneau Toroïdal Réacteur Classe M Nostromo (Chantier 234)
+      const nearRing = (stationMap.nostromoReactorRings || []).find((r) => !r.isSabotaged && Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 5.5);
+      if (nearRing) {
+        stationMap.sabotageReactorRing(nearRing);
+        return true;
+      }
+      // 90. Cheminée d'Évacuation Géothermique Sevastopol (Chantier 237)
+      const nearFlue = (stationMap.geothermalVentFlues || []).find((f) => !f.isVenting && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 5.5);
+      if (nearFlue) {
+        stationMap.triggerGeothermalVentFlue(nearFlue);
+        return true;
+      }
+      // 91. Pupitre d'Éjection Pyrotechnique Weyland-Yutani (Chantier 239)
+      const nearJettison = (stationMap.jettisonConsoles || []).find((jc) => !jc.isArming && !jc.isJettisoned && Math.hypot(jc.x - playerCreature.x, jc.z - playerCreature.z) <= 5.5);
+      if (nearJettison) {
+        stationMap.triggerJettisonExplosiveBolts(nearJettison);
+        return true;
+      }
+      // 92. Rigole de Coulée de Plomb Fiorina 161 (Chantier 240)
+      const nearLead = (stationMap.fiorinaLeadChannels || []).find((lc) => !lc.isBreached && Math.hypot(lc.x - playerCreature.x, lc.z - playerCreature.z) <= 5.5);
+      if (nearLead) {
+        stationMap.breachFiorinaLeadSluice(nearLead);
+        return true;
+      }
+      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur, brouilleur m56, cryo c60, arc-furnace weyland, torche éthylène, casai seegson, bio-stasis pathogène noir, transit mag-lev, halon 1301, mine claymore m20, échangeur ap14, camouflage résine, sevastopol jack, charge 15kv working joe, sas bio-alpha, réacteur nostromo, vapeur géothermique, éjection pyrotechnique, plomb fiorina) à portée immédiate.');
       return false;
     }
 
@@ -22576,7 +23414,16 @@
           this.executeTerrifyingHiss();
         }
       }
-      if (key === 'v') this.executeDragOrWallCocoon();
+      if (key === 'v') {
+        const ambushed = stationMap.executeVerticalGrateAmbush?.();
+        if (!ambushed) {
+          this.executeDragOrWallCocoon();
+        }
+      }
+      if (key === 'l' || key === 'p') {
+        stationMap.toggleBlueprintOverlay?.();
+        return;
+      }
       if (key === 'g') {
         const inoculated = playerCreature.executeDirectInoculation();
         if (!inoculated) {
@@ -23311,6 +24158,24 @@
         if (!this.royalCycle?.isActive && Math.floor(this.huntReserve) !== this.lastDisplayedReserve) {
           this.updateReserveUI();
         }
+      }
+
+      // Audit QA #68 : Réverbération Acoustique Spatiale Dynamique selon le Volume Architectural
+      let detectedRoom = 'corridor';
+      if (playerCreature.isInVent || (stationMap.sevastopolDuctSplitters || []).some((d) => Math.hypot(d.x - playerCreature.x, d.z - playerCreature.z) <= 6.0)) {
+        detectedRoom = 'duct';
+      } else if ((stationMap.hadleyDrainageSumps || []).some((s) => Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 7.0)) {
+        detectedRoom = 'sump';
+      } else if ((stationMap.nostromoReactorRings || []).some((r) => Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 10.0)) {
+        detectedRoom = 'reactor';
+      } else if ((stationMap.fiorinaLeadChannels || []).some((lc) => Math.hypot(lc.x - playerCreature.x, lc.z - playerCreature.z) <= 9.0)) {
+        detectedRoom = 'foundry';
+      } else if ((stationMap.uscmMunitionsBunkers || []).some((b) => Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 7.0)) {
+        detectedRoom = 'bunker';
+      }
+      if (this.lastAcousticRoom !== detectedRoom) {
+        this.lastAcousticRoom = detectedRoom;
+        audioManager.setAcousticReverbProfile?.(detectedRoom);
       }
 
       // Sécurité anti-blocage : réapprovisionnement d'hôtes si le stock est insuffisant
@@ -24429,6 +25294,10 @@
       }
       if (key === 'n') {
         pheromoneSystem.dropManualScent(playerCreature.x, playerCreature.z);
+        return;
+      }
+      if (key === 'l' || key === 'p') {
+        stationMap.toggleBlueprintOverlay?.();
         return;
       }
       const visionByKey = { f1: 'normal', f2: 'thermal', f3: 'acoustic' };

@@ -6428,6 +6428,128 @@
         root.add(this._box(chargingPad, { x: 0.4, y: 0.35, z: 0.05 }, { x: 0, y: 1.4, z: 0.2 }, 'joe_contact_plate_upper'));
         root.add(this._box(chargingPad, { x: 0.4, y: 0.35, z: 0.05 }, { x: 0, y: 0.6, z: 0.2 }, 'joe_contact_plate_lower'));
         root.add(this._box(apolloScreen, { x: 0.5, y: 0.2, z: 0.03 }, { x: 0, y: 2.05, z: 0.2 }, 'joe_apollo_status'));
+      } else if (normalizedType === 'hadley_drainage_sump' || normalizedType === 'drainage_sump') {
+        // Chantier 231 : Hadley's Hope Sub-Level 3 Drainage Sump & Catwalks (Aliens 1986)
+        const sumpBasin = this._material('darkMetal', { color: 0x0f172a, roughness: 0.8, metalness: 0.4 });
+        const murkyWater = this._material('industrial', { color: 0x14532d, roughness: 0.1, metalness: 0.6 });
+        const grateSteel = this._material('industrial', { color: 0x64748b, roughness: 0.35, metalness: 0.85 });
+        const yellowRail = this._material('hazard', { color: 0xeab308, roughness: 0.3 });
+        root.add(this._box(sumpBasin, { x: 4.8, y: 0.8, z: 3.6 }, { x: 0, y: 0.4, z: 0 }, 'sump_concrete_basin', true));
+        root.add(this._box(murkyWater, { x: 4.5, y: 0.1, z: 3.3 }, { x: 0, y: 0.75, z: 0 }, 'sump_murky_water'));
+        root.add(this._box(grateSteel, { x: 4.6, y: 0.15, z: 1.4 }, { x: 0, y: 1.6, z: 0 }, 'sump_catwalk_grating', true));
+        root.add(this._cylinder(grateSteel, 0.08, 0.08, 1.6, { x: -2.1, y: 0.8, z: -0.6 }, { x: 0, y: 0, z: 0 }, 'sump_pillar_fl'));
+        root.add(this._cylinder(grateSteel, 0.08, 0.08, 1.6, { x: 2.1, y: 0.8, z: -0.6 }, { x: 0, y: 0, z: 0 }, 'sump_pillar_fr'));
+        root.add(this._cylinder(grateSteel, 0.08, 0.08, 1.6, { x: -2.1, y: 0.8, z: 0.6 }, { x: 0, y: 0, z: 0 }, 'sump_pillar_rl'));
+        root.add(this._cylinder(grateSteel, 0.08, 0.08, 1.6, { x: 2.1, y: 0.8, z: 0.6 }, { x: 0, y: 0, z: 0 }, 'sump_pillar_rr'));
+        root.add(this._box(yellowRail, { x: 4.6, y: 0.06, z: 0.06 }, { x: 0, y: 2.4, z: -0.65 }, 'sump_handrail_n'));
+        root.add(this._box(yellowRail, { x: 4.6, y: 0.06, z: 0.06 }, { x: 0, y: 2.4, z: 0.65 }, 'sump_handrail_s'));
+      } else if (normalizedType === 'sevastopol_duct_splitter' || normalizedType === 'duct_splitter') {
+        // Chantier 232 : Sevastopol Habitation Duct Splitter & Multi-Vent Hub (Alien: Isolation)
+        const ductMetal = this._material('industrial', { color: 0x334155, roughness: 0.45, metalness: 0.75 });
+        const hatchHazard = this._material('hazard', { color: 0xf59e0b, roughness: 0.3, metalness: 0.5 });
+        const amberBeacon = this._material('emissiveAmber', { color: 0xfbbf24, emissive: 0xd97706, emissiveIntensity: 2.4 });
+        root.add(this._box(ductMetal, { x: 2.6, y: 2.8, z: 2.6 }, { x: 0, y: 1.4, z: 0 }, 'duct_hub_plenum', true));
+        root.add(this._box(dark, { x: 2.8, y: 1.8, z: 0.15 }, { x: 0, y: 1.4, z: 1.35 }, 'duct_flange_n'));
+        root.add(this._box(dark, { x: 2.8, y: 1.8, z: 0.15 }, { x: 0, y: 1.4, z: -1.35 }, 'duct_flange_s'));
+        root.add(this._box(dark, { x: 0.15, y: 1.8, z: 2.8 }, { x: 1.35, y: 1.4, z: 0 }, 'duct_flange_e'));
+        root.add(this._box(dark, { x: 0.15, y: 1.8, z: 2.8 }, { x: -1.35, y: 1.4, z: 0 }, 'duct_flange_w'));
+        root.add(this._box(hatchHazard, { x: 1.4, y: 0.15, z: 1.4 }, { x: 0, y: 2.85, z: 0 }, 'duct_ceiling_ambush_hatch'));
+        for (let r = 0; r < 4; r++) {
+          root.add(this._box(yellow, { x: 0.06, y: 0.06, z: 0.8 }, { x: -1.15, y: 0.6 + r * 0.55, z: 0 }, `duct_rung_${r}`));
+        }
+        root.add(this._cylinder(amberBeacon, 0.08, 0.08, 0.15, { x: 0.9, y: 2.9, z: 0.9 }, { x: 0, y: 0, z: 0 }, 'duct_indicator_beacon'));
+      } else if (normalizedType === 'biocontainment_vault_alpha' || normalizedType === 'containment_vault') {
+        // Chantier 233 : Weyland-Yutani Xenobiology Specimen Isolation Vault Alpha (Alien: Romulus)
+        const frameArmored = this._material('darkMetal', { color: 0x1e293b, roughness: 0.35, metalness: 0.85 });
+        const yellowSafety = this._material('hazard', { color: 0xfacc15, roughness: 0.3 });
+        const quartzView = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.8, opacity: 0.85, transparent: true });
+        const biohazRed = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.2 });
+        root.add(this._box(frameArmored, { x: 3.2, y: 3.4, z: 1.2 }, { x: 0, y: 1.7, z: 0 }, 'bio_vault_portal', true));
+        root.add(this._box(quartzView, { x: 1.8, y: 1.8, z: 0.1 }, { x: 0, y: 1.8, z: 0.05 }, 'bio_vault_quartz'));
+        root.add(this._box(yellowSafety, { x: 2.2, y: 0.15, z: 0.15 }, { x: 0, y: 2.8, z: 0.1 }, 'bio_vault_arch_top'));
+        root.add(this._box(yellowSafety, { x: 2.2, y: 0.15, z: 0.15 }, { x: 0, y: 0.8, z: 0.1 }, 'bio_vault_arch_bot'));
+        root.add(this._cylinder(biohazRed, 0.09, 0.09, 0.12, { x: 0, y: 3.1, z: 0.1 }, { x: Math.PI / 2, y: 0, z: 0 }, 'bio_warning_strobe'));
+      } else if (normalizedType === 'nostromo_reactor_ring' || normalizedType === 'reactor_ring') {
+        // Chantier 234 : Nostromo Class M Reactor Magnetic Shielding Ring (Alien 1979)
+        const coreSteel = this._material('darkMetal', { color: 0x09090b, roughness: 0.25, metalness: 0.95 });
+        const copperStator = this._material('industrial', { color: 0xd97706, roughness: 0.35, metalness: 0.85 });
+        const ionCyan = this._material('emissiveBlue', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 3.2 });
+        root.add(this._cylinder(coreSteel, 1.4, 1.4, 3.8, { x: 0, y: 1.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'reactor_containment_core', true));
+        root.add(this._ring(copperStator, 1.7, 0.22, { x: 0, y: 1.9, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'reactor_stator_ring'));
+        root.add(this._ring(ionCyan, 1.2, 0.12, { x: 0, y: 2.6, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'reactor_ion_ring_upper'));
+        root.add(this._ring(ionCyan, 1.2, 0.12, { x: 0, y: 1.2, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'reactor_ion_ring_lower'));
+        for (let i = 0; i < 6; i++) {
+          const ang = (i * Math.PI) / 3;
+          root.add(this._box(copperStator, { x: 0.35, y: 1.8, z: 0.35 }, { x: Math.cos(ang) * 1.5, y: 1.9, z: Math.sin(ang) * 1.5 }, `reactor_coil_${i}`));
+        }
+      } else if (normalizedType === 'orbital_centrifuge_lab' || normalizedType === 'centrifuge_lab') {
+        // Chantier 235 : Renaissance Station Orbital Centrifuge Lab (Alien: Romulus)
+        const chassisTitanium = this._material('industrial', { color: 0x475569, roughness: 0.35, metalness: 0.8 });
+        const trackGrate = this._material('darkMetal', { color: 0x18181b, roughness: 0.5, metalness: 0.9 });
+        const beaconCyan = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.2 });
+        root.add(this._cylinder(chassisTitanium, 0.45, 0.45, 3.2, { x: 0, y: 1.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'centrifuge_central_hub', true));
+        root.add(this._ring(trackGrate, 2.4, 0.35, { x: 0, y: 1.8, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'centrifuge_rim_track'));
+        for (let s = 0; s < 4; s++) {
+          const ang = (s * Math.PI) / 2;
+          root.add(this._box(chassisTitanium, { x: 2.2, y: 0.12, z: 0.25 }, { x: Math.cos(ang) * 1.1, y: 1.8, z: Math.sin(ang) * 1.1 }, `centrifuge_spoke_${s}`));
+        }
+        root.add(this._ring(beaconCyan, 2.42, 0.05, { x: 0, y: 1.95, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'centrifuge_strobe_rim'));
+      } else if (normalizedType === 'uscm_munitions_bunker' || normalizedType === 'munitions_bunker') {
+        // Chantier 236 : USCM Armory & Fortified Munitions Bunker (Aliens: Dark Descent)
+        const bunkerArmor = this._material('industrial', { color: 0x334155, roughness: 0.55, metalness: 0.7 });
+        const sandbags = this._material('industrial', { color: 0x78716c, roughness: 0.9, metalness: 0.1 });
+        const weaponCrate = this._material('hazard', { color: 0x15803d, roughness: 0.45, metalness: 0.4 });
+        const chevronStripe = this._material('hazard', { color: 0xf59e0b, roughness: 0.3 });
+        root.add(this._box(bunkerArmor, { x: 3.4, y: 2.6, z: 1.6 }, { x: 0, y: 1.3, z: 0 }, 'bunker_bastion_core', true));
+        root.add(this._box(sandbags, { x: 3.2, y: 0.8, z: 0.6 }, { x: 0, y: 0.4, z: 0.95 }, 'bunker_sandbag_revetment'));
+        root.add(this._box(weaponCrate, { x: 1.1, y: 0.55, z: 0.6 }, { x: -0.9, y: 1.05, z: 0.2 }, 'bunker_ammo_crate_a'));
+        root.add(this._box(weaponCrate, { x: 0.95, y: 0.5, z: 0.55 }, { x: 0.8, y: 1.05, z: 0.2 }, 'bunker_ammo_crate_b'));
+        root.add(this._box(chevronStripe, { x: 1.4, y: 0.2, z: 0.05 }, { x: 0, y: 2.1, z: 0.82 }, 'bunker_uscm_chevron'));
+      } else if (normalizedType === 'geothermal_vent_flue' || normalizedType === 'vent_flue') {
+        // Chantier 237 : Sevastopol Engineering Geothermal Venting Flue (Alien: Isolation)
+        const boilerMetal = this._material('darkMetal', { color: 0x27272a, roughness: 0.5, metalness: 0.85 });
+        const thermalGlow = this._material('emissiveRed', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 2.8 });
+        const brassValve = this._material('industrial', { color: 0xb45309, roughness: 0.3, metalness: 0.9 });
+        root.add(this._cylinder(boilerMetal, 0.7, 0.95, 3.2, { x: 0, y: 1.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'geothermal_stack', true));
+        root.add(this._ring(thermalGlow, 0.96, 0.12, { x: 0, y: 1.2, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'geothermal_heating_coil'));
+        root.add(this._ring(thermalGlow, 0.82, 0.1, { x: 0, y: 2.3, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'geothermal_upper_coil'));
+        root.add(this._cylinder(boilerMetal, 0.55, 0.55, 0.4, { x: 0, y: 3.3, z: 0 }, { x: 0, y: 0, z: 0 }, 'geothermal_nozzle'));
+        root.add(this._ring(brassValve, 0.18, 0.04, { x: 0.75, y: 1.5, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, 'geothermal_relief_valve'));
+      } else if (normalizedType === 'hive_bio_spire' || normalizedType === 'bio_spire') {
+        // Chantier 238 : Hive Central Bio-Spire Catwalk Anchor (Aliens 1986 / AvP)
+        const resinSpire = this._material('organic', { color: 0x09090b, roughness: 0.45, metalness: 0.3 });
+        const chitinBone = this._material('industrial', { color: 0x292524, roughness: 0.6, metalness: 0.5 });
+        const amberPheromone = this._material('emissiveGreen', { color: 0x16a34a, emissive: 0x15803d, emissiveIntensity: 2.2 });
+        root.add(this._cylinder(resinSpire, 0.6, 1.4, 5.5, { x: 0, y: 2.75, z: 0 }, { x: 0, y: 0, z: 0 }, 'spire_trunk_column', true));
+        for (let rib = 0; rib < 5; rib++) {
+          const y = 1.0 + rib * 0.9;
+          root.add(this._ring(chitinBone, 1.1 + rib * 0.08, 0.12, { x: 0, y, z: 0 }, { x: Math.PI / 2 + 0.15, y: rib * 0.4, z: 0 }, `spire_rib_${rib}`));
+        }
+        root.add(this._cylinder(chitinBone, 1.25, 0.8, 0.35, { x: 0, y: 4.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'spire_ambush_perch'));
+        root.add(this._ellipsoid(amberPheromone, { x: 0.28, y: 0.45, z: 0.28 }, { x: 0.45, y: 2.2, z: 0.3 }, 'spire_pheromone_bulb'));
+      } else if (normalizedType === 'jettison_bolt_console' || normalizedType === 'jettison_console') {
+        // Chantier 239 : Orbital Module Jettison Explosive Bolt Console (Alien 1979 / Romulus)
+        const pedestalMetal = this._material('industrial', { color: 0x1e293b, roughness: 0.4, metalness: 0.8 });
+        const hazardHatch = this._material('hazard', { color: 0xeab308, roughness: 0.35 });
+        const redHandle = this._material('emissiveRed', { color: 0xdc2626, emissive: 0xb91c1c, emissiveIntensity: 2.8 });
+        const crtScreen = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.5 });
+        root.add(this._box(pedestalMetal, { x: 0.9, y: 1.15, z: 0.7 }, { x: 0, y: 0.58, z: 0 }, 'jettison_pedestal', true));
+        root.add(this._box(hazardHatch, { x: 0.75, y: 0.08, z: 0.55 }, { x: 0, y: 1.18, z: 0.05 }, 'jettison_hazard_cover'));
+        root.add(this._cylinder(redHandle, 0.04, 0.04, 0.32, { x: 0, y: 1.32, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'jettison_t_handle'));
+        root.add(this._cylinder(redHandle, 0.03, 0.03, 0.15, { x: 0, y: 1.25, z: 0 }, { x: 0, y: 0, z: 0 }, 'jettison_handle_stem'));
+        root.add(this._box(crtScreen, { x: 0.55, y: 0.35, z: 0.04 }, { x: 0, y: 1.45, z: -0.22 }, 'jettison_crt_monitor'));
+      } else if (normalizedType === 'fiorina_lead_channel' || normalizedType === 'lead_channel') {
+        // Chantier 240 : Fiorina 161 Foundry Lead Smelting Channel (Alien 3)
+        const troughBrick = this._material('darkMetal', { color: 0x1c1917, roughness: 0.85, metalness: 0.3 });
+        const moltenLead = this._material('emissiveRed', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 3.5 });
+        const sluiceIron = this._material('industrial', { color: 0x44403c, roughness: 0.6, metalness: 0.8 });
+        const catwalkRail = this._material('industrial', { color: 0x78716c, roughness: 0.4, metalness: 0.7 });
+        root.add(this._box(troughBrick, { x: 5.6, y: 0.7, z: 2.2 }, { x: 0, y: 0.35, z: 0 }, 'lead_trough_basin', true));
+        root.add(this._box(moltenLead, { x: 5.4, y: 0.15, z: 1.8 }, { x: 0, y: 0.65, z: 0 }, 'lead_molten_pool'));
+        root.add(this._box(sluiceIron, { x: 0.25, y: 2.2, z: 2.3 }, { x: -2.4, y: 1.1, z: 0 }, 'lead_sluice_gate'));
+        root.add(this._box(sluiceIron, { x: 5.6, y: 0.1, z: 0.7 }, { x: 0, y: 1.9, z: 0 }, 'lead_overhead_walkway', true));
+        root.add(this._box(catwalkRail, { x: 5.6, y: 0.05, z: 0.05 }, { x: 0, y: 2.6, z: -0.32 }, 'lead_catwalk_rail_l'));
+        root.add(this._box(catwalkRail, { x: 5.6, y: 0.05, z: 0.05 }, { x: 0, y: 2.6, z: 0.32 }, 'lead_catwalk_rail_r'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -8454,6 +8576,76 @@
     // -------------------------------------------------------------------------
     createWorkingJoeAlcove() {
       return this.createIndustrialProp('working_joe_alcove');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 231 : Hadley's Hope Drainage Sump & Catwalks (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createHadleyDrainageSump() {
+      return this.createIndustrialProp('hadley_drainage_sump');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 232 : Sevastopol Habitation Duct Splitter (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSevastopolDuctSplitter() {
+      return this.createIndustrialProp('sevastopol_duct_splitter');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 233 : Biocontainment Vault Alpha (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    createBiocontainmentVaultAlpha() {
+      return this.createIndustrialProp('biocontainment_vault_alpha');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 234 : Nostromo Reactor Magnetic Ring (Alien 1979)
+    // -------------------------------------------------------------------------
+    createNostromoReactorRing() {
+      return this.createIndustrialProp('nostromo_reactor_ring');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 235 : Orbital Centrifuge Lab (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    createOrbitalCentrifugeLab() {
+      return this.createIndustrialProp('orbital_centrifuge_lab');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 236 : USCM Munitions Bunker (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createUscmMunitionsBunker() {
+      return this.createIndustrialProp('uscm_munitions_bunker');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 237 : Geothermal Vent Flue (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createGeothermalVentFlue() {
+      return this.createIndustrialProp('geothermal_vent_flue');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 238 : Hive Central Bio-Spire (Aliens 1986 / AvP)
+    // -------------------------------------------------------------------------
+    createHiveBioSpire() {
+      return this.createIndustrialProp('hive_bio_spire');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 239 : Jettison Explosive Bolt Console (Alien 1979 / Romulus)
+    // -------------------------------------------------------------------------
+    createJettisonBoltConsole() {
+      return this.createIndustrialProp('jettison_bolt_console');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 240 : Fiorina 161 Lead Smelting Channel (Alien 3)
+    // -------------------------------------------------------------------------
+    createFiorinaLeadChannel() {
+      return this.createIndustrialProp('fiorina_lead_channel');
     }
   }
 

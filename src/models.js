@@ -102,7 +102,11 @@
     combatengineer: 'uscm_combat_engineer',
     engineer: 'uscm_combat_engineer',
     uscmengineer: 'uscm_combat_engineer',
-    uscm_combat_engineer: 'uscm_combat_engineer'
+    uscm_combat_engineer: 'uscm_combat_engineer',
+    sadaroperator: 'uscm_sadar_operator',
+    sadar: 'uscm_sadar_operator',
+    uscmsadar: 'uscm_sadar_operator',
+    uscm_sadar_operator: 'uscm_sadar_operator'
   });
 
   // ---------------------------------------------------------------------------
@@ -1024,6 +1028,12 @@
           receiverLength: 1.52,
           barrelEnd: 1.88,
           barrelRadius: 0.13
+        },
+        uscm_sadar_operator: {
+          receiverWidth: 0.44,
+          receiverLength: 2.1,
+          barrelEnd: 2.4,
+          barrelRadius: 0.14
         }
       };
       const profile = weaponProfiles[type] || weaponProfiles.guard;
@@ -1293,6 +1303,13 @@
           'concussion_power_cell',
           true
         ));
+      } else if (type === 'uscm_sadar_operator') {
+        // Chantier 193 : Lance-Roquettes Antichar Guidé M57A1 SADAR (Aliens lore)
+        weapon.add(this._segment(dark, new T.Vector3(0, 0.04, -0.8), new T.Vector3(0, 0.04, -1.15), 0.14, 0.22, 'sadar_exhaust_cone', 12));
+        weapon.add(this._box(dark, { x: 0.24, y: 0.22, z: 0.42 }, { x: -0.16, y: 0.26, z: 0.4 }, 'sadar_guidance_scope', true));
+        weapon.add(this._ellipsoid(accent, { x: 0.06, y: 0.06, z: 0.04 }, { x: -0.16, y: 0.26, z: 0.62 }, 'sadar_scope_lens', 8));
+        weapon.add(this._box(dark, { x: 0.14, y: 0.46, z: 0.16 }, { x: 0, y: -0.32, z: 0.35 }, 'sadar_front_grip', true));
+        weapon.add(this._box(dark, { x: 0.14, y: 0.42, z: 0.16 }, { x: 0, y: -0.3, z: -0.1 }, 'sadar_rear_grip', true));
       }
 
       weapon.userData.equipmentType = type;
@@ -1490,6 +1507,17 @@
           shoulderX: 0.74,
           hipX: 0.37,
           helmetScale: 1.12
+        },
+        uscm_sadar_operator: {
+          uniformColor: 0x14532d, // Treillis USCM camouflage forêt sombre (Aliens 1986 / Colonial Marines)
+          armorColor: 0x166534,   // Cuirasse balistique M3 Olive Drab renforcée
+          torso: { x: 0.76, y: 1.0, z: 0.48 },
+          pelvis: { x: 0.58, y: 0.36, z: 0.4 },
+          chest: { x: 1.28, y: 0.96, z: 0.36 },
+          pack: { x: 0.95, y: 1.2, z: 0.52 }, // Râtelier dorsal de 3 roquettes antichar de rechange M57A1 SADAR
+          shoulderX: 0.76,
+          hipX: 0.38,
+          helmetScale: 1.12
         }
       };
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
@@ -1503,7 +1531,7 @@
       const dark = materials.dark;
       const visor = materials.visor;
       const accent = materials.accent;
-      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer'].indexOf(type) >= 0;
+      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator'].indexOf(type) >= 0;
 
       if (combatRole) {
         for (let side = -1; side <= 1; side += 2) {
@@ -1871,6 +1899,15 @@
         // Découpeur plasma / pistolet agrafeur de concertina sur le bras droit
         root.add(this._box(dark, { x: 0.14, y: 0.18, z: 0.65 }, { x: profile.shoulderX + 0.16, y: torsoY - 0.72, z: 0.55 }, 'engineer_plasma_welder', true));
         root.add(this._coneAlong(visorStripe, { x: profile.shoulderX + 0.16, y: torsoY - 0.72, z: 0.88 }, { x: 0, y: 0, z: 1 }, 0.04, 0.18, 'welder_plasma_tip', 8));
+      } else if (type === 'uscm_sadar_operator') {
+        // Chantier 193 : Opérateur USCM Lance-Roquettes Antichar Guidé M57A1 SADAR (Aliens lore)
+        root.add(this._ellipsoid(materials.visor, { x: 0.38, y: 0.22, z: 0.22 }, { x: 0, y: torsoY + 1.25, z: 0.36 }, 'sadar_ballistic_visor', 14));
+        const rocketGreen = this._material('industrial', { color: 0x15803d, metalness: 0.5, roughness: 0.5 });
+        for (let r = 0; r < 3; r++) {
+          const offsetX = (r - 1) * 0.22;
+          root.add(this._segment(rocketGreen, new T.Vector3(offsetX, torsoY - 0.5, -0.42), new T.Vector3(offsetX, torsoY + 0.7, -0.42), 0.08, 0.08, `sadar_spare_rocket_${r}`, 10));
+          root.add(this._ellipsoid(dark, { x: 0.09, y: 0.12, z: 0.09 }, { x: offsetX, y: torsoY + 0.72, z: -0.42 }, `sadar_rocket_cap_${r}`, 8));
+        }
       }
     }
 
@@ -3067,6 +3104,8 @@
       if (normalizedCaste === 'runner') return this._createRunner();
       if (normalizedCaste === 'crusher') return this._createCrusher();
       if (normalizedCaste === 'mantis_drone' || normalizedCaste === 'mantis') return this.createMantisDrone();
+      if (normalizedCaste === 'bull_drone' || normalizedCaste === 'bull') return this.createBullDrone();
+      if (normalizedCaste === 'gorilla_drone' || normalizedCaste === 'gorilla') return this.createGorillaDrone();
       return this._createUprightAdult(normalizedCaste);
     }
 
@@ -6027,6 +6066,81 @@
         root.add(this._cylinder(resinDark, 0.55, 0.75, 1.6, { x: 0, y: 0.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'biocore_pedestal', true));
         // Réservoir alvéolé de Gelée Royale
         root.add(this._ellipsoid(royalJellyGlow, { x: 0.32, y: 0.22, z: 0.32 }, { x: 0, y: 1.65, z: 0 }, 'biocore_royal_jelly_core', 14));
+      } else if (normalizedType === 'm94_smoke_system' || normalizedType === 'smoke_system') {
+        // Chantier 192 : Système de Brouillard de Fumigènes Phosphorés M94 (Aliens: Fireteam Elite)
+        const chassisOlive = this._material('industrial', { color: 0x364127, roughness: 0.5, metalness: 0.6 });
+        const canisterGrey = this._material('darkMetal', { color: 0x64748b, roughness: 0.35, metalness: 0.8 });
+        const beaconAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.8 });
+        // Caisson distributeur mural
+        root.add(this._box(chassisOlive, { x: 0.85, y: 1.1, z: 0.38 }, { x: 0, y: 1.3, z: 0.15 }, 'smoke_m94_body', true));
+        // 2 Cartouches de fumigène cylindriques
+        root.add(this._cylinder(canisterGrey, 0.12, 0.12, 0.65, { x: -0.22, y: 1.3, z: 0.26 }, { x: 0, y: 0, z: 0 }, 'smoke_canister_1'));
+        root.add(this._cylinder(canisterGrey, 0.12, 0.12, 0.65, { x: 0.22, y: 1.3, z: 0.26 }, { x: 0, y: 0, z: 0 }, 'smoke_canister_2'));
+        // Balise stroboscopique infrarouge
+        root.add(this._ellipsoid(beaconAmber, { x: 0.08, y: 0.08, z: 0.06 }, { x: 0, y: 1.75, z: 0.24 }, 'smoke_ir_beacon', 8));
+      } else if (normalizedType === 'cryo_purge_c44' || normalizedType === 'cryo_purge') {
+        // Chantier 194 : Poste de Contrôle des SAS d'Échappement Cryo-Statique C-44 (Alien: Romulus)
+        const frostMetal = this._material('darkMetal', { color: 0x475569, roughness: 0.2, metalness: 0.85 });
+        const iceGlow = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.4 });
+        const frostCyan = this._material('resin', { color: 0xa5f3fc, roughness: 0.1, opacity: 0.75, transparent: true });
+        // Pupitre cryogénique mural
+        root.add(this._box(frostMetal, { x: 1.2, y: 1.3, z: 0.55 }, { x: 0, y: 0.95, z: 0 }, 'cryo_c44_chassis', true));
+        // Manomètre haute pression de gaz liquéfié
+        root.add(this._cylinder(iceGlow, 0.18, 0.18, 0.06, { x: 0, y: 1.45, z: 0.25 }, { x: Math.PI / 2, y: 0, z: 0 }, 'cryo_gauge'));
+        // Conduits givrés translucides
+        root.add(this._cylinder(frostCyan, 0.08, 0.08, 0.9, { x: 0.35, y: 0.95, z: 0.2 }, { x: 0, y: 0, z: 0 }, 'cryo_frost_pipe'));
+      } else if (normalizedType === 'fusion_battery_station' || normalizedType === 'fusion_station') {
+        // Chantier 196 : Station de Rechargement Rapide pour Armures KAPPA & Pile à Fusion (Aliens: Fireteam Elite)
+        const heavyPlates = this._material('industrial', { color: 0x1e293b, roughness: 0.45, metalness: 0.85 });
+        const inductionCyan = this._material('emissiveBlue', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 3.8 });
+        const isolatorCeramic = this._material('hazard', { color: 0xe2e8f0, roughness: 0.25 });
+        // Socle renforcé au sol
+        root.add(this._cylinder(heavyPlates, 0.85, 0.95, 0.45, { x: 0, y: 0.22, z: 0 }, { x: 0, y: 0, z: 0 }, 'fusion_base', true));
+        // Bobine à induction magnétique toroïdale cyan
+        root.add(this._ring(inductionCyan, 0.65, 0.1, { x: 0, y: 0.55, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'fusion_coil'));
+        // 3 Isolateurs verticaux
+        for (let i = 0; i < 3; i++) {
+          const a = i * ((Math.PI * 2) / 3);
+          root.add(this._cylinder(isolatorCeramic, 0.06, 0.06, 0.7, { x: Math.cos(a) * 0.55, y: 0.7, z: Math.sin(a) * 0.55 }, { x: 0, y: 0, z: 0 }, `fusion_isolator_${i}`));
+        }
+      } else if (normalizedType === 'hydraulic_spurt_manifold' || normalizedType === 'hydraulic_manifold') {
+        // Chantier 197 : Réseau de Gicleurs de Fluide Hydraulique 120 bars (Alien: Isolation)
+        const darkCastIron = this._material('darkMetal', { color: 0x18181b, roughness: 0.6, metalness: 0.9 });
+        const redValve = this._material('emissiveRed', { color: 0xef4444, emissive: 0x991b1b, emissiveIntensity: 1.5 });
+        const oilPool = this._material('resin', { color: 0x09090b, roughness: 0.05, opacity: 0.88, transparent: true });
+        // Collecteur tubulaire
+        root.add(this._cylinder(darkCastIron, 0.18, 0.18, 1.8, { x: 0, y: 1.8, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'hydraulic_manifold_pipe'));
+        // Vanne quart-de-tour rouge
+        root.add(this._cylinder(redValve, 0.14, 0.14, 0.08, { x: 0, y: 1.95, z: 0.15 }, { x: Math.PI / 2, y: 0, z: 0 }, 'hydraulic_valve_handle'));
+        // Flaque d'huile luisante sous le manifold
+        root.add(this._cylinder(oilPool, 0.9, 0.9, 0.02, { x: 0, y: 0.01, z: 0 }, { x: 0, y: 0, z: 0 }, 'hydraulic_slick_puddle'));
+      } else if (normalizedType === 'muthur_telemetry_console' || normalizedType === 'telemetry_console') {
+        // Chantier 199 : Terminal de Télémétrie MUTHUR & Détection Sonar Sismique (Alien 1979 / Isolation)
+        const retroIvory = this._material('industrial', { color: 0x334155, roughness: 0.55, metalness: 0.65 });
+        const phosphorGreen = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 3.2 });
+        const keyboardDark = this._material('darkMetal', { color: 0x0f172a, roughness: 0.6 });
+        // Meuble console retro-informatique
+        root.add(this._box(retroIvory, { x: 1.4, y: 1.15, z: 0.8 }, { x: 0, y: 0.58, z: 0 }, 'telemetry_chassis', true));
+        // Écran CRT phosphore vert incurvé
+        root.add(this._box(phosphorGreen, { x: 0.75, y: 0.55, z: 0.06 }, { x: 0, y: 1.25, z: 0.12 }, 'telemetry_crt_screen'));
+        // Clavier mécanique plat incliné
+        root.add(this._box(keyboardDark, { x: 0.85, y: 0.08, z: 0.35 }, { x: 0, y: 0.88, z: 0.28 }, 'telemetry_keyboard'));
+      } else if (normalizedType === 'ovipositor_cradle' || normalizedType === 'royal_cradle') {
+        // Chantier 200 : Grand Sanctuaire de Ponte Royal "The Ovipositor Cradle" (Aliens 1986)
+        const broodChitin = this._material('chitin', { color: 0x180b26, roughness: 0.3, metalness: 0.5 });
+        const eggBioSack = this._material('organicAmber', { color: 0x7c2d12, roughness: 0.4, metalness: 0.1 });
+        const royalAura = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xb45309, emissiveIntensity: 2.2 });
+        // Socle monumental alvéolé
+        root.add(this._cylinder(broodChitin, 1.6, 2.2, 0.6, { x: 0, y: 0.3, z: 0 }, { x: 0, y: 0, z: 0 }, 'cradle_base', true));
+        // Sac d'incubation ovoïde central
+        root.add(this._ellipsoid(eggBioSack, { x: 0.95, y: 1.3, z: 0.95 }, { x: 0, y: 1.4, z: 0 }, 'cradle_sac_core', 16));
+        // Anneaux d'exsudat royal ambré
+        root.add(this._ring(royalAura, 1.1, 0.08, { x: 0, y: 1.2, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'cradle_aura_ring'));
+        // 4 Tentacules biomécaniques de soutien
+        for (let t = 0; t < 4; t++) {
+          const ang = t * (Math.PI / 2);
+          root.add(this._segment(broodChitin, new THREE.Vector3(Math.cos(ang) * 1.5, 0.4, Math.sin(ang) * 1.5), new THREE.Vector3(Math.cos(ang) * 0.7, 1.8, Math.sin(ang) * 0.7), 0.12, 0.06, `cradle_tendon_${t}`, 8));
+        }
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -7419,6 +7533,150 @@
     // -------------------------------------------------------------------------
     createBioCoreNurseryInterface() {
       return this.createIndustrialProp('biocore_nursery_interface');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 191 : Phénotype "The Bull Xenomorph / Alien Taureau de Charon" (Aliens 1992 Kenner)
+    // -------------------------------------------------------------------------
+    createBullDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_bull_drone';
+      const scale = 1.25;
+      const bullChitin = this._material('chitin', {
+        color: 0x1c1917,
+        roughness: 0.38,
+        metalness: 0.75
+      });
+      const hornBone = this._material('bone', {
+        color: 0x44403c,
+        roughness: 0.28,
+        metalness: 0.5
+      });
+      const eyeGlow = this._material('emissiveAmber', { color: 0xf97316, emissive: 0xc2410c, emissiveIntensity: 2.2 });
+
+      // Torse ramassé et surbaissé très musclé
+      root.add(this._ellipsoid(bullChitin, { x: 0.45 * scale, y: 0.4 * scale, z: 0.7 * scale }, { x: 0, y: 0.85 * scale, z: 0 }, 'bull_torso', 14));
+      // Tête blindée bélier
+      root.add(this._ellipsoid(bullChitin, { x: 0.32 * scale, y: 0.28 * scale, z: 0.65 * scale }, { x: 0, y: 1.1 * scale, z: 0.55 * scale }, 'bull_head', 14));
+      // Deux cornes recourbées vers l'avant
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(hornBone, new T.Vector3(side * 0.25 * scale, 1.25 * scale, 0.45 * scale), new T.Vector3(side * 0.48 * scale, 1.55 * scale, 0.75 * scale), 0.1 * scale, 0.04 * scale, `bull_horn_base_${side}`, 10));
+        root.add(this._segment(hornBone, new T.Vector3(side * 0.48 * scale, 1.55 * scale, 0.75 * scale), new T.Vector3(side * 0.35 * scale, 1.65 * scale, 1.05 * scale), 0.04 * scale, 0.01 * scale, `bull_horn_tip_${side}`, 8));
+      }
+      // Pattes antérieures trapues
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(bullChitin, new T.Vector3(side * 0.35 * scale, 0.85 * scale, 0.35 * scale), new T.Vector3(side * 0.45 * scale, 0.4 * scale, 0.45 * scale), 0.12 * scale, 0.08 * scale, `bull_foreleg_${side}`, 10));
+        root.add(this._segment(bullChitin, new T.Vector3(side * 0.45 * scale, 0.4 * scale, 0.45 * scale), new T.Vector3(side * 0.42 * scale, 0, 0.5 * scale), 0.08 * scale, 0.06 * scale, `bull_hoof_${side}`, 8));
+      }
+      // Pattes postérieures puissantes
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(bullChitin, new T.Vector3(side * 0.38 * scale, 0.85 * scale, -0.35 * scale), new T.Vector3(side * 0.48 * scale, 0.45 * scale, -0.2 * scale), 0.14 * scale, 0.09 * scale, `bull_hindthigh_${side}`, 10));
+        root.add(this._segment(bullChitin, new T.Vector3(side * 0.48 * scale, 0.45 * scale, -0.2 * scale), new T.Vector3(side * 0.44 * scale, 0, -0.15 * scale), 0.09 * scale, 0.06 * scale, `bull_hindshin_${side}`, 8));
+      }
+      // Queue lourde terminée par une massue cornée
+      root.add(this._cone(bullChitin, 0.15 * scale, 0.9 * scale, { x: 0, y: 0.75 * scale, z: -0.9 * scale }, { x: -Math.PI / 4, y: 0, z: 0 }, 'bull_tail'));
+      root.add(this._ellipsoid(hornBone, { x: 0.18 * scale, y: 0.15 * scale, z: 0.22 * scale }, { x: 0, y: 0.65 * scale, z: -1.4 * scale }, 'bull_tail_club', 10));
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'bull_drone',
+        height: 1.7 * scale,
+        animationJoints: ['bull_head', 'bull_torso']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 192 : Système de Brouillard de Fumigènes Phosphorés M94 (Aliens: Fireteam Elite)
+    // -------------------------------------------------------------------------
+    createM94SmokeSystem() {
+      return this.createIndustrialProp('m94_smoke_system');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 194 : Poste de Contrôle des SAS d'Échappement Cryo-Statique C-44 (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    createCryoPurgeC44() {
+      return this.createIndustrialProp('cryo_purge_c44');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 195 : Phénotype "The Gorilla / Ape Xenomorph de Charon" (Aliens 1992 Kenner)
+    // -------------------------------------------------------------------------
+    createGorillaDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_gorilla_drone';
+      const scale = 1.28;
+      const gorillaChitin = this._material('chitin', {
+        color: 0x0f172a,
+        roughness: 0.42,
+        metalness: 0.6
+      });
+      const knuckleMetal = this._material('darkMetal', {
+        color: 0x334155,
+        roughness: 0.35,
+        metalness: 0.85
+      });
+
+      // Buste large herculéen en voûte
+      root.add(this._ellipsoid(gorillaChitin, { x: 0.55 * scale, y: 0.48 * scale, z: 0.45 * scale }, { x: 0, y: 1.15 * scale, z: 0 }, 'gorilla_chest', 14));
+      // Dôme crânien arrondi côtelé
+      root.add(this._ellipsoid(gorillaChitin, { x: 0.32 * scale, y: 0.28 * scale, z: 0.58 * scale }, { x: 0, y: 1.55 * scale, z: 0.22 * scale }, 'gorilla_head', 14));
+      // Bras brachiaux surdimensionnés jusqu'au sol
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(gorillaChitin, new T.Vector3(side * 0.52 * scale, 1.25 * scale, 0.1 * scale), new T.Vector3(side * 0.65 * scale, 0.65 * scale, 0.25 * scale), 0.16 * scale, 0.12 * scale, `gorilla_arm_upper_${side}`, 10));
+        root.add(this._segment(knuckleMetal, new T.Vector3(side * 0.65 * scale, 0.65 * scale, 0.25 * scale), new T.Vector3(side * 0.58 * scale, 0.05 * scale, 0.35 * scale), 0.13 * scale, 0.1 * scale, `gorilla_forearm_${side}`, 10));
+        root.add(this._box(knuckleMetal, { x: 0.18 * scale, y: 0.12 * scale, z: 0.22 * scale }, { x: side * 0.58 * scale, y: 0.06 * scale, z: 0.38 * scale }, `gorilla_knuckle_${side}`));
+      }
+      // Membres inférieurs ramassés
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(gorillaChitin, new T.Vector3(side * 0.32 * scale, 0.75 * scale, -0.2 * scale), new T.Vector3(side * 0.38 * scale, 0, -0.1 * scale), 0.14 * scale, 0.09 * scale, `gorilla_leg_${side}`, 10));
+      }
+      // Queue courte articulée
+      root.add(this._cone(gorillaChitin, 0.12 * scale, 0.65 * scale, { x: 0, y: 0.7 * scale, z: -0.55 * scale }, { x: -Math.PI / 4, y: 0, z: 0 }, 'gorilla_tail'));
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'gorilla_drone',
+        height: 1.8 * scale,
+        animationJoints: ['gorilla_head', 'gorilla_chest']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 193 : Opérateur USCM SADAR Lance-Roquettes M57A1 (Aliens: Colonial Marines)
+    // -------------------------------------------------------------------------
+    createSadarOperator() {
+      return this.createHuman('uscm_sadar_operator');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 196 : Station de Rechargement Rapide KAPPA & Pile à Fusion (Aliens: Fireteam Elite)
+    // -------------------------------------------------------------------------
+    createFusionBatteryStation() {
+      return this.createIndustrialProp('fusion_battery_station');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 197 : Réseau de Gicleurs de Fluide Hydraulique 120 bars (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createHydraulicSpurtManifold() {
+      return this.createIndustrialProp('hydraulic_spurt_manifold');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 199 : Terminal de Télémétrie MUTHUR & Détection Sonar Sismique (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createMuthurTelemetryConsole() {
+      return this.createIndustrialProp('muthur_telemetry_console');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 200 : Grand Sanctuaire de Ponte Royal "The Ovipositor Cradle" (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createOvipositorCradle() {
+      return this.createIndustrialProp('ovipositor_cradle');
     }
   }
 

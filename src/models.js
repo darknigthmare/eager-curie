@@ -106,7 +106,11 @@
     sadaroperator: 'uscm_sadar_operator',
     sadar: 'uscm_sadar_operator',
     uscmsadar: 'uscm_sadar_operator',
-    uscm_sadar_operator: 'uscm_sadar_operator'
+    uscm_sadar_operator: 'uscm_sadar_operator',
+    reconscout: 'uscm_recon_scout',
+    recon: 'uscm_recon_scout',
+    uscmrecon: 'uscm_recon_scout',
+    uscm_recon_scout: 'uscm_recon_scout'
   });
 
   // ---------------------------------------------------------------------------
@@ -1034,6 +1038,12 @@
           receiverLength: 2.1,
           barrelEnd: 2.4,
           barrelRadius: 0.14
+        },
+        uscm_recon_scout: {
+          receiverWidth: 0.28,
+          receiverLength: 1.35,
+          barrelEnd: 1.85,
+          barrelRadius: 0.065
         }
       };
       const profile = weaponProfiles[type] || weaponProfiles.guard;
@@ -1310,6 +1320,11 @@
         weapon.add(this._ellipsoid(accent, { x: 0.06, y: 0.06, z: 0.04 }, { x: -0.16, y: 0.26, z: 0.62 }, 'sadar_scope_lens', 8));
         weapon.add(this._box(dark, { x: 0.14, y: 0.46, z: 0.16 }, { x: 0, y: -0.32, z: 0.35 }, 'sadar_front_grip', true));
         weapon.add(this._box(dark, { x: 0.14, y: 0.42, z: 0.16 }, { x: 0, y: -0.3, z: -0.1 }, 'sadar_rear_grip', true));
+      } else if (type === 'uscm_recon_scout') {
+        // Chantier 203 : Carabine Silencieuse M42C Scoped Recon Rifle (Aliens: Fireteam Elite)
+        weapon.add(this._segment(dark, new T.Vector3(0, 0.02, 1.35), new T.Vector3(0, 0.02, 1.95), 0.1, 0.1, 'recon_silencer_can', 12));
+        weapon.add(this._box(dark, { x: 0.16, y: 0.22, z: 0.45 }, { x: 0, y: 0.28, z: 0.4 }, 'recon_thermal_scope', true));
+        weapon.add(this._ellipsoid(accent, { x: 0.05, y: 0.05, z: 0.03 }, { x: 0, y: 0.28, z: 0.64 }, 'recon_scope_lens', 8));
       }
 
       weapon.userData.equipmentType = type;
@@ -1518,6 +1533,17 @@
           shoulderX: 0.76,
           hipX: 0.38,
           helmetScale: 1.12
+        },
+        uscm_recon_scout: {
+          uniformColor: 0x1e293b, // Tenue furtive d'infiltration nocturne USCM (Aliens: Fireteam Elite)
+          armorColor: 0x334155,   // Cuirasse légère polymère mat anti-reflet
+          torso: { x: 0.65, y: 0.9, z: 0.38 },
+          pelvis: { x: 0.5, y: 0.32, z: 0.34 },
+          chest: { x: 1.05, y: 0.88, z: 0.25 },
+          pack: { x: 0.72, y: 0.82, z: 0.28 }, // Antenne de marquage laser et micro-drones éclaireurs
+          shoulderX: 0.65,
+          hipX: 0.33,
+          helmetScale: 1.02
         }
       };
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
@@ -1531,7 +1557,7 @@
       const dark = materials.dark;
       const visor = materials.visor;
       const accent = materials.accent;
-      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator'].indexOf(type) >= 0;
+      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout'].indexOf(type) >= 0;
 
       if (combatRole) {
         for (let side = -1; side <= 1; side += 2) {
@@ -1908,6 +1934,11 @@
           root.add(this._segment(rocketGreen, new T.Vector3(offsetX, torsoY - 0.5, -0.42), new T.Vector3(offsetX, torsoY + 0.7, -0.42), 0.08, 0.08, `sadar_spare_rocket_${r}`, 10));
           root.add(this._ellipsoid(dark, { x: 0.09, y: 0.12, z: 0.09 }, { x: offsetX, y: torsoY + 0.72, z: -0.42 }, `sadar_rocket_cap_${r}`, 8));
         }
+      } else if (type === 'uscm_recon_scout') {
+        // Chantier 203 : Unité USCM "Recon Scout Sniper" (Aliens: Fireteam Elite)
+        root.add(this._box(dark, { x: 0.14, y: 0.12, z: 0.22 }, { x: 0.16, y: torsoY + 1.25, z: 0.38 }, 'recon_monocular_optic', true));
+        root.add(this._ellipsoid(accent, { x: 0.05, y: 0.05, z: 0.03 }, { x: 0.16, y: torsoY + 1.25, z: 0.5 }, 'recon_lens_glow', 8));
+        root.add(this._segment(dark, new T.Vector3(-0.25, torsoY + 0.65, -0.28), new T.Vector3(-0.28, torsoY + 1.2, -0.3), 0.025, 0.015, 'recon_antenna', 6));
       }
     }
 
@@ -3106,6 +3137,8 @@
       if (normalizedCaste === 'mantis_drone' || normalizedCaste === 'mantis') return this.createMantisDrone();
       if (normalizedCaste === 'bull_drone' || normalizedCaste === 'bull') return this.createBullDrone();
       if (normalizedCaste === 'gorilla_drone' || normalizedCaste === 'gorilla') return this.createGorillaDrone();
+      if (normalizedCaste === 'boar_drone' || normalizedCaste === 'boar') return this.createBoarDrone();
+      if (normalizedCaste === 'scorpion_drone' || normalizedCaste === 'scorpion') return this.createScorpionDrone();
       return this._createUprightAdult(normalizedCaste);
     }
 
@@ -6141,6 +6174,57 @@
           const ang = t * (Math.PI / 2);
           root.add(this._segment(broodChitin, new THREE.Vector3(Math.cos(ang) * 1.5, 0.4, Math.sin(ang) * 1.5), new THREE.Vector3(Math.cos(ang) * 0.7, 1.8, Math.sin(ang) * 0.7), 0.12, 0.06, `cradle_tendon_${t}`, 8));
         }
+      } else if (normalizedType === 'm47_ir_smoke_dispenser' || normalizedType === 'ir_smoke_dispenser') {
+        // Chantier 202 : Système de Brouilleur Thermique Infrarouge USCM M47 (Aliens: Dark Descent)
+        const darkChassis = this._material('darkMetal', { color: 0x1f2937, roughness: 0.4, metalness: 0.8 });
+        const tubeCopper = this._material('industrial', { color: 0xb45309, roughness: 0.3, metalness: 0.85 });
+        const irSensor = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.6 });
+        root.add(this._box(darkChassis, { x: 0.9, y: 1.2, z: 0.42 }, { x: 0, y: 1.25, z: 0.15 }, 'ir_smoke_dispenser_chassis', true));
+        for (let i = 0; i < 4; i++) {
+          const offX = ((i % 2) - 0.5) * 0.4;
+          const offY = (Math.floor(i / 2) - 0.5) * 0.45;
+          root.add(this._cylinder(tubeCopper, 0.08, 0.08, 0.5, { x: offX, y: 1.25 + offY, z: 0.28 }, { x: Math.PI / 2, y: 0, z: 0 }, `ir_tube_${i}`));
+        }
+        root.add(this._ellipsoid(irSensor, { x: 0.15, y: 0.08, z: 0.05 }, { x: 0, y: 1.7, z: 0.32 }, 'ir_sensor_lens', 8));
+      } else if (normalizedType === 'cryo_flow_c50' || normalizedType === 'cryo_purge_c50') {
+        // Chantier 204 : Sas de Purge Caustique LN2 & Clapet Cryo-Flow C-50 (Alien 3 / Romulus)
+        const steelFrost = this._material('industrial', { color: 0x94a3b8, roughness: 0.2, metalness: 0.9 });
+        const valveCyan = this._material('emissiveGreen', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 2.2 });
+        root.add(this._cylinder(steelFrost, 0.26, 0.26, 1.8, { x: 0, y: 1.1, z: 0 }, { x: 0, y: 0, z: 0 }, 'cryo_flow_main_pipe', true));
+        root.add(this._box(steelFrost, { x: 0.65, y: 0.45, z: 0.45 }, { x: 0, y: 1.2, z: 0.18 }, 'cryo_manifold_block', true));
+        root.add(this._ring(valveCyan, 0.28, 0.05, { x: 0, y: 1.2, z: 0.42 }, { x: 0, y: 0, z: 0 }, 'cryo_actuator_wheel'));
+      } else if (normalizedType === 'hyperdyne_tokamak_bleeder' || normalizedType === 'tokamak_bleeder') {
+        // Chantier 206 : Station de Dégazage Tokamak Supraconducteur Weyland (Aliens: Colonial Marines)
+        const reactorDark = this._material('darkMetal', { color: 0x0f172a, roughness: 0.35, metalness: 0.9 });
+        const copperCoils = this._material('industrial', { color: 0xd97706, roughness: 0.25, metalness: 0.85 });
+        const plasmaCore = this._material('emissiveGreen', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 3.8 });
+        root.add(this._ring(copperCoils, 0.85, 0.22, { x: 0, y: 1.2, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'tokamak_torus_coil'));
+        root.add(this._cylinder(reactorDark, 0.45, 0.45, 1.6, { x: 0, y: 1.0, z: 0 }, { x: 0, y: 0, z: 0 }, 'tokamak_center_column', true));
+        root.add(this._ellipsoid(plasmaCore, { x: 0.35, y: 0.35, z: 0.35 }, { x: 0, y: 1.2, z: 0 }, 'tokamak_plasma_chamber', 14));
+      } else if (normalizedType === 'argon_manifold_pipe' || normalizedType === 'argon_pipe') {
+        // Chantier 207 : Canalisations d'Argon Compressé 150 bars & Purge Anoxique (Alien: Isolation)
+        const pipeGrey = this._material('industrial', { color: 0x475569, roughness: 0.4, metalness: 0.7 });
+        const warningPurple = this._material('emissiveAmber', { color: 0xa855f7, emissive: 0x7e22ce, emissiveIntensity: 2.4 });
+        root.add(this._cylinder(pipeGrey, 0.18, 0.18, 2.2, { x: 0, y: 1.2, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'argon_horizontal_conduit', true));
+        root.add(this._box(pipeGrey, { x: 0.5, y: 0.65, z: 0.4 }, { x: 0, y: 1.2, z: 0.15 }, 'argon_guillotine_valve', true));
+        root.add(this._box(warningPurple, { x: 0.28, y: 0.18, z: 0.05 }, { x: 0, y: 1.45, z: 0.36 }, 'argon_anoxia_warning_badge'));
+      } else if (normalizedType === 'muthur_scrubber_console' || normalizedType === 'scrubber_console') {
+        // Chantier 209 : Console de Télémesure MUTHUR 6000 "Atmospheric Scrubbing" (Alien 1979 / Isolation)
+        const frameIvory = this._material('industrial', { color: 0xd1d5db, roughness: 0.5, metalness: 0.4 });
+        const crtAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 3.0 });
+        const keyboardDark = this._material('darkMetal', { color: 0x111827, roughness: 0.7 });
+        root.add(this._box(frameIvory, { x: 1.2, y: 1.25, z: 0.75 }, { x: 0, y: 0.62, z: 0 }, 'scrubber_chassis', true));
+        root.add(this._box(crtAmber, { x: 0.65, y: 0.48, z: 0.06 }, { x: 0, y: 1.28, z: 0.14 }, 'scrubber_crt_display'));
+        root.add(this._box(keyboardDark, { x: 0.75, y: 0.07, z: 0.3 }, { x: 0, y: 0.9, z: 0.28 }, 'scrubber_keyboard'));
+      } else if (normalizedType === 'biomass_conversion_sarcophagus' || normalizedType === 'biomass_sarcophagus') {
+        // Chantier 210 : Autel de Gestation Ruche "Biomass Conversion Sarcophagus" (Aliens 1986 / Prometheus)
+        const chitinBase = this._material('chitin', { color: 0x1e1b4b, roughness: 0.25, metalness: 0.6 });
+        const bioGelGlow = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x15803d, emissiveIntensity: 2.6 });
+        root.add(this._box(chitinBase, { x: 1.3, y: 2.2, z: 0.7 }, { x: 0, y: 1.1, z: 0 }, 'sarcophagus_hull', true));
+        root.add(this._ellipsoid(bioGelGlow, { x: 0.45, y: 0.9, z: 0.2 }, { x: 0, y: 1.15, z: 0.3 }, 'sarcophagus_bio_chamber', 14));
+        for (let rib = 0; rib < 5; rib++) {
+          root.add(this._ring(chitinBase, 0.48, 0.04, { x: 0, y: 0.4 + rib * 0.35, z: 0.28 }, { x: 0, y: 0, z: 0 }, `sarcophagus_rib_${rib}`));
+        }
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -7677,6 +7761,156 @@
     // -------------------------------------------------------------------------
     createOvipositorCradle() {
       return this.createIndustrialProp('ovipositor_cradle');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 201 : Phénotype "The Wildboar / Boar Xenomorph de Charon" (Aliens 1992 Kenner / Genocide)
+    // -------------------------------------------------------------------------
+    createBoarDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_boar_drone';
+      const scale = 1.05;
+
+      const boarChitin = this._material('carapace', {
+        color: 0x27272a,
+        roughness: 0.35,
+        metalness: 0.65
+      });
+      const tuskObsidian = this._material('darkMetal', {
+        color: 0x09090b,
+        roughness: 0.15,
+        metalness: 0.9
+      });
+
+      // Buste bas et ramassé bélier
+      root.add(this._ellipsoid(boarChitin, { x: 0.52 * scale, y: 0.44 * scale, z: 0.5 * scale }, { x: 0, y: 1.1 * scale, z: 0 }, 'boar_chest', 14));
+      // Tête carénée et dôme court hérissé
+      root.add(this._ellipsoid(boarChitin, { x: 0.3 * scale, y: 0.26 * scale, z: 0.62 * scale }, { x: 0, y: 1.35 * scale, z: 0.35 * scale }, 'boar_head', 14));
+      // Deux défenses en faux d'obsidienne tranchantes
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._cone(tuskObsidian, 0.08 * scale, 0.48 * scale, { x: side * 0.24 * scale, y: 1.32 * scale, z: 0.6 * scale }, { x: Math.PI / 3, y: side * 0.25, z: 0 }, `boar_tusk_${side}`));
+      }
+      // Crête dorsale de pointes osseuses
+      for (let spine = 0; spine < 5; spine++) {
+        root.add(this._cone(tuskObsidian, 0.04 * scale, 0.25 * scale, { x: 0, y: (1.2 + spine * 0.1) * scale, z: (-0.1 - spine * 0.12) * scale }, { x: -Math.PI / 4, y: 0, z: 0 }, `boar_spine_${spine}`));
+      }
+      // Membres antérieurs puissants et postérieurs arqués
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(boarChitin, new T.Vector3(side * 0.38 * scale, 1.1 * scale, 0.15 * scale), new T.Vector3(side * 0.45 * scale, 0.1 * scale, 0.25 * scale), 0.14 * scale, 0.1 * scale, `boar_arm_${side}`, 10));
+        root.add(this._segment(boarChitin, new T.Vector3(side * 0.32 * scale, 0.85 * scale, -0.2 * scale), new T.Vector3(side * 0.36 * scale, 0, -0.15 * scale), 0.15 * scale, 0.11 * scale, `boar_leg_${side}`, 10));
+      }
+      // Queue puissante à dard éperon
+      root.add(this._cone(tuskObsidian, 0.1 * scale, 0.7 * scale, { x: 0, y: 0.7 * scale, z: -0.55 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'boar_tail'));
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'boar_drone',
+        height: 1.7 * scale,
+        animationJoints: ['boar_head', 'boar_chest']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 205 : Phénotype "The Scorpion Xenomorph de Charon" (Aliens 1992 Kenner)
+    // -------------------------------------------------------------------------
+    createScorpionDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_scorpion_drone';
+      const scale = 1.1;
+
+      const scorpionChitin = this._material('carapace', {
+        color: 0x1c1917,
+        roughness: 0.25,
+        metalness: 0.75
+      });
+      const venomBarb = this._material('emissiveGreen', {
+        color: 0x84cc16,
+        emissive: 0x65a30d,
+        emissiveIntensity: 3.2
+      });
+
+      // Buste segmenté cuirassé
+      root.add(this._ellipsoid(scorpionChitin, { x: 0.48 * scale, y: 0.46 * scale, z: 0.42 * scale }, { x: 0, y: 1.15 * scale, z: 0 }, 'scorpion_chest', 14));
+      // Tête dôme striée
+      root.add(this._ellipsoid(scorpionChitin, { x: 0.28 * scale, y: 0.24 * scale, z: 0.65 * scale }, { x: 0, y: 1.5 * scale, z: 0.2 * scale }, 'scorpion_head', 14));
+      // Plaques dorsales imbriquées en tuiles
+      for (let plate = 0; plate < 4; plate++) {
+        root.add(this._box(scorpionChitin, { x: 0.42 * scale, y: 0.08 * scale, z: 0.22 * scale }, { x: 0, y: (1.4 - plate * 0.16) * scale, z: -0.2 * scale }, `scorpion_dorsal_plate_${plate}`));
+      }
+      // Membres principaux
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._segment(scorpionChitin, new T.Vector3(side * 0.42 * scale, 1.25 * scale, 0), new T.Vector3(side * 0.5 * scale, 0.4 * scale, 0.25 * scale), 0.12 * scale, 0.08 * scale, `scorpion_arm_${side}`, 10));
+        root.add(this._segment(scorpionChitin, new T.Vector3(side * 0.3 * scale, 0.8 * scale, -0.15 * scale), new T.Vector3(side * 0.35 * scale, 0, -0.1 * scale), 0.13 * scale, 0.09 * scale, `scorpion_leg_${side}`, 10));
+        // Pinces secondaires thoraciques
+        root.add(this._cone(scorpionChitin, 0.05 * scale, 0.3 * scale, { x: side * 0.22 * scale, y: 0.95 * scale, z: 0.35 * scale }, { x: Math.PI / 4, y: side * 0.3, z: 0 }, `scorpion_pincer_${side}`));
+      }
+      // Queue scorpion articulée relevée vers l'avant au-dessus de la tête
+      root.add(this._tube(scorpionChitin, [
+        { x: 0, y: 0.7 * scale, z: -0.4 * scale },
+        { x: 0, y: 1.4 * scale, z: -0.7 * scale },
+        { x: 0, y: 2.1 * scale, z: -0.4 * scale },
+        { x: 0, y: 2.3 * scale, z: 0.1 * scale }
+      ], 0.08 * scale, 'scorpion_tail_arch', 12, 6));
+      // Triple dard venimeux terminal luminescent
+      root.add(this._cone(venomBarb, 0.07 * scale, 0.35 * scale, { x: 0, y: 2.25 * scale, z: 0.25 * scale }, { x: Math.PI / 2, y: 0, z: 0 }, 'scorpion_venom_sting'));
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'scorpion_drone',
+        height: 2.3 * scale,
+        animationJoints: ['scorpion_head', 'scorpion_chest', 'scorpion_tail_arch']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 202 : Système de Brouilleur Thermique Infrarouge USCM M47 (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createM47IRSmokeDispenser() {
+      return this.createIndustrialProp('m47_ir_smoke_dispenser');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 203 : Unité USCM "Recon Scout Sniper" (Aliens: Fireteam Elite)
+    // -------------------------------------------------------------------------
+    createReconScout() {
+      return this.createHuman('uscm_recon_scout');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 204 : Sas de Purge Caustique LN2 & Clapet Cryo-Flow C-50 (Alien 3 / Romulus)
+    // -------------------------------------------------------------------------
+    createCryoFlowC50() {
+      return this.createIndustrialProp('cryo_flow_c50');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 206 : Station de Dégazage Tokamak Supraconducteur Weyland (Aliens: Colonial Marines)
+    // -------------------------------------------------------------------------
+    createHyperdyneTokamakBleeder() {
+      return this.createIndustrialProp('hyperdyne_tokamak_bleeder');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 207 : Canalisations d'Argon Compressé 150 bars & Purge Anoxique (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createArgonManifoldPipe() {
+      return this.createIndustrialProp('argon_manifold_pipe');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 209 : Console de Télémesure MUTHUR 6000 "Atmospheric Scrubbing" (Alien 1979 / Isolation)
+    // -------------------------------------------------------------------------
+    createMuthurScrubberConsole() {
+      return this.createIndustrialProp('muthur_scrubber_console');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 210 : Autel de Gestation Ruche "Biomass Conversion Sarcophagus" (Aliens 1986 / Prometheus)
+    // -------------------------------------------------------------------------
+    createBiomassConversionSarcophagus() {
+      return this.createIndustrialProp('biomass_conversion_sarcophagus');
     }
   }
 

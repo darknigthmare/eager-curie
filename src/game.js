@@ -5147,6 +5147,195 @@
       osc.start(now);
       osc.stop(now + 0.6);
     }
+
+    // Chantier 211 : Bond Félin et Lacération Alien Cougar de Charon (Kenner 1992)
+    playCougarPounceSwipe(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(720, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.22);
+      gain.gain.setValueAtTime(1.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+      osc.connect(gain);
+      this.connect(gain, x, z, 80);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    }
+
+    // Chantier 212 : Brouillage Électromagnétique USCM M56 (Aliens: Dark Descent)
+    playM56JammerHum(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(350, now);
+      osc.frequency.linearRampToValueAtTime(550, now + 0.2);
+      osc.frequency.linearRampToValueAtTime(280, now + 0.45);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now);
+      osc.stop(now + 0.45);
+    }
+
+    // Chantier 213 : Hypospray & Stimulant Médical Combat Medic USCM (Aliens: Fireteam Elite)
+    playMedicStimInject(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1320, now + 0.18);
+      gain.gain.setValueAtTime(0.9, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    }
+
+    // Chantier 214 : Vortex Cryogénique Cryo-Chamber C-60 (Alien: Resurrection)
+    playCryoChamberVortex(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(2400, now);
+      osc.frequency.exponentialRampToValueAtTime(95, now + 0.42);
+      gain.gain.setValueAtTime(1.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
+      osc.connect(gain);
+      this.connect(gain, x, z, 80);
+      osc.start(now);
+      osc.stop(now + 0.42);
+    }
+
+    // Chantier 215 : Projection de Résine Adhésive Ouvrière de Ruche (Genocide / AvP)
+    playWorkerResinSpray(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1250, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.28);
+      gain.gain.setValueAtTime(1.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.28);
+    }
+
+    // Chantier 216 & Audit QA #57 : Décharge d'Arc de Confinement Weyland Arc-Furnace
+    playArcFurnaceDischarge(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(2400, now);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.35);
+      gain.gain.setValueAtTime(1.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc.connect(gain);
+      this.connect(gain, x, z, 85);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    }
+
+    // Chantier 217 & Audit QA #57 : Grondement de Torchère Haute Pression d'Éthylène
+    playEthyleneFlareRoar(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = this.ctx.sampleRate * 0.55;
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(800, now);
+      filter.frequency.linearRampToValueAtTime(320, now + 0.55);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(1.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+      noise.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 80);
+      noise.start(now);
+      noise.stop(now + 0.55);
+    }
+
+    // Chantier 218 : Section de Moelle et Craquement Cervical (Alien: Romulus / Isolation)
+    playCervicalSeverSnap(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1900, now);
+      osc.frequency.exponentialRampToValueAtTime(75, now + 0.16);
+      gain.gain.setValueAtTime(1.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+      osc.connect(gain);
+      this.connect(gain, x, z, 80);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    }
+
+    // Chantier 219 : Écrasement Protocoles Réseau C.A.S.A.I. Seegson (Alien: Isolation)
+    playCasaiOverrideBeep(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1400, now);
+      osc.frequency.setValueAtTime(1750, now + 0.08);
+      osc.frequency.setValueAtTime(1050, now + 0.16);
+      gain.gain.setValueAtTime(0.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now);
+      osc.stop(now + 0.28);
+    }
+
+    // Chantier 220 : Assimilation et Déglutition Pathogène Bio-Stasis (Covenant / Romulus)
+    playBioStasisConsumeGulp(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(65, now + 0.38);
+      gain.gain.setValueAtTime(1.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
+      osc.connect(gain);
+      this.connect(gain, x, z, 80);
+      osc.start(now);
+      osc.stop(now + 0.38);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -8381,6 +8570,90 @@
         }
         this.colliders.push({ minX: s.x - 1.4, maxX: s.x + 1.4, minZ: s.z - 1.2, maxZ: s.z + 1.2, isBiomassSarcophagus: true, sarcophagusRef: s });
       });
+
+      // Chantier 212 : Système de Brouilleur Électromagnétique Portatif USCM M56 (Aliens: Dark Descent)
+      this.m56JammerBoxes = [
+        { id: 'jammer_box_1', name: 'Brouilleur Électromagnétique USCM M56', x: 20, z: 30, isTriggered: false, jammerTimer: 0, mesh: null }
+      ];
+      this.m56JammerBoxes.forEach((b) => {
+        const mesh = window.HiveModelFactory?.createM56JammerBox?.();
+        if (mesh) {
+          mesh.position.set(b.x, 0, b.z);
+          rendererEngine.propsGroup.add(mesh);
+          b.mesh = mesh;
+        }
+        this.colliders.push({ minX: b.x - 1.2, maxX: b.x + 1.2, minZ: b.z - 1.2, maxZ: b.z + 1.2, isJammerBox: true, jammerRef: b });
+      });
+
+      // Chantier 214 : Poste de Contrôle Cryo-Containment Chamber C-60 (Alien: Resurrection)
+      this.cryoChamberC60s = [
+        { id: 'cryo_chamber_1', name: 'Chambre Cryo-Containment C-60', x: -30, z: -10, isTriggered: false, vortexTimer: 0, mesh: null }
+      ];
+      this.cryoChamberC60s.forEach((c) => {
+        const mesh = window.HiveModelFactory?.createCryoChamberC60?.();
+        if (mesh) {
+          mesh.position.set(c.x, 0, c.z);
+          rendererEngine.propsGroup.add(mesh);
+          c.mesh = mesh;
+        }
+        this.colliders.push({ minX: c.x - 1.3, maxX: c.x + 1.3, minZ: c.z - 1.3, maxZ: c.z + 1.3, isCryoChamber: true, chamberRef: c });
+      });
+
+      // Chantier 216 : Générateur Magnétique Weyland Arc-Furnace Inverter (Alien 3 / Isolation)
+      this.arcFurnaceInverters = [
+        { id: 'arc_inverter_1', name: 'Générateur Arc-Furnace Inverter Weyland', x: 10, z: -55, isSabotaged: false, arcTimer: 0, mesh: null }
+      ];
+      this.arcFurnaceInverters.forEach((inv) => {
+        const mesh = window.HiveModelFactory?.createArcFurnaceInverter?.();
+        if (mesh) {
+          mesh.position.set(inv.x, 0, inv.z);
+          rendererEngine.propsGroup.add(mesh);
+          inv.mesh = mesh;
+        }
+        this.colliders.push({ minX: inv.x - 1.5, maxX: inv.x + 1.5, minZ: inv.z - 1.3, maxZ: inv.z + 1.3, isArcFurnace: true, furnaceRef: inv });
+      });
+
+      // Chantier 217 : Collecteur d'Éthylène Haute Température & Torche (Aliens 1986 / Romulus)
+      this.ethyleneFlarePipes = [
+        { id: 'ethylene_pipe_1', name: 'Torche Industrielle d\'Éthylène 1400°C', x: -45, z: -30, isRuptured: false, flareTimer: 0, mesh: null }
+      ];
+      this.ethyleneFlarePipes.forEach((p) => {
+        const mesh = window.HiveModelFactory?.createEthyleneFlarePipe?.();
+        if (mesh) {
+          mesh.position.set(p.x, 0, p.z);
+          rendererEngine.propsGroup.add(mesh);
+          p.mesh = mesh;
+        }
+        this.colliders.push({ minX: p.x - 1.2, maxX: p.x + 1.2, minZ: p.z - 1.2, maxZ: p.z + 1.2, isEthylenePipe: true, pipeRef: p });
+      });
+
+      // Chantier 219 : Terminal Réseau C.A.S.A.I. Seegson Synthetic Security Override (Alien: Isolation)
+      this.seegsonCasaiOverrides = [
+        { id: 'casai_override_1', name: 'Terminal C.A.S.A.I. Seegson Override', x: 30, z: -35, isOverridden: false, mesh: null }
+      ];
+      this.seegsonCasaiOverrides.forEach((term) => {
+        const mesh = window.HiveModelFactory?.createSeegsonCasaiOverride?.();
+        if (mesh) {
+          mesh.position.set(term.x, 0, term.z);
+          rendererEngine.propsGroup.add(mesh);
+          term.mesh = mesh;
+        }
+        this.colliders.push({ minX: term.x - 1.2, maxX: term.x + 1.2, minZ: term.z - 1.2, maxZ: term.z + 1.2, isCasaiOverride: true, termRef: term });
+      });
+
+      // Chantier 220 : Couveuse Biologique "Bio-Stasis Preservation Vault" (Alien: Covenant / Romulus)
+      this.bioStasisVaults = [
+        { id: 'bio_vault_1', name: 'Couveuse Bio-Stasis Pathogène Noir A0-3959X', x: -10, z: 45, isConsumed: false, boostTimer: 0, mesh: null }
+      ];
+      this.bioStasisVaults.forEach((v) => {
+        const mesh = window.HiveModelFactory?.createBioStasisVault?.();
+        if (mesh) {
+          mesh.position.set(v.x, 0, v.z);
+          rendererEngine.propsGroup.add(mesh);
+          v.mesh = mesh;
+        }
+        this.colliders.push({ minX: v.x - 1.3, maxX: v.x + 1.3, minZ: v.z - 1.3, maxZ: v.z + 1.3, isBioVault: true, vaultRef: v });
+      });
     }
 
     setBlastDoorState(door, open, silent = false) {
@@ -8882,6 +9155,12 @@
       this.updateArgonManifoldPipes(safeDelta);
       this.updateMuthurScrubberConsoles(safeDelta);
       this.updateBiomassSarcophagi(safeDelta);
+      this.updateM56JammerBoxes(safeDelta);
+      this.updateCryoChamberC60s(safeDelta);
+      this.updateArcFurnaceInverters(safeDelta);
+      this.updateEthyleneFlarePipes(safeDelta);
+      this.updateSeegsonCasaiOverrides(safeDelta);
+      this.updateBioStasisVaults(safeDelta);
 
       // Audit QA #25 : Frustum culling optimisé et masquage automatique des props hors champ à plus de 45m
       this.cullingTimer = (this.cullingTimer || 0) + safeDelta;
@@ -8934,6 +9213,12 @@
           ...(this.argonManifoldPipes || []),
           ...(this.muthurScrubberConsoles || []),
           ...(this.biomassSarcophagi || []),
+          ...(this.m56JammerBoxes || []),
+          ...(this.cryoChamberC60s || []),
+          ...(this.arcFurnaceInverters || []),
+          ...(this.ethyleneFlarePipes || []),
+          ...(this.seegsonCasaiOverrides || []),
+          ...(this.bioStasisVaults || []),
           ...(this.reactorDisconnectConsoles || []),
           ...(this.m577APCs || []),
           ...(this.thermalSurveillancePosts || [])
@@ -12928,6 +13213,178 @@
       });
     }
 
+    // Chantier 212 : Système de Brouilleur Électromagnétique Portatif USCM M56 (Aliens: Dark Descent)
+    operateM56JammerBox(box) {
+      if (!box || box.isTriggered) return false;
+      box.isTriggered = true;
+      box.jammerTimer = 12.0;
+      audioManager.playM56JammerHum?.(box.x, box.z);
+      rendererEngine.addScreenShake?.(0.3, 0.25);
+      window.HiveSystems?.vfx?.burst?.(box.x, box.z, 0x38bdf8, 36, 0.25, 2.8);
+      window.HiveSystems?.vfx?.ring?.(box.x, box.z, 0x0284c7, 10.0);
+
+      // Audit QA #56 : Trigger CRT glitch overlay
+      window.HiveSystems?.vfx?.floatingText?.(box.x, 3.2, box.z, 'BROUILLAGE ÉLECTROMAGNÉTIQUE M56 !', '#38bdf8', true);
+      showToast('BROUILLEUR ÉLECTROMAGNÉTIQUE M56 ACTIVÉ : Viseurs et tourelles militaires désactivés pendant 12s !');
+      appendSensorLog('[BROUILLEUR M56] Impulsion EM continue. Guidage Smartguns et tourelles neutralisés.', 'alert');
+      return true;
+    }
+
+    updateM56JammerBoxes(safeDelta) {
+      (this.m56JammerBoxes || []).forEach((b) => {
+        if (b.isTriggered && b.jammerTimer > 0) {
+          b.jammerTimer -= safeDelta;
+          const humans = window.gameInstance?.humans || [];
+          humans.forEach((h) => {
+            if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - b.x, h.z - b.z) <= 8.5) {
+              h.shootCooldown = Math.max(h.shootCooldown || 0, 2.5);
+              h.stress = Math.min(100, (h.stress || 0) + 12 * safeDelta);
+            }
+          });
+        }
+      });
+    }
+
+    // Chantier 214 : Poste de Contrôle Cryo-Containment Chamber C-60 (Alien: Resurrection)
+    triggerCryoChamberC60(chamber) {
+      if (!chamber || chamber.isTriggered) return false;
+      chamber.isTriggered = true;
+      chamber.vortexTimer = 8.0;
+      audioManager.playCryoChamberVortex?.(chamber.x, chamber.z);
+      rendererEngine.addScreenShake?.(0.42, 0.3);
+      window.HiveSystems?.vfx?.burst?.(chamber.x, chamber.z, 0x06b6d4, 40, 0.32, 3.0);
+      window.HiveSystems?.vfx?.ring?.(chamber.x, chamber.z, 0x0891b2, 9.0);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - chamber.x, h.z - chamber.z) <= 7.0) {
+          h.takeDamage(55, playerCreature);
+          h.staggerTimer = 4.0;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-55 VORTEX CRYO C-60 !', '#06b6d4', true);
+        }
+      });
+      showToast('CHAMBRE CRYO C-60 DÉPRESSURISÉE : Vortex sous-zéro instantané à -196°C !');
+      appendSensorLog('[CRYO C-60] Confinement cryogénique brisé. Évacuation d\'azote flash.', 'alert');
+      return true;
+    }
+
+    updateCryoChamberC60s(safeDelta) {
+      (this.cryoChamberC60s || []).forEach((c) => {
+        if (c.isTriggered && c.vortexTimer > 0) {
+          c.vortexTimer -= safeDelta;
+          window.HiveSystems?.vfx?.spawnFrostGroundPool?.(c.x, c.z, 6.0);
+        }
+      });
+    }
+
+    // Chantier 216 : Générateur Magnétique Weyland Arc-Furnace Inverter (Alien 3 / Isolation)
+    sabotageArcFurnaceInverter(inverter) {
+      if (!inverter || inverter.isSabotaged) return false;
+      inverter.isSabotaged = true;
+      inverter.arcTimer = 7.0;
+      audioManager.playArcFurnaceDischarge?.(inverter.x, inverter.z);
+      rendererEngine.addScreenShake?.(0.6, 0.4);
+      window.HiveSystems?.vfx?.burst?.(inverter.x, inverter.z, 0xf97316, 52, 0.38, 3.5);
+      window.HiveSystems?.vfx?.ring?.(inverter.x, inverter.z, 0xea580c, 11.5);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - inverter.x, h.z - inverter.z) <= 8.5) {
+          h.takeDamage(160, playerCreature);
+          h.staggerTimer = 4.5;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, '-160 ARC-FURNACE 20kV !', '#f97316', true);
+        }
+      });
+      showToast('ARC-FURNACE WEYLAND SURCHARGÉ : Déflagration d\'induction thermique 20kV !');
+      appendSensorLog('[ARC-FURNACE] Inversion des bobines toroïdales. Décharge plasmique cataclysmique.', 'alert');
+      return true;
+    }
+
+    updateArcFurnaceInverters(safeDelta) {
+      (this.arcFurnaceInverters || []).forEach((inv) => {
+        if (inv.isSabotaged && inv.arcTimer > 0) {
+          inv.arcTimer -= safeDelta;
+        }
+      });
+    }
+
+    // Chantier 217 : Collecteur d'Éthylène Haute Température & Torche (Aliens 1986 / Romulus)
+    ruptureEthyleneFlarePipe(pipe) {
+      if (!pipe || pipe.isRuptured) return false;
+      pipe.isRuptured = true;
+      pipe.flareTimer = 10.0;
+      audioManager.playEthyleneFlareRoar?.(pipe.x, pipe.z);
+      rendererEngine.addScreenShake?.(0.45, 0.3);
+      window.HiveSystems?.vfx?.burst?.(pipe.x, pipe.z, 0xfbbf24, 45, 0.3, 3.0);
+      showToast('CANALISATION D\'ÉTHYLÈNE RUPTURÉE : Geyser de flammes blanches à 1400°C !');
+      appendSensorLog('[ÉTHYLÈNE 1400°C] Dépressurisation du collecteur. Jet de torche continu.', 'alert');
+      return true;
+    }
+
+    updateEthyleneFlarePipes(safeDelta) {
+      (this.ethyleneFlarePipes || []).forEach((p) => {
+        if (p.isRuptured && p.flareTimer > 0) {
+          p.flareTimer -= safeDelta;
+          window.HiveSystems?.vfx?.flameJet?.(p.x, 2.0, p.z, p.x + 4.0, 1.2, p.z);
+          const humans = window.gameInstance?.humans || [];
+          humans.forEach((h) => {
+            if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - p.x, h.z - p.z) <= 7.0) {
+              h.takeDamage(45 * safeDelta, playerCreature);
+              h.stress = 100;
+            }
+          });
+        }
+      });
+    }
+
+    // Chantier 219 : Terminal Réseau C.A.S.A.I. Seegson Synthetic Security Override (Alien: Isolation)
+    operateSeegsonCasaiOverride(console) {
+      if (!console || console.isOverridden) return false;
+      console.isOverridden = true;
+      audioManager.playCasaiOverrideBeep?.(console.x, console.z);
+      rendererEngine.addScreenShake?.(0.28, 0.2);
+      window.HiveSystems?.vfx?.burst?.(console.x, console.z, 0x0284c7, 30, 0.22, 2.2);
+
+      const synthetics = (window.gameInstance?.humans || []).filter((h) => h.type === 'synthetic' || h.type === 'android');
+      synthetics.forEach((s) => {
+        s.targetPos = { x: playerCreature.x, z: playerCreature.z };
+        window.HiveSystems?.vfx?.floatingText?.(s.x, 3.0, s.z, 'CASAI OVERRIDE : USCM CIBLE PRIORITAIRE !', '#0284c7', true);
+      });
+      showToast('RÉSEAU CASAI / SEEGSON PIRATÉ : Working Joes reprogrammés pour neutraliser l\'USCM !');
+      appendSensorLog('[C.A.S.A.I. SEEGSON] Protocole Apollo écrasé. Re-ciblage tactique des androïdes.', 'alert');
+      return true;
+    }
+
+    updateSeegsonCasaiOverrides(safeDelta) {
+      // Pas de timer périodique requis
+    }
+
+    // Chantier 220 : Couveuse Biologique "Bio-Stasis Preservation Vault" (Alien: Covenant / Romulus)
+    consumeBioStasisVault(vault) {
+      if (!vault || vault.isConsumed) return false;
+      vault.isConsumed = true;
+      vault.boostTimer = 12.0;
+      audioManager.playBioStasisConsumeGulp?.(vault.x, vault.z);
+      rendererEngine.addScreenShake?.(0.5, 0.35);
+      window.HiveSystems?.vfx?.burst?.(vault.x, vault.z, 0x15803d, 42, 0.32, 2.8);
+      window.HiveSystems?.vfx?.ring?.(vault.x, vault.z, 0x166534, 11.0);
+
+      playerCreature.blackGooBoostTimer = 12.0;
+      playerCreature.health = Math.min(playerCreature.maxHealth, playerCreature.health + 50);
+
+      showToast('PATHOGÈNE NOIR BIO-STASIS CONSOMMÉ : Frénésie mutagène (+50% vitesse, +35% dégâts, +50 PV) !');
+      appendSensorLog('[PATHOGÈNE NOIR A0-3959X] Ingestion du fluide noir Ingénieur. Métabolisme surmultiplié.', 'bio');
+      return true;
+    }
+
+    updateBioStasisVaults(safeDelta) {
+      (this.bioStasisVaults || []).forEach((v) => {
+        if (v.isConsumed && v.boostTimer > 0) {
+          v.boostTimer -= safeDelta;
+        }
+      });
+    }
+
     // Audit QA #30 : Garbage Collection Proactif Three.js (Libération systématique RAM)
     cleanThreeResources(object) {
       if (!object) return;
@@ -13769,6 +14226,30 @@
       huntDamage: 190,
       jawDamage: 220,
       tailDamage: 195
+    }),
+    cougar_drone: Object.freeze({
+      key: 'cougar_drone',
+      label: 'ALIEN COUGAR / PANTHÈRE DE CHARON (KENNER 1992)',
+      maxHealth: 320,
+      speed: 0.58,
+      huntAction: 'BOND FÉLIN D’ÉVISCÉRATION RAPIDE',
+      huntCost: 25,
+      huntRange: 75,
+      huntDamage: 185,
+      jawDamage: 200,
+      tailDamage: 160
+    }),
+    worker_drone: Object.freeze({
+      key: 'worker_drone',
+      label: 'OUVRIÈRE DE RUCHE OVIDUCTE (GENOCIDE / AVP)',
+      maxHealth: 340,
+      speed: 0.50,
+      huntAction: 'GLAÇAGE DE RÉSINE ADHÉSIVE ÉTOUFFANTE',
+      huntCost: 30,
+      huntRange: 65,
+      huntDamage: 175,
+      jawDamage: 195,
+      tailDamage: 150
     })
   });
 
@@ -15504,6 +15985,76 @@
       return true;
     }
 
+    // Chantier 211 : Phénotype "The Cougar Xenomorph" — Bond Félin d'Éviscération Rapide [R] (Kenner 1992 / Dark Horse)
+    executeCougarPounceSlash(target) {
+      if (!target || target.isIncapacitated || target.isCocooned) return false;
+      audioManager.playCougarPounceSwipe?.(target.x, target.z);
+      rendererEngine.addScreenShake?.(0.52, 0.35);
+      window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0x38bdf8, 44, 0.3, 2.6);
+      window.HiveSystems?.vfx?.ring?.(target.x, target.z, 0x0284c7, 10.5);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 3.4, target.z, '-185 BOND FÉLIN LACÉRATEUR !', '#38bdf8', true);
+
+      const pushAngle = Math.atan2(target.z - this.z, target.x - this.x);
+      target.x += Math.cos(pushAngle) * 3.5;
+      target.z += Math.sin(pushAngle) * 3.5;
+      target.takeDamage(185, this);
+      target.staggerTimer = 3.2;
+      target.stress = 100;
+      if (target.hp <= 0) {
+        target.isIncapacitated = true;
+        if (target.mesh) target.mesh.rotation.z = Math.PI / 2;
+      }
+      showToast(`ALIEN COUGAR : Bond d'éviscération féline et lacération de ${target.name} (-185 PV) !`);
+      appendSensorLog(`[ALIEN COUGAR] Pounce félin à haute vélocité et griffes rétractiles (Canon Kenner 1992).`, 'alert');
+      return true;
+    }
+
+    // Chantier 215 : Phénotype "The Swarm Hive Worker" — Glaçage de Résine Adhésive [R] (Genocide / AvP)
+    executeWorkerResinSpray(target) {
+      if (!target || target.isIncapacitated || target.isCocooned) return false;
+      audioManager.playWorkerResinSpray?.(target.x, target.z);
+      rendererEngine.addScreenShake?.(0.48, 0.32);
+      window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xd97706, 40, 0.28, 2.5);
+      window.HiveSystems?.vfx?.ring?.(target.x, target.z, 0xb45309, 9.5);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 3.2, target.z, '-175 RÉSINE ADHÉSIVE ÉTOUFFANTE !', '#d97706', true);
+
+      target.takeDamage(175, this);
+      target.staggerTimer = 4.5;
+      target.stress = 100;
+      target.isRestrained = true;
+      if (target.hp <= 0) {
+        target.isIncapacitated = true;
+        if (target.mesh) target.mesh.rotation.x = Math.PI / 2;
+      }
+      showToast(`OUVRIÈRE DE RUCHE : Projection de résine adhésive et enlisement de ${target.name} (-175 PV) !`);
+      appendSensorLog(`[OUVRIÈRE DE RUCHE] Sécrétion mandibulatoire de résine et immobilisation (Genocide lore).`, 'alert');
+      return true;
+    }
+
+    // Chantier 218 : Attaque Furtive "Éviscération Dorsale & Section de Colonne Cervicale" [E en Prowl / Plafond] (Romulus / Isolation)
+    executeCervicalSeverance(target) {
+      if (!target || target.isIncapacitated || target.isCocooned) return false;
+      audioManager.playCervicalSeverSnap?.(target.x, target.z);
+      rendererEngine.addScreenShake?.(0.68, 0.45);
+      window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xef4444, 55, 0.4, 3.2);
+      window.HiveSystems?.vfx?.ring?.(target.x, target.z, 0x991b1b, 11.5);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 3.5, target.z, '-225 SECTION CERVICALE C1-C2 !', '#ef4444', true);
+
+      target.takeDamage(225, this);
+      target.staggerTimer = 5.0;
+      target.stress = 100;
+      if (target.hp <= 0) {
+        target.isIncapacitated = true;
+        if (target.mesh) {
+          target.mesh.position.y = 1.8;
+          target.mesh.rotation.x = Math.PI / 2;
+        }
+      }
+      showToast(`SECTION CERVICALE : Luxation C1-C2 et rupture médullaire nette sur ${target.name} (-225 PV) !`);
+      appendSensorLog(`[SECTION CERVICALE] Désarticulation atlas-axis foudroyante depuis l'angle mort (Romulus).`, 'stealth');
+      return true;
+    }
+
     executeTerrifyingHiss() {
       if (this.form !== 'drone') return;
       audioManager.playXenoHiss(this.x, this.z);
@@ -15651,6 +16202,8 @@
           else if (this.adultCaste === 'gorilla_drone') detailedModel = factory.createGorillaDrone?.();
           else if (this.adultCaste === 'boar_drone') detailedModel = factory.createBoarDrone?.();
           else if (this.adultCaste === 'scorpion_drone') detailedModel = factory.createScorpionDrone?.();
+          else if (this.adultCaste === 'cougar_drone') detailedModel = factory.createCougarDrone?.();
+          else if (this.adultCaste === 'worker_drone') detailedModel = factory.createWorkerDrone?.();
           else detailedModel = factory.createAdult?.(this.adultCaste || 'drone');
         }
       }
@@ -15690,7 +16243,9 @@
           bull_drone: 0xf97316,
           gorilla_drone: 0x38bdf8,
           boar_drone: 0xef4444,
-          scorpion_drone: 0x84cc16
+          scorpion_drone: 0x84cc16,
+          cougar_drone: 0x38bdf8,
+          worker_drone: 0xd97706
         };
         const lightColors = {
           egg: this.eggIsOpen ? 0xf59e0b : 0x39ff14,
@@ -15897,6 +16452,13 @@
         actualDmg = Math.round(actualDmg * 0.5);
         window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x84cc16, 14, 0.12, 0.9);
         window.HiveSystems?.vfx?.floatingText?.(this.x, 2.9, this.z, 'IMMUNITÉ NEUROTOXIQUE (-50%) !', '#84cc16', true);
+      }
+
+      // Audit QA #58 : Prise en Compte de la Résistance à l'Immobilisation / Stun selon la Masse (Castes Lourdes -60% stun)
+      if (['crusher', 'raven', 'bull_drone', 'boar_drone'].includes(this.adultCaste || this.caste)) {
+        if (this.staggerTimer > 0) {
+          this.staggerTimer *= 0.4;
+        }
       }
 
       this.health = Math.max(0, this.health - actualDmg);
@@ -16350,15 +16912,18 @@
                         ? 160
                         : (['weyland_plasma_gunner'].includes(type)
                           ? 150
-                          : (['uscm_recon_scout', 'reconscout', 'recon'].includes(type)
-                            ? 140
-                            : (['uscm_m42b_marksman'].includes(type)
-                              ? 135
-                              : (['weyland_drone_operator'].includes(type)
-                                ? 130
-                                : (isCyberHound ? 180 : (['android', 'synthetic'].includes(type) ? 190 : (['uscm_sniper'].includes(type) ? 125 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110))))))))))))))));
+                          : (['uscm_combat_medic', 'combatmedic', 'medic', 'combat_medic'].includes(type)
+                            ? 145
+                            : (['uscm_recon_scout', 'reconscout', 'recon'].includes(type)
+                              ? 140
+                              : (['uscm_m42b_marksman'].includes(type)
+                                ? 135
+                                : (['weyland_drone_operator'].includes(type)
+                                  ? 130
+                                  : (isCyberHound ? 180 : (['android', 'synthetic'].includes(type) ? 190 : (['uscm_sniper'].includes(type) ? 125 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110)))))))))))))))));
       this.maxHp = this.hp;
       this.reconLaserTimer = 0;
+      this.medicHealCooldown = 3.0;
       this.mesh = null;
       this.targetPos = { x, z };
       this.patrolOrigin = { x, z };
@@ -16882,7 +17447,7 @@
         'commando', 'android', 'synthetic', 'powerloader', 'exosuit', 'weyland_commando_mk2',
         'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid',
         'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'uscm_sniper',
-        'weyland_containment_squad', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_smartgun_flamer', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_sadar_operator', 'uscm_recon_scout', 'reconscout', 'recon'
+        'weyland_containment_squad', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_smartgun_flamer', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_sadar_operator', 'uscm_recon_scout', 'reconscout', 'recon', 'uscm_combat_medic', 'combatmedic', 'medic', 'combat_medic'
       ].includes(this.type);
       const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
       const currentStageStep = window.gameInstance?.currentStage?.step;
@@ -17656,6 +18221,38 @@
             const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
             targetReceiver.takeDamage(38, this);
             window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.2, combatTarget.z, '-38 TIR SILENCIEUX M42C !', '#06b6d4', true);
+          } else if (['uscm_combat_medic', 'combatmedic', 'medic', 'combat_medic'].includes(this.type)) {
+            // Chantier 213 & Audit QA #59 : Médecin de Combat USCM & Pistolet de Service M4A3 / Hypospray
+            this.medicHealCooldown = (this.medicHealCooldown || 0) - safeDelta;
+            const humans = window.gameInstance?.humans || [];
+            const injuredAlly = (this.medicHealCooldown <= 0) && humans.find((h) => h !== this && !h.isIncapacitated && !h.isCocooned && (h.hp < h.maxHp * 0.6 || h.staggerTimer > 0) && Math.hypot(h.x - this.x, h.z - this.z) <= 6.5);
+            if (injuredAlly) {
+              this.medicHealCooldown = 5.0;
+              this.shootCooldown = 1.6;
+              audioManager.playMedicStimInject?.(injuredAlly.x, injuredAlly.z);
+              injuredAlly.hp = Math.min(injuredAlly.maxHp, injuredAlly.hp + 35);
+              injuredAlly.staggerTimer = 0;
+              injuredAlly.stress = Math.max(0, (injuredAlly.stress || 0) - 40);
+              window.HiveSystems?.vfx?.burst?.(injuredAlly.x, injuredAlly.z, 0x22c55e, 24, 0.2, 1.8);
+              window.HiveSystems?.vfx?.floatingText?.(injuredAlly.x, 3.2, injuredAlly.z, '+35 STIM MÉDICAL USCM !', '#22c55e', true);
+
+              // Audit QA #59 : Barks militaires authentiques Combat Medic USCM
+              const medicBarks = [
+                'Medic on scene, administering stim !',
+                'Don\'t die on me, marine !',
+                'Injecting coagulant, back on your feet !'
+              ];
+              const mb = medicBarks[Math.floor(Math.random() * medicBarks.length)];
+              window.HiveSystems?.vfx?.floatingText?.(this.x, 3.4, this.z, mb, '#22c55e', true);
+            } else {
+              this.shootCooldown = 1.35;
+              audioManager.playPistolShot?.(this.x, this.z);
+              window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.65, this.z, 0x38bdf8, 0.25);
+              window.HiveSystems?.vfx?.tracer?.(this.x, 2.65, this.z, combatTarget.x, 1.4, combatTarget.z, 0xe2e8f0);
+              const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
+              targetReceiver.takeDamage(24, this);
+              window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.0, combatTarget.z, '-24 PISTOLET M4A3 !', '#e2e8f0', true);
+            }
           } else if (['commando', 'marine'].includes(this.type) && this.stress > 55 && distToPlayer >= 6.0 && distToPlayer <= 20 && (this.whitePhosphorusCooldown || 0) <= 0) {
             // Chantier 95 : Grenades Incendiaires M40 HEDP au Phosphore Blanc (Aliens 1986 / Fireteam Elite)
             this.whitePhosphorusCooldown = 12.0;
@@ -19677,6 +20274,8 @@
             <option value="gorilla_drone" ${activeCaste === 'gorilla_drone' ? 'selected' : ''}>Gorilla Alien / Quadrumane de Charon (Kenner 1992)</option>
             <option value="boar_drone" ${activeCaste === 'boar_drone' ? 'selected' : ''}>Wild Boar Alien / Sanglier de Charon (Kenner 1992)</option>
             <option value="scorpion_drone" ${activeCaste === 'scorpion_drone' ? 'selected' : ''}>Scorpion Alien / Arachnoïde de Charon (Kenner 1992)</option>
+            <option value="cougar_drone" ${activeCaste === 'cougar_drone' ? 'selected' : ''}>Cougar / Panther Alien de Charon (Kenner 1992)</option>
+            <option value="worker_drone" ${activeCaste === 'worker_drone' ? 'selected' : ''}>Ouvrière de Ruche Oviducte (Genocide / AvP)</option>
           </select>
         </div>
         <!-- Audit QA #21 & #26 : Badges de raccourcis visuels & Indicateurs de Cooldown dynamiques -->
@@ -19799,6 +20398,11 @@
         <button type="button" id="btn-mandibular-snap" class="act-btn" data-tab-cat="stealth" style="border-color: #ef4444; background: rgba(239,68,68,0.25); display: ${playerCreature.isProwling || playerCreature.isCeilingProwling ? 'inline-block' : 'none'};"><span class="key-badge">E</span>BROYAGE MANDIBULAIRE ÉCARTELEUR</button>
         <button type="button" id="btn-operate-scrubber" class="act-btn" data-tab-cat="environment" style="border-color: #06b6d4; background: rgba(6,182,212,0.22);"><span class="key-badge">K</span>ÉPURATION ATMOSPHÉRIQUE M.U.T.H.U.R.</button>
         <button type="button" id="btn-sarcophagus-convert" class="act-btn" data-tab-cat="environment" style="border-color: #a855f7; background: rgba(168,85,247,0.22);"><span class="key-badge">K</span>CONVERSION BIOMASSE SARCOPHAGE INGÉNIEUR</button>
+        <button type="button" id="btn-cougar-pounce" class="act-btn" data-tab-cat="predation" data-caste-only="cougar_drone" style="border-color: #38bdf8; background: rgba(56,189,248,0.3); display: ${activeCaste === 'cougar_drone' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>BOND FÉLIN D'ÉVISCÉRATION COUGAR</button>
+        <button type="button" id="btn-worker-resin" class="act-btn" data-tab-cat="predation" data-caste-only="worker_drone" style="border-color: #d97706; background: rgba(217,119,6,0.3); display: ${activeCaste === 'worker_drone' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>GLAÇAGE DE RÉSINE ADHÉSIVE OUVRIÈRE</button>
+        <button type="button" id="btn-cervical-sever" class="act-btn" data-tab-cat="stealth" style="border-color: #ef4444; background: rgba(239,68,68,0.25); display: ${playerCreature.isProwling || playerCreature.isCeilingProwling ? 'inline-block' : 'none'};"><span class="key-badge">E</span>SECTION CERVICALE C1-C2</button>
+        <button type="button" id="btn-operate-casai" class="act-btn" data-tab-cat="environment" style="border-color: #0284c7; background: rgba(2,132,199,0.22);"><span class="key-badge">K</span>PIRATAGE RÉSEAU C.A.S.A.I. SEEGSON</button>
+        <button type="button" id="btn-consume-biovault" class="act-btn" data-tab-cat="environment" style="border-color: #15803d; background: rgba(21,128,61,0.22);"><span class="key-badge">K</span>INGESTION COUVEUSE BIO-STASIS (PATHOGÈNE NOIR)</button>
         <button type="button" id="btn-found-queen-hive" class="act-btn" data-tab-cat="stealth" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
       `;
 
@@ -20168,6 +20772,45 @@
           else showToast('Aucun sarcophage de conversion de biomasse Ingénieur à portée immédiate (5.5m).');
         };
       }
+      const btnCougarPounce = document.getElementById('btn-cougar-pounce');
+      if (btnCougarPounce) {
+        btnCougarPounce.onclick = () => {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 14.0);
+          playerCreature.executeCougarPounceSlash(target);
+        };
+      }
+      const btnWorkerResin = document.getElementById('btn-worker-resin');
+      if (btnWorkerResin) {
+        btnWorkerResin.onclick = () => {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 6.5);
+          if (target) playerCreature.executeWorkerResinSpray(target);
+          else showToast('Aucune cible à portée de projection de résine (6.5m).');
+        };
+      }
+      const btnCervicalSever = document.getElementById('btn-cervical-sever');
+      if (btnCervicalSever) {
+        btnCervicalSever.onclick = () => {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
+          if (target) playerCreature.executeCervicalSeverance(target);
+          else showToast('Aucune cible à portée de section cervicale (4.5m).');
+        };
+      }
+      const btnCasai = document.getElementById('btn-operate-casai');
+      if (btnCasai) {
+        btnCasai.onclick = () => {
+          const nearCasai = (stationMap.seegsonCasaiOverrides || []).find((c) => !c.isOverridden && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+          if (nearCasai) stationMap.operateSeegsonCasaiOverride(nearCasai);
+          else showToast('Aucun terminal C.A.S.A.I. Seegson à portée immédiate (5.5m).');
+        };
+      }
+      const btnBioVault = document.getElementById('btn-consume-biovault');
+      if (btnBioVault) {
+        btnBioVault.onclick = () => {
+          const nearVault = (stationMap.bioStasisVaults || []).find((v) => !v.isConsumed && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
+          if (nearVault) stationMap.consumeBioStasisVault(nearVault);
+          else showToast('Aucune couveuse Bio-Stasis à portée immédiate (5.5m).');
+        };
+      }
       document.getElementById('btn-found-queen-hive').onclick = () => this.foundRoyalNursery();
       this.updateCooldownBadges();
       this.updateRoyalButton();
@@ -20373,6 +21016,20 @@
       if (distScrubber) stationMap.operateMuthurScrubber(distScrubber);
       const distSarcophagus = (stationMap.biomassSarcophagi || []).find((bs) => !bs.isConverted && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 15);
       if (distSarcophagus) stationMap.convertBiomassSarcophagus(distSarcophagus);
+
+      // Chantiers 212, 214, 216, 217, 219, 220 : Crachat acide balistique sur props Vague 22
+      const distJammerM56 = (stationMap.m56JammerBoxes || []).find((jb) => !jb.isTriggered && Math.hypot(jb.x - playerCreature.x, jb.z - playerCreature.z) <= 15);
+      if (distJammerM56) stationMap.operateM56JammerBox(distJammerM56);
+      const distCryoChamber = (stationMap.cryoChamberC60s || []).find((cc) => !cc.isTriggered && Math.hypot(cc.x - playerCreature.x, cc.z - playerCreature.z) <= 15);
+      if (distCryoChamber) stationMap.triggerCryoChamberC60(distCryoChamber);
+      const distArcFurnace = (stationMap.arcFurnaceInverters || []).find((af) => !af.isSabotaged && Math.hypot(af.x - playerCreature.x, af.z - playerCreature.z) <= 15);
+      if (distArcFurnace) stationMap.sabotageArcFurnaceInverter(distArcFurnace);
+      const distEthylene = (stationMap.ethyleneFlarePipes || []).find((ef) => !ef.isRuptured && Math.hypot(ef.x - playerCreature.x, ef.z - playerCreature.z) <= 15);
+      if (distEthylene) stationMap.ruptureEthyleneFlarePipe(distEthylene);
+      const distCasai = (stationMap.seegsonCasaiOverrides || []).find((co) => !co.isOverridden && Math.hypot(co.x - playerCreature.x, co.z - playerCreature.z) <= 15);
+      if (distCasai) stationMap.operateSeegsonCasaiOverride(distCasai);
+      const distBioVault = (stationMap.bioStasisVaults || []).find((bv) => !bv.isConsumed && Math.hypot(bv.x - playerCreature.x, bv.z - playerCreature.z) <= 15);
+      if (distBioVault) stationMap.consumeBioStasisVault(distBioVault);
 
       this.updateCooldownBadges();
       this.updateRoyalButton();
@@ -20823,7 +21480,43 @@
         stationMap.convertBiomassSarcophagus(nearSarcophagus);
         return true;
       }
-      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur) à portée immédiate.');
+      // 75. Système de Brouilleur Électromagnétique Portatif USCM M56 (Chantier 212)
+      const nearJammer = (stationMap.m56JammerBoxes || []).find((b) => !b.isTriggered && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
+      if (nearJammer) {
+        stationMap.operateM56JammerBox(nearJammer);
+        return true;
+      }
+      // 76. Poste de Contrôle Cryo-Containment Chamber C-60 (Chantier 214)
+      const nearCryoChamber = (stationMap.cryoChamberC60s || []).find((c) => !c.isTriggered && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+      if (nearCryoChamber) {
+        stationMap.triggerCryoChamberC60(nearCryoChamber);
+        return true;
+      }
+      // 77. Générateur Magnétique Weyland Arc-Furnace Inverter (Chantier 216)
+      const nearArcFurnace = (stationMap.arcFurnaceInverters || []).find((inv) => !inv.isSabotaged && Math.hypot(inv.x - playerCreature.x, inv.z - playerCreature.z) <= 5.5);
+      if (nearArcFurnace) {
+        stationMap.sabotageArcFurnaceInverter(nearArcFurnace);
+        return true;
+      }
+      // 78. Collecteur d'Éthylène Haute Température & Torche Industrielle (Chantier 217)
+      const nearEthylene = (stationMap.ethyleneFlarePipes || []).find((p) => !p.isRuptured && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 5.5);
+      if (nearEthylene) {
+        stationMap.ruptureEthyleneFlarePipe(nearEthylene);
+        return true;
+      }
+      // 79. Terminal Réseau C.A.S.A.I. Seegson Synthetic Security Override (Chantier 219)
+      const nearCasai = (stationMap.seegsonCasaiOverrides || []).find((c) => !c.isOverridden && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+      if (nearCasai) {
+        stationMap.operateSeegsonCasaiOverride(nearCasai);
+        return true;
+      }
+      // 80. Couveuse Biologique Bio-Stasis Pathogène Noir A0-3959X (Chantier 220)
+      const nearBioVault = (stationMap.bioStasisVaults || []).find((v) => !v.isConsumed && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
+      if (nearBioVault) {
+        stationMap.consumeBioStasisVault(nearBioVault);
+        return true;
+      }
+      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur, brouilleur m56, cryo c60, arc-furnace weyland, torche éthylène, casai seegson, bio-stasis pathogène noir) à portée immédiate.');
       return false;
     }
 
@@ -21032,6 +21725,12 @@
         } else if (playerCreature.isProwling) {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.8);
           if (target) {
+            const severed = playerCreature.executeCervicalSeverance(target);
+            if (severed) {
+              this.updateCooldownBadges();
+              this.updateRoyalButton();
+              return;
+            }
             const snapped = playerCreature.executeMandibularSnapCrush(target);
             if (snapped) {
               this.updateCooldownBadges();
@@ -21104,6 +21803,13 @@
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
           if (target) playerCreature.executeScorpionVenomSting(target);
           else showToast('Aucune cible à portée de piqûre de dard caudal (4.5m).');
+        } else if (key === 'r' && caste === 'cougar_drone') {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 14.0);
+          playerCreature.executeCougarPounceSlash(target);
+        } else if (key === 'r' && caste === 'worker_drone') {
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 6.5);
+          if (target) playerCreature.executeWorkerResinSpray(target);
+          else showToast('Aucune cible à portée de projection de résine (6.5m).');
         } else {
           this.executeInnerJaw();
         }

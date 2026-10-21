@@ -110,7 +110,12 @@
     reconscout: 'uscm_recon_scout',
     recon: 'uscm_recon_scout',
     uscmrecon: 'uscm_recon_scout',
-    uscm_recon_scout: 'uscm_recon_scout'
+    uscm_recon_scout: 'uscm_recon_scout',
+    combatmedic: 'uscm_combat_medic',
+    medic: 'uscm_combat_medic',
+    uscmmedic: 'uscm_combat_medic',
+    combat_medic: 'uscm_combat_medic',
+    uscm_combat_medic: 'uscm_combat_medic'
   });
 
   // ---------------------------------------------------------------------------
@@ -1044,6 +1049,12 @@
           receiverLength: 1.35,
           barrelEnd: 1.85,
           barrelRadius: 0.065
+        },
+        uscm_combat_medic: {
+          receiverWidth: 0.22,
+          receiverLength: 0.85,
+          barrelEnd: 1.15,
+          barrelRadius: 0.05
         }
       };
       const profile = weaponProfiles[type] || weaponProfiles.guard;
@@ -1325,6 +1336,11 @@
         weapon.add(this._segment(dark, new T.Vector3(0, 0.02, 1.35), new T.Vector3(0, 0.02, 1.95), 0.1, 0.1, 'recon_silencer_can', 12));
         weapon.add(this._box(dark, { x: 0.16, y: 0.22, z: 0.45 }, { x: 0, y: 0.28, z: 0.4 }, 'recon_thermal_scope', true));
         weapon.add(this._ellipsoid(accent, { x: 0.05, y: 0.05, z: 0.03 }, { x: 0, y: 0.28, z: 0.64 }, 'recon_scope_lens', 8));
+      } else if (type === 'uscm_combat_medic') {
+        // Chantier 213 : Pistolet de service M4A3 & Injecteur Stimulant Tactique (Aliens: Fireteam Elite)
+        const stimMat = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.2 });
+        weapon.add(this._segment(dark, new T.Vector3(0, 0.02, 0.85), new T.Vector3(0, 0.02, 1.25), 0.06, 0.06, 'medic_pistol_barrel', 10));
+        weapon.add(this._cylinder(stimMat, 0.04, 0.04, 0.35, { x: 0, y: -0.16, z: 0.4 }, { x: Math.PI / 2, y: 0, z: 0 }, 'medic_stim_vial'));
       }
 
       weapon.userData.equipmentType = type;
@@ -1544,6 +1560,17 @@
           shoulderX: 0.65,
           hipX: 0.33,
           helmetScale: 1.02
+        },
+        uscm_combat_medic: {
+          uniformColor: 0x1e293b, // Combinaison de combat USCM
+          armorColor: 0xe2e8f0,   // Plastron et protections blancs / ardoise de médecin de bord
+          torso: { x: 0.68, y: 0.92, z: 0.38 },
+          pelvis: { x: 0.52, y: 0.34, z: 0.34 },
+          chest: { x: 1.12, y: 0.92, z: 0.32 },
+          pack: { x: 0.82, y: 0.95, z: 0.45 }, // Sacoche médicale d'intervention rapide et défibrillateur
+          shoulderX: 0.68,
+          hipX: 0.34,
+          helmetScale: 1.05
         }
       };
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
@@ -1557,7 +1584,7 @@
       const dark = materials.dark;
       const visor = materials.visor;
       const accent = materials.accent;
-      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout'].indexOf(type) >= 0;
+      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic'].indexOf(type) >= 0;
 
       if (combatRole) {
         for (let side = -1; side <= 1; side += 2) {
@@ -1939,6 +1966,15 @@
         root.add(this._box(dark, { x: 0.14, y: 0.12, z: 0.22 }, { x: 0.16, y: torsoY + 1.25, z: 0.38 }, 'recon_monocular_optic', true));
         root.add(this._ellipsoid(accent, { x: 0.05, y: 0.05, z: 0.03 }, { x: 0.16, y: torsoY + 1.25, z: 0.5 }, 'recon_lens_glow', 8));
         root.add(this._segment(dark, new T.Vector3(-0.25, torsoY + 0.65, -0.28), new T.Vector3(-0.28, torsoY + 1.2, -0.3), 0.025, 0.015, 'recon_antenna', 6));
+      } else if (type === 'uscm_combat_medic') {
+        // Chantier 213 : Unité USCM "Combat Medic" (Aliens: Fireteam Elite)
+        const crossRed = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.5 });
+        root.add(this._ring(crossRed, 0.16, 0.05, { x: -profile.shoulderX - 0.08, y: torsoY + 0.25, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, 'medic_armband'));
+        root.add(this._box(crossRed, { x: 0.24, y: 0.08, z: 0.05 }, { x: 0, y: torsoY + 0.35, z: 0.38 }, 'medic_chest_cross_h'));
+        root.add(this._box(crossRed, { x: 0.08, y: 0.24, z: 0.05 }, { x: 0, y: torsoY + 0.35, z: 0.38 }, 'medic_chest_cross_v'));
+        const stimGreen = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x15803d, emissiveIntensity: 2.0 });
+        root.add(this._cylinder(stimGreen, 0.03, 0.03, 0.18, { x: 0.24, y: torsoY - 0.5, z: 0.25 }, { x: 0, y: 0, z: 0 }, 'medic_belt_stim_0'));
+        root.add(this._cylinder(stimGreen, 0.03, 0.03, 0.18, { x: 0.32, y: torsoY - 0.5, z: 0.25 }, { x: 0, y: 0, z: 0 }, 'medic_belt_stim_1'));
       }
     }
 
@@ -3139,6 +3175,8 @@
       if (normalizedCaste === 'gorilla_drone' || normalizedCaste === 'gorilla') return this.createGorillaDrone();
       if (normalizedCaste === 'boar_drone' || normalizedCaste === 'boar') return this.createBoarDrone();
       if (normalizedCaste === 'scorpion_drone' || normalizedCaste === 'scorpion') return this.createScorpionDrone();
+      if (normalizedCaste === 'cougar_drone' || normalizedCaste === 'cougar' || normalizedCaste === 'panther_drone') return this.createCougarDrone();
+      if (normalizedCaste === 'worker_drone' || normalizedCaste === 'worker' || normalizedCaste === 'hive_worker') return this.createWorkerDrone();
       return this._createUprightAdult(normalizedCaste);
     }
 
@@ -6225,6 +6263,59 @@
         for (let rib = 0; rib < 5; rib++) {
           root.add(this._ring(chitinBase, 0.48, 0.04, { x: 0, y: 0.4 + rib * 0.35, z: 0.28 }, { x: 0, y: 0, z: 0 }, `sarcophagus_rib_${rib}`));
         }
+      } else if (normalizedType === 'm56_jammer_box' || normalizedType === 'jammer_box') {
+        // Chantier 212 : Système de Brouilleur Électromagnétique Portatif USCM M56 (Aliens: Dark Descent)
+        const casingOlive = this._material('industrial', { color: 0x3f4a3c, roughness: 0.45, metalness: 0.65 });
+        const darkMetal = this._material('darkMetal', { color: 0x18181b, roughness: 0.3, metalness: 0.85 });
+        const blueSignal = this._material('emissiveGreen', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.8 });
+        root.add(this._box(casingOlive, { x: 0.75, y: 0.9, z: 0.4 }, { x: 0, y: 0.95, z: 0 }, 'jammer_casing', true));
+        root.add(this._cylinder(darkMetal, 0.02, 0.02, 0.8, { x: -0.22, y: 1.75, z: 0 }, { x: 0, y: 0, z: -0.15 }, 'jammer_antenna_l'));
+        root.add(this._cylinder(darkMetal, 0.02, 0.02, 0.8, { x: 0.22, y: 1.75, z: 0 }, { x: 0, y: 0, z: 0.15 }, 'jammer_antenna_r'));
+        root.add(this._ellipsoid(blueSignal, { x: 0.08, y: 0.08, z: 0.04 }, { x: 0, y: 1.15, z: 0.21 }, 'jammer_status_led', 8));
+      } else if (normalizedType === 'cryo_chamber_c60' || normalizedType === 'cryo_chamber') {
+        // Chantier 214 : Poste de Contrôle Cryo-Containment Chamber C-60 (Alien: Resurrection)
+        const frostSteel = this._material('industrial', { color: 0x94a3b8, roughness: 0.25, metalness: 0.85 });
+        const cryoVortex = this._material('emissiveGreen', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 3.0 });
+        root.add(this._cylinder(frostSteel, 0.75, 0.75, 0.3, { x: 0, y: 0.15, z: 0 }, { x: 0, y: 0, z: 0 }, 'cryo_c60_base', true));
+        root.add(this._cylinder(frostSteel, 0.75, 0.75, 0.3, { x: 0, y: 2.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'cryo_c60_cap', true));
+        root.add(this._cylinder(cryoVortex, 0.6, 0.6, 1.8, { x: 0, y: 1.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'cryo_c60_glass_tube'));
+        for (let s = 0; s < 4; s++) {
+          const ang = s * (Math.PI / 2);
+          root.add(this._cylinder(frostSteel, 0.06, 0.06, 1.9, { x: Math.cos(ang) * 0.7, y: 1.2, z: Math.sin(ang) * 0.7 }, { x: 0, y: 0, z: 0 }, `cryo_strut_${s}`));
+        }
+      } else if (normalizedType === 'arc_furnace_inverter' || normalizedType === 'arc_furnace') {
+        // Chantier 216 : Générateur Magnétique Weyland Arc-Furnace Inverter (Alien 3 / Isolation)
+        const coilCopper = this._material('industrial', { color: 0xb45309, roughness: 0.25, metalness: 0.9 });
+        const coreDark = this._material('darkMetal', { color: 0x0f172a, roughness: 0.4, metalness: 0.8 });
+        const arcPlasma = this._material('emissiveAmber', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 3.5 });
+        root.add(this._box(coreDark, { x: 1.4, y: 0.5, z: 1.2 }, { x: 0, y: 0.25, z: 0 }, 'arc_inverter_plinth', true));
+        root.add(this._ring(coilCopper, 0.75, 0.16, { x: 0, y: 1.25, z: 0 }, { x: 0, y: 0, z: 0 }, 'arc_magnetic_coil'));
+        root.add(this._ellipsoid(arcPlasma, { x: 0.3, y: 0.3, z: 0.3 }, { x: 0, y: 1.25, z: 0 }, 'arc_plasma_focal_point', 12));
+      } else if (normalizedType === 'ethylene_flare_pipe' || normalizedType === 'ethylene_pipe') {
+        // Chantier 217 : Collecteur d'Éthylène Haute Température & Torche (Aliens 1986 / Romulus)
+        const darkConduit = this._material('darkMetal', { color: 0x334155, roughness: 0.35, metalness: 0.8 });
+        const flareNozzle = this._material('industrial', { color: 0x78716c, roughness: 0.3, metalness: 0.9 });
+        const flameCore = this._material('emissiveAmber', { color: 0xfbbf24, emissive: 0xf59e0b, emissiveIntensity: 3.6 });
+        root.add(this._cylinder(darkConduit, 0.2, 0.2, 2.0, { x: 0, y: 1.0, z: 0 }, { x: 0, y: 0, z: 0 }, 'ethylene_riser_pipe', true));
+        root.add(this._cone(flareNozzle, 0.35, 0.55, { x: 0, y: 2.15, z: 0 }, { x: 0, y: 0, z: 0 }, 'ethylene_flare_funnel'));
+        root.add(this._cone(flameCore, 0.18, 0.45, { x: 0, y: 2.5, z: 0 }, { x: 0, y: 0, z: 0 }, 'ethylene_pilot_flame'));
+      } else if (normalizedType === 'seegson_casai_override' || normalizedType === 'casai_override') {
+        // Chantier 219 : Terminal Réseau C.A.S.A.I. Seegson Synthetic Security Override (Alien: Isolation)
+        const casingCream = this._material('industrial', { color: 0xd4d4d8, roughness: 0.55, metalness: 0.35 });
+        const seegsonBlue = this._material('emissiveGreen', { color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 2.8 });
+        const darkPanel = this._material('darkMetal', { color: 0x18181b, roughness: 0.7 });
+        root.add(this._box(casingCream, { x: 1.0, y: 1.4, z: 0.65 }, { x: 0, y: 0.7, z: 0 }, 'casai_chassis', true));
+        root.add(this._box(seegsonBlue, { x: 0.62, y: 0.45, z: 0.05 }, { x: 0, y: 1.25, z: 0.12 }, 'casai_apollo_display'));
+        root.add(this._box(darkPanel, { x: 0.7, y: 0.06, z: 0.25 }, { x: 0, y: 0.88, z: 0.24 }, 'casai_input_console'));
+      } else if (normalizedType === 'bio_stasis_vault' || normalizedType === 'bio_vault') {
+        // Chantier 220 : Couveuse Biologique "Bio-Stasis Preservation Vault" (Alien: Covenant / Romulus)
+        const engineerObsidian = this._material('chitin', { color: 0x0f172a, roughness: 0.2, metalness: 0.8 });
+        const pathogenGoo = this._material('emissiveGreen', { color: 0x15803d, emissive: 0x166534, emissiveIntensity: 2.5 });
+        root.add(this._box(engineerObsidian, { x: 1.1, y: 1.8, z: 0.75 }, { x: 0, y: 0.9, z: 0 }, 'bio_vault_pedestal', true));
+        root.add(this._cylinder(pathogenGoo, 0.22, 0.22, 0.75, { x: 0, y: 1.05, z: 0.15 }, { x: 0, y: 0, z: 0 }, 'pathogen_vial'));
+        for (let ring = 0; ring < 3; ring++) {
+          root.add(this._ring(engineerObsidian, 0.26, 0.04, { x: 0, y: 0.8 + ring * 0.25, z: 0.15 }, { x: 0, y: 0, z: 0 }, `bio_clamp_${ring}`));
+        }
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -7911,6 +8002,155 @@
     // -------------------------------------------------------------------------
     createBiomassConversionSarcophagus() {
       return this.createIndustrialProp('biomass_conversion_sarcophagus');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 211 : Phénotype "The Cougar / Panther Xenomorph de Charon" (Kenner 1992 / Dark Horse)
+    // -------------------------------------------------------------------------
+    createCougarDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_cougar_drone';
+      const scale = 1.0;
+
+      const cougarChitin = this._material('carapace', {
+        color: 0x0f172a,
+        roughness: 0.2,
+        metalness: 0.85
+      });
+      const tendonGlow = this._material('emissiveGreen', {
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 2.0
+      });
+
+      // Buste félin allongé et arqué bas
+      root.add(this._ellipsoid(cougarChitin, { x: 0.42 * scale, y: 0.36 * scale, z: 0.65 * scale }, { x: 0, y: 0.95 * scale, z: 0 }, 'cougar_chest', 14));
+      // Tête dôme fine et fuselée en proue féline
+      root.add(this._ellipsoid(cougarChitin, { x: 0.24 * scale, y: 0.22 * scale, z: 0.72 * scale }, { x: 0, y: 1.08 * scale, z: 0.42 * scale }, 'cougar_head', 14));
+      // 4 Membres quadrupèdes félins musclés
+      for (let side = -1; side <= 1; side += 2) {
+        // Membres antérieurs souples
+        root.add(this._segment(cougarChitin, new T.Vector3(side * 0.35 * scale, 0.95 * scale, 0.22 * scale), new T.Vector3(side * 0.38 * scale, 0.05 * scale, 0.32 * scale), 0.11 * scale, 0.07 * scale, `cougar_foreleg_${side}`, 10));
+        // Membres postérieurs hauts arqués pour le bond
+        root.add(this._segment(cougarChitin, new T.Vector3(side * 0.32 * scale, 0.85 * scale, -0.25 * scale), new T.Vector3(side * 0.36 * scale, 0.05 * scale, -0.15 * scale), 0.14 * scale, 0.08 * scale, `cougar_hindleg_${side}`, 10));
+        // Griffes rétractiles acérées
+        for (let c = 0; c < 3; c++) {
+          root.add(this._cone(cougarChitin, 0.02 * scale, 0.12 * scale, { x: (side * 0.38 + (c - 1) * 0.04) * scale, y: 0.05 * scale, z: 0.38 * scale }, { x: Math.PI / 4, y: 0, z: 0 }, `cougar_claw_${side}_${c}`));
+        }
+      }
+      // Longue queue balistique souple terminée par une lame en diamant
+      root.add(this._tube(cougarChitin, [
+        { x: 0, y: 0.85 * scale, z: -0.45 * scale },
+        { x: 0, y: 0.75 * scale, z: -0.9 * scale },
+        { x: 0, y: 0.5 * scale, z: -1.35 * scale },
+        { x: 0, y: 0.3 * scale, z: -1.7 * scale }
+      ], 0.065 * scale, 'cougar_tail_tube', 14, 6));
+      root.add(this._cone(tendonGlow, 0.05 * scale, 0.25 * scale, { x: 0, y: 0.25 * scale, z: -1.85 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'cougar_tail_blade'));
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'cougar_drone',
+        height: 1.35 * scale,
+        animationJoints: ['cougar_head', 'cougar_chest']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 215 : Phénotype "The Swarm Hive Worker / Ouvrière de Ruche" (Genocide / AvP)
+    // -------------------------------------------------------------------------
+    createWorkerDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_worker_drone';
+      const scale = 0.96;
+
+      const workerChitin = this._material('carapace', {
+        color: 0x1e293b,
+        roughness: 0.45,
+        metalness: 0.55
+      });
+      const amberResin = this._material('emissiveAmber', {
+        color: 0xd97706,
+        emissive: 0xb45309,
+        emissiveIntensity: 2.4
+      });
+
+      // Buste ramassé troglodyte
+      root.add(this._ellipsoid(workerChitin, { x: 0.45 * scale, y: 0.42 * scale, z: 0.4 * scale }, { x: 0, y: 1.05 * scale, z: 0 }, 'worker_chest', 14));
+      // Tête dôme striée trapue avec mandibules résineuses
+      root.add(this._ellipsoid(workerChitin, { x: 0.28 * scale, y: 0.26 * scale, z: 0.58 * scale }, { x: 0, y: 1.35 * scale, z: 0.25 * scale }, 'worker_head', 14));
+      // Glandes mandibulaires à sécrétion de résine
+      for (let side = -1; side <= 1; side += 2) {
+        root.add(this._ellipsoid(amberResin, { x: 0.08 * scale, y: 0.06 * scale, z: 0.1 * scale }, { x: side * 0.16 * scale, y: 1.25 * scale, z: 0.45 * scale }, `worker_gland_${side}`, 8));
+        // Grosses griffes pelleteuses maçonnées sur les bras
+        root.add(this._box(workerChitin, { x: 0.16 * scale, y: 0.22 * scale, z: 0.28 * scale }, { x: side * 0.45 * scale, y: 0.55 * scale, z: 0.3 * scale }, `worker_spade_claw_${side}`));
+        root.add(this._segment(workerChitin, new T.Vector3(side * 0.38 * scale, 1.1 * scale, 0), new T.Vector3(side * 0.45 * scale, 0.45 * scale, 0.2 * scale), 0.13 * scale, 0.09 * scale, `worker_arm_${side}`, 10));
+        root.add(this._segment(workerChitin, new T.Vector3(side * 0.28 * scale, 0.75 * scale, -0.15 * scale), new T.Vector3(side * 0.3 * scale, 0, -0.1 * scale), 0.14 * scale, 0.1 * scale, `worker_leg_${side}`, 10));
+      }
+      // Cheminées dorsales de résine
+      for (let c = 0; c < 2; c++) {
+        const side = c === 0 ? -1 : 1;
+        root.add(this._cylinder(workerChitin, 0.06 * scale, 0.04 * scale, 0.4 * scale, { x: side * 0.18 * scale, y: 1.4 * scale, z: -0.22 * scale }, { x: -Math.PI / 6, y: side * 0.2, z: 0 }, `worker_chimney_${c}`));
+      }
+      // Queue robuste d'ancrage
+      root.add(this._cone(workerChitin, 0.09 * scale, 0.75 * scale, { x: 0, y: 0.65 * scale, z: -0.55 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'worker_tail'));
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'worker_drone',
+        height: 1.6 * scale,
+        animationJoints: ['worker_head', 'worker_chest']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 213 : Unité USCM "Combat Medic" (Aliens: Fireteam Elite)
+    // -------------------------------------------------------------------------
+    createCombatMedic() {
+      return this.createHuman('uscm_combat_medic');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 212 : Système de Brouilleur Électromagnétique USCM M56 (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createM56JammerBox() {
+      return this.createIndustrialProp('m56_jammer_box');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 214 : Poste de Contrôle Cryo-Containment Chamber C-60 (Alien: Resurrection)
+    // -------------------------------------------------------------------------
+    createCryoChamberC60() {
+      return this.createIndustrialProp('cryo_chamber_c60');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 216 : Générateur Magnétique Weyland Arc-Furnace Inverter (Alien 3 / Isolation)
+    // -------------------------------------------------------------------------
+    createArcFurnaceInverter() {
+      return this.createIndustrialProp('arc_furnace_inverter');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 217 : Collecteur d'Éthylène Haute Température & Torche (Aliens 1986 / Romulus)
+    // -------------------------------------------------------------------------
+    createEthyleneFlarePipe() {
+      return this.createIndustrialProp('ethylene_flare_pipe');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 219 : Terminal Réseau C.A.S.A.I. Seegson Synthetic Security Override (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSeegsonCasaiOverride() {
+      return this.createIndustrialProp('seegson_casai_override');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 220 : Couveuse Biologique "Bio-Stasis Preservation Vault" (Alien: Covenant / Romulus)
+    // -------------------------------------------------------------------------
+    createBioStasisVault() {
+      return this.createIndustrialProp('bio_stasis_vault');
     }
   }
 

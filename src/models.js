@@ -6800,6 +6800,148 @@
           root.add(this._box(clampSteel, { x: 0.65, y: 0.45, z: 0.8 }, { x: Math.cos(ang) * 1.8, y: 2.0 + Math.sin(ang) * 1.8, z: 0 }, `corbel_clamp_jaw_${c}`));
         }
         root.add(this._cylinder(beaconAmber, 0.1, 0.1, 0.2, { x: 0, y: 3.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'corbel_docking_beacon'));
+      } else if (normalizedType === 'narcissus_boarding_ramp' || normalizedType === 'narcissus_ramp') {
+        // Chantier 261 : Nostromo Narcissus Shuttle Retractable Boarding Ramp & Umbilical (Alien 1979)
+        const frameAlloy = this._material('industrial', { color: 0x94a3b8, roughness: 0.35, metalness: 0.85 });
+        const grateWalkway = this._material('hazard', { color: 0xe2e8f0, roughness: 0.5, metalness: 0.7 });
+        const cableBlack = this._material('darkMetal', { color: 0x09090b, roughness: 0.7, metalness: 0.2 });
+        const lightCyan = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.5 });
+        // Tablier incliné de la rampe
+        const rampGroup = new THREE.Group();
+        rampGroup.rotation.x = -0.32;
+        rampGroup.add(this._box(grateWalkway, { x: 2.2, y: 0.15, z: 4.8 }, { x: 0, y: 0, z: 0 }, 'ramp_surface', true));
+        for (let side = -1; side <= 1; side += 2) {
+          rampGroup.add(this._box(frameAlloy, { x: 0.1, y: 0.85, z: 4.8 }, { x: side * 1.05, y: 0.45, z: 0 }, `ramp_rail_${side}`, true));
+          rampGroup.add(this._cylinder(lightCyan, 0.04, 0.04, 4.8, { x: side * 1.05, y: 0.85, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `ramp_light_strip_${side}`));
+        }
+        root.add(rampGroup);
+        // Faisceau de câbles ombilicaux au sol
+        for (let c = 0; c < 3; c++) {
+          root.add(this._cylinder(cableBlack, 0.06, 0.06, 4.2, { x: -1.4 + c * 0.15, y: 0.06, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `ramp_umbilical_${c}`));
+        }
+      } else if (normalizedType === 'seismic_stabilizer_piston' || normalizedType === 'seismic_piston') {
+        // Chantier 262 : Hadley's Hope Seismic Stabilizer Piston & Bedrock Anchor (Aliens 1986)
+        const heavyCastSteel = this._material('darkMetal', { color: 0x1e293b, roughness: 0.6, metalness: 0.9 });
+        const ramPolished = this._material('industrial', { color: 0xcbd5e1, roughness: 0.12, metalness: 0.98 });
+        const warningOrange = this._material('hazard', { color: 0xf97316, roughness: 0.4, metalness: 0.6 });
+        // Socle d'ancrage massif
+        root.add(this._box(heavyCastSteel, { x: 2.8, y: 0.7, z: 2.8 }, { x: 0, y: 0.35, z: 0 }, 'seismic_anchor_plinth', true));
+        // Corps de vérin hydraulique
+        root.add(this._cylinder(heavyCastSteel, 0.75, 0.85, 2.6, { x: 0, y: 2.0, z: 0 }, { x: 0, y: 0, z: 0 }, 'seismic_cylinder_body', true));
+        // Tige de piston chromée
+        root.add(this._cylinder(ramPolished, 0.42, 0.42, 2.4, { x: 0, y: 3.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'seismic_piston_ram'));
+        // 4 Tirants diagonaux
+        for (let b = 0; b < 4; b++) {
+          const ang = b * (Math.PI / 2);
+          root.add(this._segment(warningOrange, new THREE.Vector3(Math.cos(ang) * 1.3, 0.7, Math.sin(ang) * 1.3), new THREE.Vector3(Math.cos(ang) * 0.5, 2.8, Math.sin(ang) * 0.5), 0.1, 0.08, `seismic_brace_${b}`, 8));
+        }
+      } else if (normalizedType === 'furnace_bellows_duct' || normalizedType === 'furnace_bellows') {
+        // Chantier 263 : Fiorina 161 Furnace Bellows Duct & Draft Injector (Alien 3)
+        const castIron = this._material('darkMetal', { color: 0x18181b, roughness: 0.75, metalness: 0.85 });
+        const bellowsLeather = this._material('industrial', { color: 0x451a03, roughness: 0.85, metalness: 0.2 });
+        const heatGlow = this._material('emissiveRed', { color: 0xf97316, emissive: 0xc2410c, emissiveIntensity: 2.8 });
+        // Conduite principale en fonte
+        root.add(this._cylinder(castIron, 0.65, 0.65, 3.2, { x: 0, y: 1.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'bellows_duct_pipe', true));
+        // 5 Anneaux plissés de soufflet
+        for (let r = 0; r < 5; r++) {
+          root.add(this._ring(bellowsLeather, 0.75, 0.12, { x: 0, y: 0.8 + r * 0.4, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `bellows_fold_${r}`));
+        }
+        // Buse d'injection avec lueur thermique
+        root.add(this._cone(castIron, 0.85, 0.7, { x: 0, y: 3.5, z: 0 }, { x: 0, y: 0, z: 0 }, 'bellows_injector_nozzle', true));
+        root.add(this._ellipsoid(heatGlow, { x: 0.4, y: 0.15, z: 0.4 }, { x: 0, y: 3.8, z: 0 }, 'bellows_draft_glow'));
+      } else if (normalizedType === 'cryo_surgical_sarcophagus' || normalizedType === 'surgical_sarcophagus') {
+        // Chantier 264 : USM Auriga Cryo-Surgical Stasis Sarcophagus (Alien Resurrection)
+        const surgicalTitanium = this._material('industrial', { color: 0xe2e8f0, roughness: 0.2, metalness: 0.95 });
+        const stasisGelCyan = this._material('emissiveBlue', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 2.2, opacity: 0.75, transparent: true });
+        const laserGreen = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 3.0 });
+        // Coque de sarcophage profilée
+        root.add(this._box(surgicalTitanium, { x: 1.2, y: 2.4, z: 0.85 }, { x: 0, y: 1.2, z: 0 }, 'sarcophagus_hull', true));
+        // Hublot stasique transparent
+        root.add(this._cylinder(stasisGelCyan, 0.35, 0.35, 1.6, { x: 0, y: 1.3, z: 0.32 }, { x: 0, y: 0, z: 0 }, 'sarcophagus_stasis_window'));
+        // 3 Arcs lasers de confinement
+        for (let l = 0; l < 3; l++) {
+          root.add(this._ring(laserGreen, 0.4, 0.02, { x: 0, y: 0.8 + l * 0.45, z: 0.32 }, { x: 0, y: 0, z: 0 }, `sarcophagus_laser_ring_${l}`));
+        }
+      } else if (normalizedType === 'fuel_siphon_pylon' || normalizedType === 'siphon_pylon') {
+        // Chantier 265 : Renaissance Station Fuel Siphon Pylon & Pressure Valve (Alien: Romulus)
+        const darkTower = this._material('darkMetal', { color: 0x0f172a, roughness: 0.4, metalness: 0.9 });
+        const fuelOrange = this._material('hazard', { color: 0xf59e0b, roughness: 0.45, metalness: 0.65 });
+        const gaugeBrass = this._material('industrial', { color: 0xb45309, roughness: 0.25, metalness: 0.85 });
+        const ventJet = this._material('emissiveAmber', { color: 0xfbbf24, emissive: 0xd97706, emissiveIntensity: 2.5 });
+        // Pylône vertical à section carrée
+        root.add(this._box(darkTower, { x: 0.9, y: 4.2, z: 0.9 }, { x: 0, y: 2.1, z: 0 }, 'siphon_pylon_core', true));
+        // Manifold de transfert de carburant
+        root.add(this._cylinder(fuelOrange, 0.22, 0.22, 2.6, { x: 0, y: 2.4, z: 0.5 }, { x: 0, y: 0, z: Math.PI / 2 }, 'siphon_manifold_pipe'));
+        // 2 Manomètres ronds
+        root.add(this._cylinder(gaugeBrass, 0.15, 0.15, 0.08, { x: -0.6, y: 2.8, z: 0.5 }, { x: 0, y: Math.PI / 2, z: 0 }, 'siphon_gauge_left'));
+        root.add(this._cylinder(gaugeBrass, 0.15, 0.15, 0.08, { x: 0.6, y: 2.8, z: 0.5 }, { x: 0, y: Math.PI / 2, z: 0 }, 'siphon_gauge_right'));
+        // Soupape de décharge de surpression
+        root.add(this._cylinder(ventJet, 0.1, 0.1, 0.35, { x: 0, y: 4.35, z: 0 }, { x: 0, y: 0, z: 0 }, 'siphon_relief_valve'));
+      } else if (normalizedType === 'security_shutter_door' || normalizedType === 'shutter_door') {
+        // Chantier 266 : Sevastopol Habitation High-Security Roll-Up Shutter (Alien: Isolation)
+        const frameSteel = this._material('darkMetal', { color: 0x1e293b, roughness: 0.5, metalness: 0.85 });
+        const corrugatedPanel = this._material('industrial', { color: 0x64748b, roughness: 0.45, metalness: 0.9 });
+        const alertBeacon = this._material('emissiveRed', { color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 3.2 });
+        // Cadre porteur du rideau
+        root.add(this._box(frameSteel, { x: 3.6, y: 3.4, z: 0.45 }, { x: 0, y: 1.7, z: 0 }, 'shutter_outer_frame', true));
+        // Tablier métallique ondulé
+        root.add(this._box(corrugatedPanel, { x: 3.0, y: 2.8, z: 0.12 }, { x: 0, y: 1.4, z: 0 }, 'shutter_corrugated_curtain'));
+        // Tambour supérieur d'enroulement
+        root.add(this._cylinder(frameSteel, 0.35, 0.35, 3.4, { x: 0, y: 3.2, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'shutter_roller_drum'));
+        root.add(this._cylinder(alertBeacon, 0.08, 0.08, 0.2, { x: 1.5, y: 3.5, z: 0.25 }, { x: 0, y: 0, z: 0 }, 'shutter_alarm_light'));
+      } else if (normalizedType === 'processing_sump_siphon' || normalizedType === 'sump_siphon') {
+        // Chantier 267 : Hadley's Hope Sub-Level 2 Processing Sump Siphon (Aliens 1986)
+        const darkBasin = this._material('darkMetal', { color: 0x0f172a, roughness: 0.85, metalness: 0.4 });
+        const pumpMotor = this._material('industrial', { color: 0x334155, roughness: 0.4, metalness: 0.85 });
+        const toxicOoze = this._material('emissiveGreen', { color: 0x84cc16, emissive: 0x3f6212, emissiveIntensity: 2.2, opacity: 0.7, transparent: true });
+        // Grille de puisard au sol
+        root.add(this._cylinder(darkBasin, 1.8, 1.8, 0.25, { x: 0, y: 0.12, z: 0 }, { x: 0, y: 0, z: 0 }, 'sump_rim_base', true));
+        root.add(this._cylinder(toxicOoze, 1.5, 1.5, 0.05, { x: 0, y: 0.18, z: 0 }, { x: 0, y: 0, z: 0 }, 'sump_drain_liquid'));
+        // Corps de pompe centrifuge verticale
+        root.add(this._cylinder(pumpMotor, 0.4, 0.4, 1.4, { x: 1.1, y: 0.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'sump_pump_motor', true));
+        // Tuyau de refoulement coudé
+        root.add(this._cylinder(pumpMotor, 0.15, 0.15, 1.8, { x: 1.1, y: 1.6, z: 0.6 }, { x: Math.PI / 4, y: 0, z: 0 }, 'sump_discharge_pipe'));
+      } else if (normalizedType === 'munitions_heavy_pallet' || normalizedType === 'munitions_pallet') {
+        // Chantier 268 : USCM Munitions Pallet & Forklift Anchor (Aliens: Dark Descent)
+        const palletSteel = this._material('darkMetal', { color: 0x27272a, roughness: 0.65, metalness: 0.8 });
+        const ammoOlive = this._material('industrial', { color: 0x365314, roughness: 0.55, metalness: 0.45 });
+        const strapYellow = this._material('hazard', { color: 0xeab308, roughness: 0.4, metalness: 0.3 });
+        // Palette à semelles pour fourches d'élévateur
+        root.add(this._box(palletSteel, { x: 2.2, y: 0.22, z: 2.2 }, { x: 0, y: 0.11, z: 0 }, 'munitions_pallet_base', true));
+        // 4 Caisses de cartouches M41A et grenades
+        for (let bx = -1; bx <= 1; bx += 2) {
+          for (let bz = -1; bz <= 1; bz += 2) {
+            root.add(this._box(ammoOlive, { x: 0.9, y: 0.65, z: 0.9 }, { x: bx * 0.5, y: 0.55, z: bz * 0.5 }, `ammo_crate_${bx}_${bz}`, true));
+          }
+        }
+        // 2 Sangles d'arrimage transversales jaunes
+        root.add(this._box(strapYellow, { x: 2.05, y: 0.7, z: 0.08 }, { x: 0, y: 0.55, z: 0 }, 'ammo_tie_strap_1'));
+        root.add(this._box(strapYellow, { x: 0.08, y: 0.7, z: 2.05 }, { x: 0, y: 0.55, z: 0 }, 'ammo_tie_strap_2'));
+      } else if (normalizedType === 'synthetic_recharge_bay' || normalizedType === 'recharge_bay') {
+        // Chantier 269 : Sevastopol Synthetic Recharging Terminal Bay (Alien: Isolation)
+        const alcoveCream = this._material('industrial', { color: 0xd4d4d8, roughness: 0.6, metalness: 0.3 });
+        const terminalCyan = this._material('emissiveBlue', { color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 2.8 });
+        const copperPins = this._material('industrial', { color: 0xb45309, roughness: 0.2, metalness: 0.95 });
+        // Alcôve d'amarrage verticale
+        root.add(this._box(alcoveCream, { x: 1.4, y: 2.6, z: 0.9 }, { x: 0, y: 1.3, z: 0 }, 'recharge_alcove_body', true));
+        // Connecteur cervical magnétique supérieur
+        root.add(this._box(copperPins, { x: 0.35, y: 0.18, z: 0.25 }, { x: 0, y: 2.1, z: 0.25 }, 'recharge_cervical_pin'));
+        // Écran de diagnostic de charge Seegson
+        root.add(this._box(terminalCyan, { x: 0.65, y: 0.45, z: 0.05 }, { x: 0, y: 1.4, z: 0.42 }, 'recharge_diagnostic_screen'));
+      } else if (normalizedType === 'foundry_gantry_hoist' || normalizedType === 'gantry_hoist') {
+        // Chantier 270 : Fiorina 161 Foundry Gantry Overhead Crane Hoist (Alien 3)
+        const hoistIron = this._material('darkMetal', { color: 0x18181b, roughness: 0.6, metalness: 0.9 });
+        const pulleySteel = this._material('industrial', { color: 0x94a3b8, roughness: 0.25, metalness: 0.95 });
+        const crucibleAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 3.0 });
+        // Chariot motorisé sur poutre en I
+        root.add(this._box(hoistIron, { x: 2.6, y: 0.65, z: 1.6 }, { x: 0, y: 4.8, z: 0 }, 'hoist_carriage_frame', true));
+        // Câbles de suspension verticaux
+        for (let s = -1; s <= 1; s += 2) {
+          root.add(this._cylinder(pulleySteel, 0.03, 0.03, 2.8, { x: s * 0.9, y: 3.2, z: 0 }, { x: 0, y: 0, z: 0 }, `hoist_cable_${s}`));
+        }
+        // Pince de préhension du creuset de fonderie
+        root.add(this._box(hoistIron, { x: 2.2, y: 0.4, z: 1.2 }, { x: 0, y: 1.8, z: 0 }, 'hoist_clamp_beam'));
+        root.add(this._cylinder(crucibleAmber, 0.75, 0.65, 0.9, { x: 0, y: 1.1, z: 0 }, { x: 0, y: 0, z: 0 }, 'hoist_molten_ladle'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -9036,6 +9178,76 @@
     // -------------------------------------------------------------------------
     createCorbelDockingClamp() {
       return this.createIndustrialProp('corbel_docking_clamp');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 261 : Nostromo Narcissus Boarding Ramp (Alien 1979)
+    // -------------------------------------------------------------------------
+    createNarcissusBoardingRamp() {
+      return this.createIndustrialProp('narcissus_boarding_ramp');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 262 : Hadley's Hope Seismic Stabilizer Piston (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createSeismicStabilizerPiston() {
+      return this.createIndustrialProp('seismic_stabilizer_piston');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 263 : Fiorina 161 Furnace Bellows Duct (Alien 3)
+    // -------------------------------------------------------------------------
+    createFurnaceBellowsDuct() {
+      return this.createIndustrialProp('furnace_bellows_duct');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 264 : Auriga Cryo-Surgical Stasis Sarcophagus (Alien Resurrection)
+    // -------------------------------------------------------------------------
+    createCryoSurgicalSarcophagus() {
+      return this.createIndustrialProp('cryo_surgical_sarcophagus');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 265 : Renaissance Station Fuel Siphon Pylon (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    createFuelSiphonPylon() {
+      return this.createIndustrialProp('fuel_siphon_pylon');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 266 : Sevastopol Security Roll-Up Shutter (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSecurityShutterDoor() {
+      return this.createIndustrialProp('security_shutter_door');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 267 : Processing Sump Siphon (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createProcessingSumpSiphon() {
+      return this.createIndustrialProp('processing_sump_siphon');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 268 : USCM Munitions Heavy Pallet (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createMunitionsHeavyPallet() {
+      return this.createIndustrialProp('munitions_heavy_pallet');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 269 : Sevastopol Synthetic Recharge Bay (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSyntheticRechargeBay() {
+      return this.createIndustrialProp('synthetic_recharge_bay');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 270 : Fiorina Foundry Gantry Overhead Hoist (Alien 3)
+    // -------------------------------------------------------------------------
+    createFoundryGantryHoist() {
+      return this.createIndustrialProp('foundry_gantry_hoist');
     }
   }
 

@@ -6241,6 +6241,234 @@
       osc.start(now);
       osc.stop(now + 0.35);
     }
+
+    // -------------------------------------------------------------------------
+    // Chantier 261 : Servomoteur Déploiement Rampe Narcissus (Alien 1979)
+    // -------------------------------------------------------------------------
+    playBoardingRampServoHum(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.linearRampToValueAtTime(280, now + 0.8);
+      gain.gain.setValueAtTime(0.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now);
+      osc.stop(now + 0.8);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 262 : Choc Piston Stabilisateur Sismique (Aliens 1986)
+    // -------------------------------------------------------------------------
+    playSeismicPistonThud(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(60, now);
+      osc.frequency.exponentialRampToValueAtTime(24, now + 0.7);
+      gain.gain.setValueAtTime(1.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+      osc.connect(gain);
+      this.connect(gain, x, z, 90);
+      osc.start(now);
+      osc.stop(now + 0.7);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 263 : Souffle d'Air Chaud Soufflet Fonderie Fiorina (Alien 3)
+    // -------------------------------------------------------------------------
+    playFurnaceDraftBlast(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(95, now);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(450, now);
+      gain.gain.setValueAtTime(0.9, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.9);
+      osc.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.9);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 264 : Dépressurisation Sarcophage Chirurgical Auriga (Alien Resurrection)
+    // -------------------------------------------------------------------------
+    playCryoSarcophagusUnseal(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.4);
+      gain.gain.setValueAtTime(0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 265 : Surpression Siphon Combustible Renaissance (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    playFuelSiphonSurge(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(420, now + 0.5);
+      gain.gain.setValueAtTime(0.8, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 266 : Bruit Rideau Métallique Sécurité Sevastopol (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    playShutterDoorRattle(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.linearRampToValueAtTime(110, now + 0.6);
+      gain.gain.setValueAtTime(0.75, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+      osc.connect(gain);
+      this.connect(gain, x, z, 70);
+      osc.start(now);
+      osc.stop(now + 0.6);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 267 : Gargouillement Pompe Puisard Hadley (Aliens 1986)
+    // -------------------------------------------------------------------------
+    playSumpPumpGargle(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.linearRampToValueAtTime(340, now + 0.4);
+      gain.gain.setValueAtTime(0.65, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 268 : Détonation Palette Munitions USCM (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    playAmmoPalletClatter(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(650, now);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.5);
+      gain.gain.setValueAtTime(1.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain);
+      this.connect(gain, x, z, 85);
+      osc.start(now);
+      osc.stop(now + 0.5);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 269 : Bourdonnement Recharge Synthétique Sevastopol (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    playSyntheticBayHum(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(100, now);
+      osc.frequency.exponentialRampToValueAtTime(250, now + 0.6);
+      gain.gain.setValueAtTime(0.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now);
+      osc.stop(now + 0.6);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 270 : Roulement Pont Roulant Fonderie Fiorina (Alien 3)
+    // -------------------------------------------------------------------------
+    playGantryHoistRattle(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(90, now);
+      osc.frequency.linearRampToValueAtTime(180, now + 0.7);
+      gain.gain.setValueAtTime(0.8, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.7);
+    }
+
+    // -------------------------------------------------------------------------
+    // Audit QA #81 : Éclaboussures d'Eau & Ondes au Sol lors de la Marche
+    // -------------------------------------------------------------------------
+    playPuddleFootstepSplash(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(450, now + 0.12);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1400, now);
+      filter.Q.setValueAtTime(3.0, now);
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+      osc.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 45);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -6565,6 +6793,30 @@
           ctx.font = '700 7px monospace';
           ctx.fillText('VENT', vx + 3, vy + 2);
           ctx.shadowBlur = 0;
+        }
+      }
+
+      // Audit QA #85 : Calque Tactique Multi-Niveaux des Passerelles Aériennes (Catwalks +4.5m)
+      const catwalks = stationMap.elevatedCatwalks || [];
+      for (const cw of catwalks) {
+        const cwxDist = Math.hypot(cw.x - player.x, cw.z - player.z);
+        if (cwxDist <= maxRange + 12) {
+          const worldAngle = Math.atan2(cw.x - player.x, cw.z - player.z);
+          const relAngle = worldAngle - playerFacing;
+          const normDist = Math.min(radius, (cwxDist / maxRange) * radius);
+          const cxPos = cx + Math.sin(relAngle) * normDist;
+          const cyPos = cy - Math.cos(relAngle) * normDist;
+
+          ctx.save();
+          ctx.strokeStyle = 'rgba(234, 179, 8, 0.45)';
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([3, 3]);
+          ctx.strokeRect(cxPos - 6, cyPos - 2, 12, 4);
+          ctx.setLineDash([]);
+          ctx.font = '600 6.5px monospace';
+          ctx.fillStyle = '#eab308';
+          ctx.fillText('CWK +4.5m', cxPos + 8, cyPos + 2);
+          ctx.restore();
         }
       }
 
@@ -6958,9 +7210,15 @@
       if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.34 : 1.05;
       // La vue de commandement cadre toute la station afin que les trois relais
       // restent réellement ciblables sans caméra libre ni mini-carte.
-      const targetY = isRTS ? 120 : 46 + heightOffset;
-      const targetZ = isRTS ? z + 70 : z + 20;
-      const smoothing = 1 - Math.pow(0.92, Math.max(0, deltaSeconds) * 60);
+      // Audit QA #84 : Lissage Cinématique Dynamique lors des Transitions de Rôdeur (Prowl / Crawl)
+      const isProwl = Boolean(window.playerCreature?.isProwling);
+      const isCeiling = Boolean(window.playerCreature?.isCeilingProwling);
+      const prowlOffsetY = isProwl ? -5.5 : (isCeiling ? 3.5 : 0);
+      const prowlOffsetZ = isProwl ? -3.0 : 0;
+      const targetY = isRTS ? 120 : (46 + heightOffset + prowlOffsetY);
+      const targetZ = isRTS ? (z + 70) : (z + 20 + prowlOffsetZ);
+      const prowlSmoothingFactor = isProwl ? 0.88 : 0.92;
+      const smoothing = 1 - Math.pow(prowlSmoothingFactor, Math.max(0, deltaSeconds) * 60);
 
       this.camera.position.x += (x - this.camera.position.x) * smoothing;
       this.camera.position.z += (targetZ - this.camera.position.z) * smoothing;
@@ -7182,10 +7440,17 @@
           humans.forEach((h) => {
             if (!h.isIncapacitated && h.hp > 0) {
               const isSynth = h.type === 'synthetic' || h.type === 'android';
-              const tempLabel = isSynth ? '21.5°C [SYNTH]' : '37.2°C [ENDO]';
-              const tempColor = isSynth ? '#38bdf8' : '#f97316';
+              // Audit QA #82 : Silhouette Thermique Infrarouge Pulsante pour Cibles Blessées (Hémorragie/Trauma)
+              const isWounded = (h.hp < (h.maxHp || 100) * 0.5) || (h.staggerTimer > 0);
+              const tempLabel = isSynth
+                ? (isWounded ? '18.2°C [SYNTH-FUITE LIQUIDE]' : '21.5°C [SYNTH]')
+                : (isWounded ? '39.8°C [TRAUMA VASCULAIRE]' : '37.2°C [ENDO]');
+              const tempColor = isSynth ? '#38bdf8' : (isWounded ? '#ef4444' : '#f97316');
               window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, tempLabel, tempColor, false);
-              window.HiveSystems?.vfx?.ring?.(h.x, h.z, isSynth ? 0x38bdf8 : 0xf97316, 1.8);
+              window.HiveSystems?.vfx?.ring?.(h.x, h.z, isSynth ? 0x38bdf8 : (isWounded ? 0xef4444 : 0xf97316), isWounded ? 2.6 : 1.8);
+              if (isWounded) {
+                window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0xef4444, 8, 0.2, 1.2);
+              }
             }
           });
           const steamVents = stationMap?.steamVents || [];
@@ -7451,6 +7716,18 @@
       this.lorenzCommsDishes = [];
       this.corbelDockingClamps = [];
       this.overheadCocoons = [];
+      // Chantiers 261 à 270 (Level Design 1:1)
+      this.narcissusBoardingRamps = [];
+      this.seismicPistons = [];
+      this.furnaceBellowsDucts = [];
+      this.cryoSurgicalSarcophagi = [];
+      this.fuelSiphonPylons = [];
+      this.securityShutterDoors = [];
+      this.processingSumpSiphons = [];
+      this.munitionsHeavyPallets = [];
+      this.syntheticRechargeBays = [];
+      this.foundryGantryHoists = [];
+      this.elevatedCatwalks = [];
     }
 
     buildMap() {
@@ -10297,6 +10574,231 @@
         this.colliders.push({ minX: dc.x - 1.8, maxX: dc.x + 1.8, minZ: dc.z - 0.6, maxZ: dc.z + 0.6, isDockingClamp: true, clampRef: dc });
       });
 
+      // -----------------------------------------------------------------------
+      // VAGUE 27 : CHANTIERS 261 À 270 (Level Design 1:1)
+      // -----------------------------------------------------------------------
+
+      // Chantier 261 : Nostromo Narcissus Shuttle Boarding Ramp (Alien 1979)
+      this.narcissusBoardingRamps = [
+        { id: 'narcissus_ramp_1', name: 'Passerelle Télescopique Navette Narcissus', x: 65, z: -25, isExtended: false, mesh: null }
+      ];
+      this.narcissusBoardingRamps.forEach((nr) => {
+        const mesh = window.HiveModelFactory?.createNarcissusBoardingRamp?.();
+        if (mesh) {
+          mesh.position.set(nr.x, 0, nr.z);
+          rendererEngine.propsGroup.add(mesh);
+          nr.mesh = mesh;
+        }
+        this.colliders.push({ minX: nr.x - 1.4, maxX: nr.x + 1.4, minZ: nr.z - 2.5, maxZ: nr.z + 2.5, isNarcissusRamp: true, rampRef: nr });
+      });
+
+      // Chantier 262 : Hadley's Hope Seismic Stabilizer Piston (Aliens 1986)
+      this.seismicPistons = [
+        { id: 'seismic_piston_1', name: 'Piston de Stabilisation Sismique Hadley', x: -45, z: 60, isPumping: false, mesh: null }
+      ];
+      this.seismicPistons.forEach((sp) => {
+        const mesh = window.HiveModelFactory?.createSeismicStabilizerPiston?.();
+        if (mesh) {
+          mesh.position.set(sp.x, 0, sp.z);
+          rendererEngine.propsGroup.add(mesh);
+          sp.mesh = mesh;
+        }
+        this.colliders.push({ minX: sp.x - 1.6, maxX: sp.x + 1.6, minZ: sp.z - 1.6, maxZ: sp.z + 1.6, isSeismicPiston: true, pistonRef: sp });
+      });
+
+      // Chantier 263 : Fiorina 161 Furnace Bellows Duct & Draft Injector (Alien 3)
+      this.furnaceBellowsDucts = [
+        { id: 'furnace_bellows_1', name: 'Soufflante d\'Injection Haut Fourneau Fiorina', x: -25, z: 45, isPurging: false, mesh: null }
+      ];
+      this.furnaceBellowsDucts.forEach((fb) => {
+        const mesh = window.HiveModelFactory?.createFurnaceBellowsDuct?.();
+        if (mesh) {
+          mesh.position.set(fb.x, 0, fb.z);
+          rendererEngine.propsGroup.add(mesh);
+          fb.mesh = mesh;
+        }
+        this.colliders.push({ minX: fb.x - 1.2, maxX: fb.x + 1.2, minZ: fb.z - 1.2, maxZ: fb.z + 1.2, isBellowsDuct: true, ductRef: fb });
+      });
+
+      // Chantier 264 : USM Auriga Cryo-Surgical Stasis Sarcophagus (Alien Resurrection)
+      this.cryoSurgicalSarcophagi = [
+        { id: 'cryo_sarcophagus_1', name: 'Sarcophage Cryo-Chirurgical Auriga', x: -60, z: -15, isUnsealed: false, mesh: null }
+      ];
+      this.cryoSurgicalSarcophagi.forEach((cs) => {
+        const mesh = window.HiveModelFactory?.createCryoSurgicalSarcophagus?.();
+        if (mesh) {
+          mesh.position.set(cs.x, 0, cs.z);
+          rendererEngine.propsGroup.add(mesh);
+          cs.mesh = mesh;
+        }
+        this.colliders.push({ minX: cs.x - 1.3, maxX: cs.x + 1.3, minZ: cs.z - 0.9, maxZ: cs.z + 0.9, isSurgicalSarcophagus: true, sarcophagusRef: cs });
+      });
+
+      // Chantier 265 : Renaissance Station Fuel Siphon Pylon (Alien: Romulus)
+      this.fuelSiphonPylons = [
+        { id: 'fuel_pylon_1', name: 'Pylône de Siphonnage Propergol Renaissance', x: 25, z: 45, isVenting: false, mesh: null }
+      ];
+      this.fuelSiphonPylons.forEach((fp) => {
+        const mesh = window.HiveModelFactory?.createFuelSiphonPylon?.();
+        if (mesh) {
+          mesh.position.set(fp.x, 0, fp.z);
+          rendererEngine.propsGroup.add(mesh);
+          fp.mesh = mesh;
+        }
+        this.colliders.push({ minX: fp.x - 1.1, maxX: fp.x + 1.1, minZ: fp.z - 1.1, maxZ: fp.z + 1.1, isFuelPylon: true, pylonRef: fp });
+      });
+
+      // Chantier 266 : Sevastopol Security Roll-Up Shutter (Alien: Isolation)
+      this.securityShutterDoors = [
+        { id: 'security_shutter_1', name: 'Rideau Blindé de Confinement Sevastopol', x: 50, z: -50, isClosed: false, mesh: null }
+      ];
+      this.securityShutterDoors.forEach((sd) => {
+        const mesh = window.HiveModelFactory?.createSecurityShutterDoor?.();
+        if (mesh) {
+          mesh.position.set(sd.x, 0, sd.z);
+          rendererEngine.propsGroup.add(mesh);
+          sd.mesh = mesh;
+        }
+        this.colliders.push({ minX: sd.x - 1.9, maxX: sd.x + 1.9, minZ: sd.z - 0.5, maxZ: sd.z + 0.5, isSecurityShutter: true, shutterRef: sd });
+      });
+
+      // Chantier 267 : Processing Sump Siphon (Aliens 1986)
+      this.processingSumpSiphons = [
+        { id: 'sump_siphon_1', name: 'Siphon de Purge Puisard Hadley Sub-2', x: 15, z: 25, isFlushing: false, mesh: null }
+      ];
+      this.processingSumpSiphons.forEach((ps) => {
+        const mesh = window.HiveModelFactory?.createProcessingSumpSiphon?.();
+        if (mesh) {
+          mesh.position.set(ps.x, 0, ps.z);
+          rendererEngine.propsGroup.add(mesh);
+          ps.mesh = mesh;
+        }
+        this.colliders.push({ minX: ps.x - 1.5, maxX: ps.x + 1.5, minZ: ps.z - 1.5, maxZ: ps.z + 1.5, isSumpSiphon: true, siphonRef: ps });
+      });
+
+      // Chantier 268 : USCM Munitions Heavy Pallet (Aliens: Dark Descent)
+      this.munitionsHeavyPallets = [
+        { id: 'munitions_pallet_1', name: 'Palette Blindée de Munitions USCM M41A', x: -30, z: 10, isDetonated: false, mesh: null }
+      ];
+      this.munitionsHeavyPallets.forEach((mp) => {
+        const mesh = window.HiveModelFactory?.createMunitionsHeavyPallet?.();
+        if (mesh) {
+          mesh.position.set(mp.x, 0, mp.z);
+          rendererEngine.propsGroup.add(mesh);
+          mp.mesh = mesh;
+        }
+        this.colliders.push({ minX: mp.x - 1.3, maxX: mp.x + 1.3, minZ: mp.z - 1.3, maxZ: mp.z + 1.3, isMunitionsPallet: true, palletRef: mp });
+      });
+
+      // Chantier 269 : Sevastopol Synthetic Recharge Bay (Alien: Isolation)
+      this.syntheticRechargeBays = [
+        { id: 'recharge_bay_1', name: 'Alcôve de Charge Synthétique Working Joe', x: 40, z: 20, isOverloaded: false, mesh: null }
+      ];
+      this.syntheticRechargeBays.forEach((rb) => {
+        const mesh = window.HiveModelFactory?.createSyntheticRechargeBay?.();
+        if (mesh) {
+          mesh.position.set(rb.x, 0, rb.z);
+          rendererEngine.propsGroup.add(mesh);
+          rb.mesh = mesh;
+        }
+        this.colliders.push({ minX: rb.x - 1.2, maxX: rb.x + 1.2, minZ: rb.z - 0.8, maxZ: rb.z + 0.8, isRechargeBay: true, bayRef: rb });
+      });
+
+      // Chantier 270 : Fiorina Foundry Gantry Overhead Hoist (Alien 3)
+      this.foundryGantryHoists = [
+        { id: 'gantry_hoist_1', name: 'Pont Roulant de Coulée de Plomb Fiorina', x: 0, z: 70, isDropped: false, mesh: null }
+      ];
+      this.foundryGantryHoists.forEach((gh) => {
+        const mesh = window.HiveModelFactory?.createFoundryGantryHoist?.();
+        if (mesh) {
+          mesh.position.set(gh.x, 0, gh.z);
+          rendererEngine.propsGroup.add(mesh);
+          gh.mesh = mesh;
+        }
+        this.colliders.push({ minX: gh.x - 1.5, maxX: gh.x + 1.5, minZ: gh.z - 1.2, maxZ: gh.z + 1.2, isGantryHoist: true, hoistRef: gh });
+      });
+
+      // -----------------------------------------------------------------------
+      // MONUMENTAL LEVEL DESIGN ENHANCEMENTS : GRANDEUR, ÉCHELLE & COHÉRENCE
+      // -----------------------------------------------------------------------
+
+      // 1. Grands Pylônes Structuraux Treillis (Hauteur Plafond Y=10) aux Carrefours Majeurs
+      const pylonTrussMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.85 });
+      const pylonGlowMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 1.8 });
+      const pylonPositions = [
+        { x: -15, z: -25 }, { x: 15, z: -25 },
+        { x: -15, z: 25 },  { x: 15, z: 25 }
+      ];
+      pylonPositions.forEach((pos, idx) => {
+        const pylonGroup = new THREE.Group();
+        pylonGroup.position.set(pos.x, 0, pos.z);
+        // 4 Montants verticaux carrés
+        for (let mx = -1; mx <= 1; mx += 2) {
+          for (let mz = -1; mz <= 1; mz += 2) {
+            const strut = new THREE.Mesh(new THREE.BoxGeometry(0.35, 10.0, 0.35), pylonTrussMat);
+            strut.position.set(mx * 0.9, 5.0, mz * 0.9);
+            pylonGroup.add(strut);
+          }
+        }
+        // Croisillons de contreventement tous les 2.5m
+        for (let tier = 1; tier <= 3; tier++) {
+          const ring = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.2, 2.1), pylonTrussMat);
+          ring.position.y = tier * 2.5;
+          pylonGroup.add(ring);
+          const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.15, 8), pylonGlowMat);
+          beacon.position.set(0, tier * 2.5 + 0.15, 1.05);
+          pylonGroup.add(beacon);
+        }
+        rendererEngine.propsGroup.add(pylonGroup);
+        this.colliders.push({ minX: pos.x - 1.2, maxX: pos.x + 1.2, minZ: pos.z - 1.2, maxZ: pos.z + 1.2, isStructuralPylon: true });
+      });
+
+      // 2. Passerelles Aériennes Métalliques (Catwalks Suspendus Y=4.5) avec Garde-Corps
+      const catwalkFloorMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.6, metalness: 0.8 });
+      const catwalkRailMat = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.4, metalness: 0.6 });
+      const catwalkSpans = [
+        { x: 0, z: -25, lengthX: 28, lengthZ: 2.2 }, // Pont aérien Cryo-Armurerie
+        { x: 0, z: 25, lengthX: 28, lengthZ: 2.2 },  // Pont aérien Réacteur-Ruche
+        { x: -15, z: 0, lengthX: 2.2, lengthZ: 46 }   // Galerie Ouest surplombant le corridor
+      ];
+      this.elevatedCatwalks = catwalkSpans;
+      catwalkSpans.forEach((span, sIdx) => {
+        const catwalkGroup = new THREE.Group();
+        catwalkGroup.position.set(span.x, 4.5, span.z);
+        const floor = new THREE.Mesh(new THREE.BoxGeometry(span.lengthX, 0.15, span.lengthZ), catwalkFloorMat);
+        catwalkGroup.add(floor);
+        // Garde-corps de sécurité
+        if (span.lengthX > span.lengthZ) {
+          for (let side = -1; side <= 1; side += 2) {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(span.lengthX, 0.85, 0.08), catwalkRailMat);
+            rail.position.set(0, 0.45, side * (span.lengthZ / 2));
+            catwalkGroup.add(rail);
+          }
+        } else {
+          for (let side = -1; side <= 1; side += 2) {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.85, span.lengthZ), catwalkRailMat);
+            rail.position.set(side * (span.lengthX / 2), 0.45, 0);
+            catwalkGroup.add(rail);
+          }
+        }
+        rendererEngine.propsGroup.add(catwalkGroup);
+      });
+
+      // 3. Bandes Chevrons de Danger au Sol (Hazard Stripes autour des zones critiques)
+      const hazardStripeMat = new THREE.MeshBasicMaterial({ color: 0xeab308, transparent: true, opacity: 0.42 });
+      const hazardDecals = [
+        { x: -45, z: 45, width: 14, depth: 14 }, // Périmètre Réacteur
+        { x: 10, z: 60, width: 8, depth: 8 },    // Périmètre Presse à Scories
+        { x: -10, z: 55, width: 7, depth: 7 },   // Périmètre Bassin Toxique
+        { x: 60, z: 15, width: 5, depth: 14 }    // Périmètre Voies 750V Sevastopol
+      ];
+      hazardDecals.forEach((hd, hIdx) => {
+        const decalMesh = new THREE.Mesh(new THREE.PlaneGeometry(hd.width, hd.depth), hazardStripeMat);
+        decalMesh.rotation.x = -Math.PI / 2;
+        decalMesh.position.set(hd.x, 0.02, hd.z);
+        rendererEngine.mapGroup.add(decalMesh);
+      });
+
       // Audit QA #72 : Reflets Dynamiques et Caustiques Lumineuses dans les Flaques
       const causticMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.28 });
       const causticGeo1 = new THREE.PlaneGeometry(4.6, 3.8);
@@ -10870,6 +11372,17 @@
       this.updateCorbelDockingClamps(safeDelta);
       this.updateOverheadCocoons(safeDelta);
       this.updateAtmosphericCondensation(safeDelta);
+      this.updateNarcissusBoardingRamps(safeDelta);
+      this.updateSeismicPistons(safeDelta);
+      this.updateFurnaceBellowsDucts(safeDelta);
+      this.updateCryoSurgicalSarcophagi(safeDelta);
+      this.updateFuelSiphonPylons(safeDelta);
+      this.updateSecurityShutterDoors(safeDelta);
+      this.updateProcessingSumpSiphons(safeDelta);
+      this.updateMunitionsHeavyPallets(safeDelta);
+      this.updateSyntheticRechargeBays(safeDelta);
+      this.updateFoundryGantryHoists(safeDelta);
+      this.updateWaterPuddleSplashes(safeDelta);
 
       // Audit QA #25 : Frustum culling optimisé et masquage automatique des props hors champ à plus de 45m
       this.cullingTimer = (this.cullingTimer || 0) + safeDelta;
@@ -10966,6 +11479,16 @@
           ...(this.lorenzCommsDishes || []),
           ...(this.corbelDockingClamps || []),
           ...(this.overheadCocoons || []),
+          ...(this.narcissusBoardingRamps || []),
+          ...(this.seismicPistons || []),
+          ...(this.furnaceBellowsDucts || []),
+          ...(this.cryoSurgicalSarcophagi || []),
+          ...(this.fuelSiphonPylons || []),
+          ...(this.securityShutterDoors || []),
+          ...(this.processingSumpSiphons || []),
+          ...(this.munitionsHeavyPallets || []),
+          ...(this.syntheticRechargeBays || []),
+          ...(this.foundryGantryHoists || []),
           ...(this.reactorDisconnectConsoles || []),
           ...(this.m577APCs || []),
           ...(this.thermalSurveillancePosts || [])
@@ -16380,6 +16903,334 @@
       }
     }
 
+    // -------------------------------------------------------------------------
+    // Chantier 261 : Nostromo Narcissus Shuttle Boarding Ramp (Alien 1979)
+    // -------------------------------------------------------------------------
+    extendNarcissusRamp(ramp) {
+      if (!ramp) return false;
+      ramp.isExtended = !ramp.isExtended;
+      audioManager.playBoardingRampServoHum?.(ramp.x, ramp.z);
+      rendererEngine.addScreenShake?.(0.38, 0.25);
+      window.HiveSystems?.vfx?.burst?.(ramp.x, ramp.z, 0x38bdf8, 35, 0.3, 2.2);
+
+      if (ramp.isExtended) {
+        showToast('RAMPE NARCISSUS DÉPLOYÉE : Passerelle télescopique arrimée au module d\'évacuation !');
+        appendSensorLog('[NARCISSUS DOCK] Extension mécanique de la passerelle d\'évacuation d\'urgence.', 'alert');
+      } else {
+        showToast('RAMPE NARCISSUS RÉTRACTÉE : Sas pressurisé et rampe repliée.');
+        appendSensorLog('[NARCISSUS DOCK] Rétraction de la rampe navette.', 'bio');
+      }
+      return true;
+    }
+
+    updateNarcissusBoardingRamps(safeDelta) {
+      // Rampe télescopique
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 262 : Hadley's Hope Seismic Stabilizer Piston (Aliens 1986)
+    // -------------------------------------------------------------------------
+    triggerSeismicStabilizer(piston) {
+      if (!piston || piston.isPumping) return false;
+      piston.isPumping = true;
+      piston.pumpTimer = 6.0;
+      audioManager.playSeismicPistonThud?.(piston.x, piston.z);
+      rendererEngine.addScreenShake?.(0.7, 0.45);
+      window.HiveSystems?.vfx?.burst?.(piston.x, piston.z, 0xf97316, 50, 0.4, 3.2);
+      window.HiveSystems?.vfx?.ring?.(piston.x, piston.z, 0xea580c, 10.0);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - piston.x, h.z - piston.z) <= 9.0) {
+          h.staggerTimer = 5.0;
+          h.speedModifier = 0.3;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, 'ONDE DE CHOC SISMIQUE HADLEY !', '#f97316', true);
+        }
+      });
+      showToast('PISTON SISMIQUE DÉCLENCHÉ : Secousse tellurique et onde de choc dans le substrat !');
+      appendSensorLog('[SEISMIC STABILIZER] Battement de piston haute pression. Secousse tellurique.', 'alert');
+      return true;
+    }
+
+    updateSeismicPistons(safeDelta) {
+      (this.seismicPistons || []).forEach((sp) => {
+        if (sp.isPumping && sp.pumpTimer > 0) {
+          sp.pumpTimer -= safeDelta;
+          if (sp.pumpTimer <= 0) sp.isPumping = false;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 263 : Fiorina 161 Furnace Bellows Duct & Draft Injector (Alien 3)
+    // -------------------------------------------------------------------------
+    purgeFurnaceBellows(duct) {
+      if (!duct || duct.isPurging) return false;
+      duct.isPurging = true;
+      duct.purgeTimer = 8.0;
+      audioManager.playFurnaceDraftBlast?.(duct.x, duct.z);
+      rendererEngine.addScreenShake?.(0.55, 0.35);
+      window.HiveSystems?.vfx?.burst?.(duct.x, duct.z, 0xf97316, 55, 0.4, 3.4);
+      window.HiveSystems?.vfx?.ring?.(duct.x, duct.z, 0xc2410c, 8.5);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - duct.x, h.z - duct.z) <= 7.5) {
+          h.takeDamage?.(240, playerCreature);
+          h.staggerTimer = 4.0;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-240 SOUFFLAGE THERMIQUE HAUT FOURNEAU !', '#f97316', true);
+        }
+      });
+      resinGrid.damageResinNodes?.(duct.x, duct.z, 8.0, 'fire');
+      showToast('SOUFFLET DE FONDERIE PURGÉ : Déferlante de gaz de combustion surchauffé !');
+      appendSensorLog('[FURNACE DRAFT] Injection d\'air forcé et retour de flammes du haut fourneau.', 'alert');
+      return true;
+    }
+
+    updateFurnaceBellowsDucts(safeDelta) {
+      (this.furnaceBellowsDucts || []).forEach((fb) => {
+        if (fb.isPurging && fb.purgeTimer > 0) {
+          fb.purgeTimer -= safeDelta;
+          if (fb.purgeTimer <= 0) fb.isPurging = false;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 264 : USM Auriga Cryo-Surgical Stasis Sarcophagus (Alien Resurrection)
+    // -------------------------------------------------------------------------
+    unsealCryoSarcophagus(sarcophagus) {
+      if (!sarcophagus || sarcophagus.isUnsealed) return false;
+      sarcophagus.isUnsealed = true;
+      audioManager.playCryoSarcophagusUnseal?.(sarcophagus.x, sarcophagus.z);
+      rendererEngine.addScreenShake?.(0.4, 0.25);
+      window.HiveSystems?.vfx?.burst?.(sarcophagus.x, sarcophagus.z, 0x06b6d4, 45, 0.35, 2.8);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - sarcophagus.x, h.z - sarcophagus.z) <= 6.0) {
+          h.staggerTimer = 4.0;
+          h.speedModifier = 0.45;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, 'CHOC STASIQUE CRYO-CHIRURGICAL !', '#06b6d4', true);
+        }
+      });
+      showToast('SARCOPHAGE CHIRURGICAL DÉVERROUILLÉ : Brèche de stase et gaz anesthésiant libéré !');
+      appendSensorLog('[STASIS CELL] Décompression du sarcophage cryo-chirurgical Auriga.', 'alert');
+      return true;
+    }
+
+    updateCryoSurgicalSarcophagi(safeDelta) {
+      // Sarcophage passif
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 265 : Renaissance Station Fuel Siphon Pylon (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    overpressureFuelSiphon(pylon) {
+      if (!pylon || pylon.isVenting) return false;
+      pylon.isVenting = true;
+      pylon.ventTimer = 10.0;
+      audioManager.playFuelSiphonSurge?.(pylon.x, pylon.z);
+      rendererEngine.addScreenShake?.(0.5, 0.3);
+      window.HiveSystems?.vfx?.burst?.(pylon.x, pylon.z, 0xf59e0b, 50, 0.4, 3.2);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - pylon.x, h.z - pylon.z) <= 8.0) {
+          h.takeDamage?.(200, playerCreature);
+          h.staggerTimer = 3.5;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-200 SURPRESSION DE PROPERGOL !', '#f59e0b', true);
+        }
+      });
+      resinGrid.damageResinNodes?.(pylon.x, pylon.z, 8.0, 'fire');
+      showToast('PYLÔNE DE SIPHONNAGE EN SURPRESSION : Jet de propergol inflammable pulvérisé !');
+      appendSensorLog('[FUEL SIPHON] Échappement haute pression du circuit d\'alimentation propergol.', 'alert');
+      return true;
+    }
+
+    updateFuelSiphonPylons(safeDelta) {
+      (this.fuelSiphonPylons || []).forEach((fp) => {
+        if (fp.isVenting && fp.ventTimer > 0) {
+          fp.ventTimer -= safeDelta;
+          if (fp.ventTimer <= 0) fp.isVenting = false;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 266 : Sevastopol Security Roll-Up Shutter (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    toggleSecurityShutter(shutter) {
+      if (!shutter) return false;
+      shutter.isClosed = !shutter.isClosed;
+      audioManager.playShutterDoorRattle?.(shutter.x, shutter.z);
+      rendererEngine.addScreenShake?.(0.42, 0.3);
+      window.HiveSystems?.vfx?.burst?.(shutter.x, shutter.z, 0xef4444, 40, 0.3, 2.5);
+
+      if (shutter.isClosed) {
+        showToast('RIDEAU DE SÉCURITÉ ABAISSÉ : Confinement du couloir activé !');
+        appendSensorLog('[SHUTTER LOCK] Descente motorisée du rideau blindé Seegson.', 'alert');
+      } else {
+        showToast('RIDEAU DE SÉCURITÉ RELEVÉ : Voie de passage dégagée.');
+        appendSensorLog('[SHUTTER UNLOCK] Relevage du rideau de sécurité.', 'bio');
+      }
+      return true;
+    }
+
+    updateSecurityShutterDoors(safeDelta) {
+      (this.securityShutterDoors || []).forEach((sd) => {
+        if (sd.mesh) {
+          const panel = sd.mesh.children?.find((c) => c.name === 'shutter_corrugated_curtain');
+          if (panel) {
+            panel.position.y = sd.isClosed ? 1.4 : 2.6;
+          }
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 267 : Processing Sump Siphon (Aliens 1986)
+    // -------------------------------------------------------------------------
+    flushProcessingSump(siphon) {
+      if (!siphon || siphon.isFlushing) return false;
+      siphon.isFlushing = true;
+      siphon.flushTimer = 8.0;
+      audioManager.playSumpPumpGargle?.(siphon.x, siphon.z);
+      rendererEngine.addScreenShake?.(0.45, 0.3);
+      window.HiveSystems?.vfx?.burst?.(siphon.x, siphon.z, 0x84cc16, 45, 0.35, 2.6);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - siphon.x, h.z - siphon.z) <= 7.0) {
+          h.takeDamage?.(190, playerCreature);
+          h.staggerTimer = 4.0;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-190 REFLUX PUISARD CAUSTIQUE !', '#84cc16', true);
+        }
+      });
+      resinGrid.damageResinNodes?.(siphon.x, siphon.z, 7.0, 'acid');
+      showToast('PUISARD EN REFLUX : Bouillonnement de boues chimiques acides !');
+      appendSensorLog('[SUMP SIPHON] Débordement de la pompe de relevage du sous-niveau 2.', 'alert');
+      return true;
+    }
+
+    updateProcessingSumpSiphons(safeDelta) {
+      (this.processingSumpSiphons || []).forEach((ps) => {
+        if (ps.isFlushing && ps.flushTimer > 0) {
+          ps.flushTimer -= safeDelta;
+          if (ps.flushTimer <= 0) ps.isFlushing = false;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 268 : USCM Munitions Heavy Pallet (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    detonateMunitionsPallet(pallet) {
+      if (!pallet || pallet.isDetonated) return false;
+      pallet.isDetonated = true;
+      audioManager.playAmmoPalletClatter?.(pallet.x, pallet.z);
+      rendererEngine.addScreenShake?.(0.75, 0.45);
+      window.HiveSystems?.vfx?.burst?.(pallet.x, pallet.z, 0xf97316, 65, 0.45, 3.8);
+      window.HiveSystems?.vfx?.ring?.(pallet.x, pallet.z, 0xeab308, 12.0);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - pallet.x, h.z - pallet.z) <= 9.0) {
+          h.takeDamage?.(380, playerCreature);
+          h.staggerTimer = 5.5;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.4, h.z, '-380 EXPLOSION PALETTE MUNITIONS USCM !', '#f97316', true);
+        }
+      });
+      resinGrid.damageResinNodes?.(pallet.x, pallet.z, 9.0, 'fire');
+      showToast('PALETTE USCM DÉTONÉE : Explosion de caisses de cartouches et shrapnels !');
+      appendSensorLog('[AMMO DEPOT] Détonation par sympathie des stocks de munitions M41A.', 'alert');
+      return true;
+    }
+
+    updateMunitionsHeavyPallets(safeDelta) {
+      // Palette passive
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 269 : Sevastopol Synthetic Recharge Bay (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    overloadSyntheticBay(bay) {
+      if (!bay || bay.isOverloaded) return false;
+      bay.isOverloaded = true;
+      bay.overloadTimer = 12.0;
+      audioManager.playSyntheticBayHum?.(bay.x, bay.z);
+      rendererEngine.addScreenShake?.(0.5, 0.3);
+      window.HiveSystems?.vfx?.burst?.(bay.x, bay.z, 0x0284c7, 50, 0.4, 3.0);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && (h.isSynthetic || Math.hypot(h.x - bay.x, h.z - bay.z) <= 8.0)) {
+          const dmg = h.isSynthetic ? 400 : 160;
+          h.takeDamage?.(dmg, playerCreature);
+          h.staggerTimer = 5.0;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, `-${dmg} SURTENSION ALCÔVE CHARGE !`, '#0284c7', true);
+        }
+      });
+      showToast('ALCÔVE DE CHARGE SURVOLTÉE : Décharge capacitive perturbant les synthétiques !');
+      appendSensorLog('[SYNTH BAY] Surtension 400V des broches d\'amarrage Working Joe.', 'alert');
+      return true;
+    }
+
+    updateSyntheticRechargeBays(safeDelta) {
+      (this.syntheticRechargeBays || []).forEach((rb) => {
+        if (rb.isOverloaded && rb.overloadTimer > 0) {
+          rb.overloadTimer -= safeDelta;
+          if (rb.overloadTimer <= 0) rb.isOverloaded = false;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 270 : Fiorina Foundry Gantry Overhead Hoist (Alien 3)
+    // -------------------------------------------------------------------------
+    dropFoundryGantryLadle(hoist) {
+      if (!hoist || hoist.isDropped) return false;
+      hoist.isDropped = true;
+      audioManager.playGantryHoistRattle?.(hoist.x, hoist.z);
+      rendererEngine.addScreenShake?.(0.7, 0.45);
+      window.HiveSystems?.vfx?.burst?.(hoist.x, hoist.z, 0xf59e0b, 65, 0.45, 3.8);
+      window.HiveSystems?.vfx?.ring?.(hoist.x, hoist.z, 0xd97706, 11.0);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - hoist.x, h.z - hoist.z) <= 8.5) {
+          h.takeDamage?.(420, playerCreature);
+          h.staggerTimer = 5.5;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.4, h.z, '-420 CHUTE CREUSET DE PLOMB EN FUSION !', '#f59e0b', true);
+        }
+      });
+      showToast('PONT ROULANT EFFONDRÉ : Chute du creuset de plomb liquide sur le secteur !');
+      appendSensorLog('[FOUNDRY HOIST] Rupture des câbles de pont roulant. Épanchement de plomb liquide.', 'alert');
+      return true;
+    }
+
+    updateFoundryGantryHoists(safeDelta) {
+      (this.foundryGantryHoists || []).forEach((gh) => {
+        if (gh.isDropped && gh.mesh) {
+          const ladle = gh.mesh.children?.find((c) => c.name === 'hoist_molten_ladle');
+          if (ladle) ladle.position.y = 0.45;
+        }
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Audit QA #81 : Éclaboussures d'Eau & Ondes de Pas Dynamiques
+    // -------------------------------------------------------------------------
+    updateWaterPuddleSplashes(safeDelta) {
+      const nearPuddle = (this.waterPuddles || []).some((wp) => Math.hypot(wp.x - playerCreature.x, wp.z - playerCreature.z) <= wp.radius);
+      if (nearPuddle && (Math.abs(playerCreature.vx || 0) > 0.05 || Math.abs(playerCreature.vz || 0) > 0.05)) {
+        if (Math.random() < 0.08) {
+          audioManager.playPuddleFootstepSplash?.(playerCreature.x, playerCreature.z);
+          window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0x38bdf8, 1.8);
+        }
+      }
+    }
+
     // Audit QA #30 : Garbage Collection Proactif Three.js (Libération systématique RAM)
     cleanThreeResources(object) {
       if (!object) return;
@@ -16706,6 +17557,29 @@
       }
       const el = document.getElementById('hive-resin');
       if (el) el.textContent = `${this.totalCoverage}%`;
+      return true;
+    }
+    // Audit QA #83 : Dégradation Structurelle de la Résine Organique sous Impact Acide / Flammes
+    damageResinNodes(x, z, radius = 5.0, damageType = 'acid') {
+      const affectedNodes = (this.nodes || []).filter((node) => Math.hypot(node.x - x, node.z - z) <= node.radius + radius);
+      if (affectedNodes.length === 0) return false;
+      const isAcid = damageType === 'acid';
+      const vfxColor = isAcid ? 0x84cc16 : 0xf97316;
+      const textLabel = isAcid ? 'RÉSINE DISSOLTE (ACIDE) !' : 'RÉSINE CALCINÉE (FEU) !';
+      const textColor = isAcid ? '#84cc16' : '#f97316';
+
+      affectedNodes.forEach((node) => {
+        if (node.mesh) {
+          node.mesh.scale.multiplyScalar(0.82);
+          window.HiveSystems?.vfx?.burst?.(node.x, node.z, vfxColor, 20, 0.25, 1.8);
+          window.HiveSystems?.vfx?.floatingText?.(node.x, 1.5, node.z, textLabel, textColor, false);
+        }
+      });
+      if (isAcid) {
+        audioManager.playAcidBurnSizzle?.(x, z);
+      } else {
+        audioManager.playNapalmFlameStream?.(x, z);
+      }
       return true;
     }
     reset() {
@@ -24326,6 +25200,31 @@
       const distDockClamp = (stationMap.corbelDockingClamps || []).find((dc) => !dc.isReleased && Math.hypot(dc.x - playerCreature.x, dc.z - playerCreature.z) <= 15);
       if (distDockClamp) stationMap.releaseDockingClamp(distDockClamp);
 
+      // Chantiers 261 à 270 : Crachat acide balistique sur props Vague 27
+      const distRamp = (stationMap.narcissusBoardingRamps || []).find((nr) => Math.hypot(nr.x - playerCreature.x, nr.z - playerCreature.z) <= 15);
+      if (distRamp) stationMap.extendNarcissusRamp(distRamp);
+      const distSeismic = (stationMap.seismicPistons || []).find((sp) => !sp.isPumping && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 15);
+      if (distSeismic) stationMap.triggerSeismicStabilizer(distSeismic);
+      const distBellows = (stationMap.furnaceBellowsDucts || []).find((fb) => !fb.isPurging && Math.hypot(fb.x - playerCreature.x, fb.z - playerCreature.z) <= 15);
+      if (distBellows) stationMap.purgeFurnaceBellows(distBellows);
+      const distSarcophagus = (stationMap.cryoSurgicalSarcophagi || []).find((cs) => !cs.isUnsealed && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 15);
+      if (distSarcophagus) stationMap.unsealCryoSarcophagus(distSarcophagus);
+      const distFuelPylon = (stationMap.fuelSiphonPylons || []).find((fp) => !fp.isVenting && Math.hypot(fp.x - playerCreature.x, fp.z - playerCreature.z) <= 15);
+      if (distFuelPylon) stationMap.overpressureFuelSiphon(distFuelPylon);
+      const distShutter = (stationMap.securityShutterDoors || []).find((sd) => Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 15);
+      if (distShutter) stationMap.toggleSecurityShutter(distShutter);
+      const distSump = (stationMap.processingSumpSiphons || []).find((ps) => !ps.isFlushing && Math.hypot(ps.x - playerCreature.x, ps.z - playerCreature.z) <= 15);
+      if (distSump) stationMap.flushProcessingSump(distSump);
+      const distAmmoPallet = (stationMap.munitionsHeavyPallets || []).find((mp) => !mp.isDetonated && Math.hypot(mp.x - playerCreature.x, mp.z - playerCreature.z) <= 15);
+      if (distAmmoPallet) stationMap.detonateMunitionsPallet(distAmmoPallet);
+      const distRechargeBay = (stationMap.syntheticRechargeBays || []).find((rb) => !rb.isOverloaded && Math.hypot(rb.x - playerCreature.x, rb.z - playerCreature.z) <= 15);
+      if (distRechargeBay) stationMap.overloadSyntheticBay(distRechargeBay);
+      const distGantryHoist = (stationMap.foundryGantryHoists || []).find((gh) => !gh.isDropped && Math.hypot(gh.x - playerCreature.x, gh.z - playerCreature.z) <= 15);
+      if (distGantryHoist) stationMap.dropFoundryGantryLadle(distGantryHoist);
+
+      // Audit QA #83 : Dégradation Structurelle de la Résine Organique sous Impact Acide
+      resinGrid.damageResinNodes?.(playerCreature.x, playerCreature.z, 14.0, 'acid');
+
       this.updateCooldownBadges();
       this.updateRoyalButton();
     }
@@ -24991,7 +25890,67 @@
         stationMap.releaseDockingClamp(nearDockClamp);
         return true;
       }
-      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur, brouilleur m56, cryo c60, arc-furnace weyland, torche éthylène, casai seegson, bio-stasis pathogène noir, transit mag-lev, halon 1301, mine claymore m20, échangeur ap14, camouflage résine, sevastopol jack, charge 15kv working joe, sas bio-alpha, réacteur nostromo, vapeur géothermique, éjection pyrotechnique, plomb fiorina, gondole sevastopol, cellule synthétique, rotor ventilation, épurateur atmo, inversion gravité, barricade uscm, serveur apollo, théâtre dissection, matrice cryo nostromo, passerelle chasm, bassin trempe fiorina, baie sans tain auriga, centrifugeuse cryo, rail 750v sevastopol, incinérateur medlab, grue atelier uscm, antenne lorenz, sas corbel) à portée immédiate.');
+      // 111. Rampe d'Accès Navette Narcissus (Chantier 261)
+      const nearRamp = (stationMap.narcissusBoardingRamps || []).find((nr) => Math.hypot(nr.x - playerCreature.x, nr.z - playerCreature.z) <= 6.5);
+      if (nearRamp) {
+        stationMap.extendNarcissusRamp(nearRamp);
+        return true;
+      }
+      // 112. Piston Stabilisateur Sismique Hadley (Chantier 262)
+      const nearSeismic = (stationMap.seismicPistons || []).find((sp) => !sp.isPumping && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 6.0);
+      if (nearSeismic) {
+        stationMap.triggerSeismicStabilizer(nearSeismic);
+        return true;
+      }
+      // 113. Soufflet Haut Fourneau Fiorina (Chantier 263)
+      const nearBellows = (stationMap.furnaceBellowsDucts || []).find((fb) => !fb.isPurging && Math.hypot(fb.x - playerCreature.x, fb.z - playerCreature.z) <= 6.0);
+      if (nearBellows) {
+        stationMap.purgeFurnaceBellows(nearBellows);
+        return true;
+      }
+      // 114. Sarcophage Stasique Cryo-Chirurgical Auriga (Chantier 264)
+      const nearSarco = (stationMap.cryoSurgicalSarcophagi || []).find((cs) => !cs.isUnsealed && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 6.0);
+      if (nearSarco) {
+        stationMap.unsealCryoSarcophagus(nearSarco);
+        return true;
+      }
+      // 115. Pylône de Siphonnage Propergol Renaissance (Chantier 265)
+      const nearFuelPylon = (stationMap.fuelSiphonPylons || []).find((fp) => !fp.isVenting && Math.hypot(fp.x - playerCreature.x, fp.z - playerCreature.z) <= 6.0);
+      if (nearFuelPylon) {
+        stationMap.overpressureFuelSiphon(nearFuelPylon);
+        return true;
+      }
+      // 116. Rideau Roulant de Sécurité Sevastopol (Chantier 266)
+      const nearShutter = (stationMap.securityShutterDoors || []).find((sd) => Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 6.0);
+      if (nearShutter) {
+        stationMap.toggleSecurityShutter(nearShutter);
+        return true;
+      }
+      // 117. Siphon Puisard Traitement Hadley (Chantier 267)
+      const nearSump = (stationMap.processingSumpSiphons || []).find((ps) => !ps.isFlushing && Math.hypot(ps.x - playerCreature.x, ps.z - playerCreature.z) <= 6.0);
+      if (nearSump) {
+        stationMap.flushProcessingSump(nearSump);
+        return true;
+      }
+      // 118. Palette Munitions Lourdes USCM (Chantier 268)
+      const nearPallet = (stationMap.munitionsHeavyPallets || []).find((mp) => !mp.isDetonated && Math.hypot(mp.x - playerCreature.x, mp.z - playerCreature.z) <= 6.0);
+      if (nearPallet) {
+        stationMap.detonateMunitionsPallet(nearPallet);
+        return true;
+      }
+      // 119. Alcôve Recharge Synthétiques Sevastopol (Chantier 269)
+      const nearSynthBay = (stationMap.syntheticRechargeBays || []).find((sb) => !sb.isOverloaded && Math.hypot(sb.x - playerCreature.x, sb.z - playerCreature.z) <= 6.0);
+      if (nearSynthBay) {
+        stationMap.overloadSyntheticBay(nearSynthBay);
+        return true;
+      }
+      // 120. Treuil de Pont Roulant Fonderie Fiorina (Chantier 270)
+      const nearHoist = (stationMap.foundryGantryHoists || []).find((gh) => !gh.isDropped && Math.hypot(gh.x - playerCreature.x, gh.z - playerCreature.z) <= 6.0);
+      if (nearHoist) {
+        stationMap.dropFoundryGantryLadle(nearHoist);
+        return true;
+      }
+      showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur, brouilleur m56, cryo c60, arc-furnace weyland, torche éthylène, casai seegson, bio-stasis pathogène noir, transit mag-lev, halon 1301, mine claymore m20, échangeur ap14, camouflage résine, sevastopol jack, charge 15kv working joe, sas bio-alpha, réacteur nostromo, vapeur géothermique, éjection pyrotechnique, plomb fiorina, gondole sevastopol, cellule synthétique, rotor ventilation, épurateur atmo, inversion gravité, barricade uscm, serveur apollo, théâtre dissection, matrice cryo nostromo, passerelle chasm, bassin trempe fiorina, baie sans tain auriga, centrifugeuse cryo, rail 750v sevastopol, incinérateur medlab, grue atelier uscm, antenne lorenz, sas corbel, rampe narcissus, piston sismique, soufflet fonderie, sarcophage stasique, siphon propergol, rideau roulant, puisard chimique, palette munitions, alcôve synthétique, treuil fonderie) à portée immédiate.');
       return false;
     }
 

@@ -6942,6 +6942,170 @@
         // Pince de préhension du creuset de fonderie
         root.add(this._box(hoistIron, { x: 2.2, y: 0.4, z: 1.2 }, { x: 0, y: 1.8, z: 0 }, 'hoist_clamp_beam'));
         root.add(this._cylinder(crucibleAmber, 0.75, 0.65, 0.9, { x: 0, y: 1.1, z: 0 }, { x: 0, y: 0, z: 0 }, 'hoist_molten_ladle'));
+      } else if (normalizedType === 'nostromo_coolant_hatch' || normalizedType === 'coolant_hatch') {
+        // Chantier 271 : Nostromo E-Deck Coolant Air-Lock Escape Hatch (Alien 1979)
+        const bronzeCollar = this._material('darkMetal', { color: 0x78350f, roughness: 0.5, metalness: 0.85 });
+        const hatchSteel = this._material('industrial', { color: 0x334155, roughness: 0.35, metalness: 0.9 });
+        const wheelAmber = this._material('hazard', { color: 0xd97706, roughness: 0.3, metalness: 0.8 });
+        const cryoFrost = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.2 });
+        // Cadre annulaire de sas mural
+        root.add(this._cylinder(bronzeCollar, 1.25, 1.25, 0.25, { x: 0, y: 1.5, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'coolant_hatch_collar'));
+        // Porte circulaire de sas sous pression
+        root.add(this._cylinder(hatchSteel, 1.05, 1.05, 0.22, { x: 0, y: 1.5, z: 0.08 }, { x: Math.PI / 2, y: 0, z: 0 }, 'coolant_hatch_door'));
+        // Volant central de déverrouillage manuel
+        root.add(this._torus(wheelAmber, 0.38, 0.045, { x: 0, y: 1.5, z: 0.24 }, { x: 0, y: 0, z: 0 }, 'coolant_hatch_wheel'));
+        // 4 Clavettes de verrouillage radiales
+        for (let a = 0; a < 4; a++) {
+          const ang = (a * Math.PI) / 2;
+          root.add(this._box(hatchSteel, { x: 0.12, y: 0.38, z: 0.1 }, { x: Math.cos(ang) * 0.85, y: 1.5 + Math.sin(ang) * 0.85, z: 0.18 }, `hatch_dog_bolt_${a}`));
+        }
+        // Buse de purge cryogénique givrante
+        root.add(this._cylinder(cryoFrost, 0.12, 0.16, 0.3, { x: 0.65, y: 2.35, z: 0.12 }, { x: 0, y: 0, z: 0 }, 'coolant_purge_nozzle'));
+      } else if (normalizedType === 'hadley_coolant_flume' || normalizedType === 'coolant_flume') {
+        // Chantier 272 : Hadley's Hope Atmosphere Processor Core Coolant Flume (Aliens 1986)
+        const flumeIron = this._material('darkMetal', { color: 0x1e293b, roughness: 0.65, metalness: 0.85 });
+        const copperFins = this._material('hazard', { color: 0xb45309, roughness: 0.4, metalness: 0.75 });
+        const toxicLiquid = this._material('emissiveAcid', { color: 0x10b981, emissive: 0x059669, emissiveIntensity: 2.4, transparent: true, opacity: 0.85 });
+        const grateMesh = this._material('industrial', { color: 0x475569, roughness: 0.5, metalness: 0.9 });
+        // Rigole en auge industrielle
+        root.add(this._box(flumeIron, { x: 1.4, y: 0.65, z: 3.4 }, { x: 0, y: 0.32, z: 0 }, 'flume_chassis', true));
+        // Canal de liquide caloporteur caustique
+        root.add(this._box(toxicLiquid, { x: 0.95, y: 0.2, z: 3.2 }, { x: 0, y: 0.45, z: 0 }, 'flume_toxic_fluid'));
+        // Grille de protection supérieure
+        root.add(this._box(grateMesh, { x: 1.1, y: 0.05, z: 3.3 }, { x: 0, y: 0.65, z: 0 }, 'flume_top_grate'));
+        // 4 Rangs d'ailettes thermiques de dissipation en cuivre
+        for (let i = -1; i <= 1; i += 2) {
+          root.add(this._box(copperFins, { x: 0.2, y: 0.55, z: 2.8 }, { x: i * 0.75, y: 0.35, z: 0 }, `flume_radiator_fins_${i}`));
+        }
+      } else if (normalizedType === 'fiorina_counterweight_piston' || normalizedType === 'counterweight_piston') {
+        // Chantier 273 : Fiorina 161 Ventilation Shaft Heavy Counterweight Piston (Alien 3)
+        const frameIron = this._material('darkMetal', { color: 0x0f172a, roughness: 0.7, metalness: 0.9 });
+        const blockCast = this._material('industrial', { color: 0x18181b, roughness: 0.5, metalness: 0.92 });
+        const steelCable = this._material('industrial', { color: 0x94a3b8, roughness: 0.25, metalness: 0.95 });
+        const damperLead = this._material('darkMetal', { color: 0x334155, roughness: 0.8, metalness: 0.6 });
+        // Rails verticaux de guidage de gaine
+        for (let s = -1; s <= 1; s += 2) {
+          root.add(this._box(frameIron, { x: 0.18, y: 4.8, z: 0.22 }, { x: s * 0.75, y: 2.4, z: 0 }, `piston_guide_rail_${s}`, true));
+        }
+        // Masse de contrepoids 5 tonnes en fonte
+        root.add(this._box(blockCast, { x: 1.35, y: 1.6, z: 0.9 }, { x: 0, y: 2.8, z: 0 }, 'piston_counterweight_block', true));
+        // Câbles tressés de suspension
+        for (let c = -1; c <= 1; c += 2) {
+          root.add(this._cylinder(steelCable, 0.035, 0.035, 4.2, { x: c * 0.45, y: 2.6, z: 0 }, { x: 0, y: 0, z: 0 }, `piston_cable_${c}`));
+        }
+        // Butée d'amortisseur basse
+        root.add(this._cylinder(damperLead, 0.45, 0.55, 0.45, { x: 0, y: 0.22, z: 0 }, { x: 0, y: 0, z: 0 }, 'piston_base_bumper'));
+      } else if (normalizedType === 'auriga_bioreactor_dome' || normalizedType === 'bioreactor_dome') {
+        // Chantier 274 : USM Auriga Gene-Sequencing Bioreactor Dome & Culturing Vat (Alien Resurrection)
+        const vatPlinth = this._material('darkMetal', { color: 0x0f172a, roughness: 0.45, metalness: 0.85 });
+        const vatDome = this._material('emissiveBlue', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 1.5, transparent: true, opacity: 0.48 });
+        const dnaHelix = this._material('emissiveAcid', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.8 });
+        const hosePoly = this._material('industrial', { color: 0x475569, roughness: 0.3, metalness: 0.8 });
+        // Socle de contention bio-médicale
+        root.add(this._cylinder(vatPlinth, 1.25, 1.35, 0.65, { x: 0, y: 0.32, z: 0 }, { x: 0, y: 0, z: 0 }, 'bioreactor_base_plinth'));
+        // Dôme vitré de séquençage génétique
+        root.add(this._sphere(vatDome, 1.05, { x: 0, y: 1.35, z: 0 }, 'bioreactor_glass_dome'));
+        // Hélice de culture ADN centrale
+        root.add(this._cylinder(dnaHelix, 0.25, 0.25, 1.2, { x: 0, y: 1.35, z: 0 }, { x: 0, y: 0, z: 0 }, 'bioreactor_dna_core'));
+        // Tubulures d'infusion et pompes
+        for (let p = 0; p < 3; p++) {
+          const pang = (p * Math.PI * 2) / 3;
+          root.add(this._cylinder(hosePoly, 0.05, 0.05, 1.4, { x: Math.cos(pang) * 1.05, y: 0.9, z: Math.sin(pang) * 1.05 }, { x: 0.25, y: pang, z: 0 }, `bioreactor_hose_${p}`));
+        }
+      } else if (normalizedType === 'remus_gantry_rail' || normalizedType === 'gantry_rail') {
+        // Chantier 275 : Renaissance Station Remus Module Cargo Gantry Rail (Alien: Romulus)
+        const railSteel = this._material('darkMetal', { color: 0x334155, roughness: 0.4, metalness: 0.9 });
+        const carriageIron = this._material('industrial', { color: 0x1e293b, roughness: 0.6, metalness: 0.85 });
+        const hookHazard = this._material('hazard', { color: 0xeab308, roughness: 0.35, metalness: 0.75 });
+        const beaconAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.8 });
+        // Poutre de guidage en I
+        root.add(this._box(railSteel, { x: 3.8, y: 0.38, z: 0.45 }, { x: 0, y: 4.6, z: 0 }, 'gantry_rail_beam', true));
+        // Chariot motorisé suspendu
+        root.add(this._box(carriageIron, { x: 1.1, y: 0.55, z: 0.85 }, { x: 0, y: 4.15, z: 0 }, 'gantry_travel_carriage'));
+        // Câble et crochet lourd de levage
+        root.add(this._cylinder(railSteel, 0.04, 0.04, 1.6, { x: 0, y: 3.1, z: 0 }, { x: 0, y: 0, z: 0 }, 'gantry_hoist_cable'));
+        root.add(this._torus(hookHazard, 0.28, 0.07, { x: 0, y: 2.1, z: 0 }, { x: 0, y: 0, z: 0 }, 'gantry_cargo_hook'));
+        // Feux à éclats d'avertissement de zone
+        for (let b = -1; b <= 1; b += 2) {
+          root.add(this._cylinder(beaconAmber, 0.07, 0.07, 0.14, { x: b * 1.7, y: 4.85, z: 0 }, { x: 0, y: 0, z: 0 }, `gantry_beacon_${b}`));
+        }
+      } else if (normalizedType === 'seegson_test_booth' || normalizedType === 'test_booth') {
+        // Chantier 276 : Sevastopol Seegson Synthetic Testing Chamber Observation Booth (Alien: Isolation)
+        const boothShell = this._material('industrial', { color: 0x334155, roughness: 0.5, metalness: 0.8 });
+        const windowGlass = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.2, transparent: true, opacity: 0.52 });
+        const consoleCrt = this._material('emissiveAcid', { color: 0x22c55e, emissive: 0x15803d, emissiveIntensity: 2.4 });
+        const seatFabric = this._material('darkMetal', { color: 0x1e293b, roughness: 0.7, metalness: 0.5 });
+        // Châssis arrondi de cabine d'observation
+        root.add(this._box(boothShell, { x: 1.8, y: 2.6, z: 1.6 }, { x: 0, y: 1.3, z: 0 }, 'booth_outer_chassis', true));
+        // Hublot de surveillance panoramique
+        root.add(this._box(windowGlass, { x: 1.45, y: 1.1, z: 0.1 }, { x: 0, y: 1.5, z: 0.82 }, 'booth_observation_window'));
+        // Console pupitre Seegson avec écran CRT vert
+        root.add(this._box(boothShell, { x: 1.1, y: 0.85, z: 0.55 }, { x: 0, y: 0.85, z: 0.4 }, 'booth_diagnostic_desk'));
+        root.add(this._box(consoleCrt, { x: 0.65, y: 0.42, z: 0.05 }, { x: 0, y: 1.15, z: 0.42 }, 'booth_crt_monitor'));
+        // Siège de diagnostic avec pinces
+        root.add(this._box(seatFabric, { x: 0.65, y: 0.85, z: 0.65 }, { x: 0, y: 0.65, z: -0.3 }, 'booth_restraint_chair'));
+      } else if (normalizedType === 'medlab_incubator_rack' || normalizedType === 'incubator_rack') {
+        // Chantier 277 : Hadley's Hope MedLab Incubator Battery Rack (Aliens 1986)
+        const rackFrame = this._material('industrial', { color: 0x1e293b, roughness: 0.55, metalness: 0.85 });
+        const chamberPlexi = this._material('emissiveBlue', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 1.2, transparent: true, opacity: 0.42 });
+        const o2Cylinder = this._material('hazard', { color: 0x10b981, roughness: 0.35, metalness: 0.8 });
+        const ecgMonitor = this._material('emissiveAcid', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.2 });
+        // Étagère métallique hospitalière
+        root.add(this._box(rackFrame, { x: 1.8, y: 2.4, z: 0.9 }, { x: 0, y: 1.2, z: 0 }, 'incubator_rack_frame', true));
+        // 2 Couveuses de soins intensifs sous cloche
+        for (let t = 0; t < 2; t++) {
+          root.add(this._box(chamberPlexi, { x: 1.4, y: 0.55, z: 0.72 }, { x: 0, y: 0.65 + t * 0.95, z: 0.05 }, `incubator_capsule_${t}`));
+          root.add(this._box(ecgMonitor, { x: 0.35, y: 0.25, z: 0.05 }, { x: 0.5, y: 0.75 + t * 0.95, z: 0.42 }, `incubator_ecg_${t}`));
+        }
+        // Bonbonne d'oxygène médical pressurisée
+        root.add(this._cylinder(o2Cylinder, 0.16, 0.16, 1.1, { x: -0.72, y: 0.65, z: 0.35 }, { x: 0, y: 0, z: 0 }, 'incubator_o2_bottle'));
+      } else if (normalizedType === 'uscm_sandbag_bunker' || normalizedType === 'sandbag_bunker') {
+        // Chantier 278 : USCM Sentry Bunker Perimeter Sandbag Emplacement (Aliens: Dark Descent)
+        const sandbagTex = this._material('darkMetal', { color: 0x78716c, roughness: 0.85, metalness: 0.2 });
+        const armorPlate = this._material('darkMetal', { color: 0x1f2937, roughness: 0.5, metalness: 0.9 });
+        const floodLight = this._material('emissiveAmber', { color: 0xfde047, emissive: 0xeab308, emissiveIntensity: 2.6 });
+        const ammoCrate = this._material('hazard', { color: 0x15803d, roughness: 0.4, metalness: 0.7 });
+        // Barricade semi-circulaire de sacs de sable empilés
+        for (let layer = 0; layer < 3; layer++) {
+          for (let seg = -2; seg <= 2; seg++) {
+            const rad = 1.35;
+            const ang = (seg * Math.PI) / 6;
+            root.add(this._box(sandbagTex, { x: 0.55, y: 0.28, z: 0.32 }, { x: Math.sin(ang) * rad, y: 0.15 + layer * 0.28, z: Math.cos(ang) * rad }, `sandbag_${layer}_${seg}`, true));
+          }
+        }
+        // Plaque de blindage avec fente de tir
+        root.add(this._box(armorPlate, { x: 1.6, y: 0.8, z: 0.08 }, { x: 0, y: 1.05, z: 1.1 }, 'bunker_shield_plate'));
+        // Projecteur halogène de périmètre
+        root.add(this._cylinder(floodLight, 0.14, 0.18, 0.22, { x: 0.85, y: 1.15, z: 0.9 }, { x: 0.35, y: 0, z: 0 }, 'bunker_halogen_spot'));
+        // Caisse de munitions USCM verte
+        root.add(this._box(ammoCrate, { x: 0.65, y: 0.4, z: 0.45 }, { x: -0.5, y: 0.2, z: 0 }, 'bunker_ammo_cache'));
+      } else if (normalizedType === 'habitation_louver_shutter' || normalizedType === 'louver_shutter') {
+        // Chantier 279 : Sevastopol Habitation Air Circulation Louver Shutter (Alien: Isolation)
+        const frameAlu = this._material('industrial', { color: 0x475569, roughness: 0.45, metalness: 0.85 });
+        const louverSlat = this._material('darkMetal', { color: 0x334155, roughness: 0.55, metalness: 0.8 });
+        const actuatorDrive = this._material('emissiveBlue', { color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 1.8 });
+        // Châssis encastré de ventilation
+        root.add(this._box(frameAlu, { x: 1.6, y: 2.2, z: 0.25 }, { x: 0, y: 1.2, z: 0 }, 'louver_outer_frame', true));
+        // 6 Lamelles horizontales orientables
+        for (let l = 0; l < 6; l++) {
+          root.add(this._box(louverSlat, { x: 1.35, y: 0.18, z: 0.04 }, { x: 0, y: 0.4 + l * 0.32, z: 0.05 }, `louver_blade_${l}`));
+        }
+        // Servomoteur d'orientation électrique
+        root.add(this._cylinder(actuatorDrive, 0.12, 0.12, 0.45, { x: 0.72, y: 1.2, z: 0.15 }, { x: 0, y: 0, z: 0 }, 'louver_servo_actuator'));
+      } else if (normalizedType === 'quench_overflow_weir' || normalizedType === 'overflow_weir') {
+        // Chantier 280 : Fiorina 161 Sub-Basement Quench Pit Grate & Overflow Weir (Alien 3)
+        const weirGrate = this._material('darkMetal', { color: 0x18181b, roughness: 0.7, metalness: 0.95 });
+        const sludgeFluid = this._material('darkMetal', { color: 0x451a03, roughness: 0.3, metalness: 0.6, transparent: true, opacity: 0.88 });
+        const gateValveWheel = this._material('hazard', { color: 0xb45309, roughness: 0.4, metalness: 0.8 });
+        const drainPipe = this._material('industrial', { color: 0x334155, roughness: 0.6, metalness: 0.85 });
+        // Fosse et grille caillebotis en fonte
+        root.add(this._box(weirGrate, { x: 2.2, y: 0.35, z: 2.2 }, { x: 0, y: 0.18, z: 0 }, 'weir_trench_grate', true));
+        // Surface de liquide boueux résiduel
+        root.add(this._box(sludgeFluid, { x: 1.85, y: 0.1, z: 1.85 }, { x: 0, y: 0.12, z: 0 }, 'weir_sludge_surface'));
+        // Tuyau d'écoulement de déversoir
+        root.add(this._cylinder(drainPipe, 0.28, 0.28, 1.8, { x: 0.95, y: 0.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'weir_overflow_riser'));
+        // Volant de vanne guillotine de trop-plein
+        root.add(this._torus(gateValveWheel, 0.32, 0.05, { x: 0.95, y: 1.65, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'weir_gate_wheel'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -9248,6 +9412,76 @@
     // -------------------------------------------------------------------------
     createFoundryGantryHoist() {
       return this.createIndustrialProp('foundry_gantry_hoist');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 271 : Nostromo E-Deck Coolant Air-Lock Escape Hatch (Alien 1979)
+    // -------------------------------------------------------------------------
+    createNostromoCoolantHatch() {
+      return this.createIndustrialProp('nostromo_coolant_hatch');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 272 : Hadley's Hope Atmosphere Processor Core Coolant Flume (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createHadleyCoolantFlume() {
+      return this.createIndustrialProp('hadley_coolant_flume');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 273 : Fiorina 161 Ventilation Shaft Heavy Counterweight Piston (Alien 3)
+    // -------------------------------------------------------------------------
+    createFiorinaCounterweightPiston() {
+      return this.createIndustrialProp('fiorina_counterweight_piston');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 274 : USM Auriga Gene-Sequencing Bioreactor Dome (Alien Resurrection)
+    // -------------------------------------------------------------------------
+    createAurigaBioreactorDome() {
+      return this.createIndustrialProp('auriga_bioreactor_dome');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 275 : Renaissance Station Remus Module Cargo Gantry Rail (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    createRemusGantryRail() {
+      return this.createIndustrialProp('remus_gantry_rail');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 276 : Sevastopol Seegson Synthetic Testing Chamber Observation Booth (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSeegsonTestBooth() {
+      return this.createIndustrialProp('seegson_test_booth');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 277 : Hadley's Hope MedLab Incubator Battery Rack (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createMedlabIncubatorRack() {
+      return this.createIndustrialProp('medlab_incubator_rack');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 278 : USCM Sentry Bunker Perimeter Sandbag Emplacement (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createUscmSandbagBunker() {
+      return this.createIndustrialProp('uscm_sandbag_bunker');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 279 : Sevastopol Habitation Air Circulation Louver Shutter (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createHabitationLouverShutter() {
+      return this.createIndustrialProp('habitation_louver_shutter');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 280 : Fiorina 161 Sub-Basement Quench Pit Grate & Overflow Weir (Alien 3)
+    // -------------------------------------------------------------------------
+    createQuenchOverflowWeir() {
+      return this.createIndustrialProp('quench_overflow_weir');
     }
   }
 

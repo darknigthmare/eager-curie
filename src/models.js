@@ -7106,6 +7106,169 @@
         root.add(this._cylinder(drainPipe, 0.28, 0.28, 1.8, { x: 0.95, y: 0.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'weir_overflow_riser'));
         // Volant de vanne guillotine de trop-plein
         root.add(this._torus(gateValveWheel, 0.32, 0.05, { x: 0.95, y: 1.65, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'weir_gate_wheel'));
+      } else if (normalizedType === 'nostromo_cooling_blower' || normalizedType === 'cooling_blower') {
+        // Chantier 281 : Nostromo Hypersleep Vault Central Cooling Blower (Alien 1979)
+        const blowerSteel = this._material('darkMetal', { color: 0x1e293b, roughness: 0.55, metalness: 0.88 });
+        const rotorBlades = this._material('industrial', { color: 0x64748b, roughness: 0.35, metalness: 0.9 });
+        const motorHousing = this._material('darkMetal', { color: 0x0f172a, roughness: 0.7, metalness: 0.9 });
+        const frostGlow = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.2 });
+        // Corps de turbine cylindrique
+        root.add(this._cylinder(blowerSteel, 1.15, 1.15, 1.8, { x: 0, y: 1.2, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'blower_turbine_casing', true));
+        // Moteur électrique d'entraînement arrière
+        root.add(this._cylinder(motorHousing, 0.65, 0.65, 0.8, { x: -1.2, y: 1.2, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'blower_drive_motor'));
+        // Pales de rotor de ventilation
+        for (let b = 0; b < 6; b++) {
+          const ang = (b * Math.PI) / 3;
+          root.add(this._box(rotorBlades, { x: 0.1, y: 0.95, z: 0.25 }, { x: 0.4, y: 1.2 + Math.sin(ang) * 0.45, z: Math.cos(ang) * 0.45 }, `blower_blade_${b}`));
+        }
+        // Conduites de refoulement caloporteur cryo givrantes
+        for (let p = -1; p <= 1; p += 2) {
+          root.add(this._cylinder(frostGlow, 0.18, 0.18, 1.4, { x: 0, y: 2.1, z: p * 0.65 }, { x: p * 0.3, y: 0, z: 0 }, `blower_frost_duct_${p}`));
+        }
+      } else if (normalizedType === 'hadley_tactical_table' || normalizedType === 'tactical_table') {
+        // Chantier 282 : Hadley's Hope Operations Tactical Holo-Table (Aliens 1986)
+        const tableBase = this._material('industrial', { color: 0x334155, roughness: 0.45, metalness: 0.85 });
+        const holoEmitter = this._material('darkMetal', { color: 0x0f172a, roughness: 0.6, metalness: 0.9 });
+        const holoMap = this._material('emissiveAcid', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.8, transparent: true, opacity: 0.65 });
+        const crtScreen = this._material('emissiveAmber', { color: 0xeab308, emissive: 0xd97706, emissiveIntensity: 2.0 });
+        // Socle hexagonal de table de commandement
+        root.add(this._cylinder(tableBase, 1.45, 1.6, 0.85, { x: 0, y: 0.42, z: 0 }, { x: 0, y: 0, z: 0 }, 'tactical_table_pedestal', true));
+        // Puits central d'émission holographique
+        root.add(this._cylinder(holoEmitter, 0.75, 0.75, 0.15, { x: 0, y: 0.88, z: 0 }, { x: 0, y: 0, z: 0 }, 'tactical_holo_well'));
+        // Projection holographique vectorielle volumétrique
+        root.add(this._cylinder(holoMap, 0.85, 0.45, 0.95, { x: 0, y: 1.45, z: 0 }, { x: 0, y: 0, z: 0 }, 'tactical_hologram_cone'));
+        // Pupitres opérateurs et moniteurs ambrés de statut
+        for (let t = 0; t < 4; t++) {
+          const tang = (t * Math.PI) / 2;
+          root.add(this._box(crtScreen, { x: 0.35, y: 0.22, z: 0.05 }, { x: Math.cos(tang) * 1.35, y: 0.95, z: Math.sin(tang) * 1.35 }, `tactical_monitor_${t}`));
+        }
+      } else if (normalizedType === 'fiorina_lead_sluice' || normalizedType === 'lead_sluice') {
+        // Chantier 283 : Fiorina 161 Molten Lead Drainage Sluice (Alien 3)
+        const sluiceBrick = this._material('darkMetal', { color: 0x27272a, roughness: 0.8, metalness: 0.7 });
+        const moltenLead = this._material('emissiveAmber', { color: 0xf97316, emissive: 0xd97706, emissiveIntensity: 3.2 });
+        const gateIron = this._material('industrial', { color: 0x18181b, roughness: 0.5, metalness: 0.95 });
+        const counterweightLead = this._material('darkMetal', { color: 0x3f3f46, roughness: 0.7, metalness: 0.85 });
+        // Rigole de coulée en briques réfractaires
+        root.add(this._box(sluiceBrick, { x: 1.4, y: 0.55, z: 3.6 }, { x: 0, y: 0.28, z: 0 }, 'lead_sluice_trough', true));
+        // Plomb liquide incandescent en fusion
+        root.add(this._box(moltenLead, { x: 0.95, y: 0.15, z: 3.4 }, { x: 0, y: 0.38, z: 0 }, 'lead_molten_stream'));
+        // Vanne guillotine de régulation
+        root.add(this._box(gateIron, { x: 1.25, y: 1.6, z: 0.2 }, { x: 0, y: 1.2, z: -0.6 }, 'lead_sluice_gate'));
+        // Bras de levier avec contrepoids
+        root.add(this._box(counterweightLead, { x: 0.35, y: 0.35, z: 0.8 }, { x: 0.75, y: 1.8, z: -0.6 }, 'lead_sluice_counterweight'));
+      } else if (normalizedType === 'auriga_holding_cage' || normalizedType === 'holding_cage') {
+        // Chantier 284 : USM Auriga Xenomorph Specimen Holding Cage (Alien Resurrection)
+        const frameTitanium = this._material('industrial', { color: 0x1e293b, roughness: 0.45, metalness: 0.9 });
+        const shockBars = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.2 });
+        const feederTrough = this._material('darkMetal', { color: 0x475569, roughness: 0.6, metalness: 0.8 });
+        const alertBeacon = this._material('emissiveAmber', { color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 2.8 });
+        // Armature tubulaire de confinement haute résistance
+        root.add(this._box(frameTitanium, { x: 2.6, y: 2.8, z: 2.2 }, { x: 0, y: 1.4, z: 0 }, 'holding_cage_frame', true));
+        // Barres électrifiées verticales
+        for (let s = -1; s <= 1; s += 2) {
+          for (let b = -2; b <= 2; b++) {
+            root.add(this._cylinder(shockBars, 0.035, 0.035, 2.5, { x: s * 1.22, y: 1.35, z: b * 0.42 }, { x: 0, y: 0, z: 0 }, `shock_bar_${s}_${b}`));
+          }
+        }
+        // Mangeoire à bétail suspendue
+        root.add(this._box(feederTrough, { x: 1.2, y: 0.35, z: 0.65 }, { x: 0, y: 0.95, z: 0.75 }, 'cage_feeder_trough'));
+        // Boîtier de commutation et balise d'alerte rouge
+        root.add(this._cylinder(alertBeacon, 0.09, 0.09, 0.18, { x: 1.25, y: 2.85, z: 1.05 }, { x: 0, y: 0, z: 0 }, 'cage_alert_beacon'));
+      } else if (normalizedType === 'romulus_stasis_carousel' || normalizedType === 'stasis_carousel') {
+        // Chantier 285 : Renaissance Station Romulus Module Cryo-Stasis Carousel (Alien: Romulus)
+        const hubColumn = this._material('darkMetal', { color: 0x0f172a, roughness: 0.6, metalness: 0.92 });
+        const rotorRing = this._material('industrial', { color: 0x334155, roughness: 0.4, metalness: 0.88 });
+        const podGlass = this._material('emissiveBlue', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 1.4, transparent: true, opacity: 0.52 });
+        const umbilicalHose = this._material('darkMetal', { color: 0x64748b, roughness: 0.5, metalness: 0.7 });
+        // Colonne centrale de rotation
+        root.add(this._cylinder(hubColumn, 0.55, 0.65, 2.8, { x: 0, y: 1.4, z: 0 }, { x: 0, y: 0, z: 0 }, 'carousel_central_hub', true));
+        // Anneau d'indexation hydraulique
+        root.add(this._cylinder(rotorRing, 1.85, 1.85, 0.25, { x: 0, y: 1.35, z: 0 }, { x: 0, y: 0, z: 0 }, 'carousel_rotor_ring'));
+        // 4 Capsules cryogéniques montées en croix
+        for (let c = 0; c < 4; c++) {
+          const cang = (c * Math.PI) / 2;
+          root.add(this._box(podGlass, { x: 0.75, y: 1.8, z: 0.75 }, { x: Math.cos(cang) * 1.55, y: 1.2, z: Math.sin(cang) * 1.55 }, `carousel_cryo_pod_${c}`));
+          root.add(this._cylinder(umbilicalHose, 0.04, 0.04, 1.1, { x: Math.cos(cang) * 1.1, y: 2.2, z: Math.sin(cang) * 1.1 }, { x: 0.25, y: cang, z: 0 }, `carousel_hose_${c}`));
+        }
+      } else if (normalizedType === 'monorail_buffer_stop' || normalizedType === 'buffer_stop') {
+        // Chantier 286 : Sevastopol Habitation Transit Monorail Buffer Stop (Alien: Isolation)
+        const stopBase = this._material('darkMetal', { color: 0x334155, roughness: 0.7, metalness: 0.8 });
+        const bufferPistons = this._material('industrial', { color: 0x18181b, roughness: 0.35, metalness: 0.95 });
+        const hazardCrossbar = this._material('hazard', { color: 0xeab308, roughness: 0.35, metalness: 0.75 });
+        const signalRed = this._material('emissiveAmber', { color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 3.0 });
+        // Butoir massif en béton/acier
+        root.add(this._box(stopBase, { x: 2.2, y: 1.4, z: 1.6 }, { x: 0, y: 0.7, z: 0 }, 'buffer_stop_buttress', true));
+        // Traverse de butée à chevrons de danger
+        root.add(this._box(hazardCrossbar, { x: 2.4, y: 0.55, z: 0.3 }, { x: 0, y: 0.95, z: 0.95 }, 'buffer_hazard_crossbar'));
+        // Vérins hydrauliques télescopiques à absorption
+        for (let r = -1; r <= 1; r += 2) {
+          root.add(this._cylinder(bufferPistons, 0.16, 0.16, 1.05, { x: r * 0.75, y: 0.95, z: 1.45 }, { x: Math.PI / 2, y: 0, z: 0 }, `buffer_ram_${r}`));
+        }
+        // Fanal rouge d'arrêt absolu
+        root.add(this._cylinder(signalRed, 0.09, 0.09, 0.18, { x: 0, y: 1.65, z: 0.95 }, { x: 0, y: 0, z: 0 }, 'buffer_signal_lamp'));
+      } else if (normalizedType === 'steam_superheater' || normalizedType === 'superheater') {
+        // Chantier 287 : Hadley's Hope Power Plant Steam Superheater (Aliens 1986)
+        const vesselAlloy = this._material('darkMetal', { color: 0x292524, roughness: 0.75, metalness: 0.85 });
+        const copperCoils = this._material('hazard', { color: 0xb45309, roughness: 0.45, metalness: 0.75 });
+        const gaugeBrass = this._material('hazard', { color: 0xeab308, roughness: 0.35, metalness: 0.8 });
+        const steamFlue = this._material('industrial', { color: 0x64748b, roughness: 0.5, metalness: 0.85 });
+        // Corps de chauffe vertical haute pression
+        root.add(this._cylinder(vesselAlloy, 1.15, 1.25, 2.6, { x: 0, y: 1.3, z: 0 }, { x: 0, y: 0, z: 0 }, 'superheater_vessel', true));
+        // Serpentins de surchauffe en cuivre étiré
+        for (let ring = 0; ring < 4; ring++) {
+          root.add(this._torus(copperCoils, 1.22, 0.06, { x: 0, y: 0.65 + ring * 0.5, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `superheater_coil_${ring}`));
+        }
+        // Cheminée d'échappement et soupape
+        root.add(this._cylinder(steamFlue, 0.25, 0.25, 1.2, { x: 0.65, y: 2.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'superheater_vent_flue'));
+        // Manomètre à mercure haute température
+        root.add(this._cylinder(gaugeBrass, 0.18, 0.18, 0.08, { x: 0, y: 1.8, z: 1.25 }, { x: Math.PI / 2, y: 0, z: 0 }, 'superheater_manometer'));
+      } else if (normalizedType === 'uscm_weapon_rack' || normalizedType === 'weapon_rack') {
+        // Chantier 288 : USCM Armory Heavy Weapon Wall Racks (Aliens: Dark Descent)
+        const rackSteel = this._material('darkMetal', { color: 0x1e293b, roughness: 0.6, metalness: 0.9 });
+        const pulseRifleGreen = this._material('hazard', { color: 0x15803d, roughness: 0.45, metalness: 0.65 });
+        const palmScanner = this._material('emissiveBlue', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 2.4 });
+        const ammoBoxes = this._material('hazard', { color: 0x854d0e, roughness: 0.55, metalness: 0.6 });
+        // Châssis d'armurerie mural
+        root.add(this._box(rackSteel, { x: 2.2, y: 2.4, z: 0.55 }, { x: 0, y: 1.2, z: 0 }, 'weapon_rack_cabinet', true));
+        // 4 Fusils d'assaut M41A Pulse Rifles en râtelier
+        for (let r = 0; r < 4; r++) {
+          root.add(this._box(pulseRifleGreen, { x: 1.35, y: 0.16, z: 0.12 }, { x: 0, y: 0.75 + r * 0.42, z: 0.18 }, `m41a_rifle_${r}`));
+        }
+        // Lecteur d'empreinte biométrique
+        root.add(this._box(palmScanner, { x: 0.22, y: 0.32, z: 0.05 }, { x: 0.85, y: 1.5, z: 0.28 }, 'rack_biometric_pad'));
+        // Caisses de munitions 10mm empilées à la base
+        root.add(this._box(ammoBoxes, { x: 1.4, y: 0.35, z: 0.35 }, { x: 0, y: 0.25, z: 0.12 }, 'rack_ammo_tins'));
+      } else if (normalizedType === 'synthetic_assembly_station' || normalizedType === 'assembly_station') {
+        // Chantier 289 : Sevastopol Seegson Synthetic Assembly Station (Alien: Isolation)
+        const benchChassis = this._material('industrial', { color: 0x334155, roughness: 0.5, metalness: 0.85 });
+        const robotArm = this._material('darkMetal', { color: 0x64748b, roughness: 0.4, metalness: 0.9 });
+        const synthBody = this._material('industrial', { color: 0xe2e8f0, roughness: 0.3, metalness: 0.4 });
+        const synthBloodTank = this._material('emissiveBlue', { color: 0xf8fafc, emissive: 0x94a3b8, emissiveIntensity: 1.2, transparent: true, opacity: 0.75 });
+        const crtScreen = this._material('emissiveAcid', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.6 });
+        // Table d'assemblage biomécanique
+        root.add(this._box(benchChassis, { x: 2.4, y: 1.1, z: 1.4 }, { x: 0, y: 0.55, z: 0 }, 'assembly_bench_table', true));
+        // Torse synthétique Working Joe inachevé
+        root.add(this._box(synthBody, { x: 0.95, y: 0.45, z: 0.75 }, { x: -0.2, y: 1.25, z: 0 }, 'synth_chassis_jig'));
+        // Bras robotique articulé de sertissage
+        root.add(this._cylinder(robotArm, 0.08, 0.08, 1.2, { x: 0.85, y: 1.6, z: 0.2 }, { x: 0.4, y: 0, z: 0.3 }, 'assembly_robot_arm'));
+        // Réservoir de liquide laiteux synthétique
+        root.add(this._cylinder(synthBloodTank, 0.28, 0.28, 0.85, { x: -0.85, y: 1.45, z: -0.35 }, { x: 0, y: 0, z: 0 }, 'synth_fluid_reservoir'));
+        // Oscilloscope diagnostique vert
+        root.add(this._box(crtScreen, { x: 0.45, y: 0.35, z: 0.05 }, { x: 0.65, y: 1.4, z: -0.4 }, 'assembly_diagnostic_crt'));
+      } else if (normalizedType === 'furnace_air_intake' || normalizedType === 'air_intake') {
+        // Chantier 290 : Fiorina 161 Furnace Air Intake Siphon Flange (Alien 3)
+        const intakeFunnel = this._material('darkMetal', { color: 0x18181b, roughness: 0.65, metalness: 0.95 });
+        const damperValve = this._material('hazard', { color: 0xb45309, roughness: 0.4, metalness: 0.8 });
+        const intakeGrille = this._material('industrial', { color: 0x475569, roughness: 0.5, metalness: 0.9 });
+        const draftGauge = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.4 });
+        // Entonnoir évasé venturi en fonte
+        root.add(this._cylinder(intakeFunnel, 1.25, 0.75, 1.4, { x: 0, y: 1.4, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'intake_venturi_funnel', true));
+        // Clapet anti-retour de flammes à contrepoids
+        root.add(this._box(damperValve, { x: 0.15, y: 1.2, z: 1.2 }, { x: 0, y: 1.4, z: 0 }, 'intake_damper_flap'));
+        // Grille de protection pare-débris
+        root.add(this._cylinder(intakeGrille, 1.28, 1.28, 0.1, { x: 0.72, y: 1.4, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'intake_debris_screen'));
+        // Manomètre de pression de tirage
+        root.add(this._cylinder(draftGauge, 0.14, 0.14, 0.08, { x: -0.4, y: 2.15, z: 0.55 }, { x: Math.PI / 2, y: 0, z: 0 }, 'intake_draft_gauge'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -9482,6 +9645,76 @@
     // -------------------------------------------------------------------------
     createQuenchOverflowWeir() {
       return this.createIndustrialProp('quench_overflow_weir');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 281 : Nostromo Hypersleep Vault Central Cooling Blower (Alien 1979)
+    // -------------------------------------------------------------------------
+    createNostromoCoolingBlower() {
+      return this.createIndustrialProp('nostromo_cooling_blower');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 282 : Hadley's Hope Operations Tactical Holo-Table (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createHadleyTacticalTable() {
+      return this.createIndustrialProp('hadley_tactical_table');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 283 : Fiorina 161 Molten Lead Drainage Sluice (Alien 3)
+    // -------------------------------------------------------------------------
+    createFiorinaLeadSluice() {
+      return this.createIndustrialProp('fiorina_lead_sluice');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 284 : USM Auriga Xenomorph Specimen Holding Cage (Alien Resurrection)
+    // -------------------------------------------------------------------------
+    createAurigaHoldingCage() {
+      return this.createIndustrialProp('auriga_holding_cage');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 285 : Renaissance Station Romulus Module Cryo-Stasis Carousel (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    createRomulusStasisCarousel() {
+      return this.createIndustrialProp('romulus_stasis_carousel');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 286 : Sevastopol Habitation Transit Monorail Buffer Stop (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createMonorailBufferStop() {
+      return this.createIndustrialProp('monorail_buffer_stop');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 287 : Hadley's Hope Power Plant Steam Superheater (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createSteamSuperheater() {
+      return this.createIndustrialProp('steam_superheater');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 288 : USCM Armory Heavy Weapon Wall Racks (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createUscmWeaponRack() {
+      return this.createIndustrialProp('uscm_weapon_rack');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 289 : Sevastopol Seegson Synthetic Assembly Station (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSyntheticAssemblyStation() {
+      return this.createIndustrialProp('synthetic_assembly_station');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 290 : Fiorina 161 Furnace Air Intake Siphon Flange (Alien 3)
+    // -------------------------------------------------------------------------
+    createFurnaceAirIntake() {
+      return this.createIndustrialProp('furnace_air_intake');
     }
   }
 

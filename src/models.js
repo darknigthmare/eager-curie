@@ -6550,6 +6550,112 @@
         root.add(this._box(sluiceIron, { x: 5.6, y: 0.1, z: 0.7 }, { x: 0, y: 1.9, z: 0 }, 'lead_overhead_walkway', true));
         root.add(this._box(catwalkRail, { x: 5.6, y: 0.05, z: 0.05 }, { x: 0, y: 2.6, z: -0.32 }, 'lead_catwalk_rail_l'));
         root.add(this._box(catwalkRail, { x: 5.6, y: 0.05, z: 0.05 }, { x: 0, y: 2.6, z: 0.32 }, 'lead_catwalk_rail_r'));
+      } else if (normalizedType === 'nostromo_maintenance_gondola' || normalizedType === 'maintenance_gondola') {
+        // Chantier 241 : Nostromo Class M Maintenance Gondola & Crane Track (Alien 1979)
+        const gondolaSteel = this._material('industrial', { color: 0x475569, roughness: 0.4, metalness: 0.85 });
+        const yellowBar = this._material('hazard', { color: 0xeab308, roughness: 0.35 });
+        const cableDark = this._material('darkMetal', { color: 0x18181b, roughness: 0.2, metalness: 0.95 });
+        root.add(this._box(gondolaSteel, { x: 3.2, y: 0.2, z: 2.2 }, { x: 0, y: 0.1, z: 0 }, 'gondola_floor_plate', true));
+        root.add(this._box(yellowBar, { x: 3.2, y: 0.08, z: 0.08 }, { x: 0, y: 1.1, z: 1.05 }, 'gondola_rail_s'));
+        root.add(this._box(yellowBar, { x: 3.2, y: 0.08, z: 0.08 }, { x: 0, y: 1.1, z: -1.05 }, 'gondola_rail_n'));
+        root.add(this._box(yellowBar, { x: 0.08, y: 0.08, z: 2.1 }, { x: 1.55, y: 1.1, z: 0 }, 'gondola_rail_e'));
+        root.add(this._box(yellowBar, { x: 0.08, y: 0.08, z: 2.1 }, { x: -1.55, y: 1.1, z: 0 }, 'gondola_rail_w'));
+        root.add(this._cylinder(cableDark, 0.03, 0.03, 5.0, { x: -1.4, y: 3.6, z: -0.9 }, { x: 0, y: 0, z: 0 }, 'gondola_cable_fl'));
+        root.add(this._cylinder(cableDark, 0.03, 0.03, 5.0, { x: 1.4, y: 3.6, z: -0.9 }, { x: 0, y: 0, z: 0 }, 'gondola_cable_fr'));
+        root.add(this._cylinder(cableDark, 0.03, 0.03, 5.0, { x: -1.4, y: 3.6, z: 0.9 }, { x: 0, y: 0, z: 0 }, 'gondola_cable_rl'));
+        root.add(this._cylinder(cableDark, 0.03, 0.03, 5.0, { x: 1.4, y: 3.6, z: 0.9 }, { x: 0, y: 0, z: 0 }, 'gondola_cable_rr'));
+        root.add(this._box(dark, { x: 3.4, y: 0.45, z: 2.4 }, { x: 0, y: 6.2, z: 0 }, 'gondola_trolley_mount'));
+      } else if (normalizedType === 'sevastopol_synthetic_cell' || normalizedType === 'synthetic_containment_cell') {
+        // Chantier 242 : Sevastopol Synthetic Containment Airlock & Polycarbonate Cell (Alien: Isolation)
+        const cellSteel = this._material('darkMetal', { color: 0x1e293b, roughness: 0.35, metalness: 0.8 });
+        const polycarb = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.5, opacity: 0.55, transparent: true });
+        const lockAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.8 });
+        root.add(this._cylinder(cellSteel, 1.4, 1.5, 0.4, { x: 0, y: 0.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'cell_base_plate', true));
+        root.add(this._cylinder(polycarb, 1.35, 1.35, 2.8, { x: 0, y: 1.7, z: 0 }, { x: 0, y: 0, z: 0 }, 'cell_polycarb_wall'));
+        root.add(this._cylinder(cellSteel, 1.5, 1.4, 0.4, { x: 0, y: 3.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'cell_top_cap'));
+        for (let l = 0; l < 3; l++) {
+          const ang = (l * Math.PI * 2) / 3;
+          root.add(this._box(lockAmber, { x: 0.25, y: 0.35, z: 0.2 }, { x: Math.cos(ang) * 1.45, y: 1.8, z: Math.sin(ang) * 1.45 }, `cell_maglock_${l}`));
+        }
+      } else if (normalizedType === 'fiorina_shaft_fan' || normalizedType === 'ventilation_fan_rotor') {
+        // Chantier 243 : Fiorina 161 Ventilation Shaft Fan Rotor & Blade Slicer (Alien 3)
+        const shroudMetal = this._material('darkMetal', { color: 0x18181b, roughness: 0.5, metalness: 0.9 });
+        const bladeSteel = this._material('industrial', { color: 0x94a3b8, roughness: 0.25, metalness: 0.95 });
+        const hubDark = this._material('darkMetal', { color: 0x09090b, roughness: 0.4, metalness: 0.8 });
+        root.add(this._ring(shroudMetal, 1.65, 0.28, { x: 0, y: 1.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'fan_outer_shroud', true));
+        root.add(this._cylinder(hubDark, 0.4, 0.4, 0.5, { x: 0, y: 1.8, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'fan_rotor_hub'));
+        for (let b = 0; b < 6; b++) {
+          const ang = (b * Math.PI) / 3;
+          root.add(this._box(bladeSteel, { x: 1.15, y: 0.18, z: 0.04 }, { x: Math.cos(ang) * 0.8, y: 1.8 + Math.sin(ang) * 0.8, z: 0 }, `fan_blade_${b}`));
+        }
+      } else if (normalizedType === 'hadley_scrubber_column' || normalizedType === 'atmospheric_scrubber_column') {
+        // Chantier 244 : Hadley's Hope Atmospheric Scrubber Column (Aliens 1986)
+        const towerMetal = this._material('industrial', { color: 0x334155, roughness: 0.5, metalness: 0.75 });
+        const frostCyan = this._material('emissiveBlue', { color: 0xbae6fd, emissive: 0x38bdf8, emissiveIntensity: 1.8 });
+        const valveBrass = this._material('industrial', { color: 0xb45309, roughness: 0.3, metalness: 0.85 });
+        root.add(this._cylinder(towerMetal, 1.1, 1.3, 5.2, { x: 0, y: 2.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'scrubber_column_trunk', true));
+        for (let tier = 0; tier < 4; tier++) {
+          root.add(this._ring(frostCyan, 1.38, 0.1, { x: 0, y: 1.2 + tier * 1.0, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `scrubber_frost_coil_${tier}`));
+        }
+        root.add(this._ring(valveBrass, 0.22, 0.05, { x: 1.3, y: 2.1, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, 'scrubber_evap_valve'));
+      } else if (normalizedType === 'gravity_inversion_chamber' || normalizedType === 'gravity_chamber') {
+        // Chantier 245 : Renaissance Station Gravity Inversion Chamber (Alien: Romulus)
+        const frameTitanium = this._material('industrial', { color: 0x64748b, roughness: 0.3, metalness: 0.85 });
+        const gravityViolet = this._material('emissivePurple', { color: 0xc084fc, emissive: 0xa855f7, emissiveIntensity: 3.0 });
+        const gimbalDark = this._material('darkMetal', { color: 0x0f172a, roughness: 0.4, metalness: 0.9 });
+        root.add(this._ring(frameTitanium, 2.2, 0.25, { x: 0, y: 1.6, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'gravity_outer_gimbal', true));
+        root.add(this._ring(gravityViolet, 1.8, 0.12, { x: 0, y: 1.6, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, 'gravity_flux_emitter'));
+        root.add(this._cylinder(gimbalDark, 0.35, 0.35, 1.2, { x: 0, y: 0.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'gravity_pedestal_core'));
+      } else if (normalizedType === 'uscm_sentry_barricade' || normalizedType === 'sentry_barricade') {
+        // Chantier 246 : USCM Sentry Gun Barricade Chokepoint (Aliens: Dark Descent)
+        const sandbagMat = this._material('industrial', { color: 0x78716c, roughness: 0.9, metalness: 0.1 });
+        const wireSteel = this._material('darkMetal', { color: 0x27272a, roughness: 0.2, metalness: 0.95 });
+        const gunMountMat = this._material('hazard', { color: 0x15803d, roughness: 0.4, metalness: 0.6 });
+        root.add(this._box(sandbagMat, { x: 3.6, y: 0.85, z: 0.7 }, { x: 0, y: 0.42, z: 0 }, 'sentry_sandbag_front', true));
+        root.add(this._cylinder(wireSteel, 0.3, 0.3, 3.4, { x: 0, y: 0.3, z: 0.75 }, { x: 0, y: 0, z: Math.PI / 2 }, 'sentry_concertina_wire'));
+        root.add(this._cylinder(gunMountMat, 0.08, 0.08, 1.1, { x: -1.2, y: 0.9, z: -0.3 }, { x: 0, y: 0, z: 0 }, 'sentry_pylon_l'));
+        root.add(this._cylinder(gunMountMat, 0.08, 0.08, 1.1, { x: 1.2, y: 0.9, z: -0.3 }, { x: 0, y: 0, z: 0 }, 'sentry_pylon_r'));
+      } else if (normalizedType === 'auriga_flooded_bay' || normalizedType === 'flooded_cargo_bay') {
+        // Chantier 247 : USM Auriga Sub-Deck Flooded Cargo Bay (Alien Resurrection 1997)
+        const basinArmor = this._material('darkMetal', { color: 0x09090b, roughness: 0.8, metalness: 0.5 });
+        const bayWater = this._material('emissiveBlue', { color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 1.4, opacity: 0.7, transparent: true });
+        const cargoBox = this._material('industrial', { color: 0x334155, roughness: 0.5, metalness: 0.7 });
+        root.add(this._box(basinArmor, { x: 4.8, y: 0.7, z: 4.0 }, { x: 0, y: 0.35, z: 0 }, 'auriga_sub_basin', true));
+        root.add(this._box(bayWater, { x: 4.5, y: 0.15, z: 3.7 }, { x: 0, y: 0.65, z: 0 }, 'auriga_water_surface'));
+        root.add(this._box(cargoBox, { x: 1.4, y: 1.2, z: 1.4 }, { x: -1.2, y: 0.8, z: -0.8 }, 'auriga_sunken_crate', true));
+        for (let r = 0; r < 4; r++) {
+          root.add(this._box(yellow, { x: 0.05, y: 0.05, z: 0.7 }, { x: 2.1, y: 0.3 + r * 0.4, z: 0 }, `auriga_ladder_rung_${r}`));
+        }
+      } else if (normalizedType === 'apollo_server_tower' || normalizedType === 'apollo_server_core') {
+        // Chantier 248 : Sevastopol Apollo AI Server Core Tower (Alien: Isolation)
+        const serverChassis = this._material('darkMetal', { color: 0x09090b, roughness: 0.3, metalness: 0.9 });
+        const blinkerGreen = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.8 });
+        const apolloScreen = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.5 });
+        root.add(this._box(serverChassis, { x: 1.6, y: 4.5, z: 1.6 }, { x: 0, y: 2.25, z: 0 }, 'apollo_rack_tower', true));
+        for (let row = 0; row < 6; row++) {
+          root.add(this._box(blinkerGreen, { x: 1.2, y: 0.08, z: 0.04 }, { x: 0, y: 0.8 + row * 0.55, z: 0.82 }, `apollo_led_row_${row}`));
+        }
+        root.add(this._box(apolloScreen, { x: 0.7, y: 0.45, z: 0.05 }, { x: 0, y: 2.7, z: 0.82 }, 'apollo_main_screen'));
+      } else if (normalizedType === 'specimen_dissection_theater' || normalizedType === 'dissection_theater') {
+        // Chantier 249 : Weyland Specimen Dissection Theater (Alien: Romulus / Resurrection)
+        const surgicalSteel = this._material('industrial', { color: 0xe2e8f0, roughness: 0.15, metalness: 0.95 });
+        const scialyticLight = this._material('emissiveBlue', { color: 0xf8fafc, emissive: 0x38bdf8, emissiveIntensity: 3.2 });
+        const darkArm = this._material('darkMetal', { color: 0x1e293b, roughness: 0.4, metalness: 0.8 });
+        root.add(this._box(surgicalSteel, { x: 2.4, y: 0.25, z: 1.2 }, { x: 0, y: 1.0, z: 0 }, 'dissection_table_top', true));
+        root.add(this._cylinder(surgicalSteel, 0.15, 0.15, 1.0, { x: 0, y: 0.5, z: 0 }, { x: 0, y: 0, z: 0 }, 'dissection_pedestal'));
+        root.add(this._cylinder(darkArm, 0.05, 0.05, 1.8, { x: -1.3, y: 1.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'scialytic_support_arm'));
+        root.add(this._cylinder(darkArm, 0.05, 0.05, 1.2, { x: -0.7, y: 2.8, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'scialytic_horizontal_arm'));
+        root.add(this._cylinder(scialyticLight, 0.35, 0.4, 0.15, { x: 0, y: 2.65, z: 0 }, { x: 0, y: 0, z: 0 }, 'scialytic_lamp_head'));
+      } else if (normalizedType === 'fiorina_slag_press' || normalizedType === 'slag_crucible_press') {
+        // Chantier 250 : Fiorina 161 Piston-Driven Slag Press (Alien 3)
+        const frameSteel = this._material('darkMetal', { color: 0x18181b, roughness: 0.6, metalness: 0.85 });
+        const pistonChrome = this._material('industrial', { color: 0xcbd5e1, roughness: 0.15, metalness: 0.95 });
+        const slagGlow = this._material('emissiveRed', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 3.2 });
+        root.add(this._box(frameSteel, { x: 2.8, y: 4.8, z: 2.2 }, { x: 0, y: 2.4, z: 0 }, 'slag_press_uprights', true));
+        root.add(this._box(frameSteel, { x: 2.2, y: 0.8, z: 1.8 }, { x: 0, y: 0.4, z: 0 }, 'slag_anvil_base', true));
+        root.add(this._box(slagGlow, { x: 1.6, y: 0.08, z: 1.2 }, { x: 0, y: 0.84, z: 0 }, 'slag_molten_residue'));
+        root.add(this._cylinder(pistonChrome, 0.22, 0.22, 2.2, { x: 0, y: 3.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'slag_hydraulic_ram'));
+        root.add(this._box(frameSteel, { x: 1.8, y: 0.5, z: 1.4 }, { x: 0, y: 2.1, z: 0 }, 'slag_stamp_head'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -8646,6 +8752,76 @@
     // -------------------------------------------------------------------------
     createFiorinaLeadChannel() {
       return this.createIndustrialProp('fiorina_lead_channel');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 241 : Maintenance Gondola & Gantry Crane (Alien 1979)
+    // -------------------------------------------------------------------------
+    createMaintenanceGondola() {
+      return this.createIndustrialProp('nostromo_maintenance_gondola');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 242 : Synthetic Containment Cell (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createSyntheticContainmentCell() {
+      return this.createIndustrialProp('sevastopol_synthetic_cell');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 243 : Shaft Fan Rotor Blade Slicer (Alien 3)
+    // -------------------------------------------------------------------------
+    createVentilationFanRotor() {
+      return this.createIndustrialProp('fiorina_shaft_fan');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 244 : Atmospheric Scrubber Column (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createAtmosphericScrubberColumn() {
+      return this.createIndustrialProp('hadley_scrubber_column');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 245 : Gravity Inversion Chamber (Alien: Romulus)
+    // -------------------------------------------------------------------------
+    createGravityInversionChamber() {
+      return this.createIndustrialProp('gravity_inversion_chamber');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 246 : USCM Sentry Barricade Redoubt (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createUscmSentryBarricade() {
+      return this.createIndustrialProp('uscm_sentry_barricade');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 247 : Auriga Flooded Cargo Bay (Alien Resurrection 1997)
+    // -------------------------------------------------------------------------
+    createFloodedCargoBay() {
+      return this.createIndustrialProp('auriga_flooded_bay');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 248 : Apollo AI Server Core Tower (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createApolloServerTower() {
+      return this.createIndustrialProp('apollo_server_tower');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 249 : Specimen Dissection Theater (Alien: Romulus / Resurrection)
+    // -------------------------------------------------------------------------
+    createSpecimenDissectionTheater() {
+      return this.createIndustrialProp('specimen_dissection_theater');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 250 : Fiorina Piston Slag Press (Alien 3)
+    // -------------------------------------------------------------------------
+    createSlagCruciblePress() {
+      return this.createIndustrialProp('fiorina_slag_press');
     }
   }
 

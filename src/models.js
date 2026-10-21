@@ -115,7 +115,12 @@
     medic: 'uscm_combat_medic',
     uscmmedic: 'uscm_combat_medic',
     combat_medic: 'uscm_combat_medic',
-    uscm_combat_medic: 'uscm_combat_medic'
+    uscm_combat_medic: 'uscm_combat_medic',
+    reconsniper: 'uscm_recon_sniper',
+    recon_sniper: 'uscm_recon_sniper',
+    uscmsniper_recon: 'uscm_recon_sniper',
+    uscm_recon_sniper: 'uscm_recon_sniper',
+    forward_observer: 'uscm_recon_sniper'
   });
 
   // ---------------------------------------------------------------------------
@@ -1055,6 +1060,12 @@
           receiverLength: 0.85,
           barrelEnd: 1.15,
           barrelRadius: 0.05
+        },
+        uscm_recon_sniper: {
+          receiverWidth: 0.22,
+          receiverLength: 1.15,
+          barrelEnd: 1.75,
+          barrelRadius: 0.05
         }
       };
       const profile = weaponProfiles[type] || weaponProfiles.guard;
@@ -1341,6 +1352,14 @@
         const stimMat = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.2 });
         weapon.add(this._segment(dark, new T.Vector3(0, 0.02, 0.85), new T.Vector3(0, 0.02, 1.25), 0.06, 0.06, 'medic_pistol_barrel', 10));
         weapon.add(this._cylinder(stimMat, 0.04, 0.04, 0.35, { x: 0, y: -0.16, z: 0.4 }, { x: Math.PI / 2, y: 0, z: 0 }, 'medic_stim_vial'));
+      } else if (type === 'uscm_recon_sniper') {
+        // Chantier 223 : Fusil de précision M42A Scoped Pulse Rifle & Désignateur Laser (Dark Descent / Fireteam Elite)
+        const laserMat = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.8 });
+        weapon.add(this._segment(dark, new T.Vector3(0, 0.04, 1.15), new T.Vector3(0, 0.04, 1.75), 0.05, 0.035, 'recon_long_barrel', 10));
+        weapon.add(this._cylinder(dark, 0.065, 0.065, 0.65, { x: 0, y: 0.3, z: 0.5 }, { x: Math.PI / 2, y: 0, z: 0 }, 'recon_thermal_scope_tube'));
+        weapon.add(this._ellipsoid(laserMat, { x: 0.04, y: 0.04, z: 0.02 }, { x: 0, y: 0.3, z: 0.83 }, 'recon_scope_lens_glow', 8));
+        weapon.add(this._box(dark, { x: 0.08, y: 0.1, z: 0.25 }, { x: 0, y: -0.12, z: 1.0 }, 'recon_laser_box'));
+        weapon.add(this._segment(laserMat, new T.Vector3(0, -0.12, 1.13), new T.Vector3(0, -0.12, 1.8), 0.015, 0.005, 'recon_laser_beam', 6));
       }
 
       weapon.userData.equipmentType = type;
@@ -1571,6 +1590,17 @@
           shoulderX: 0.68,
           hipX: 0.34,
           helmetScale: 1.05
+        },
+        uscm_recon_sniper: {
+          uniformColor: 0x1e293b, // Treillis USCM de camouflage nocturne
+          armorColor: 0x334155,   // Blindage composite sombre anti-reflet
+          torso: { x: 0.7, y: 0.95, z: 0.4 },
+          pelvis: { x: 0.54, y: 0.36, z: 0.35 },
+          chest: { x: 1.14, y: 0.95, z: 0.34 },
+          pack: { x: 0.85, y: 1.0, z: 0.48 },
+          shoulderX: 0.65,
+          hipX: 0.33,
+          helmetScale: 1.02
         }
       };
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
@@ -1584,7 +1614,7 @@
       const dark = materials.dark;
       const visor = materials.visor;
       const accent = materials.accent;
-      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic'].indexOf(type) >= 0;
+      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic', 'uscm_recon_sniper'].indexOf(type) >= 0;
 
       if (combatRole) {
         for (let side = -1; side <= 1; side += 2) {
@@ -1975,6 +2005,13 @@
         const stimGreen = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x15803d, emissiveIntensity: 2.0 });
         root.add(this._cylinder(stimGreen, 0.03, 0.03, 0.18, { x: 0.24, y: torsoY - 0.5, z: 0.25 }, { x: 0, y: 0, z: 0 }, 'medic_belt_stim_0'));
         root.add(this._cylinder(stimGreen, 0.03, 0.03, 0.18, { x: 0.32, y: torsoY - 0.5, z: 0.25 }, { x: 0, y: 0, z: 0 }, 'medic_belt_stim_1'));
+      } else if (type === 'uscm_recon_sniper') {
+        // Chantier 223 : Unité USCM "Forward Observer / Recon Sniper" (Aliens: Dark Descent)
+        const lensRed = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.5 });
+        root.add(this._ellipsoid(lensRed, { x: 0.06, y: 0.06, z: 0.04 }, { x: 0.18, y: torsoY + 1.25, z: 0.48 }, 'recon_thermal_monocle', 8));
+        root.add(this._segment(dark, new T.Vector3(-0.28, torsoY + 0.65, -0.28), new T.Vector3(-0.32, torsoY + 1.45, -0.32), 0.025, 0.012, 'recon_whip_antenna', 6));
+        const claymoreMat = this._material('industrial', { color: 0x475569 });
+        root.add(this._box(claymoreMat, { x: 0.22, y: 0.18, z: 0.1 }, { x: 0.42, y: torsoY - 0.2, z: 0 }, 'recon_thigh_claymore_pouch'));
       }
     }
 
@@ -3177,6 +3214,8 @@
       if (normalizedCaste === 'scorpion_drone' || normalizedCaste === 'scorpion') return this.createScorpionDrone();
       if (normalizedCaste === 'cougar_drone' || normalizedCaste === 'cougar' || normalizedCaste === 'panther_drone') return this.createCougarDrone();
       if (normalizedCaste === 'worker_drone' || normalizedCaste === 'worker' || normalizedCaste === 'hive_worker') return this.createWorkerDrone();
+      if (normalizedCaste === 'rhino_drone' || normalizedCaste === 'rhino') return this.createRhinoDrone();
+      if (normalizedCaste === 'crab_drone' || normalizedCaste === 'crab') return this.createCrabDrone();
       return this._createUprightAdult(normalizedCaste);
     }
 
@@ -6316,6 +6355,79 @@
         for (let ring = 0; ring < 3; ring++) {
           root.add(this._ring(engineerObsidian, 0.26, 0.04, { x: 0, y: 0.8 + ring * 0.25, z: 0.15 }, { x: 0, y: 0, z: 0 }, `bio_clamp_${ring}`));
         }
+      } else if (normalizedType === 'transit_mag_cart' || normalizedType === 'mag_cart') {
+        // Chantier 222 : Système de Transit Orbital Mag-Lev "Weyland-Yutani Heavy Transit Cart" (Alien: Isolation / Romulus)
+        const frameYellow = this._material('industrial', { color: 0xeab308, roughness: 0.45, metalness: 0.65 });
+        const magSkid = this._material('darkMetal', { color: 0x0f172a, roughness: 0.25, metalness: 0.85 });
+        const amberLight = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.4 });
+        root.add(this._box(dark, { x: 1.8, y: 0.35, z: 2.8 }, { x: 0, y: 0.25, z: 0 }, 'transit_cart_chassis', true));
+        root.add(this._box(frameYellow, { x: 1.85, y: 0.15, z: 2.85 }, { x: 0, y: 0.45, z: 0 }, 'transit_cart_bumper', true));
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._box(magSkid, { x: 0.22, y: 0.18, z: 2.6 }, { x: side * 0.75, y: 0.1, z: 0 }, `transit_skid_${side}`, true));
+          root.add(this._cylinder(frameYellow, 0.04, 0.04, 0.85, { x: side * 0.85, y: 0.9, z: 0 }, { x: 0, y: 0, z: 0 }, `transit_rail_${side}`));
+        }
+        root.add(this._box(metal, { x: 1.2, y: 0.8, z: 1.4 }, { x: 0, y: 0.85, z: -0.4 }, 'transit_cargo_crate', true));
+        root.add(this._cylinder(amberLight, 0.12, 0.12, 0.22, { x: 0, y: 1.4, z: -0.4 }, { x: 0, y: 0, z: 0 }, 'transit_beacon_dome'));
+      } else if (normalizedType === 'halon_extinguisher' || normalizedType === 'halon_tank') {
+        // Chantier 224 : Système d'Extinction Industrielle Halon 1301 Fire Suppression Extinguisher (Alien 1979 / Fireteam Elite)
+        const halonRed = this._material('emissiveRed', { color: 0xb91c1c, emissive: 0x7f1d1d, emissiveIntensity: 1.5 });
+        const chromeNozzle = this._material('darkMetal', { color: 0x94a3b8, roughness: 0.15, metalness: 0.9 });
+        root.add(this._cylinder(halonRed, 0.24, 0.24, 1.4, { x: -0.22, y: 0.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'halon_tank_1', true));
+        root.add(this._cylinder(halonRed, 0.24, 0.24, 1.4, { x: 0.22, y: 0.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'halon_tank_2', true));
+        root.add(this._cylinder(dark, 0.08, 0.08, 0.7, { x: 0, y: 1.65, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'halon_manifold'));
+        root.add(this._cone(chromeNozzle, 0.18, 0.35, { x: 0, y: 1.85, z: 0.15 }, { x: Math.PI / 4, y: 0, z: 0 }, 'halon_discharge_horn'));
+        root.add(this._box(hazard, { x: 0.35, y: 0.2, z: 0.04 }, { x: 0, y: 1.25, z: 0.22 }, 'halon_hazard_sign'));
+      } else if (normalizedType === 'm20_claymore_mine' || normalizedType === 'claymore_mine') {
+        // Chantier 226 : Munitions de Défense Périmétrique USCM M20 Claymore Directional Mine (Aliens 1986 / Dark Descent)
+        const oliveCasing = this._material('industrial', { color: 0x3f6212, roughness: 0.65, metalness: 0.25 });
+        const tripLaser = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.6 });
+        root.add(this._box(oliveCasing, { x: 0.45, y: 0.25, z: 0.12 }, { x: 0, y: 0.22, z: 0 }, 'claymore_body', true));
+        for (let leg = -1; leg <= 1; leg += 2) {
+          root.add(this._segment(dark, new T.Vector3(leg * 0.18, 0.2, 0), new T.Vector3(leg * 0.24, 0, -0.1), 0.02, 0.015, `claymore_leg_rear_${leg}`, 6));
+          root.add(this._segment(dark, new T.Vector3(leg * 0.18, 0.2, 0), new T.Vector3(leg * 0.24, 0, 0.1), 0.02, 0.015, `claymore_leg_front_${leg}`, 6));
+        }
+        root.add(this._box(tripLaser, { x: 0.06, y: 0.06, z: 0.04 }, { x: 0, y: 0.28, z: 0.06 }, 'claymore_arm_led'));
+        root.add(this._segment(tripLaser, new T.Vector3(0, 0.22, 0.08), new T.Vector3(0, 0.22, 2.5), 0.01, 0.005, 'claymore_tripwire_beam', 6));
+      } else if (normalizedType === 'heat_exchanger_vent' || normalizedType === 'ap14_heat_exchanger') {
+        // Chantier 227 : Échangeur Thermique Primaire du Processeur Atmosphérique AP-14 (Aliens 1986 Hadleys Hope)
+        const cowlMat = this._material('industrial', { color: 0x475569, roughness: 0.5, metalness: 0.7 });
+        const copperValve = this._material('darkMetal', { color: 0xb45309, roughness: 0.35, metalness: 0.8 });
+        const steamBlue = this._material('emissiveGreen', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.8 });
+        root.add(this._cylinder(cowlMat, 0.75, 0.75, 1.6, { x: 0, y: 0.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'heat_exchanger_cowl', true));
+        root.add(this._ring(cowlMat, 0.82, 0.1, { x: 0, y: 1.55, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'heat_exchanger_flange'));
+        for (let fin = 0; fin < 6; fin++) {
+          const angle = (fin / 6) * Math.PI * 2;
+          root.add(this._box(dark, { x: 0.06, y: 1.3, z: 0.35 }, { x: Math.cos(angle) * 0.65, y: 0.8, z: Math.sin(angle) * 0.65 }, `heat_fin_${fin}`));
+        }
+        root.add(this._cylinder(copperValve, 0.16, 0.16, 0.12, { x: 0.78, y: 1.1, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'heat_valve_wheel'));
+        root.add(this._cylinder(steamBlue, 0.08, 0.08, 0.35, { x: 0, y: 1.65, z: 0 }, { x: 0, y: 0, z: 0 }, 'heat_steam_orifice'));
+      } else if (normalizedType === 'resin_camouflage_wall' || normalizedType === 'resin_wall') {
+        // Chantier 228 : Camouflage Organique "Hive Resin Melding" (Alien: Isolation / Dark Horse)
+        const organicWall = this._material('resin', { color: 0x1c1917, roughness: 0.3, metalness: 0.4 });
+        const bioGlow = this._material('emissiveGreen', { color: 0x15803d, emissive: 0x166534, emissiveIntensity: 1.6 });
+        root.add(this._box(organicWall, { x: 1.6, y: 2.2, z: 0.6 }, { x: 0, y: 1.1, z: 0 }, 'resin_wall_backing', true));
+        for (let rib = 0; rib < 4; rib++) {
+          root.add(this._ring(organicWall, 0.55 + rib * 0.08, 0.07, { x: 0, y: 0.5 + rib * 0.45, z: 0.25 }, { x: 0, y: 0, z: 0 }, `resin_rib_${rib}`));
+        }
+        root.add(this._ellipsoid(bioGlow, { x: 0.25, y: 0.35, z: 0.15 }, { x: 0, y: 1.2, z: 0.32 }, 'resin_pheromone_node', 10));
+      } else if (normalizedType === 'maintenance_jack_socket' || normalizedType === 'jack_socket') {
+        // Chantier 229 : Boîtier Déverrouillage Sevastopol Maintenance Jack Socket (Alien: Isolation)
+        const boxYellow = this._material('industrial', { color: 0xca8a04, roughness: 0.4, metalness: 0.6 });
+        const socketDark = this._material('darkMetal', { color: 0x09090b, roughness: 0.2, metalness: 0.9 });
+        const ledYellow = this._material('emissiveAmber', { color: 0xfacc15, emissive: 0xeab308, emissiveIntensity: 2.5 });
+        root.add(this._box(boxYellow, { x: 0.6, y: 0.85, z: 0.28 }, { x: 0, y: 1.2, z: 0 }, 'jack_box_chassis', true));
+        root.add(this._cylinder(socketDark, 0.12, 0.12, 0.15, { x: 0, y: 1.15, z: 0.14 }, { x: Math.PI / 2, y: 0, z: 0 }, 'jack_torque_socket'));
+        root.add(this._cylinder(ledYellow, 0.04, 0.04, 0.04, { x: 0, y: 1.45, z: 0.14 }, { x: Math.PI / 2, y: 0, z: 0 }, 'jack_status_led'));
+        root.add(this._box(dark, { x: 0.45, y: 0.08, z: 0.06 }, { x: 0, y: 0.95, z: 0.14 }, 'jack_crank_handle'));
+      } else if (normalizedType === 'working_joe_alcove' || normalizedType === 'joe_alcove') {
+        // Chantier 230 : Alcôve de Rechargement Inductif Working Joe (Alien: Isolation)
+        const alcoveChassis = this._material('industrial', { color: 0x27272a, roughness: 0.55, metalness: 0.5 });
+        const chargingPad = this._material('darkMetal', { color: 0xb45309, roughness: 0.25, metalness: 0.85 });
+        const apolloScreen = this._material('emissiveGreen', { color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 2.6 });
+        root.add(this._box(alcoveChassis, { x: 1.2, y: 2.3, z: 0.45 }, { x: 0, y: 1.15, z: 0 }, 'joe_alcove_niche', true));
+        root.add(this._box(chargingPad, { x: 0.4, y: 0.35, z: 0.05 }, { x: 0, y: 1.4, z: 0.2 }, 'joe_contact_plate_upper'));
+        root.add(this._box(chargingPad, { x: 0.4, y: 0.35, z: 0.05 }, { x: 0, y: 0.6, z: 0.2 }, 'joe_contact_plate_lower'));
+        root.add(this._box(apolloScreen, { x: 0.5, y: 0.2, z: 0.03 }, { x: 0, y: 2.05, z: 0.2 }, 'joe_apollo_status'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -8151,6 +8263,197 @@
     // -------------------------------------------------------------------------
     createBioStasisVault() {
       return this.createIndustrialProp('bio_stasis_vault');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 221 : Phénotype "The Rhino / Juggernaut Xenomorph de Charon" (Kenner 1992 / Dark Horse Genocide)
+    // -------------------------------------------------------------------------
+    createRhinoDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_rhino_drone';
+      const scale = 1.35;
+      const rhinoChitin = this._material('chitin', {
+        color: 0x1e293b,
+        roughness: 0.18,
+        metalness: 0.72
+      });
+      const hornBone = this._material('bone', {
+        color: 0x94a3b8,
+        roughness: 0.35,
+        metalness: 0.25
+      });
+      const amberGlow = this._material('emissiveAmber', {
+        color: 0xf59e0b,
+        emissive: 0xd97706,
+        emissiveIntensity: 1.8
+      });
+
+      // Buste massif surdimensionné et armure pectorale renforcée
+      root.add(this._ellipsoid(rhinoChitin, { x: 0.58 * scale, y: 0.52 * scale, z: 0.65 * scale }, { x: 0, y: 1.25 * scale, z: 0 }, 'rhino_chest', 16));
+      root.add(this._ellipsoid(rhinoChitin, { x: 0.48 * scale, y: 0.44 * scale, z: 0.5 * scale }, { x: 0, y: 0.8 * scale, z: -0.25 * scale }, 'rhino_abdomen', 14));
+
+      // Tête blindée en bélier avec double bouclier céphalique et corne frontale géante
+      const headGroup = new T.Group();
+      headGroup.name = 'rhino_head';
+      headGroup.position.set(0, 1.5 * scale, 0.45 * scale);
+      headGroup.add(this._ellipsoid(rhinoChitin, { x: 0.38 * scale, y: 0.32 * scale, z: 0.75 * scale }, { x: 0, y: 0, z: 0 }, 'rhino_cranium', 16));
+      // Corne frontale conique massive perforante
+      headGroup.add(this._cone(hornBone, 0.16 * scale, 0.85 * scale, { x: 0, y: 0.22 * scale, z: 0.65 * scale }, { x: Math.PI / 3.8, y: 0, z: 0 }, 'rhino_battering_horn'));
+      // Bouclier nucal céphalique bivalve
+      headGroup.add(this._box(rhinoChitin, { x: 0.78 * scale, y: 0.45 * scale, z: 0.2 * scale }, { x: 0, y: 0.35 * scale, z: -0.25 * scale }, 'rhino_neck_shield'));
+      // Yeux résiduels bioluminescents ambrés sous le bouclier
+      for (let s = -1; s <= 1; s += 2) {
+        headGroup.add(this._ellipsoid(amberGlow, { x: 0.05 * scale, y: 0.05 * scale, z: 0.04 * scale }, { x: s * 0.22 * scale, y: 0.05 * scale, z: 0.3 * scale }, `rhino_eye_${s}`, 8));
+      }
+      root.add(headGroup);
+
+      // Membres antérieurs et postérieurs pachydermiques
+      for (let side = -1; side <= 1; side += 2) {
+        // Épaulières blindées
+        root.add(this._ellipsoid(rhinoChitin, { x: 0.25 * scale, y: 0.28 * scale, z: 0.28 * scale }, { x: side * 0.58 * scale, y: 1.35 * scale, z: 0.1 * scale }, `rhino_shoulder_${side}`, 12));
+        // Avant-bras puissants terminés par de gros talons émoussés
+        root.add(this._segment(rhinoChitin, new T.Vector3(side * 0.55 * scale, 1.3 * scale, 0.1 * scale), new T.Vector3(side * 0.62 * scale, 0.55 * scale, 0.35 * scale), 0.18 * scale, 0.14 * scale, `rhino_forearm_${side}`, 10));
+        root.add(this._box(hornBone, { x: 0.22 * scale, y: 0.24 * scale, z: 0.32 * scale }, { x: side * 0.62 * scale, y: 0.5 * scale, z: 0.42 * scale }, `rhino_talon_${side}`));
+        // Pattes arrières massives
+        root.add(this._segment(rhinoChitin, new T.Vector3(side * 0.42 * scale, 0.85 * scale, -0.25 * scale), new T.Vector3(side * 0.46 * scale, 0, -0.2 * scale), 0.2 * scale, 0.15 * scale, `rhino_leg_${side}`, 10));
+      }
+
+      // Évents d'échappement dorsaux surdimensionnés
+      for (let e = 0; e < 4; e++) {
+        const side = e % 2 === 0 ? -1 : 1;
+        const tier = e < 2 ? 0 : 1;
+        root.add(this._cylinder(rhinoChitin, 0.08 * scale, 0.06 * scale, 0.55 * scale, { x: side * 0.26 * scale, y: (1.55 - tier * 0.22) * scale, z: (-0.15 - tier * 0.2) * scale }, { x: -Math.PI / 4, y: side * 0.25, z: 0 }, `rhino_exhaust_${e}`));
+      }
+
+      // Queue lourde garnie de pointes d'écrasement
+      root.add(this._segment(rhinoChitin, new T.Vector3(0, 0.75 * scale, -0.5 * scale), new T.Vector3(0, 0.35 * scale, -1.2 * scale), 0.16 * scale, 0.1 * scale, 'rhino_tail_base', 8));
+      root.add(this._cone(hornBone, 0.14 * scale, 0.6 * scale, { x: 0, y: 0.25 * scale, z: -1.45 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'rhino_tail_club'));
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'rhino_drone',
+        height: 1.85 * scale,
+        animationJoints: ['rhino_head', 'rhino_chest']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 225 : Phénotype "The Killer Crab Xenomorph de Charon" (Kenner 1992 / Dark Horse)
+    // -------------------------------------------------------------------------
+    createCrabDrone() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'adult_crab_drone';
+      const scale = 1.25;
+      const crabChitin = this._material('chitinWarm', {
+        color: 0x331e28,
+        roughness: 0.22,
+        metalness: 0.68
+      });
+      const clawBone = this._material('bone', {
+        color: 0xca8a04,
+        roughness: 0.28,
+        metalness: 0.35
+      });
+      const venomRuby = this._material('emissiveRed', {
+        color: 0xef4444,
+        emissive: 0xdc2626,
+        emissiveIntensity: 2.2
+      });
+
+      // Carapace dorsale bivalve aplatie et cuirassée
+      root.add(this._ellipsoid(crabChitin, { x: 0.62 * scale, y: 0.42 * scale, z: 0.55 * scale }, { x: 0, y: 1.15 * scale, z: 0 }, 'crab_carapace', 16));
+      // Tête trapue sous visière crustacée
+      root.add(this._ellipsoid(crabChitin, { x: 0.32 * scale, y: 0.28 * scale, z: 0.62 * scale }, { x: 0, y: 1.25 * scale, z: 0.35 * scale }, 'crab_head', 14));
+
+      // Épines latérales de la carapace (spires de crustacé)
+      for (let s = -1; s <= 1; s += 2) {
+        root.add(this._cone(clawBone, 0.08 * scale, 0.42 * scale, { x: s * 0.72 * scale, y: 1.25 * scale, z: 0.05 * scale }, { x: 0, y: 0, z: -s * Math.PI / 2.5 }, `crab_spire_lateral_${s}`));
+        root.add(this._cone(clawBone, 0.07 * scale, 0.38 * scale, { x: s * 0.65 * scale, y: 1.35 * scale, z: -0.2 * scale }, { x: -Math.PI / 6, y: 0, z: -s * Math.PI / 2.8 }, `crab_spire_rear_${s}`));
+      }
+
+      // Pinces chélipèdes géantes hypertrophiées
+      for (let side = -1; side <= 1; side += 2) {
+        // Bras articulé puissant
+        root.add(this._segment(crabChitin, new T.Vector3(side * 0.55 * scale, 1.2 * scale, 0.15 * scale), new T.Vector3(side * 0.75 * scale, 0.7 * scale, 0.45 * scale), 0.16 * scale, 0.12 * scale, `crab_arm_${side}`, 10));
+        // Corps de la pince
+        root.add(this._box(crabChitin, { x: 0.24 * scale, y: 0.35 * scale, z: 0.42 * scale }, { x: side * 0.78 * scale, y: 0.6 * scale, z: 0.6 * scale }, `crab_chela_${side}`));
+        // Mors mobile et fixe de la pince
+        root.add(this._cone(clawBone, 0.1 * scale, 0.55 * scale, { x: side * 0.75 * scale, y: 0.75 * scale, z: 0.85 * scale }, { x: Math.PI / 6, y: side * 0.2, z: 0 }, `crab_claw_fixed_${side}`));
+        root.add(this._cone(clawBone, 0.09 * scale, 0.5 * scale, { x: side * 0.82 * scale, y: 0.45 * scale, z: 0.82 * scale }, { x: -Math.PI / 8, y: -side * 0.15, z: 0 }, `crab_claw_mobile_${side}`));
+        // Pattes locomotrices robustes
+        root.add(this._segment(crabChitin, new T.Vector3(side * 0.38 * scale, 0.8 * scale, -0.2 * scale), new T.Vector3(side * 0.45 * scale, 0, -0.15 * scale), 0.16 * scale, 0.11 * scale, `crab_leg_${side}`, 10));
+      }
+
+      // Pinces pectorales de saisie thoracique
+      root.add(this._ring(venomRuby, 0.18 * scale, 0.04 * scale, { x: 0, y: 1.05 * scale, z: 0.32 * scale }, { x: 0, y: 0, z: 0 }, 'crab_pectoral_trap'));
+
+      // Queue articulée bivalve
+      root.add(this._segment(crabChitin, new T.Vector3(0, 0.7 * scale, -0.45 * scale), new T.Vector3(0, 0.3 * scale, -1.15 * scale), 0.13 * scale, 0.08 * scale, 'crab_tail', 8));
+
+      return this._finalize(root, {
+        modelType: 'adult',
+        caste: 'crab_drone',
+        height: 1.7 * scale,
+        animationJoints: ['crab_head', 'crab_carapace']
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 223 : Unité USCM "Forward Observer / Recon Sniper" (Aliens: Dark Descent)
+    // -------------------------------------------------------------------------
+    createReconSniper() {
+      return this.createHuman('uscm_recon_sniper');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 222 : Système de Transit Mag-Lev "Weyland Heavy Transit Cart" (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createTransitMagCart() {
+      return this.createIndustrialProp('transit_mag_cart');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 224 : Système d'Extinction Halon 1301 Fire Suppression (Alien 1979)
+    // -------------------------------------------------------------------------
+    createHalonExtinguisher() {
+      return this.createIndustrialProp('halon_extinguisher');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 226 : Munitions USCM M20 Claymore Directional Mine (Aliens 1986)
+    // -------------------------------------------------------------------------
+    createM20ClaymoreMine() {
+      return this.createIndustrialProp('m20_claymore_mine');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 227 : Échangeur Thermique Processeur AP-14 (Aliens 1986 Hadleys Hope)
+    // -------------------------------------------------------------------------
+    createHeatExchangerVent() {
+      return this.createIndustrialProp('heat_exchanger_vent');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 228 : Camouflage Organique "Hive Resin Melding" (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createResinCamouflageWall() {
+      return this.createIndustrialProp('resin_camouflage_wall');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 229 : Boîtier Sevastopol Maintenance Jack Socket (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createMaintenanceJackSocket() {
+      return this.createIndustrialProp('maintenance_jack_socket');
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantier 230 : Alcôve de Rechargement Inductif Working Joe (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    createWorkingJoeAlcove() {
+      return this.createIndustrialProp('working_joe_alcove');
     }
   }
 

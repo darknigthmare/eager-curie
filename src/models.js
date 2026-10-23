@@ -578,6 +578,29 @@
       return mesh;
     }
 
+    _cylinder(material, radiusTop, radiusBottom, height, position, rotation, name, bevelHint) {
+      const T = this._three();
+      const mesh = this._mesh(
+        new T.CylinderGeometry(radiusTop, radiusBottom, height, bevelHint ? 32 : 20),
+        material,
+        name
+      );
+      mesh.position.set(position.x, position.y, position.z);
+      if (rotation) mesh.rotation.set(rotation.x || 0, rotation.y || 0, rotation.z || 0);
+      return mesh;
+    }
+
+    _torus(material, majorRadius, tubeRadius, position, rotation, name) {
+      return this._ring(
+        material,
+        majorRadius,
+        tubeRadius,
+        position,
+        { x: (rotation && rotation.x) || 0, y: (rotation && rotation.y) || 0, z: (rotation && rotation.z) || 0 },
+        name
+      );
+    }
+
     _addBolt(parent, material, position, radius, name) {
       const bolt = this._joint(material, position, radius || 0.07, name || 'fastener');
       parent.add(bolt);
@@ -7283,7 +7306,7 @@
         // Câble de levage en acier
         root.add(this._cylinder(steel, 0.04, 0.04, 1.8, { x: 0, y: 2.0, z: 0 }, { x: 0, y: 0, z: 0 }, 'hoist_wire_rope'));
         // Crochet de levage jaune industriel
-        root.add(this._torus(hazard, 0.28, 0.08, 16, 24, { x: 0, y: 1.0, z: 0 }, { x: 0, y: 0, z: 0 }, 'hoist_crane_hook'));
+        root.add(this._torus(hazard, 0.28, 0.08, { x: 0, y: 1.0, z: 0 }, { x: 0, y: 0, z: 0 }, 'hoist_crane_hook'));
       } else if (normalizedType === 'hadley_battery_bank' || normalizedType === 'battery_bank') {
         // Chantier 292 : Hadley's Hope Operations Emergency Battery Bank (Aliens 1986)
         const darkMetal = this._material('darkMetal', { color: 0x0f172a, roughness: 0.6, metalness: 0.9 });
@@ -7315,7 +7338,9 @@
         // Mât pivotant de la potence
         root.add(this._cylinder(rustMetal, 0.16, 0.16, 3.6, { x: 1.2, y: 1.8, z: 1.2 }, { x: 0, y: 0, z: 0 }, 'quench_crane_mast'));
         // Flèche de levage
-        root.add(this._box(rustMetal, { x: 1.8, y: 0.22, z: 0.22 }, { x: 0.3, y: 3.5, z: 0.6 }, { x: 0, y: 0.4, z: 0 }, 'quench_jib_boom'));
+        const jib = this._box(rustMetal, { x: 1.8, y: 0.22, z: 0.22 }, { x: 0.3, y: 3.5, z: 0.6 }, 'quench_jib_boom');
+        jib.rotation.y = 0.4;
+        root.add(jib);
         // Panier grillagé de maintien des pièces
         root.add(this._box(cageMat, { x: 1.35, y: 0.8, z: 1.35 }, { x: 0, y: 1.6, z: 0 }, 'quench_wire_basket'));
       } else if (normalizedType === 'auriga_cryo_centrifuge' || normalizedType === 'cryo_centrifuge') {
@@ -7329,7 +7354,7 @@
         // Bol de rotor centrifuge inox
         root.add(this._cylinder(stainless, 0.75, 0.75, 1.2, { x: 0, y: 1.1, z: 0 }, { x: 0, y: 0, z: 0 }, 'centrifuge_rotor_drum'));
         // Serpentin de réfrigération cryo
-        root.add(this._torus(cryoFrost, 0.82, 0.07, 16, 24, { x: 0, y: 0.8, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'centrifuge_cryo_coil'));
+        root.add(this._torus(cryoFrost, 0.82, 0.07, { x: 0, y: 0.8, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'centrifuge_cryo_coil'));
         // Hublot de surveillance en verre blindé
         root.add(this._cylinder(cryoFrost, 0.32, 0.32, 0.12, { x: 0, y: 1.72, z: 0 }, { x: 0, y: 0, z: 0 }, 'centrifuge_view_glass'));
         // Terminal de commande tactile Weyland-Yutani
@@ -7345,7 +7370,7 @@
         // Conduites de dérivation verticales
         for (let i = -1; i <= 1; i++) {
           root.add(this._cylinder(stainless, 0.16, 0.16, 1.2, { x: i * 0.85, y: 0.7, z: 0 }, { x: 0, y: 0, z: 0 }, `manifold_branch_${i}`));
-          root.add(this._torus(hazard, 0.22, 0.05, 12, 18, { x: i * 0.85, y: 1.5, z: 0.38 }, { x: 0, y: 0, z: 0 }, `manifold_valve_${i}`));
+          root.add(this._torus(hazard, 0.22, 0.05, { x: i * 0.85, y: 1.5, z: 0.38 }, { x: 0, y: 0, z: 0 }, `manifold_valve_${i}`));
         }
         // Manchon givré par détente cryogénique
         root.add(this._cylinder(frost, 0.38, 0.38, 0.8, { x: 0, y: 1.4, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'manifold_frost_jacket'));
@@ -7374,7 +7399,7 @@
         root.add(this._cylinder(darkMetal, 1.35, 1.35, 3.2, { x: 0, y: 1.4, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'turbogen_stator_barrel', true));
         // Brides annulaires de renfort
         for (let r = -1; r <= 1; r++) {
-          root.add(this._torus(industrial, 1.42, 0.08, 16, 24, { x: r * 0.95, y: 1.4, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, `turbogen_flange_${r}`));
+          root.add(this._torus(industrial, 1.42, 0.08, { x: r * 0.95, y: 1.4, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, `turbogen_flange_${r}`));
         }
         // Boîte d'admission de vapeur surchauffée
         root.add(this._box(hazard, { x: 0.85, y: 1.1, z: 0.85 }, { x: -1.1, y: 2.5, z: 0 }, 'turbogen_steam_chest'));
@@ -7417,7 +7442,7 @@
         // Buse conique de soufflage en cuivre refroidie
         root.add(this._cylinder(copper, 0.55, 0.32, 1.8, { x: 0, y: 1.3, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'blast_copper_tuyere', true));
         // Collerette de fixation au blindage du fourneau
-        root.add(this._torus(darkMetal, 0.72, 0.14, 16, 24, { x: -0.75, y: 1.3, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, 'blast_bustle_pipe_collar'));
+        root.add(this._torus(darkMetal, 0.72, 0.14, { x: -0.75, y: 1.3, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, 'blast_bustle_pipe_collar'));
         // Lance axiale d'injection d'oxygène pur
         root.add(this._cylinder(steel, 0.12, 0.12, 2.2, { x: 0.2, y: 1.3, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'blast_oxygen_injection_lance'));
         // Hublot de regard visuel à verre teinté

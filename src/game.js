@@ -7153,6 +7153,36 @@
       osc.start(now);
       osc.stop(now + 0.12);
     }
+
+    // -------------------------------------------------------------------------
+    // Vague 31 (Chantiers 301 à 310 & Audit QA #101) : Synthèse audio paramétrique
+    // -------------------------------------------------------------------------
+    playProceduralPropFx(profile = {}, x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const { type = 'sawtooth', f0 = 120, f1 = 60, dur = 0.6, cutoff = 900, vol = 0.5, radius = 55 } = profile;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(Math.max(20, f0), now);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), now + dur);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(cutoff, now);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+      osc.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, radius);
+      osc.start(now);
+      osc.stop(now + dur);
+    }
+
+    // Audit QA #101 : Grincements Métalliques Lointains de la Coque (ambiance)
+    playDistantMetalCreak(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sawtooth', f0: 210, f1: 95, dur: 1.4, cutoff: 520, vol: 0.28, radius: 70 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -7675,6 +7705,33 @@
         ctx.fillText(`XÉNO: (${Math.round(player.x)}, ${Math.round(player.z)})`, 12, h - 14);
         ctx.fillStyle = '#38bdf8';
         ctx.fillText('[L/P: CYCLER PONT]', w - 84, h - 14);
+
+        // Audit QA #105 : Schéma holographique élargi — carte des dispositifs interactifs (mode plein format uniquement)
+        if (this.isExpanded) {
+          const insetW = 120;
+          const insetH = 130;
+          const insetX = w - insetW - 12;
+          const insetY = h - insetH - 26;
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(insetX, insetY, insetW, insetH);
+          const toMapX = (wx) => insetX + ((wx + 85) / 175) * insetW;
+          const toMapY = (wz) => insetY + ((wz + 95) / 195) * insetH;
+          const propKeys = ['wave31Props', 'overheadMonorailHoists', 'emergencyBatteryBanks', 'heavyQuenchBaskets', 'surgicalCryoCentrifuges', 'fuelTransferManifolds', 'baggageInspectionScanners', 'steamTurbogenerators', 'ballisticTestSleds', 'apolloCableTrays', 'blastFurnaceTuyeres'];
+          ctx.fillStyle = deckCol;
+          for (const key of propKeys) {
+            for (const p of (stationMap[key] || [])) {
+              ctx.fillRect(toMapX(p.x) - 1.5, toMapY(p.z) - 1.5, 3, 3);
+            }
+          }
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(toMapX(player.x), toMapY(player.z), 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '600 7px monospace';
+          ctx.fillText('CARTE DISPOSITIFS', insetX + 4, insetY + 9);
+        }
       }
 
       // Rendu des lignes de balayage cathodique CRT & lueur phosphorescente (Aliens 1986 / Isolation)
@@ -8560,6 +8617,10 @@
       this.apolloCableTrays = [];
       this.blastFurnaceTuyeres = [];
       this.monumentalArchwayGirders = [];
+      // Chantiers 301 à 310 & Audits QA 101 à 105 (Level Design 1:1)
+      this.wave31Props = [];
+      this.creakTimer = 12;
+      this.interactPromptTimer = 0;
     }
 
     buildMap() {
@@ -12172,6 +12233,33 @@
         rendererEngine.mapGroup.add(archGroup);
         this.monumentalArchwayGirders.push({ x: ap.x, z: ap.z, group: archGroup });
       });
+
+      // =========================================================================
+      // VAGUE 31 (Chantiers 301 à 310) : Vestiaires EVA, Dortoirs, Cuves & Postes de Sécurité
+      // =========================================================================
+      const wave31Defs = [
+        { id: 'eva_locker_1', factory: 'createNostromoEvaLocker', name: 'Vestiaire Combinaisons EVA Nostromo', x: -65, z: 30, hx: 1.1, hz: 0.5, radius: 7.5, damage: 160, color: 0x94a3b8, label: 'DÉCOMPRESSION VESTIAIRE EVA', toast: 'VESTIAIRE EVA FORCÉ : Casques et combinaisons projetés dans le sas !', log: '[EVA LOCKER] Arrachement des verrous du vestiaire de combinaisons spatiales Nostromo.', fx: { type: 'square', f0: 240, f1: 70, dur: 0.5, cutoff: 1400, vol: 0.5 }, anim: 'eva_locker_stripe' },
+        { id: 'fuel_cart_1', factory: 'createHadleyDropshipFuelCart', name: 'Chariot Pompe Carburant Dropship Hadley', x: 50, z: 55, hx: 1.4, hz: 1.0, radius: 9.0, damage: 230, color: 0xf97316, label: 'EXPLOSION CHARIOT CARBURANT', toast: 'CHARIOT DE CARBURANT ÉVENTRÉ : Déflagration de kérosène de dropship !', log: '[FUEL CART] Rupture de la citerne du chariot de ravitaillement UD-4L.', fx: { type: 'sawtooth', f0: 90, f1: 28, dur: 0.9, cutoff: 700, vol: 0.65 }, anim: 'fuel_cart_hose' },
+        { id: 'bunk_block_1', factory: 'createFiorinaBunkBlock', name: 'Bloc Dortoir Détenus Fiorina 161', x: -45, z: 70, hx: 1.3, hz: 0.7, radius: 6.5, damage: 150, color: 0x78716c, label: 'EFFONDREMENT DES COUCHETTES', toast: 'DORTOIR EFFONDRÉ : Les couchettes de détenus s\'abattent !', log: '[BUNK BLOCK] Cisaillement des montants du dortoir de la prison Fiorina.', fx: { type: 'triangle', f0: 160, f1: 45, dur: 0.6, cutoff: 600, vol: 0.55 }, anim: 'bunk_ladder' },
+        { id: 'amniotic_tanks_1', factory: 'createAurigaAmnioticTanks', name: 'Rangée de Cuves Amniotiques Auriga', x: -65, z: -45, hx: 1.9, hz: 0.7, radius: 8.0, damage: 190, color: 0x4ade80, label: 'RUPTURE CUVES AMNIOTIQUES', toast: 'CUVES AMNIOTIQUES BRISÉES : Fluide nutritif corrosif sur le pont !', log: '[AMNIOTIC TANKS] Éclatement des cuves de gestation de la pouponnière hybride.', fx: { type: 'sine', f0: 2400, f1: 500, dur: 0.4, cutoff: 5000, vol: 0.45 }, anim: 'amniotic_tank_fluid_0' },
+        { id: 'spindle_1', factory: 'createRomulusSpindleHandrail', name: 'Axe de Rotation & Rampe Zéro-G Renaissance', x: 35, z: 60, hx: 1.3, hz: 1.3, radius: 8.5, damage: 175, color: 0xf59e0b, label: 'ROTATION INCONTRÔLÉE', toast: 'AXE DE ROTATION EMBALLÉ : La rampe balaye la coursive !', log: '[SPINDLE] Emballement du moyeu de l\'anneau tournant de Renaissance.', fx: { type: 'sawtooth', f0: 80, f1: 400, dur: 0.8, cutoff: 1200, vol: 0.5 }, anim: 'spindle_handrail_high', spin: true },
+        { id: 'turnstile_1', factory: 'createSevastopolSecurityTurnstile', name: 'Tourniquet Poste de Sécurité Sevastopol', x: 55, z: 5, hx: 1.3, hz: 0.6, radius: 6.0, damage: 120, color: 0xef4444, label: 'POSTE DE SÉCURITÉ VERROUILLÉ', toast: 'TOURNIQUET BLOQUÉ : Alarme de poste de sécurité Seegson !', log: '[TURNSTILE] Verrouillage électromagnétique du tourniquet de contrôle.', fx: { type: 'square', f0: 880, f1: 440, dur: 0.5, cutoff: 3000, vol: 0.4 }, anim: 'turnstile_arm_0', spin: true, alarm: true },
+        { id: 'radio_mast_1', factory: 'createHadleyRadioMastRack', name: 'Mât Radio & Baie Émetteurs Hadley', x: 70, z: -45, hx: 0.9, hz: 0.6, radius: 8.0, damage: 170, color: 0xf59e0b, label: 'SURTENSION ÉMETTEUR', toast: 'ÉMETTEUR RADIO SURCHARGÉ : Larsen et arcs sur le mât de communication !', log: '[RADIO MAST] Surcharge du rack d\'émission longue portée des opérations.', fx: { type: 'square', f0: 1800, f1: 300, dur: 0.7, cutoff: 4000, vol: 0.45 }, anim: 'radio_mast_dish', spin: true, alarm: true },
+        { id: 'cargo_winch_1', factory: 'createUscmDropshipCargoWinch', name: 'Treuil de Rampe Cargo UD-4L', x: -55, z: 45, hx: 1.4, hz: 0.9, radius: 7.5, damage: 200, color: 0xeab308, label: 'CÂBLE DE TREUIL RUPTURÉ', toast: 'TREUIL CARGO RELÂCHÉ : Le câble d\'acier fouette la rampe !', log: '[CARGO WINCH] Rupture du câble de rampe du dropship UD-4L.', fx: { type: 'sawtooth', f0: 600, f1: 90, dur: 0.6, cutoff: 1500, vol: 0.55 }, anim: 'winch_drum', spin: true },
+        { id: 'control_rod_1', factory: 'createSevastopolControlRodGantry', name: 'Portique Barres de Contrôle Réacteur Sevastopol', x: 5, z: -75, hx: 1.7, hz: 0.5, radius: 9.0, damage: 220, color: 0x06b6d4, label: 'ÉJECTION DES BARRES DE CONTRÔLE', toast: 'BARRES DE CONTRÔLE ÉJECTÉES : Pic de radiations dans le réacteur !', log: '[CONTROL RODS] Retrait d\'urgence des barres de contrôle du réacteur Sevastopol.', fx: { type: 'sine', f0: 60, f1: 1200, dur: 1.0, cutoff: 2500, vol: 0.55 }, anim: 'control_rod_0', alarm: true },
+        { id: 'ingot_rack_1', factory: 'createFiorinaIngotMoldRack', name: 'Râtelier Lingots de Plomb Fiorina', x: 5, z: 80, hx: 1.6, hz: 0.7, radius: 8.0, damage: 240, color: 0xea580c, label: 'COULÉE DE PLOMB RENVERSÉE', toast: 'RÂTELIER DE LINGOTS RENVERSÉ : Plomb en fusion sur le pont !', log: '[INGOT RACK] Renversement des moules à lingots de plomb incandescents.', fx: { type: 'sawtooth', f0: 130, f1: 35, dur: 0.85, cutoff: 800, vol: 0.6 }, anim: 'ingot_2' }
+      ];
+      wave31Defs.forEach((def) => {
+        const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
+        const mesh = window.HiveModelFactory?.[def.factory]?.();
+        if (mesh) {
+          mesh.position.set(def.x, 0, def.z);
+          rendererEngine.propsGroup.add(mesh);
+          prop.mesh = mesh;
+        }
+        this.colliders.push({ minX: def.x - def.hx, maxX: def.x + def.hx, minZ: def.z - def.hz, maxZ: def.z + def.hz, isWave31Prop: true, propRef: prop });
+        this.wave31Props.push(prop);
+      });
     }
 
     setBlastDoorState(door, open, silent = false) {
@@ -12782,6 +12870,9 @@
       this.updateBallisticTestSleds(safeDelta);
       this.updateApolloCableTrays(safeDelta);
       this.updateBlastFurnaceTuyeres(safeDelta);
+      this.updateWave31Props(safeDelta);
+      this.updateAmbientHullCreaks(safeDelta);
+      this.updateInteractionPrompt(safeDelta);
 
       // Audit QA #25 : Frustum culling optimisé et masquage automatique des props hors champ à plus de 45m
       this.cullingTimer = (this.cullingTimer || 0) + safeDelta;
@@ -12918,6 +13009,7 @@
           ...(this.ballisticTestSleds || []),
           ...(this.apolloCableTrays || []),
           ...(this.blastFurnaceTuyeres || []),
+          ...(this.wave31Props || []),
           ...(this.reactorDisconnectConsoles || []),
           ...(this.m577APCs || []),
           ...(this.thermalSurveillancePosts || [])
@@ -19725,6 +19817,110 @@
       showToast('TUYÈRE HAUT FOURNEAU ACTIVÉE : Jet d\'oxygène pur et flammes d\'affinage à 1800°C !');
       appendSensorLog('[BLAST TUYERE] Injection d\'oxygène pur dans la tuyère de cuve Fiorina.', 'alert');
       return true;
+    }
+
+    // -------------------------------------------------------------------------
+    // Chantiers 301 à 310 : Props générique Vague 31 (déclenchement acide [X] / physique [E])
+    // -------------------------------------------------------------------------
+    triggerWave31Prop(prop) {
+      if (!prop || prop.isTriggered) return false;
+      prop.isTriggered = true;
+      prop.resetTimer = 14.0;
+      audioManager.playProceduralPropFx?.(prop.fx, prop.x, prop.z);
+      rendererEngine.addScreenShake?.(0.6, 0.4);
+      window.HiveSystems?.vfx?.burst?.(prop.x, prop.z, prop.color, 55, 0.4, 3.2);
+      window.HiveSystems?.vfx?.ring?.(prop.x, prop.z, prop.color, prop.radius + 2);
+
+      let victims = 0;
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - prop.x, h.z - prop.z) <= prop.radius) {
+          h.takeDamage?.(prop.damage, playerCreature);
+          h.staggerTimer = 3.5;
+          victims++;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.1, h.z, `-${prop.damage} ${prop.label} !`, '#' + prop.color.toString(16).padStart(6, '0'), true);
+        }
+      });
+      // Audit QA #103 : Adrénaline de chasse — un piège environnemental réussi restaure la réserve de chasse
+      if (victims > 0) {
+        const stage = window.gameInstance?.currentStage;
+        if (stage && typeof stage.huntReserve === 'number') {
+          stage.huntReserve = Math.min(100, stage.huntReserve + 12);
+          stage.updateReserveUI?.();
+          window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.8, playerCreature.z, '+12 RÉSERVE DE CHASSE', '#39ff14', false);
+        }
+      }
+      showToast(prop.toast);
+      appendSensorLog(prop.log, 'alert');
+      return true;
+    }
+
+    updateWave31Props(safeDelta) {
+      const t = performance.now() * 0.003;
+      (this.wave31Props || []).forEach((p, idx) => {
+        if (!p.mesh) return;
+        if (p.isTriggered) {
+          p.resetTimer -= safeDelta;
+          const animMesh = p.mesh.children?.find((c) => c.name === p.anim);
+          if (animMesh) {
+            if (p.spin) animMesh.rotation.y += safeDelta * 9.0;
+            else animMesh.position.y += Math.sin(t * 6 + idx) * safeDelta * 0.6;
+          }
+          if (p.resetTimer <= 0) p.isTriggered = false;
+        }
+        if (!p.mesh.visible) return;
+        // Audit QA #102 : Pulsation émissive diégétique (voyants, fluides et métal en fusion)
+        if (!p.emissiveMats) {
+          p.emissiveMats = [];
+          p.mesh.traverse?.((c) => {
+            const m = c.material;
+            if (m && m.emissive && typeof m.emissiveIntensity === 'number') p.emissiveMats.push({ m, base: m.emissiveIntensity });
+          });
+        }
+        const pulse = 0.82 + 0.3 * Math.sin(t + idx * 1.3) + (p.isTriggered ? 0.5 : 0);
+        p.emissiveMats.forEach((e) => { e.m.emissiveIntensity = e.base * pulse; });
+      });
+    }
+
+    // Audit QA #101 : Grincements Métalliques Lointains de la Coque
+    updateAmbientHullCreaks(safeDelta) {
+      this.creakTimer -= safeDelta;
+      if (this.creakTimer > 0) return;
+      this.creakTimer = 9 + Math.random() * 12;
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 28 + Math.random() * 14;
+      audioManager.playDistantMetalCreak?.(playerCreature.x + Math.cos(ang) * dist, playerCreature.z + Math.sin(ang) * dist);
+    }
+
+    // Audit QA #104 : Invite d'Interaction Contextuelle sur le HUD (nom + distance du dispositif proche)
+    updateInteractionPrompt(safeDelta) {
+      this.interactPromptTimer -= safeDelta;
+      if (this.interactPromptTimer > 0) return;
+      this.interactPromptTimer = 0.2;
+      if (!this.promptEl) {
+        const el = document.createElement('div');
+        el.id = 'hud-interaction-prompt';
+        el.setAttribute('aria-hidden', 'true');
+        el.style.cssText = 'position:fixed;bottom:96px;left:50%;transform:translateX(-50%);z-index:40;padding:3px 14px;font:700 11px monospace;letter-spacing:1px;color:#fbbf24;background:rgba(15,10,2,0.7);border:1px solid rgba(251,191,36,0.55);border-radius:3px;pointer-events:none;display:none;';
+        document.body.appendChild(el);
+        this.promptEl = el;
+      }
+      const keys = ['wave31Props', 'overheadMonorailHoists', 'emergencyBatteryBanks', 'heavyQuenchBaskets', 'surgicalCryoCentrifuges', 'fuelTransferManifolds', 'baggageInspectionScanners', 'steamTurbogenerators', 'ballisticTestSleds', 'apolloCableTrays', 'blastFurnaceTuyeres', 'coolingBlowers', 'tacticalHoloTables', 'leadDrainageSluices', 'specimenHoldingCages', 'stasisCarousels', 'monorailBufferStops', 'steamSuperheaters', 'uscmWeaponRacks', 'syntheticAssemblyStations', 'furnaceAirIntakes'];
+      let best = null;
+      let bestDist = 6.0;
+      for (const key of keys) {
+        for (const p of (this[key] || [])) {
+          if (!p || !p.name) continue;
+          const d = Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z);
+          if (d < bestDist) { bestDist = d; best = p; }
+        }
+      }
+      if (best) {
+        this.promptEl.textContent = `[E] ${best.name} — ${bestDist.toFixed(1)}m`;
+        this.promptEl.style.display = 'block';
+      } else {
+        this.promptEl.style.display = 'none';
+      }
     }
 
     updateBlastFurnaceTuyeres(safeDelta) {
@@ -27829,6 +28025,10 @@
       const distTuyere = (stationMap.blastFurnaceTuyeres || []).find((bt) => !bt.isOxygenInjected && Math.hypot(bt.x - playerCreature.x, bt.z - playerCreature.z) <= 15);
       if (distTuyere) stationMap.injectBlastTuyereOxygen(distTuyere);
 
+      // Chantiers 301 à 310 : Crachat acide balistique sur props Vague 31
+      const distWave31 = (stationMap.wave31Props || []).find((wp) => !wp.isTriggered && Math.hypot(wp.x - playerCreature.x, wp.z - playerCreature.z) <= 15);
+      if (distWave31) stationMap.triggerWave31Prop(distWave31);
+
       // Audit QA #83 : Dégradation Structurelle de la Résine Organique sous Impact Acide
       resinGrid.damageResinNodes?.(playerCreature.x, playerCreature.z, 14.0, 'acid');
 
@@ -28735,6 +28935,12 @@
       const nearBlastTuyere = (stationMap.blastFurnaceTuyeres || []).find((bt) => !bt.isOxygenInjected && Math.hypot(bt.x - playerCreature.x, bt.z - playerCreature.z) <= 6.0);
       if (nearBlastTuyere) {
         stationMap.injectBlastTuyereOxygen(nearBlastTuyere);
+        return true;
+      }
+      // 151 à 160. Props Vague 31 (Chantiers 301 à 310)
+      const nearWave31 = (stationMap.wave31Props || []).find((wp) => !wp.isTriggered && Math.hypot(wp.x - playerCreature.x, wp.z - playerCreature.z) <= 6.0);
+      if (nearWave31) {
+        stationMap.triggerWave31Prop(nearWave31);
         return true;
       }
       showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur, brouilleur m56, cryo c60, arc-furnace weyland, torche éthylène, casai seegson, bio-stasis pathogène noir, transit mag-lev, halon 1301, mine claymore m20, échangeur ap14, camouflage résine, sevastopol jack, charge 15kv working joe, sas bio-alpha, réacteur nostromo, vapeur géothermique, éjection pyrotechnique, plomb fiorina, gondole sevastopol, cellule synthétique, rotor ventilation, épurateur atmo, inversion gravité, barricade uscm, serveur apollo, théâtre dissection, matrice cryo nostromo, passerelle chasm, bassin trempe fiorina, baie sans tain auriga, centrifugeuse cryo, rail 750v sevastopol, incinérateur medlab, grue atelier uscm, antenne lorenz, sas corbel, rampe narcissus, piston sismique, soufflet fonderie, sarcophage stasique, siphon propergol, rideau roulant, puisard chimique, palette munitions, alcôve synthétique, treuil fonderie, sas cryo nostromo, flume caloporteur, contrepoids fiorina, bioréacteur auriga, portique remus, cabine seegson, couveuse medlab, bunker sandbags, persiennes sevastopol, déversoir fiorina, soufflerie cryo, table holo-tactique, rigole plomb, cage spécimen, carrousel romulus, butoir monorail, surchauffeur vapeur, râtelier uscm, banc seegson, prise venturi, palan nostromo, batterie hadley, trempe fiorina, centrifugeuse auriga, manifold romulus, scanner sevastopol, turbogénérateur hadley, banc balistique uscm, bus apollo, tuyère fiorina) à portée immédiate.');

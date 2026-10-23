@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "models": {
+    "scientist": {
+      "url": "rocketbox/medical-male-01.glb",
+      "height": 4.25,
+      "nativeHeight": 1.8064528703689575,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "neutralizeArms": false,
+      "bindings": {
+        "head": "Bip01 Head",
+        "hips": "Bip01 Pelvis",
+        "spine": "Bip01 Spine2",
+        "neck": "Bip01 Neck",
+        "leftUpperArm": "Bip01 L UpperArm",
+        "leftForeArm": "Bip01 L Forearm",
+        "leftHand": "Bip01 L Hand",
+        "leftThigh": "Bip01 L Thigh",
+        "leftShin": "Bip01 L Calf",
+        "leftFoot": "Bip01 L Foot",
+        "rightUpperArm": "Bip01 R UpperArm",
+        "rightForeArm": "Bip01 R Forearm",
+        "rightHand": "Bip01 R Hand",
+        "rightThigh": "Bip01 R Thigh",
+        "rightShin": "Bip01 R Calf",
+        "rightFoot": "Bip01 R Foot"
+      },
+      "requiredBones": [
+        "head",
+        "hips",
+        "leftHand",
+        "rightHand",
+        "leftFoot",
+        "rightFoot"
+      ],
+      "anchors": {
+        "face": {
+          "bone": "head",
+          "position": [
+            8.62172004216754,
+            15.430320995938324,
+            -0.026615533064482173
+          ],
+          "rotation": [
+            -1.581546246831434,
+            0.19095474920700328,
+            -1.5657851003092915
+          ]
+        }
+      }
+    },
+    "marine": {
+      "url": "rocketbox/military-male-01.glb",
+      "height": 4.25,
+      "nativeHeight": 1.8441038131713867,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "neutralizeArms": false,
+      "bindings": {
+        "head": "Bip01 Head",
+        "hips": "Bip01 Pelvis",
+        "spine": "Bip01 Spine2",
+        "neck": "Bip01 Neck",
+        "leftUpperArm": "Bip01 L UpperArm",
+        "leftForeArm": "Bip01 L Forearm",
+        "leftHand": "Bip01 L Hand",
+        "leftThigh": "Bip01 L Thigh",
+        "leftShin": "Bip01 L Calf",
+        "leftFoot": "Bip01 L Foot",
+        "rightUpperArm": "Bip01 R UpperArm",
+        "rightForeArm": "Bip01 R Forearm",
+        "rightHand": "Bip01 R Hand",
+        "rightThigh": "Bip01 R Thigh",
+        "rightShin": "Bip01 R Calf",
+        "rightFoot": "Bip01 R Foot"
+      },
+      "requiredBones": [
+        "head",
+        "hips",
+        "leftHand",
+        "rightHand",
+        "leftFoot",
+        "rightFoot"
+      ],
+      "anchors": {
+        "face": {
+          "bone": "head",
+          "position": [
+            9.421742313659792,
+            15.004683751466896,
+            -0.026365376898627224
+          ],
+          "rotation": [
+            -1.5815462363347197,
+            0.1909547435896634,
+            -1.5657851691172013
+          ]
+        }
+      }
+    },
+    "civilian": {
+      "alias": "scientist"
+    },
+    "medical": {
+      "alias": "scientist"
+    },
+    "guard": {
+      "alias": "marine"
+    },
+    "security": {
+      "alias": "marine"
+    },
+    "soldier": {
+      "alias": "marine"
+    },
+    "corporate": {
+      "alias": "marine"
+    },
+    "synthetic": {
+      "alias": "scientist"
+    },
+    "android": {
+      "alias": "scientist"
+    },
+    "synthetic_assistant": {
+      "alias": "scientist"
+    },
+    "smartgunner": {
+      "alias": "marine"
+    },
+    "incinerator": {
+      "alias": "marine"
+    },
+    "commando": {
+      "alias": "marine"
+    }
+  }
+}

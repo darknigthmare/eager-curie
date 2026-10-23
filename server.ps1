@@ -47,6 +47,10 @@ function Get-ContentType {
         '.css'  { return 'text/css; charset=utf-8' }
         '.js'   { return 'application/javascript; charset=utf-8' }
         '.json' { return 'application/json; charset=utf-8' }
+        '.glb'  { return 'model/gltf-binary' }
+        '.gltf' { return 'model/gltf+json' }
+        '.bin'  { return 'application/octet-stream' }
+        '.hdr'  { return 'image/vnd.radiance' }
         '.png'  { return 'image/png' }
         '.jpg'  { return 'image/jpeg' }
         '.jpeg' { return 'image/jpeg' }
@@ -66,7 +70,7 @@ $trimCharacters = [char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO
 $rootPath = [System.IO.Path]::GetFullPath($PSScriptRoot).TrimEnd($trimCharacters)
 $rootPrefix = $rootPath + [System.IO.Path]::DirectorySeparatorChar
 $allowedExtensions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-@('.html', '.css', '.js', '.json', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.wav', '.mp3', '.woff', '.woff2') |
+@('.html', '.css', '.js', '.json', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.wav', '.mp3', '.woff', '.woff2', '.glb', '.gltf', '.bin', '.hdr') |
     ForEach-Object { [void]$allowedExtensions.Add($_) }
 
 $url = "http://localhost:$Port/"

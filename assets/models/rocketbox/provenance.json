@@ -1,0 +1,237 @@
+{
+  "project": "Microsoft Rocketbox avatars and animations",
+  "author": "Microsoft / Rocketbox",
+  "license": "MIT",
+  "commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
+  "licenseUrl": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/LICENSE.md",
+  "licenseEvidence": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/README.md",
+  "modifications": [
+    "FBX to glTF2 conversion; scene unit and inverse-bind normalization",
+    "Original 2048px diffuse/normal imagery converted to compressed embedded JPEG; RGBA hair texture retained as PNG",
+    "Nonmetallic physically based cloth/skin materials; alpha-tested matte photographic hair cards",
+    "80-bone skin retained; source animation poses retargeted from animation FBX bind poses to avatar bind poses",
+    "Idle, Walk, Run baked at30fps; horizontal root motion removed so game locomotion owns translation"
+  ],
+  "knownLimitations": [
+    "Rocketbox is an older authored asset library, not a modern AAA scan.",
+    "Medical avatar retains small polygonal scalp/hair highlight seams visible in extreme closeups."
+  ],
+  "models": [
+    {
+      "assetId": "Medical_Male_01",
+      "runtimeId": "scientist",
+      "file": "medical-male-01.glb",
+      "bytes": 5734080,
+      "sha256": "354ee0d8ee57700ed779b1c36ab672ffbe922befdf020fa6dadffe9417b49559",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Medical_Male_01/Export/Medical_Male_01.fbx",
+      "triangles": 7581,
+      "bones": 80,
+      "drawPrimitives": 3,
+      "images": 5,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run"
+      ],
+      "nativeHeight": 1.8064528703689575,
+      "up": "+Y",
+      "forward": "+Z"
+    },
+    {
+      "assetId": "Military_Male_01",
+      "runtimeId": "marine",
+      "file": "military-male-01.glb",
+      "bytes": 11677056,
+      "sha256": "eeb6cb864d13e8abe39debe276a59dfce7c5e643e65d2ae9e7b46642e87f7b9d",
+      "source": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Export/Military_Male_01.fbx",
+      "triangles": 15387,
+      "bones": 80,
+      "drawPrimitives": 5,
+      "images": 10,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run"
+      ],
+      "nativeHeight": 1.8441038131713867,
+      "up": "+Y",
+      "forward": "+Z"
+    }
+  ],
+  "sources": [
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_static/m_idle_breathe_01.max.fbx",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Animations/all_animations_max_motextr_static/m_idle_breathe_01.max.fbx",
+      "bytes": 1397280,
+      "sha256": "281735704260d96e882d13e3c77d0ede00ed5d2e40805cd305000b3e5cbb1090"
+    },
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_xy/m_run_neutral_01.max.fbx",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Animations/all_animations_max_motextr_xy/m_run_neutral_01.max.fbx",
+      "bytes": 868752,
+      "sha256": "5a22052ea750805ea7e097310f36cd448c838e7c88bc842a78632d9606869fa8"
+    },
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_xy/m_walk_neutral_01.max.fbx",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Animations/all_animations_max_motextr_xy/m_walk_neutral_01.max.fbx",
+      "bytes": 994336,
+      "sha256": "e6805ae6b6b49fe10f06c1b17b14ddde90d09b9fea689ac34793df252f44dcd0"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Medical_Male_01/Export/Medical_Male_01.fbx",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Medical_Male_01/Export/Medical_Male_01.fbx",
+      "bytes": 552016,
+      "sha256": "11df553be0a51691034be585ac402a933a530bb8e5529d6dba7a7462b87e5a3b"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Medical_Male_01/Textures/m152_body_color.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Medical_Male_01/Textures/m152_body_color.tga",
+      "bytes": 12582956,
+      "sha256": "717b4569cac7b96fc8eadc4de001156af9f86138f4cc80764d1642024e91c145"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Medical_Male_01/Textures/m152_body_normal.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Medical_Male_01/Textures/m152_body_normal.tga",
+      "bytes": 12582956,
+      "sha256": "127c58dce77b212dc68fd4605ca666214438167cc76717fb791aabf46f974e04"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Medical_Male_01/Textures/m152_body_specular.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Medical_Male_01/Textures/m152_body_specular.tga",
+      "bytes": 12582956,
+      "sha256": "0c285cf77dae89f5d9c6390418ea8837754a8b9b2e9a2dd59658d5da506cb41c"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Medical_Male_01/Textures/m152_head_color.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Medical_Male_01/Textures/m152_head_color.tga",
+      "bytes": 12582956,
+      "sha256": "2422f9dacdbbe78a3c5ac2f593a541ab324ec41c8c65993f120a6864ab50c8f8"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Medical_Male_01/Textures/m152_head_normal.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Medical_Male_01/Textures/m152_head_normal.tga",
+      "bytes": 12582956,
+      "sha256": "15c30dc6fe690d4779157f5ba1b76c60929e1992a47998cafe9750289f76f014"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Medical_Male_01/Textures/m152_head_specular.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Medical_Male_01/Textures/m152_head_specular.tga",
+      "bytes": 12582956,
+      "sha256": "e1b349311a612d1ce172cf254bcb69953de07827fd9778aeec6f200e6ce2d3fc"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Medical_Male_01/Textures/m152_opacity_color.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Medical_Male_01/Textures/m152_opacity_color.tga",
+      "bytes": 4194348,
+      "sha256": "7793ea45a31c2153cf1ef7319ce67c60fd6c84d59767ceb3e9f7f88160a720d9"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Export/Military_Male_01.fbx",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Export/Military_Male_01.fbx",
+      "bytes": 908640,
+      "sha256": "b041e9a605a9bead434a9d1ec51fec42e4118f1a991f373de945d69c87de0c59"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_body_color_acu.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_body_color_acu.tga",
+      "bytes": 12582956,
+      "sha256": "40a1afc4dfac8bebf1c61c36819a17fbe3bda0a3132da0b3a1aca3792e79d32d"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_body_normal.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_body_normal.tga",
+      "bytes": 12582956,
+      "sha256": "74aca26d86b22aad0c7caa2264e61739f3ec134a86113746a2cd6b7312ac2862"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_body_specular.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_body_specular.tga",
+      "bytes": 12582956,
+      "sha256": "d8f75ba85061db0b8a8f59d165b5c90cb93445863a00e9a6083c8e7079178ed8"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_combat_knife_color.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_combat_knife_color.tga",
+      "bytes": 3145772,
+      "sha256": "d5c5859086d45d11e499716722378675b2e8d9af2171c891258e5db1f9e5abd6"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_combat_knife_normal.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_combat_knife_normal.tga",
+      "bytes": 3145772,
+      "sha256": "8ec2e0cec48e0bef52dfd0107bdbbe2810ada80a81035d7ed8c6cfbbe79be64c"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_combat_knife_specular.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_combat_knife_specular.tga",
+      "bytes": 3145772,
+      "sha256": "c58f6aa6fe16db5b7ac2b2c7953626bf2684ec1d6c8eafadbf788df8c07cd39a"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_equipment_color_acu.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_equipment_color_acu.tga",
+      "bytes": 6291500,
+      "sha256": "e90b760549eda17b25b79cbfc2a831212a2791dd738bcea08f3e8941f0b0cfe3"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_equipment_normal.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_equipment_normal.tga",
+      "bytes": 6291500,
+      "sha256": "89b0eed4f6359e0710fb14ac1df923bce1e433436dbe4449a20d72f06b9b037e"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_equipment_specular.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_equipment_specular.tga",
+      "bytes": 6291500,
+      "sha256": "9d4efb3b7432365f51879c362aeca6d248634b659b7a513e3d63bf336b807fce"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_head_color.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_head_color.tga",
+      "bytes": 12582956,
+      "sha256": "b936215716e3caeed3f6a1d2462bef885022e11593659f4ddf531a138ed5ddcd"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_head_normal.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_head_normal.tga",
+      "bytes": 12582956,
+      "sha256": "df10a68a22b65681c75cd2cf127496a9f031380d098f652701bc2e0bc9be7669"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_head_specular.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_head_specular.tga",
+      "bytes": 12582956,
+      "sha256": "ff329d98691c93be405ab319081c0292be2f993d8fc61040b6fe90540992066b"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_helmet_color_acu.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_helmet_color_acu.tga",
+      "bytes": 12582956,
+      "sha256": "a36cd586d57d01a6febfd3ade796437a4507196595b93e65285d73a1d3eeb414"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_helmet_normal.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_helmet_normal.tga",
+      "bytes": 12582956,
+      "sha256": "21cf5391c1c1c6278197d5d0f4610a3fc27e4f26972aadbe04f2ded9f42bf70d"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Military_Male_01/Textures/sm002_helmet_specular.tga",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/Assets/Avatars/Professions/Military_Male_01/Textures/sm002_helmet_specular.tga",
+      "bytes": 12582956,
+      "sha256": "716cc7ba1997c33b8c750149c73ff852c4202fa3c456bb218004ee9436f83d10"
+    },
+    {
+      "path": "LICENSE.md",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/LICENSE.md",
+      "bytes": 1066,
+      "sha256": "17474e386e0b9e1a700cc3d06b2b0882a2c376d9c6b49c7f8274409b8f8d2352"
+    },
+    {
+      "path": "README.md",
+      "url": "https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/README.md",
+      "bytes": 5345,
+      "sha256": "bcf8013e3d5817a5dee5d1770b9943278189cd76b2d9b2abc243db99b703ecd6"
+    }
+  ]
+}

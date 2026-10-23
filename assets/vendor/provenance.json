@@ -1,0 +1,104 @@
+[
+  {
+    "package": "three",
+    "version": "0.128.0",
+    "tarball": "https://registry.npmjs.org/three/-/three-0.128.0.tgz",
+    "integrity": "sha512-i0ap/E+OaSfzw7bD1TtYnPo3VEplkl70WX5fZqZnfZsE3k3aSFudqrrC9ldFZfYFkn1zwDmBcdGfiIm/hnbyZA==",
+    "files": [
+      {
+        "path": "assets/vendor/three.r128.min.js",
+        "source": "package/build/three.min.js",
+        "integrity": "sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ=="
+      },
+      {
+        "path": "assets/vendor/GLTFLoader.r128.js",
+        "source": "package/examples/js/loaders/GLTFLoader.js",
+        "integrity": "sha512-7ceL/jbmqBN0LhulOMl+WpzZrUN0FJMpU74JPAnD34pXpP8ZcFwG07TAAS7t9UzYzqEJR0rFGVcc4ptwceXslA=="
+      },
+      {
+        "path": "assets/vendor/SkeletonUtils.r128.js",
+        "source": "package/examples/js/utils/SkeletonUtils.js",
+        "integrity": "sha512-Alojlx2yBAWFREtROPVb+a368dkuJIiah6POdzBpmuW56ekJyFOEOJQAUs24T/TpwP3cN7/E99/8GFBTEAtA+g=="
+      },
+      {
+        "path": "assets/vendor/RGBELoader.r128.js",
+        "source": "package/examples/js/loaders/RGBELoader.js",
+        "integrity": "sha512-gJ0jKdu4mS7faaTE7ZQrOAzDAGNH2midcz4cKPsEmbJbQsJ89F+rya5x2QnPfkEO2iZFQH2IIlikN//H90k+hg=="
+      },
+      {
+        "path": "assets/vendor/THREE-LICENSE.txt",
+        "source": "package/LICENSE",
+        "integrity": "sha512-zlaMMD9X0odHNKkT3IdFpyl0WJ6zs7BFc3vR164Iaw1A7rHQmJFcliXJPg5JXaFJPArkrT0amgrb4akgfXulbA=="
+      }
+    ]
+  },
+  {
+    "package": "@fontsource/orbitron",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource/orbitron/-/orbitron-5.3.0.tgz",
+    "integrity": "sha512-+BhPsbUAo/AF7sRcf+TEexm+EWWkgTiR9Zwb7AhYIPkc5oplfvw0C45Oc2xlKPhwVEmxG8hHuA6/Ansbl+Bc6w==",
+    "files": [
+      {
+        "path": "assets/fonts/orbitron-latin-400-normal.woff2",
+        "source": "package/files/orbitron-latin-400-normal.woff2",
+        "integrity": "sha512-wk/vSseJieGElK7O+EA3KrCBoX9OiVO87p7bibTeeHC2js/XchEjqqj+0sgkxxjStgpRNUcbfuWRRsmFMPaBjg=="
+      },
+      {
+        "path": "assets/fonts/orbitron-latin-700-normal.woff2",
+        "source": "package/files/orbitron-latin-700-normal.woff2",
+        "integrity": "sha512-wRMYbIzxRgB23TfnWpO+CqPuKnikHcgcddJhR9z/cla5l6nFQsZ2GDdH1B7YKEo2xeq684aQfcGqoMJUJ5/MQQ=="
+      },
+      {
+        "path": "assets/fonts/orbitron-latin-900-normal.woff2",
+        "source": "package/files/orbitron-latin-900-normal.woff2",
+        "integrity": "sha512-okxGZnYwNo0hRuK9/5aQuYpDmR1XaFxAzm3VZSs4wzrsNCWQ5l+Ov8zNZi+acrmYCBvJpae+aGc5omQBU0O1bA=="
+      },
+      {
+        "path": "assets/fonts/orbitron-LICENSE.txt",
+        "source": "package/LICENSE",
+        "integrity": "sha512-wWdQDSVlaZqKz86iHDZMdmcPZZ6MMJPp2R3YbTdOQ9iXn78JzEXY38OxGAx7qKE5Jc6s/ScQ2X+3wBmYTqXDbA=="
+      }
+    ]
+  },
+  {
+    "package": "@fontsource/share-tech-mono",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource/share-tech-mono/-/share-tech-mono-5.3.0.tgz",
+    "integrity": "sha512-hVEzVCzEid/fBfhggMyvkfDzn9ODrMihxC0EiOeQK3BuQNvdjmith2ERnoDNUkbW8zhufbKNuCgaSoT8LUNpuQ==",
+    "files": [
+      {
+        "path": "assets/fonts/share-tech-mono-latin-400-normal.woff2",
+        "source": "package/files/share-tech-mono-latin-400-normal.woff2",
+        "integrity": "sha512-Gc4T59lM/S6aVuEowpdh2FOt72RpVAFPLepUv2uFGBQ+1EBKnNvUwl0/wE/smFIK3ELTvTV4QNsLbLL6PAMclA=="
+      },
+      {
+        "path": "assets/fonts/share-tech-mono-LICENSE.txt",
+        "source": "package/LICENSE",
+        "integrity": "sha512-X3enygIMmlC3m2yPR36V5AFHKG63kqoCROAZnJw+ciHyFKMqWsjO8AJt+/i8r5ckXtz2DD/arM5yEnZ3BxP+dA=="
+      }
+    ]
+  },
+  {
+    "package": "@fontsource/rajdhani",
+    "version": "5.3.0",
+    "tarball": "https://registry.npmjs.org/@fontsource/rajdhani/-/rajdhani-5.3.0.tgz",
+    "integrity": "sha512-oBJgSIibWJvVBKseme1JczqPLoDHN97LHti4uh0LjfcJqQoVmnQQlRKIpEjTJV559rmVQ6qbVZZwKwk2wkBTtw==",
+    "files": [
+      {
+        "path": "assets/fonts/rajdhani-latin-500-normal.woff2",
+        "source": "package/files/rajdhani-latin-500-normal.woff2",
+        "integrity": "sha512-NgrOZfdQOalKM6g1dhRC7rHWfWElmHZjdeoHFdV38Jywnh/67l01U9ODLHzh0JFee3nAtOscABKcwqT0EXosQw=="
+      },
+      {
+        "path": "assets/fonts/rajdhani-latin-700-normal.woff2",
+        "source": "package/files/rajdhani-latin-700-normal.woff2",
+        "integrity": "sha512-3wJFCEdoZCc4OH96DaoRxL0BCWF8QSC/2ICDww1obuK9Mn5CbODZ7h9Qg5xeKJD4oqLXrM43Bf6PoyT+YjrZQg=="
+      },
+      {
+        "path": "assets/fonts/rajdhani-LICENSE.txt",
+        "source": "package/LICENSE",
+        "integrity": "sha512-pCwpViYdgCpeQZzIQMptWQPVA1wQ5i2jYUvtuyPAPdZYeQ8SX4J8+9Zqvquv+dK5Rhxh09Vx843AgL7nDKPPZw=="
+      }
+    ]
+  }
+]

@@ -7911,6 +7911,11 @@
       this.screenShake = 0;
       this.powerSabotagedTimer = 0;
       this.reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.graphicsQuality = 'auto';
+      this.renderQuality = null;
+      this.stationDetail = null;
+      this.cameraDistance = 1;
+      this.lastWheelZoom = 0;
     }
 
     sabotagePower(duration = 22) {
@@ -7923,6 +7928,7 @@
 
     init(canvas) {
       this.raycaster = new THREE.Raycaster();
+      this.wallVisibilityRay = new THREE.Raycaster();
       this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       this.scene = new THREE.Scene();
       this.scene.background = new THREE.Color(0x040609);
@@ -7939,22 +7945,29 @@
         powerPreference: "high-performance"
       });
       this.renderer.setSize(this.width, this.height);
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      const gl = this.renderer.getContext();
+      const rendererInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      const rendererName = rendererInfo
+        ? gl.getParameter(rendererInfo.UNMASKED_RENDERER_WEBGL)
+        : gl.getParameter(gl.RENDERER);
+      this.isSoftwareRenderer = /swiftshader|software/i.test(String(rendererName || ''));
+      this.renderer.setPixelRatio(this.isSoftwareRenderer ? 1 : Math.min(window.devicePixelRatio, 2));
       this.renderer.outputEncoding = THREE.sRGBEncoding;
+      this.renderer.physicallyCorrectLights = true;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.05;
-      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.enabled = !this.isSoftwareRenderer;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-      const ambient = new THREE.AmbientLight(0x172033, 1.05);
+      const ambient = new THREE.AmbientLight(0xb1c5d6, 0.28);
       this.scene.add(ambient);
 
-      const hemisphere = new THREE.HemisphereLight(0x294861, 0x08030e, 0.75);
+      const hemisphere = new THREE.HemisphereLight(0xc1d5e1, 0x302b28, 0.7);
       this.scene.add(hemisphere);
 
-      const dirLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
+      const dirLight = new THREE.DirectionalLight(0xd4e3ed, 2.6);
       dirLight.position.set(30, 60, 30);
-      dirLight.castShadow = true;
+      dirLight.castShadow = !this.isSoftwareRenderer;
       dirLight.shadow.mapSize.set(2048, 2048);
       dirLight.shadow.bias = -0.0004;
       dirLight.shadow.camera.left = -75;
@@ -7962,12 +7975,13 @@
       dirLight.shadow.camera.top = 75;
       dirLight.shadow.camera.bottom = -75;
       this.scene.add(dirLight);
+      this.scene.add(dirLight.target);
 
-      const redEmergency = new THREE.PointLight(0xff0055, 3.5, 50);
+      const redEmergency = new THREE.PointLight(0xf27453, 75, 50, 2);
       redEmergency.position.set(-20, 10, -25);
       this.scene.add(redEmergency);
 
-      const bioGreen = new THREE.PointLight(0x39ff14, 2.8, 40);
+      const bioGreen = new THREE.PointLight(0x8bbb7d, 55, 40, 2);
       bioGreen.position.set(15, 8, 10);
       this.scene.add(bioGreen);
 
@@ -7979,6 +7993,12 @@
       this.scene.add(this.mapGroup);
       this.scene.add(this.propsGroup);
       this.scene.add(this.resinGroup);
+
+      this.createReflectionEnvironment();
+      this.renderQuality = window.HiveRenderQuality?.create(this.renderer, this.scene, this.camera, {
+        quality: this.graphicsQuality,
+        preferMobileAuto: this.isSoftwareRenderer
+      }) || null;
 
       // Gyrophare rotatif d'alarme industrielle Weyland-Yutani (Alien 1979 / Aliens 1986)
       const beaconPivot = new THREE.Group();
@@ -7995,6 +8015,16 @@
       this.beaconSpot = beaconSpot;
 
       window.addEventListener('resize', () => this.onWindowResize());
+      canvas.addEventListener('wheel', (event) => {
+        const game = window.gameInstance;
+        if (event.ctrlKey || event.metaKey || !game?.campaignActive || game.isSystemPaused || game.currentStageIndex === 5 ||
+          game.currentStage?.getCameraOverride?.() || event.deltaY === 0) return;
+        event.preventDefault();
+        const now = performance.now();
+        if (now - this.lastWheelZoom < 70) return;
+        this.lastWheelZoom = now;
+        window.HiveSystems?.settings?.setCameraDistance(this.cameraDistance * 100 + Math.sign(event.deltaY) * 5);
+      }, { passive: false });
     }
 
     onWindowResize() {
@@ -8002,7 +8032,50 @@
       this.height = window.innerHeight;
       this.camera.aspect = this.width / this.height;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(this.width, this.height);
+      if (this.renderQuality) {
+        this.renderQuality.setQuality(this.graphicsQuality);
+        this.renderQuality.setSize(this.width, this.height);
+        this.stationDetail?.setQuality(this.renderQuality.getDiagnostics().quality);
+      } else this.renderer.setSize(this.width, this.height);
+    }
+
+    createReflectionEnvironment() {
+      // A local light probe supplies broad reflections to the PBR surfaces.
+      // It is filtered once rather than adding costly lights to every room.
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 256;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      const sky = context.createLinearGradient(0, 0, 0, 256);
+      sky.addColorStop(0, '#8fabbc');
+      sky.addColorStop(0.36, '#586a75');
+      sky.addColorStop(0.58, '#26343e');
+      sky.addColorStop(1, '#39342c');
+      context.fillStyle = sky;
+      context.fillRect(0, 0, 512, 256);
+      for (const x of [32, 186, 352]) {
+        context.fillStyle = '#edf4f1';
+        context.fillRect(x, 44, 78, 12);
+        context.fillStyle = '#9bb4c0';
+        context.fillRect(x, 60, 78, 6);
+      }
+      const source = new THREE.CanvasTexture(canvas);
+      source.encoding = THREE.sRGBEncoding;
+      source.mapping = THREE.EquirectangularReflectionMapping;
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      pmrem.compileEquirectangularShader();
+      this.environmentTarget = pmrem.fromEquirectangular(source);
+      this.scene.environment = this.environmentTarget.texture;
+      source.dispose();
+      pmrem.dispose();
+    }
+
+    setGraphicsQuality(quality = 'auto') {
+      this.graphicsQuality = ['auto', 'mobile', 'high', 'ultra'].includes(quality) ? quality : 'auto';
+      this.renderQuality?.setQuality(this.graphicsQuality);
+      const resolved = this.renderQuality?.getDiagnostics().quality || this.graphicsQuality;
+      this.stationDetail?.setQuality(resolved);
     }
 
     setCameraTarget(x, z, heightOffset = 0, isRTS = false, deltaSeconds = 1 / 60) {
@@ -8041,7 +8114,7 @@
         this.camera.updateProjectionMatrix();
       }
       if (this.scene?.fog) this.scene.fog.density = isRTS ? 0.0045 : 0.012;
-      if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.34 : 1.05;
+      if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.22 : 1.12;
       // La vue de commandement cadre toute la station afin que les trois relais
       // restent réellement ciblables sans caméra libre ni mini-carte.
       // Audit QA #84 : Lissage Cinématique Dynamique lors des Transitions de Rôdeur (Prowl / Crawl)
@@ -8049,8 +8122,8 @@
       const isCeiling = Boolean(window.playerCreature?.isCeilingProwling);
       const prowlOffsetY = isProwl ? -5.5 : (isCeiling ? 3.5 : 0);
       const prowlOffsetZ = isProwl ? -3.0 : 0;
-      const targetY = isRTS ? 120 : (46 + heightOffset + prowlOffsetY);
-      const targetZ = isRTS ? (z + 70) : (z + 20 + prowlOffsetZ);
+      const targetY = isRTS ? 120 : ((31 + heightOffset) * this.cameraDistance + prowlOffsetY);
+      const targetZ = isRTS ? (z + 70) : (z + 25 * this.cameraDistance + prowlOffsetZ);
       const prowlSmoothingFactor = isProwl ? 0.88 : 0.92;
       const smoothing = 1 - Math.pow(prowlSmoothingFactor, Math.max(0, deltaSeconds) * 60);
 
@@ -8073,7 +8146,7 @@
         this.cameraFovPunch *= Math.pow(0.72, Math.max(0, deltaSeconds) * 60);
       } else if (this.cameraFovPunch !== 0 && !this.isCinematicActive) {
         this.cameraFovPunch = 0;
-        this.camera.fov = isRTS ? 45 : 32;
+        this.camera.fov = desiredFov;
         this.camera.updateProjectionMatrix();
       }
 
@@ -8131,11 +8204,60 @@
     }
 
     snapCameraTarget(x, z, heightOffset = 0, isRTS = false) {
+      this.screenShake = 0;
       this.setCameraTarget(x, z, heightOffset, isRTS, 4);
     }
 
     snapCinematicCamera(override) {
       this.setCinematicCamera(override, 4);
+    }
+
+    updateWallVisibility(target, deltaSeconds = 1 / 60) {
+      if (!target || !this.camera || !this.wallVisibilityRay) return;
+      const blockingWalls = new Set();
+      // A small bundle around the creature silhouette prevents a narrow limb
+      // or the egg's upper petals from disappearing behind a bulkhead edge.
+      for (const [offsetX, offsetZ] of [[0, 0], [-1, 0], [1, 0], [0, -0.8], [0, 0.8]]) {
+        const point = new THREE.Vector3(target.x + offsetX, target.y || 1.4, target.z + offsetZ);
+        const direction = point.sub(this.camera.position);
+        this.wallVisibilityRay.far = Math.max(0, direction.length() - 0.15);
+        this.wallVisibilityRay.set(this.camera.position, direction.normalize());
+        for (const hit of this.wallVisibilityRay.intersectObjects(stationMap.walls, false)) {
+          blockingWalls.add(hit.object);
+        }
+      }
+      const blend = 1 - Math.exp(-16 * Math.max(0, deltaSeconds));
+      for (const wall of stationMap.walls) {
+        const targetOpacity = blockingWalls.has(wall) ? 0.2 : 1;
+        wall.material.opacity += (targetOpacity - wall.material.opacity) * blend;
+        if (Math.abs(wall.material.opacity - targetOpacity) < 0.005) wall.material.opacity = targetOpacity;
+        wall.material.depthWrite = wall.material.opacity >= 0.99;
+      }
+    }
+
+    updatePropVisibility(target, strategicView = false) {
+      if (!this.propsGroup || !target) return;
+      const radius = strategicView
+        ? (this.isSoftwareRenderer ? 34 : 52)
+        : (window.innerWidth <= 680
+          ? (this.isSoftwareRenderer ? 24 : 28)
+          : (this.isSoftwareRenderer ? 32 : 38));
+      const radiusSquared = radius * radius;
+      for (const prop of this.propsGroup.children) {
+        const dx = prop.position.x - target.x;
+        const dz = prop.position.z - target.z;
+        const inRange = dx * dx + dz * dz <= radiusSquared;
+        if (!inRange) {
+          if (!prop.userData.hiveDistanceCulled) {
+            prop.userData.hiveGameplayVisible = prop.visible;
+            prop.userData.hiveDistanceCulled = true;
+          }
+          prop.visible = false;
+        } else if (prop.userData.hiveDistanceCulled) {
+          prop.visible = prop.userData.hiveGameplayVisible !== false;
+          prop.userData.hiveDistanceCulled = false;
+        }
+      }
     }
 
     screenToGround(screenX, screenY) {
@@ -8157,6 +8279,7 @@
     removeObject(object) {
       if (!object) return;
       if (object.parent) object.parent.remove(object);
+      window.HiveAssetLibrary?.disposeObject?.(object, { disposeResources: false });
       object.traverse((child) => {
         if (child.geometry) child.geometry.dispose();
         if (!child.material) return;
@@ -8193,12 +8316,14 @@
 
     render() {
       if (this.lights.redEmergency && !this.reduceMotion) {
-        this.lights.redEmergency.intensity = 2.5 + Math.sin(Date.now() * 0.005) * 1.0;
+        this.lights.redEmergency.intensity = 65 + Math.sin(Date.now() * 0.002) * 10;
       }
       if (this.lights.bioGreen && !this.reduceMotion) {
-        this.lights.bioGreen.intensity = 2.0 + Math.sin(Date.now() * 0.003) * 0.6;
+        this.lights.bioGreen.intensity = 48 + Math.sin(Date.now() * 0.0014) * 7;
       }
-      this.renderer.render(this.scene, this.camera);
+      this.stationDetail?.update(Date.now() / 1000);
+      if (this.renderQuality) this.renderQuality.render();
+      else this.renderer.render(this.scene, this.camera);
     }
   }
 
@@ -8646,18 +8771,20 @@
 
       const floorMat = new THREE.MeshStandardMaterial({
         map: floorTex,
-        color: 0x768195,
-        roughness: 0.56,
-        metalness: 0.72
+        color: 0xc1c6c7,
+        roughness: 1,
+        metalness: 1
       });
       const wallMat = new THREE.MeshStandardMaterial({
         map: wallTex,
-        color: 0x596579,
-        roughness: 0.48,
-        metalness: 0.78
+        color: 0xb4bfc3,
+        roughness: 1,
+        metalness: 1
       });
+      const wallMaterials = [wallMat];
 
       const floorGeo = new THREE.PlaneGeometry(160, 160);
+      floorGeo.setAttribute('uv2', floorGeo.attributes.uv.clone());
       const floorMesh = new THREE.Mesh(floorGeo, floorMat);
       floorMesh.rotation.x = -Math.PI / 2;
       floorMesh.receiveShadow = true;
@@ -8665,7 +8792,11 @@
 
       const addWall = (x, z, width, height, depth) => {
         const wallGeo = new THREE.BoxGeometry(width, height, depth);
-        const wallMesh = new THREE.Mesh(wallGeo, wallMat);
+        wallGeo.setAttribute('uv2', wallGeo.attributes.uv.clone());
+        const wallMaterial = wallMat.clone();
+        wallMaterials.push(wallMaterial);
+        wallMaterial.transparent = true;
+        const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
         wallMesh.position.set(x, height / 2, z);
         wallMesh.castShadow = true;
         wallMesh.receiveShadow = true;
@@ -9787,7 +9918,7 @@
 
       // Chantier 117 : Sabotage du Générateur Auxiliaire & Blackout Total d'Étage (Alien 1979 / Isolation)
       this.auxiliaryGenerators = [
-        { id: 'aux_gen_1', name: 'Armoire Électrique du Générateur Auxiliaire 380V', x: -20, z: -10, isSabotaged: false, mesh: null }
+        { id: 'aux_gen_1', name: 'Armoire Électrique du Générateur Auxiliaire 380V', x: -26, z: -6, isSabotaged: false, mesh: null }
       ];
       this.auxiliaryGenerators.forEach((ag) => {
         const mesh = window.HiveModelFactory?.createAuxiliaryGeneratorBoard?.();
@@ -10819,7 +10950,7 @@
 
       // Chantier 209 : Console MUTHUR 6000 Atmospheric Scrubbing Override (Alien 1979 / Isolation)
       this.muthurScrubberConsoles = [
-        { id: 'scrubber_1', name: 'Pupitre MUTHUR Atmospheric Scrubbing', x: -20, z: -35, isOverridden: false, flushTimer: 0, mesh: null }
+        { id: 'scrubber_1', name: 'Pupitre MUTHUR Atmospheric Scrubbing', x: -8, z: -42, isOverridden: false, flushTimer: 0, mesh: null }
       ];
       this.muthurScrubberConsoles.forEach((c) => {
         const mesh = window.HiveModelFactory?.createMuthurScrubberConsole?.();
@@ -11848,13 +11979,13 @@
       // -------------------------------------------------------------------------
       // 1. Arches Cathédrales en Ogive Industrielle (Y=7.5m)
       const cathedralArchMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.65, metalness: 0.85 });
-      const archPositions = [
+      const cathedralArchPositions = [
         { x: -10, z: -10 },
         { x: 10, z: -10 },
         { x: -10, z: 10 },
         { x: 10, z: 10 }
       ];
-      archPositions.forEach((ap, aIdx) => {
+      cathedralArchPositions.forEach((ap, aIdx) => {
         const archGroup = new THREE.Group();
         archGroup.position.set(ap.x, 0, ap.z);
         for (let side = -1; side <= 1; side += 2) {
@@ -12212,13 +12343,13 @@
 
       // Grandeur Architecturale : Arches Monumentales en Treillis d'Acier (Y=10.5m)
       const archMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55, metalness: 0.92 });
-      const archPositions = [
+      const monumentalArchPositions = [
         { x: 45, z: -35, rotY: 0 },
         { x: 25, z: -45, rotY: Math.PI / 2 },
         { x: -40, z: 40, rotY: 0 },
         { x: -50, z: -10, rotY: Math.PI / 2 }
       ];
-      archPositions.forEach((ap, idx) => {
+      monumentalArchPositions.forEach((ap, idx) => {
         const archGroup = new THREE.Group();
         archGroup.position.set(ap.x, 0, ap.z);
         archGroup.rotation.y = ap.rotY;
@@ -20015,6 +20146,8 @@
 
     // Audit QA #18 : Lissage biseauté des colliders AABB pour supprimer les accrochages d'angle
     checkCollision(nextX, nextZ, padding = 0, bevel = 0.28) {
+      if (!Number.isFinite(nextX) || !Number.isFinite(nextZ)) return true;
+      if (Math.abs(nextX) >= 73.4 - padding || Math.abs(nextZ) >= 73.4 - padding) return true;
       for (const col of this.colliders) {
         const minX = col.minX - padding;
         const maxX = col.maxX + padding;
@@ -20042,7 +20175,13 @@
       min = -70,
       max = 70
     } = {}) {
-      const destination = { x: endX, z: endZ };
+      if (![startX, startZ, endX, endZ].every(Number.isFinite)) return [];
+      const destination = {
+        x: Math.max(min, Math.min(max, endX)),
+        z: Math.max(min, Math.min(max, endZ))
+      };
+      endX = destination.x;
+      endZ = destination.z;
       if (
         !this.checkCollision(endX, endZ, padding) &&
         this.hasLineOfSight(startX, startZ, endX, endZ, padding)
@@ -20324,7 +20463,7 @@
   function getAnimationModel(container) {
     let model = null;
     container?.traverse((child) => {
-      if (!model && child.userData?.animationRig) model = child;
+      if (!model && (child.userData?.animationRig || window.HiveAssetLibrary?.handlesRoot?.(child))) model = child;
     });
     return model;
   }
@@ -20337,6 +20476,10 @@
     pulse = 0
   } = {}) {
     const model = getAnimationModel(container);
+    if (window.HiveAssetLibrary?.handlesRoot?.(model)) {
+      window.HiveAssetLibrary.setState(model, { phase, movement, attack, crouch, pulse, frozen: false });
+      return;
+    }
     const rig = model?.userData?.animationRig;
     if (!rig) return;
     if (!model.userData.runtimeBasePose) {
@@ -20365,6 +20508,15 @@
       joint.rotation.x -= envelope * (0.24 + index % 3 * 0.05);
       joint.rotation.z += envelope * (index % 2 === 0 ? 0.18 : -0.18);
     });
+
+    if (!Object.prototype.hasOwnProperty.call(model.userData, 'runtimeInnerJaw')) {
+      model.userData.runtimeInnerJaw = model.getObjectByName('pharyngeal_jaw_slider') || null;
+    }
+    const innerJaw = model.userData.runtimeInnerJaw;
+    if (innerJaw) {
+      const extension = Math.sin(Math.min(1, Math.max(0, attack)) * Math.PI);
+      innerJaw.position.z = innerJaw.userData.retractedZ + extension * innerJaw.userData.extensionLength;
+    }
 
     if (crouch > 0) {
       model.position.y -= Math.sin(Math.min(1, crouch) * Math.PI) * 0.22;
@@ -23749,6 +23901,8 @@
     }
 
     choosePatrolWaypoint() {
+      this.navigationGoal = null;
+      this.pathWaypoints = [];
       this.targetPos = this.findFreeWaypoint(20);
       this.aiState = 'PATROL';
       this.patrolWait = 0;
@@ -23814,6 +23968,14 @@
     }
 
     addFaceAnchor(group) {
+      let importedAnchor = null;
+      group.traverse((child) => {
+        if (!importedAnchor && child.userData?.faceAnchor?.isObject3D) importedAnchor = child.userData.faceAnchor;
+      });
+      if (importedAnchor) {
+        this.faceAnchor = importedAnchor;
+        return;
+      }
       const anchor = new THREE.Group();
       anchor.name = 'face_attachment_anchor';
       const helmetJoint = group.getObjectByName('helmet_and_comms');
@@ -24228,6 +24390,11 @@
         'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'uscm_sniper',
         'weyland_containment_squad', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_smartgun_flamer', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_sadar_operator', 'uscm_recon_scout', 'reconscout', 'recon', 'uscm_combat_medic', 'combatmedic', 'medic', 'combat_medic', 'uscm_recon_sniper', 'reconsniper', 'recon_sniper', 'forward_observer'
       ].includes(this.type);
+      const isSyntheticEntity = [
+        'synthetic', 'android', 'weyland_steel_team_synth', 'steelteam',
+        'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound',
+        'cyberhound', 'cyber_hound'
+      ].includes(this.type);
       const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
       const currentStageStep = window.gameInstance?.currentStage?.step;
       const inVentStealth = combatTarget === playerCreature && playerCreature.isInVent;
@@ -24378,8 +24545,6 @@
             }
           });
         }
-
-        const isSyntheticEntity = ['synthetic', 'android', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound'].includes(this.type);
 
         // 2. REPLI TACTIQUE SOUS TIRS / SANTÉ CRITIQUE (< 35% PV)
         // Les humains blessés reculent tout en tirant pour maintenir la distance
@@ -25287,6 +25452,9 @@
       this.movementBlend = 0;
       this.isDestroyed = false;
       this.attachedToOvipositor = caste === 'queen';
+      this.navigationGoal = null;
+      this.navigationWaypoints = [];
+      this.navigationCooldown = 0;
     }
 
     createMesh() {
@@ -25439,6 +25607,40 @@
       }
       if (dx !== 0 || dy !== 0) this.mesh.rotation.y = Math.atan2(dx, dy);
       return moved;
+    }
+
+    moveTowards(x, z, deltaSeconds = 1 / 60, speedMultiplier = 1) {
+      const distance = Math.hypot(x - this.x, z - this.z);
+      if (distance <= 0.15) return false;
+      this.navigationCooldown = Math.max(0, this.navigationCooldown - Math.max(0, deltaSeconds));
+      const clearRoute = stationMap.hasLineOfSight(this.x, this.z, x, z, 0.35);
+      if (clearRoute) {
+        this.navigationWaypoints = [];
+      } else if (
+        !this.navigationGoal ||
+        (this.navigationCooldown <= 0 && (
+          Math.hypot(x - this.navigationGoal.x, z - this.navigationGoal.z) > 2 ||
+          this.navigationWaypoints.length === 0
+        ))
+      ) {
+        this.navigationGoal = { x, z };
+        this.navigationWaypoints = stationMap.findPath(this.x, this.z, x, z, { padding: 0.4 });
+        this.navigationCooldown = 0.7;
+      }
+      while (this.navigationWaypoints.length && Math.hypot(
+        this.navigationWaypoints[0].x - this.x,
+        this.navigationWaypoints[0].z - this.z
+      ) <= 0.4) this.navigationWaypoints.shift();
+      const waypoint = this.navigationWaypoints[0] || (clearRoute ? { x, z } : null);
+      if (!waypoint) return false;
+      const remaining = Math.hypot(waypoint.x - this.x, waypoint.z - this.z);
+      return this.moveDirect(
+        (waypoint.x - this.x) / remaining,
+        (waypoint.z - this.z) / remaining,
+        deltaSeconds,
+        remaining,
+        speedMultiplier
+      );
     }
 
     update(deltaSeconds = 1 / 60, humans = []) {
@@ -26306,6 +26508,10 @@
       if (!closestHost || closestDistance > 16) {
         showToast('Aucun hôte à portée : rapprochez-vous du secteur ciblé.');
         appendSensorLog('[FACEHUGGER] Bond impossible : aucun visage à portée.', 'alert');
+        return;
+      }
+      if (!stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, closestHost.x, closestHost.z, 0.12)) {
+        showToast('La structure bloque le bond : contournez la cloison.');
         return;
       }
 
@@ -27792,8 +27998,8 @@
       if (distCrane) stationMap.releaseMagneticCrane(distCrane);
       const distShotgun = (stationMap.zx76ShotgunRacks || []).find((sr) => !sr.isLooted && Math.hypot(sr.x - playerCreature.x, sr.z - playerCreature.z) <= 15);
       if (distShotgun) stationMap.lootZX76ShotgunRack(distShotgun);
-      const distHalon = (stationMap.halonGasGenerators || []).find((hgg) => !hgg.isSuppressed && Math.hypot(hgg.x - playerCreature.x, hgg.z - playerCreature.z) <= 15);
-      if (distHalon) stationMap.triggerHalonGasSuppression(distHalon);
+      const distHalonGenerator = (stationMap.halonGasGenerators || []).find((hgg) => !hgg.isSuppressed && Math.hypot(hgg.x - playerCreature.x, hgg.z - playerCreature.z) <= 15);
+      if (distHalonGenerator) stationMap.triggerHalonGasSuppression(distHalonGenerator);
       const distRadio = (stationMap.surveillanceRadioConsoles || []).find((src) => !src.isIntercepting && Math.hypot(src.x - playerCreature.x, src.z - playerCreature.z) <= 15);
       if (distRadio) stationMap.interceptMarinesRadio(distRadio);
 
@@ -27804,8 +28010,8 @@
       if (distIncinerator) stationMap.activateBioWasteIncinerator(distIncinerator);
       const distEvaArm = (stationMap.evaRoboticArms || []).find((arm) => !arm.isOperating && Math.hypot(arm.x - playerCreature.x, arm.z - playerCreature.z) <= 15);
       if (distEvaArm) stationMap.operateEvaRoboticArm(distEvaArm);
-      const distClaymore = (stationMap.laserClaymoreMines || []).find((mine) => !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 15);
-      if (distClaymore) stationMap.triggerLaserClaymore(distClaymore);
+      const distLaserClaymore = (stationMap.laserClaymoreMines || []).find((mine) => !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 15);
+      if (distLaserClaymore) stationMap.triggerLaserClaymore(distLaserClaymore);
       const distFreon = (stationMap.freonFogGenerators || []).find((ffg) => !ffg.isActive && Math.hypot(ffg.x - playerCreature.x, ffg.z - playerCreature.z) <= 15);
       if (distFreon) stationMap.releaseFreonFog(distFreon);
       const distBioScan = (stationMap.muthurBioScanConsoles || []).find((mbc) => !mbc.isAnalyzed && Math.hypot(mbc.x - playerCreature.x, mbc.z - playerCreature.z) <= 15);
@@ -27862,10 +28068,10 @@
       if (distTokamak) stationMap.sabotageHyperdyneTokamak(distTokamak);
       const distArgon = (stationMap.argonManifoldPipes || []).find((ap) => !ap.isRuptured && Math.hypot(ap.x - playerCreature.x, ap.z - playerCreature.z) <= 15);
       if (distArgon) stationMap.ruptureArgonPipe(distArgon);
-      const distScrubber = (stationMap.muthurScrubberConsoles || []).find((sc) => !sc.isOperating && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 15);
-      if (distScrubber) stationMap.operateMuthurScrubber(distScrubber);
-      const distSarcophagus = (stationMap.biomassSarcophagi || []).find((bs) => !bs.isConverted && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 15);
-      if (distSarcophagus) stationMap.convertBiomassSarcophagus(distSarcophagus);
+      const distMuthurScrubber = (stationMap.muthurScrubberConsoles || []).find((sc) => !sc.isOperating && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 15);
+      if (distMuthurScrubber) stationMap.operateMuthurScrubber(distMuthurScrubber);
+      const distBiomassSarcophagus = (stationMap.biomassSarcophagi || []).find((bs) => !bs.isConverted && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 15);
+      if (distBiomassSarcophagus) stationMap.convertBiomassSarcophagus(distBiomassSarcophagus);
 
       // Chantiers 212, 214, 216, 217, 219, 220 : Crachat acide balistique sur props Vague 22
       const distJammerM56 = (stationMap.m56JammerBoxes || []).find((jb) => !jb.isTriggered && Math.hypot(jb.x - playerCreature.x, jb.z - playerCreature.z) <= 15);
@@ -27884,10 +28090,10 @@
       // Chantiers 222, 224, 226, 227, 229, 230 : Crachat acide balistique sur props Vague 23
       const distCart = (stationMap.transitMagCarts || []).find((c) => !c.isPropelled && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 15);
       if (distCart) stationMap.launchTransitMagCart(distCart);
-      const distHalon = (stationMap.halonExtinguishers || []).find((h) => !h.isDischarged && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 15);
-      if (distHalon) stationMap.triggerHalonExtinguisher(distHalon);
-      const distClaymore = (stationMap.m20ClaymoreMines || []).find((m) => m.isArmed && !m.isDetonated && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 15);
-      if (distClaymore) stationMap.detonateM20ClaymoreMine(distClaymore);
+      const distHalonExtinguisher = (stationMap.halonExtinguishers || []).find((h) => !h.isDischarged && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 15);
+      if (distHalonExtinguisher) stationMap.triggerHalonExtinguisher(distHalonExtinguisher);
+      const distM20Claymore = (stationMap.m20ClaymoreMines || []).find((m) => m.isArmed && !m.isDetonated && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 15);
+      if (distM20Claymore) stationMap.detonateM20ClaymoreMine(distM20Claymore);
       const distHeatExchanger = (stationMap.heatExchangerVents || []).find((v) => !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 15);
       if (distHeatExchanger) stationMap.ruptureHeatExchangerVent(distHeatExchanger);
       const distJackSocket = (stationMap.maintenanceJackSockets || []).find((j) => Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 15);
@@ -27912,10 +28118,10 @@
       if (distGondola) stationMap.dropMaintenanceGondola(distGondola);
       const distShaftFan = (stationMap.ventilationShaftFans || []).find((f) => !f.isReversed && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 15);
       if (distShaftFan) stationMap.sabotageVentilationFan(distShaftFan);
-      const distScrubber = (stationMap.atmosphericScrubbers || []).find((s) => !s.isRuptured && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 15);
-      if (distScrubber) stationMap.punctureAtmosphericScrubber(distScrubber);
-      const distBarricade = (stationMap.uscmSentryBarricades || []).find((b) => !b.isBreached && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 15);
-      if (distBarricade) stationMap.breachSentryBarricade(distBarricade);
+      const distAtmosphericScrubber = (stationMap.atmosphericScrubbers || []).find((s) => !s.isRuptured && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 15);
+      if (distAtmosphericScrubber) stationMap.punctureAtmosphericScrubber(distAtmosphericScrubber);
+      const distSentryBarricade = (stationMap.uscmSentryBarricades || []).find((b) => !b.isBreached && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 15);
+      if (distSentryBarricade) stationMap.breachSentryBarricade(distSentryBarricade);
       const distApolloTower = (stationMap.apolloServerTowers || []).find((at) => !at.isCorrupted && Math.hypot(at.x - playerCreature.x, at.z - playerCreature.z) <= 15);
       if (distApolloTower) stationMap.corruptApolloServerTower(distApolloTower);
 
@@ -27944,8 +28150,8 @@
       if (distSeismic) stationMap.triggerSeismicStabilizer(distSeismic);
       const distBellows = (stationMap.furnaceBellowsDucts || []).find((fb) => !fb.isPurging && Math.hypot(fb.x - playerCreature.x, fb.z - playerCreature.z) <= 15);
       if (distBellows) stationMap.purgeFurnaceBellows(distBellows);
-      const distSarcophagus = (stationMap.cryoSurgicalSarcophagi || []).find((cs) => !cs.isUnsealed && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 15);
-      if (distSarcophagus) stationMap.unsealCryoSarcophagus(distSarcophagus);
+      const distCryoSarcophagus = (stationMap.cryoSurgicalSarcophagi || []).find((cs) => !cs.isUnsealed && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 15);
+      if (distCryoSarcophagus) stationMap.unsealCryoSarcophagus(distCryoSarcophagus);
       const distFuelPylon = (stationMap.fuelSiphonPylons || []).find((fp) => !fp.isVenting && Math.hypot(fp.x - playerCreature.x, fp.z - playerCreature.z) <= 15);
       if (distFuelPylon) stationMap.overpressureFuelSiphon(distFuelPylon);
       const distShutter = (stationMap.securityShutterDoors || []).find((sd) => Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 15);
@@ -28278,9 +28484,9 @@
         return true;
       }
       // 41. Grue Magnétique & Conteneur 10T (Chantier 156)
-      const nearCrane = (stationMap.magneticCraneContainers || []).find((mcc) => !mcc.isDropped && Math.hypot(mcc.x - playerCreature.x, mcc.z - playerCreature.z) <= 4.5);
-      if (nearCrane) {
-        stationMap.releaseMagneticCrane(nearCrane);
+      const nearMagneticCrane = (stationMap.magneticCraneContainers || []).find((mcc) => !mcc.isDropped && Math.hypot(mcc.x - playerCreature.x, mcc.z - playerCreature.z) <= 4.5);
+      if (nearMagneticCrane) {
+        stationMap.releaseMagneticCrane(nearMagneticCrane);
         return true;
       }
       // 42. Râtelier Fusils à Pompe ZX-76 (Chantier 157)
@@ -28290,9 +28496,9 @@
         return true;
       }
       // 43. Générateur Brouillard Halon (Chantier 158)
-      const nearHalon = (stationMap.halonGasGenerators || []).find((hgg) => !hgg.isSuppressed && Math.hypot(hgg.x - playerCreature.x, hgg.z - playerCreature.z) <= 4.5);
-      if (nearHalon) {
-        stationMap.triggerHalonGasSuppression(nearHalon);
+      const nearHalonGenerator = (stationMap.halonGasGenerators || []).find((hgg) => !hgg.isSuppressed && Math.hypot(hgg.x - playerCreature.x, hgg.z - playerCreature.z) <= 4.5);
+      if (nearHalonGenerator) {
+        stationMap.triggerHalonGasSuppression(nearHalonGenerator);
         return true;
       }
       // 44. Terminal Surveillance Weyland & Radio USCM (Chantier 160)
@@ -28320,9 +28526,9 @@
         return true;
       }
       // 48. Mine Claymore Laser M18A3 USCM (Chantier 167)
-      const nearClaymore = (stationMap.laserClaymoreMines || []).find((mine) => !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 4.5);
-      if (nearClaymore) {
-        stationMap.triggerLaserClaymore(nearClaymore);
+      const nearLaserClaymore = (stationMap.laserClaymoreMines || []).find((mine) => !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 4.5);
+      if (nearLaserClaymore) {
+        stationMap.triggerLaserClaymore(nearLaserClaymore);
         return true;
       }
       // 49. Générateur Fréon Glacial Sub-Zero (Chantier 168)
@@ -28374,9 +28580,9 @@
         return true;
       }
       // 57. Système de Brouilleur Acoustique Ultrasonique USCM M20 (Chantier 182)
-      const nearJammer = (stationMap.acousticJammers || []).find((j) => !j.isDestroyed && Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 4.5);
-      if (nearJammer) {
-        stationMap.operateAcousticJammer(nearJammer);
+      const nearAcousticJammer = (stationMap.acousticJammers || []).find((j) => !j.isDestroyed && Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 4.5);
+      if (nearAcousticJammer) {
+        stationMap.operateAcousticJammer(nearAcousticJammer);
         return true;
       }
       // 58. Unité Autonome de Décontamination Cryo-Stérilisante (Chantier 184)
@@ -28470,9 +28676,9 @@
         return true;
       }
       // 73. Pupitre d'Épuration Atmosphérique et Dépressurisation Sélective MUTHUR 6000 (Chantier 209)
-      const nearScrubber = (stationMap.muthurScrubberConsoles || []).find((sc) => !sc.isOperating && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 5.5);
-      if (nearScrubber) {
-        stationMap.operateMuthurScrubber(nearScrubber);
+      const nearMuthurScrubber = (stationMap.muthurScrubberConsoles || []).find((sc) => !sc.isOperating && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 5.5);
+      if (nearMuthurScrubber) {
+        stationMap.operateMuthurScrubber(nearMuthurScrubber);
         return true;
       }
       // 74. Sarcophage de Stase et Conversion de Biomasse Ingénieur (Chantier 210)
@@ -28482,9 +28688,9 @@
         return true;
       }
       // 75. Système de Brouilleur Électromagnétique Portatif USCM M56 (Chantier 212)
-      const nearJammer = (stationMap.m56JammerBoxes || []).find((b) => !b.isTriggered && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
-      if (nearJammer) {
-        stationMap.operateM56JammerBox(nearJammer);
+      const nearM56Jammer = (stationMap.m56JammerBoxes || []).find((b) => !b.isTriggered && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
+      if (nearM56Jammer) {
+        stationMap.operateM56JammerBox(nearM56Jammer);
         return true;
       }
       // 76. Poste de Contrôle Cryo-Containment Chamber C-60 (Chantier 214)
@@ -28524,15 +28730,15 @@
         return true;
       }
       // 82. Diffuseur Automatique Gaz Halon 1301 (Chantier 224)
-      const nearHalon = (stationMap.halonExtinguishers || []).find((h) => !h.isDischarged && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.5);
-      if (nearHalon) {
-        stationMap.triggerHalonExtinguisher(nearHalon);
+      const nearHalonExtinguisher = (stationMap.halonExtinguishers || []).find((h) => !h.isDischarged && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.5);
+      if (nearHalonExtinguisher) {
+        stationMap.triggerHalonExtinguisher(nearHalonExtinguisher);
         return true;
       }
       // 83. Mine Directionnelle USCM M20 Claymore (Chantier 226)
-      const nearClaymore = (stationMap.m20ClaymoreMines || []).find((m) => m.isArmed && !m.isDetonated && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 5.5);
-      if (nearClaymore) {
-        stationMap.detonateM20ClaymoreMine(nearClaymore);
+      const nearM20Claymore = (stationMap.m20ClaymoreMines || []).find((m) => m.isArmed && !m.isDetonated && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 5.5);
+      if (nearM20Claymore) {
+        stationMap.detonateM20ClaymoreMine(nearM20Claymore);
         return true;
       }
       // 84. Échangeur Thermique Primaire AP-14 (Chantier 227)
@@ -28608,9 +28814,9 @@
         return true;
       }
       // 96. Colonne d'Épuration Atmosphérique Sevastopol (Chantier 244)
-      const nearScrubber = (stationMap.atmosphericScrubbers || []).find((s) => !s.isPunctured && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
-      if (nearScrubber) {
-        stationMap.punctureAtmosphericScrubber(nearScrubber);
+      const nearAtmosphericScrubber = (stationMap.atmosphericScrubbers || []).find((s) => !s.isPunctured && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
+      if (nearAtmosphericScrubber) {
+        stationMap.punctureAtmosphericScrubber(nearAtmosphericScrubber);
         return true;
       }
       // 97. Chambre d'Inversion Gravitationnelle Fiorina 161 (Chantier 245)
@@ -28620,9 +28826,9 @@
         return true;
       }
       // 98. Barricade Déployable USCM Hadley's Hope (Chantier 246)
-      const nearBarricade = (stationMap.uscmSentryBarricades || []).find((b) => !b.isBreached && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
-      if (nearBarricade) {
-        stationMap.breachSentryBarricade(nearBarricade);
+      const nearSentryBarricade = (stationMap.uscmSentryBarricades || []).find((b) => !b.isBreached && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
+      if (nearSentryBarricade) {
+        stationMap.breachSentryBarricade(nearSentryBarricade);
         return true;
       }
       // 99. Baie Serveurs Apollo AI Sevastopol (Chantier 248)
@@ -28752,9 +28958,9 @@
         return true;
       }
       // 120. Treuil de Pont Roulant Fonderie Fiorina (Chantier 270)
-      const nearHoist = (stationMap.foundryGantryHoists || []).find((gh) => !gh.isDropped && Math.hypot(gh.x - playerCreature.x, gh.z - playerCreature.z) <= 6.0);
-      if (nearHoist) {
-        stationMap.dropFoundryGantryLadle(nearHoist);
+      const nearFoundryHoist = (stationMap.foundryGantryHoists || []).find((gh) => !gh.isDropped && Math.hypot(gh.x - playerCreature.x, gh.z - playerCreature.z) <= 6.0);
+      if (nearFoundryHoist) {
+        stationMap.dropFoundryGantryLadle(nearFoundryHoist);
         return true;
       }
       // 121. Sas Cryo Nostromo E-Deck (Chantier 271)
@@ -28878,9 +29084,9 @@
         return true;
       }
       // 141. Treuil de Pont Roulant Nostromo (Chantier 291)
-      const nearHoist = (stationMap.overheadMonorailHoists || []).find((mh) => !mh.isDropped && Math.hypot(mh.x - playerCreature.x, mh.z - playerCreature.z) <= 6.0);
-      if (nearHoist) {
-        stationMap.dropMonorailHoist(nearHoist);
+      const nearMonorailHoist = (stationMap.overheadMonorailHoists || []).find((mh) => !mh.isDropped && Math.hypot(mh.x - playerCreature.x, mh.z - playerCreature.z) <= 6.0);
+      if (nearMonorailHoist) {
+        stationMap.dropMonorailHoist(nearMonorailHoist);
         return true;
       }
       // 142. Baie d'Accumulateurs de Secours Hadley (Chantier 292)
@@ -29350,6 +29556,10 @@
         this.log(`[${profile.huntAction}] Aucun signal mobile à portée sensorielle.`);
         return;
       }
+      if (playerCreature.isLeaping || !stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, target.x, target.z, 0.12)) {
+        showToast('L’approche est bloquée : contournez la structure avant de bondir.');
+        return;
+      }
       const preferredAngle = Math.atan2(playerCreature.z - target.z, playerCreature.x - target.x);
       let landing = null;
       for (let attempt = 0; attempt < 12; attempt++) {
@@ -29461,7 +29671,6 @@
     }
 
     executeInnerJaw() {
-      if (!this.canUseAbility('jaw', 550)) return;
       const profile = playerCreature.getAdultProfile();
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 8.5) {
@@ -29469,6 +29678,11 @@
         this.log('[MÂCHOIRE] Cible hors de portée.');
         return;
       }
+      if (!stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, target.x, target.z)) {
+        showToast('La cloison bloque cette attaque.');
+        return;
+      }
+      if (!this.canUseAbility('jaw', 550)) return;
       if (distance > 2.0) {
         const angle = Math.atan2(target.z - playerCreature.z, target.x - playerCreature.x);
         const lungeDist = Math.min(distance - 1.7, 5.2);
@@ -29531,7 +29745,6 @@
     }
 
     executeTailImpale() {
-      if (!this.canUseAbility('tail', 650)) return;
       const profile = playerCreature.getAdultProfile();
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 10.5) {
@@ -29539,6 +29752,11 @@
         this.log('[QUEUE] Cible hors de portée.');
         return;
       }
+      if (!stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, target.x, target.z)) {
+        showToast('La cloison bloque cette attaque.');
+        return;
+      }
+      if (!this.canUseAbility('tail', 650)) return;
       if (distance > 3.0) {
         const angle = Math.atan2(target.z - playerCreature.z, target.x - playerCreature.x);
         const lungeDist = Math.min(distance - 2.4, 3.4);
@@ -29701,7 +29919,7 @@
           window.HiveSystems?.vfx?.ring(cycle.x, cycle.z, cycle.state.includes('ÉMERGENCE') ? 0x39ff14 : 0xa855f7, 4);
           this.updateHUD();
         },
-        canComplete: () => true,
+        canComplete: () => this.getActiveThreats().length === 0,
         onComplete: (cycle) => this.completeRoyalCycle(cycle),
         onFail: (cycle) => this.failRoyalCycle(cycle)
       });
@@ -30621,7 +30839,8 @@
         const bossStatus = this.mantisBoss?.isIncapacitated
           ? 'MANTIS NEUTRALISÉ'
           : `MANTIS PHASE ${this.mantisBoss?.bossPhase || 1}`;
-        conquestButton.textContent = `ISOLER PALIMPSESTE — RELAIS ${this.relayCount}/3 · ${bossStatus} · MENACES ${activeThreats} · PURGE ${Math.ceil(this.purgeRemaining)}s`;
+        const purgeStatus = this.relayCount >= 3 ? 'PURGE INTERROMPUE' : `PURGE ${Math.ceil(this.purgeRemaining)}s`;
+        conquestButton.textContent = `ISOLER PALIMPSESTE — RELAIS ${this.relayCount}/3 · ${bossStatus} · MENACES ${activeThreats} · ${purgeStatus}`;
         conquestButton.title = conquestButton.disabled
           ? 'Neutralisez les menaces et désactivez les trois relais.'
           : 'Choisir le destin final de la ruche.';
@@ -30678,6 +30897,10 @@
     handleCanvasClick(screenX, screenY) {
       const worldPoint = rendererEngine.screenToGround(screenX, screenY);
       if (!worldPoint) return;
+      if (Math.abs(worldPoint.x) > 70 || Math.abs(worldPoint.z) > 70) {
+        showToast('Sélectionnez un point à l’intérieur de la station.');
+        return;
+      }
 
       if (pheromoneSystem.possessionMode) {
         // En mode possession, un clic direct sur une menace active déclenche une attaque immédiate
@@ -30749,6 +30972,10 @@
             ? `Désactiver encore ${3 - this.relayCount} relais de PALIMPSESTE.`
             : 'Neutraliser les dernières forces de réponse humaine.');
           this.log(`[PALIMPSESTE] Relais ${this.relayCount}/3 isolé du réseau de purge.`);
+          if (this.relayCount >= 3) {
+            this.log('[PALIMPSESTE] Réseau de purge interrompu. Neutralisez les dernières menaces.');
+            window.HiveSystems?.narrative('PALIMPSESTE', 'Liaison avec le cœur perdue. Autodestruction interrompue.');
+          }
         }
       }
       this.log(`[PHÉROMONE ${command}] Marque posée en X:${worldPoint.x.toFixed(1)} Z:${worldPoint.z.toFixed(1)}.`);
@@ -30816,7 +31043,11 @@
             dy = (this.possessedMoveTarget.z - this.possessedUnit.z) / distance;
           }
         }
-        this.possessedUnit.moveDirect(dx, dy, deltaSeconds, remainingDistance);
+        if (this.possessedMoveTarget) {
+          this.possessedUnit.moveTowards(this.possessedMoveTarget.x, this.possessedMoveTarget.z, deltaSeconds);
+        } else {
+          this.possessedUnit.moveDirect(dx, dy, deltaSeconds, remainingDistance);
+        }
       }
       for (const unit of this.rtsUnits) {
         if (unit !== this.possessedUnit || !pheromoneSystem.possessionMode) unit.update(deltaSeconds, humans);
@@ -30844,13 +31075,13 @@
         this.updateStats();
       }
 
-      this.purgeRemaining = Math.max(0, this.purgeRemaining - deltaSeconds);
+      if (this.relayCount < 3) this.purgeRemaining = Math.max(0, this.purgeRemaining - deltaSeconds);
       const purgeSecond = Math.ceil(this.purgeRemaining);
       if (purgeSecond !== this.lastPurgeSecond) {
         this.lastPurgeSecond = purgeSecond;
         this.updateStats();
       }
-      if (this.purgeRemaining <= 0 && !this.isCompleted) {
+      if (this.purgeRemaining <= 0 && this.relayCount < 3 && !this.isCompleted) {
         window.gameInstance?.showEndModal(
           'PURGE DE MNEMOSYNE',
           'PALIMPSESTE a déclenché la fusion du cœur avant l’isolement des trois relais.'
@@ -30887,6 +31118,8 @@
       };
       this.royalCycleRecord = null;
       this.lastTimestamp = null;
+      this.renderResumeAt = 0;
+      this.lastSoftwareRenderAt = -Infinity;
       this.mobileHudMedia = null;
       this.setHudExpanded = null;
       this.headerResizeObserver = null;
@@ -30911,7 +31144,7 @@
         sidebar.inert = !expanded;
         sidebar.setAttribute('aria-hidden', String(!expanded));
         toggleButton.setAttribute('aria-expanded', String(expanded));
-        toggleButton.textContent = expanded ? 'MASQUER HUD' : 'AFFICHER HUD';
+        toggleButton.textContent = expanded ? 'MASQUER LES ACTIONS' : 'ACTIONS / OBJECTIFS';
         if (!expanded) document.getElementById('game-canvas')?.focus({ preventScroll: true });
       };
 
@@ -31001,6 +31234,14 @@
         }
       });
       stationMap.buildMap(); resinGrid.init();
+      rendererEngine.stationDetail = window.HiveStationDetail?.build({
+        THREE,
+        scene: rendererEngine.scene,
+        mapGroup: rendererEngine.mapGroup,
+        propsGroup: rendererEngine.propsGroup,
+        walls: stationMap.walls,
+        quality: rendererEngine.renderQuality?.getDiagnostics().quality || 'high'
+      }) || null;
       this.ensureStageOneHost(true);
       playerCreature.createMesh();
       this.loadStage(1);
@@ -31063,7 +31304,7 @@
       else if (index === 5) this.currentStage = new StageHiveRTS();
       if (this.currentStage) {
         this.currentStage.init();
-        if (this.mobileHudMedia?.matches && this.setHudExpanded) this.setHudExpanded(index === 1);
+        if (this.mobileHudMedia?.matches && this.setHudExpanded) this.setHudExpanded(false);
         this.focusPrimaryAction();
       }
     }
@@ -31217,6 +31458,9 @@
 
     setSystemPaused(paused) {
       this.isSystemPaused = !!paused;
+      if (!this.isSystemPaused) {
+        this.renderResumeAt = performance.now() + (rendererEngine.isSoftwareRenderer ? 3000 : 750);
+      }
       document.getElementById('app-container')?.classList.toggle('game-paused', this.isSystemPaused);
       inputManager.reset();
       this.lastTimestamp = null;
@@ -31232,6 +31476,14 @@
 
     setReducedMotion(value) {
       rendererEngine.reduceMotion = !!value || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+
+    setGraphicsQuality(value) {
+      rendererEngine.setGraphicsQuality(value);
+    }
+
+    setCameraDistance(value) {
+      rendererEngine.cameraDistance = Math.max(0.5, Math.min(1.35, Number(value) / 100 || 1));
     }
 
     getDifficultyDamageModifier() {
@@ -31277,29 +31529,51 @@
       const deltaSeconds = Math.max(0, Math.min(0.05, rawDelta));
       this.lastTimestamp = timestamp;
 
-      if (!this.isSystemPaused) {
-        if (this.currentStageIndex !== 5) playerCreature.update(deltaSeconds);
-        if (!this.isRunning) return;
-        for (const human of this.humans) {
-          human.update(deltaSeconds);
-          if (!this.isRunning) return;
-        }
+      // The station now contains hundreds of detailed props. Rendering that
+      // full scene behind menus and modal pauses needlessly monopolizes the
+      // main thread (especially with software WebGL) and can make controls
+      // unresponsive. Keep the loop alive, but freeze the canvas while paused.
+      if (this.isSystemPaused) {
+        requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
+        return;
+      }
 
-        const activeStage = this.currentStage;
-        if (activeStage) {
-          activeStage.update(deltaSeconds);
-          if (!this.isRunning) return;
-          if (activeStage === this.currentStage && activeStage.isCompleted && this.currentStageIndex < 5) {
-            this.loadStage(this.currentStageIndex + 1);
-          }
-        }
-        window.HiveSystems?.update(deltaSeconds);
-        stationMap.update?.(deltaSeconds);
-        visionSystem.update?.(deltaSeconds);
-        pheromoneSystem.update?.(deltaSeconds);
-        this.motionTracker?.update(deltaSeconds, playerCreature, this.humans);
+      if (this.currentStageIndex !== 5) playerCreature.update(deltaSeconds);
+      if (!this.isRunning) return;
+      for (const human of this.humans) {
+        human.update(deltaSeconds);
         if (!this.isRunning) return;
       }
+
+      const activeStage = this.currentStage;
+      if (activeStage) {
+        activeStage.update(deltaSeconds);
+        if (!this.isRunning) return;
+        if (activeStage === this.currentStage && activeStage.isCompleted && this.currentStageIndex < 5) {
+          this.advanceStage(activeStage);
+        }
+      }
+      window.HiveSystems?.update(deltaSeconds);
+      stationMap.update?.(deltaSeconds);
+      visionSystem.update?.(deltaSeconds);
+      pheromoneSystem.update?.(deltaSeconds);
+      this.motionTracker?.update(deltaSeconds, playerCreature, this.humans);
+      if (!this.isRunning) return;
+
+      if (performance.now() < this.renderResumeAt) {
+        requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
+        return;
+      }
+
+      // A software WebGL frame can monopolize the browser for hundreds of
+      // milliseconds. Cap only that fallback path so touch and menu input stay
+      // responsive; hardware rendering remains synchronized to animation frames.
+      const renderTimestamp = performance.now();
+      if (rendererEngine.isSoftwareRenderer && renderTimestamp - this.lastSoftwareRenderAt < 1000) {
+        requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
+        return;
+      }
+      this.lastSoftwareRenderAt = renderTimestamp;
 
       const cameraOverride = this.currentStage?.getCameraOverride?.() || null;
       if (cameraOverride) {
@@ -31316,21 +31590,61 @@
           deltaSeconds
         );
       }
+      const visibleCreature = this.currentStageIndex === 5 ? this.currentStage?.queen : playerCreature;
+      rendererEngine.updatePropVisibility(visibleCreature || playerCreature, this.currentStageIndex === 5);
+      if (visibleCreature) rendererEngine.updateWallVisibility({
+        x: visibleCreature.x,
+        z: visibleCreature.z,
+        y: this.currentStageIndex === 5 ? 3 : 1.4
+      }, deltaSeconds);
       rendererEngine.render();
       requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
     }
   }
 
-  window.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('DOMContentLoaded', async () => {
+    const bootScreen = document.getElementById('boot-screen');
+    const bootStatus = document.getElementById('boot-loading-status');
+    const bootButtons = Array.from(bootScreen?.querySelectorAll('button') || []);
+    const buttonStates = bootButtons.map(button => button.disabled);
+    bootScreen?.setAttribute('aria-busy', 'true');
+    bootButtons.forEach(button => { button.disabled = true; });
     try {
       if (typeof THREE === 'undefined') throw new Error('Three.js indisponible');
+      let assetWarning = false;
+      if (window.HiveAssetLibrary) {
+        try {
+          await window.HiveAssetLibrary.loadManifest('assets/models/manifest.json');
+          const assets = await window.HiveAssetLibrary.preload();
+          assetWarning = assets.failed.length > 0;
+          if (assetWarning) console.warn('[HIVE ASSETS] Some local character assets could not load.', assets.failed);
+        } catch (error) {
+          assetWarning = true;
+          console.warn('[HIVE ASSETS] Character library unavailable; using procedural models.', error);
+        }
+      }
+      bootButtons.forEach((button, index) => { button.disabled = buttonStates[index]; });
       const game = new GameMaster();
       game.init();
+      bootScreen?.setAttribute('aria-busy', 'false');
+      if (bootStatus) {
+        bootStatus.hidden = !assetWarning;
+        bootStatus.textContent = assetWarning
+          ? 'Certains modèles détaillés n’ont pas pu charger. Rechargez la page pour les retrouver.' : '';
+      }
     } catch (error) {
       console.error('[HIVE ASCENSION] Initialisation impossible', error);
+      bootScreen?.setAttribute('aria-busy', 'false');
+      if (bootStatus) bootStatus.textContent = 'La station n’a pas pu démarrer. Vérifiez WebGL, puis rechargez la page.';
+      const bootRetry = document.getElementById('btn-new-campaign');
+      if (bootRetry) {
+        bootRetry.disabled = false;
+        bootRetry.textContent = 'RECHARGER LE JEU';
+        bootRetry.onclick = () => window.location.reload();
+      }
       const instructions = document.getElementById('stage-instructions');
       const actions = document.getElementById('action-buttons-container');
-      if (instructions) instructions.textContent = 'Le moteur 3D n\'a pas pu démarrer. Vérifiez WebGL et la connexion au CDN Three.js, puis rechargez la page.';
+      if (instructions) instructions.textContent = 'Le moteur 3D n\'a pas pu démarrer. Vérifiez WebGL, puis rechargez la page.';
       if (actions) actions.innerHTML = '<button type="button" class="act-btn" id="btn-reload-game">RECHARGER LE JEU</button>';
       const reloadButton = document.getElementById('btn-reload-game');
       if (reloadButton) reloadButton.onclick = () => window.location.reload();

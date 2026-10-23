@@ -128,18 +128,16 @@
   // ---------------------------------------------------------------------------
   class HiveModelFactoryRuntime {
     constructor() {
-      this.textures = {
-        resin: null,
-        carapace: null,
-        industrial: null,
-        organicBump: null
-      };
       this.texturePaths = {
-        resin: 'assets/textures/hive-resin.png',
-        carapace: 'assets/textures/carapace.png',
-        industrial: 'assets/textures/industrial-panels.png',
-        organicBump: 'assets/textures/organic-bump.png'
+        resin: 'assets/textures/hive-resin.png', carapace: 'assets/textures/carapace.png',
+        industrial: 'assets/textures/industrial-panels.png', organicBump: 'assets/textures/organic-bump.png',
+        carapaceNormal: 'assets/textures/carapace-normal.png', carapaceRoughness: 'assets/textures/carapace-roughness.png', carapaceAO: 'assets/textures/carapace-ao.png',
+        resinNormal: 'assets/textures/hive-resin-normal.png', resinRoughness: 'assets/textures/hive-resin-roughness.png', resinAO: 'assets/textures/hive-resin-ao.png',
+        industrialNormal: 'assets/textures/industrial-panels-normal.png', industrialRoughness: 'assets/textures/industrial-panels-roughness.png', industrialAO: 'assets/textures/industrial-panels-ao.png', industrialMetalness: 'assets/textures/industrial-panels-metalness.png',
+        fabric: 'assets/textures/fabric-weave.png', fabricNormal: 'assets/textures/fabric-weave-normal.png', fabricRoughness: 'assets/textures/fabric-weave-roughness.png', fabricAO: 'assets/textures/fabric-weave-ao.png',
+        skin: 'assets/textures/skin-tissue.png', skinNormal: 'assets/textures/skin-tissue-normal.png', skinRoughness: 'assets/textures/skin-tissue-roughness.png', skinAO: 'assets/textures/skin-tissue-ao.png'
       };
+      this.textures = Object.fromEntries(Object.keys(this.texturePaths).map((key) => [key, null]));
       this._texturePromise = null;
       this._managedMaterials = new Set();
     }
@@ -188,9 +186,10 @@
           if (!texture) return;
           texture.wrapS = T.RepeatWrapping;
           texture.wrapT = T.RepeatWrapping;
-          texture.repeat.set(key === 'industrial' ? 2 : 1.5, key === 'industrial' ? 2 : 1.5);
+          const repeat = key.startsWith('industrial') ? 2 : (key.startsWith('fabric') ? 3 : 1);
+          texture.repeat.set(repeat, repeat);
           texture.anisotropy = 4;
-          if (key !== 'organicBump' && T.sRGBEncoding !== undefined) {
+          if (['carapace', 'resin', 'industrial', 'fabric', 'skin'].includes(key) && T.sRGBEncoding !== undefined) {
             texture.encoding = T.sRGBEncoding;
           }
           this.textures[key] = texture;
@@ -207,9 +206,9 @@
       const T = this._three();
       const defaults = {
         chitin: {
-          color: 0x0c121e,
-          roughness: 0.16,
-          metalness: 0.58
+          color: 0x263b45,
+          roughness: 0.3,
+          metalness: 0.34
         },
         chitinWarm: {
           color: 0x2e1c14,
@@ -278,9 +277,15 @@
         }
       };
       const params = Object.assign({}, defaults[kind] || defaults.chitin, options || {});
-      const material = new T.MeshStandardMaterial(params);
+      const wetShell = ['chitin', 'chitinWarm', 'resin', 'skin'].includes(kind);
+      const material = (wetShell || Number(params.transmission) > 0)
+        ? new T.MeshPhysicalMaterial(Object.assign({ clearcoat: kind === 'resin' ? 0.62 : 0.35, clearcoatRoughness: kind === 'skin' ? 0.6 : 0.24 }, params))
+        : new T.MeshStandardMaterial(params);
       material.userData.hiveMaterialKind = kind;
+      material.userData.hiveBaseRoughness = material.roughness;
+      material.userData.hiveBaseMetalness = material.metalness;
       this._applyManagedTexture(material);
+      global.HiveSurfaceDetail?.apply?.(material, kind);
       this._managedMaterials.add(material);
       material.addEventListener('dispose', () => this._managedMaterials.delete(material));
       return material;
@@ -288,18 +293,28 @@
 
     _applyManagedTexture(material) {
       const kind = material.userData.hiveMaterialKind;
-      if (kind === 'chitin' || kind === 'chitinWarm') {
-        material.map = this.textures.carapace || null;
-        material.bumpMap = this.textures.organicBump || null;
-        material.bumpScale = kind === 'chitin' ? 0.16 : 0.1;
-      } else if (kind === 'resin') {
-        material.map = this.textures.resin || null;
-        material.bumpMap = this.textures.organicBump || null;
-        material.bumpScale = 0.22;
-      } else if (kind === 'industrial' || kind === 'darkMetal') {
-        material.map = this.textures.industrial || null;
+      const profile = (kind === 'chitin' || kind === 'chitinWarm') ? 'carapace'
+        : ((kind === 'darkMetal' || kind === 'industrial') ? 'industrial'
+          : (['resin', 'fabric', 'skin'].includes(kind) ? kind : null));
+      if (profile) {
+        material.map = this.textures[profile] || null;
+        material.normalMap = this.textures[`${profile}Normal`] || null;
+        material.roughnessMap = this.textures[`${profile}Roughness`] || null;
+        material.roughness = material.roughnessMap ? 1 : material.userData.hiveBaseRoughness;
+        material.aoMap = this.textures[`${profile}AO`] || null;
+        material.aoMapIntensity = profile === 'industrial' ? 0.42 : 0.32;
+        material.normalScale.setScalar(profile === 'skin' ? 0.28 : (profile === 'fabric' ? 0.38 : 0.55));
+        if (profile === 'industrial') {
+          material.metalnessMap = this.textures.industrialMetalness || null;
+          material.metalness = material.metalnessMap ? 1 : material.userData.hiveBaseMetalness;
+        }
+        // Use the old height map only while full tangent-space normals are absent.
+        material.bumpMap = !material.normalMap && ['carapace', 'resin'].includes(profile)
+          ? this.textures.organicBump || null : null;
+        material.bumpScale = profile === 'resin' ? 0.028 : 0.014;
       }
       material.needsUpdate = true;
+      global.HiveSurfaceDetail?.apply?.(material, kind);
     }
 
     _refreshManagedMaterials() {
@@ -311,7 +326,12 @@
     // -------------------------------------------------------------------------
     _finalize(root, metadata) {
       root.userData = Object.assign(root.userData || {}, metadata || {});
+      global.HiveModelDetail?.decorate?.(this, root, root.userData);
       this._buildAnimationRig(root);
+      if (['adult', 'egg', 'facehugger', 'chestburster'].includes(metadata?.modelType)) {
+        // Keep the egg's captured visibility handle and every declared rig joint.
+        global.HiveModelDetail?.mergeStatic?.(root, { excludeNames: ['apical_seal'] });
+      }
       root.userData.hiveProceduralModel = true;
       root.userData.dispose = () => this.disposeModel(root);
       return root;
@@ -391,7 +411,9 @@
     }
 
     disposeModel(root) {
-      if (!root || !root.traverse) return;
+      if (!root || !root.traverse || root.userData?.hiveFactoryDisposed) return;
+      root.userData.hiveFactoryDisposed = true;
+      global.HiveAssetLibrary?.disposeObject?.(root, { disposeResources: false });
       const geometries = new Set();
       const materials = new Set();
       root.traverse((child) => {
@@ -429,6 +451,9 @@
       let hierarchyRoot = root;
       while (hierarchyRoot.parent) hierarchyRoot = hierarchyRoot.parent;
       hierarchyRoot.updateMatrixWorld(true);
+      if (global.HiveAssetLibrary?.handlesRoot?.(root)) {
+        return global.HiveAssetLibrary.getModelBounds(root, bounds);
+      }
       return bounds.setFromObject(root);
     }
 
@@ -466,6 +491,9 @@
     // -------------------------------------------------------------------------
     _mesh(geometry, material, name) {
       const T = this._three();
+      if (geometry.attributes.uv && !geometry.attributes.uv2) {
+        geometry.setAttribute('uv2', geometry.attributes.uv.clone());
+      }
       const mesh = new T.Mesh(geometry, material);
       mesh.name = name || 'detail';
       mesh.castShadow = true;
@@ -475,26 +503,69 @@
 
     _ellipsoid(material, scale, position, name, segments) {
       const T = this._three();
-      const resolution = Math.max(32, Math.round((segments || 16) * 2.5));
-      const heightSegments = Math.max(24, Math.round(resolution * 0.75));
-      const mesh = this._mesh(
-        new T.SphereGeometry(1, resolution, heightSegments),
-        material,
-        name
-      );
+      const sculpt = global.HiveOrganicSculpt;
+      let kind = null;
+      if (name === 'thorax') kind = 'chest';
+      else if (name === 'elongated_cranial_shell' || name === 'juvenile_head') kind = 'skull';
+      else if (name === 'warrior_cranial_shell') kind = 'warriorSkull';
+      else if (name === 'runner_head') kind = 'runnerSkull';
+      else if (name === 'shell_body') kind = 'egg';
+      else if (name === 'pod_membrane') kind = 'cocoon';
+      else if (name === 'petal_shell' || name === 'petal_membrane') kind = 'petal';
+      else if (name === 'central_carpal_body' || name === 'runner_thorax') kind = 'crawler';
+      else if (name === 'palm_plate') kind = 'palm';
+      else if (name === 'pelvic_carapace' || name === 'royal_abdomen') kind = 'pelvis';
+      else if (/reinforced_shoulder|patellar_plate/.test(name || '')) kind = 'shoulder';
+      else if (name === 'knuckle') kind = 'knuckle';
+      else if (/^(hip|knee|ankle)$|_joint_|_terminal_joint/.test(name || '')) kind = 'joint';
+      const resolution = Math.max(24, segments || 24);
+      const geometry = kind && sculpt
+        ? sculpt.surface(T, kind)
+        : new T.SphereGeometry(1, resolution, Math.max(16, Math.floor(resolution * 0.75)));
+      if (kind && sculpt) sculpt.fitUV(geometry, scale);
+      const mesh = this._mesh(geometry, material, name);
       mesh.scale.set(scale.x, scale.y, scale.z);
       mesh.position.set(position.x, position.y, position.z);
       return mesh;
     }
 
+    _sphere(material, radius, position, name, segments) {
+      return this._ellipsoid(
+        material,
+        { x: radius, y: radius, z: radius },
+        position,
+        name,
+        segments || 20
+      );
+    }
+
     _box(material, size, position, name, bevelHint) {
       const T = this._three();
-      const subdivisions = bevelHint ? 4 : 2;
-      const mesh = this._mesh(
-        new T.BoxGeometry(size.x, size.y, size.z, subdivisions, subdivisions, subdivisions),
-        material,
-        name
-      );
+      let geometry;
+      if (bevelHint) {
+        const bevel = Math.min(size.x, size.y, size.z) * 0.08;
+        const halfX = size.x / 2 - bevel;
+        const halfY = size.y / 2 - bevel;
+        const outline = new T.Shape();
+        outline.moveTo(-halfX, -halfY);
+        outline.lineTo(halfX, -halfY);
+        outline.lineTo(halfX, halfY);
+        outline.lineTo(-halfX, halfY);
+        outline.closePath();
+        geometry = new T.ExtrudeGeometry(outline, {
+          depth: size.z - bevel * 2,
+          steps: 1,
+          bevelEnabled: true,
+          bevelThickness: bevel,
+          bevelSize: bevel,
+          bevelSegments: 1,
+          curveSegments: 1
+        });
+        geometry.translate(0, 0, -size.z / 2 + bevel);
+      } else {
+        geometry = new T.BoxGeometry(size.x, size.y, size.z);
+      }
+      const mesh = this._mesh(geometry, material, name);
       mesh.position.set(position.x, position.y, position.z);
       return mesh;
     }
@@ -503,24 +574,32 @@
       const T = this._three();
       const direction = new T.Vector3().subVectors(end, start);
       const length = Math.max(0.001, direction.length());
-      const radSeg = Math.max(20, Math.round((radialSegments || 8) * 2.5));
-      const mesh = this._mesh(
-        new T.CylinderGeometry(
+      const sculpt = global.HiveOrganicSculpt;
+      let anatomy = null;
+      if (/phalanx|tarsus/.test(name || '')) anatomy = 'digit';
+      else if (/^(arm|leg|runner_leg|juvenile_arm).*segment_/.test(name || '')) {
+        anatomy = /segment_0$/.test(name) ? 'upper' : (/^leg|^runner_leg/.test(name) ? 'shin' : 'forearm');
+      } else if (name === 'femur') anatomy = 'upper';
+      else if (name === 'tibia') anatomy = 'shin';
+      else if (name === 'cervical_column') anatomy = 'forearm';
+      let geometry;
+      if (anatomy && sculpt) {
+        geometry = sculpt.limb(T, anatomy, (radiusEnd === undefined ? radiusStart : radiusEnd) / radiusStart);
+        geometry.scale(radiusStart, length, radiusStart);
+        sculpt.fitUV(geometry);
+      } else {
+        geometry = new T.CylinderGeometry(
           radiusEnd === undefined ? radiusStart : radiusEnd,
           radiusStart,
           length,
-          radSeg,
+          Math.max(12, radialSegments || 12),
           2,
           false
-        ),
-        material,
-        name
-      );
+        );
+      }
+      const mesh = this._mesh(geometry, material, name);
       mesh.position.copy(start).add(end).multiplyScalar(0.5);
-      mesh.quaternion.setFromUnitVectors(
-        new T.Vector3(0, 1, 0),
-        direction.normalize()
-      );
+      mesh.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), direction.normalize());
       return mesh;
     }
 
@@ -530,7 +609,7 @@
         { x: radius, y: radius, z: radius },
         position,
         name,
-        24
+        12
       );
     }
 
@@ -539,21 +618,90 @@
       const curve = new T.CatmullRomCurve3(points.map((point) => (
         new T.Vector3(point.x, point.y, point.z)
       )));
-      const tubSeg = Math.max(48, Math.round((tubularSegments || 24) * 2));
-      const radSeg = Math.max(16, Math.round((radialSegments || 7) * 2.5));
       return this._mesh(
-        new T.TubeGeometry(curve, tubSeg, radius, radSeg, false),
+        new T.TubeGeometry(curve, tubularSegments || 24, radius, radialSegments || 7, false),
         material,
         name
       );
     }
 
+    _sweptBody(material, points, radii, name, tubularSegments = 56, radialSegments = 12) {
+      const T = this._three();
+      const curve = new T.CatmullRomCurve3(points.map((p) => new T.Vector3(p.x, p.y, p.z)));
+      const frames = curve.computeFrenetFrames(tubularSegments, false);
+      const positions = [], normals = [], uvs = [], indices = [];
+      for (let i = 0; i <= tubularSegments; i++) {
+        const t = i / tubularSegments;
+        const center = curve.getPointAt(t);
+        const span = t * (radii.length - 1);
+        const section = Math.min(radii.length - 2, Math.floor(span));
+        const radius = T.MathUtils.lerp(radii[section], radii[section + 1], span - section);
+        for (let j = 0; j <= radialSegments; j++) {
+          const angle = j / radialSegments * Math.PI * 2;
+          const normal = frames.normals[i].clone().multiplyScalar(Math.cos(angle))
+            .addScaledVector(frames.binormals[i], Math.sin(angle));
+          let surfaceRadius = radius;
+          if (name === 'tail_skin' || name === 'larval_trunk') {
+            const dorsal = Math.max(0, Math.sin(angle));
+            const scute = Math.pow(Math.max(0,Math.cos(t * Math.PI * (name === 'tail_skin' ? 38 : 24) + Math.cos(angle) * .8)), 6);
+            surfaceRadius *= 1 + .12 * scute * (.4 + dorsal) - .045 * Math.pow(Math.cos(angle * 3 + t * 4), 8);
+          }
+          const point = center.clone().addScaledVector(normal, surfaceRadius);
+          positions.push(point.x, point.y, point.z); normals.push(normal.x, normal.y, normal.z);
+          uvs.push(j / radialSegments, t);
+          if (i < tubularSegments && j < radialSegments) {
+            const a = i * (radialSegments + 1) + j, b = a + radialSegments + 1;
+            indices.push(a, a + 1, b, b, a + 1, b + 1);
+          }
+        }
+      }
+      // Closed root/tip capfans prevent cut-open tubes during close inspection.
+      for (const end of [0, tubularSegments]) {
+        const center = curve.getPointAt(end / tubularSegments);
+        const ci = positions.length / 3;
+        positions.push(center.x, center.y, center.z); uvs.push(.5,end/tubularSegments);
+        normals.push(0,0,1);
+        const offset=end*(radialSegments+1);
+        for(let side=0;side<radialSegments;side++) {
+          if(end===0)indices.push(ci,offset+side+1,offset+side);
+          else indices.push(ci,offset+side,offset+side+1);
+        }
+      }
+      const geometry = new T.BufferGeometry();
+      geometry.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('normal', new T.Float32BufferAttribute(normals, 3));
+      geometry.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+      return this._mesh(geometry, material, name);
+    }
+
+    _addInstancedRings(parent, material, curve, count, radius, name) {
+      const T = this._three();
+      const geometry = new T.TorusGeometry(1, 0.12, 6, 18);
+      geometry.setAttribute('uv2', geometry.attributes.uv.clone());
+      const bands = new T.InstancedMesh(geometry, material, count);
+      bands.name = name;
+      bands.castShadow = true; bands.receiveShadow = true;
+      // Three r128 does not include instance transforms in its culling sphere.
+      bands.frustumCulled = false;
+      const dummy = new T.Object3D();
+      for (let i = 0; i < count; i++) {
+        const t = (i + 1) / (count + 1);
+        dummy.position.copy(curve.getPointAt(t));
+        dummy.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), curve.getTangentAt(t));
+        dummy.scale.setScalar(radius * (1 - t * 0.76));
+        dummy.updateMatrix(); bands.setMatrixAt(i, dummy.matrix);
+      }
+      parent.add(bands);
+      return bands;
+    }
+
     _coneAlong(material, base, direction, radius, length, name, radialSegments) {
       const T = this._three();
       const normalized = new T.Vector3(direction.x, direction.y, direction.z).normalize();
-      const radSeg = Math.max(20, Math.round((radialSegments || 7) * 2.5));
       const mesh = this._mesh(
-        new T.ConeGeometry(radius, length, radSeg),
+        new T.ConeGeometry(radius, length, radialSegments || 7),
         material,
         name
       );
@@ -569,7 +717,7 @@
     _ring(material, majorRadius, tubeRadius, position, rotation, name, arc) {
       const T = this._three();
       const mesh = this._mesh(
-        new T.TorusGeometry(majorRadius, tubeRadius, 16, 48, arc === undefined ? Math.PI * 2 : arc),
+        new T.TorusGeometry(majorRadius, tubeRadius, 7, 22, arc === undefined ? Math.PI * 2 : arc),
         material,
         name
       );
@@ -582,6 +730,18 @@
       const T = this._three();
       const mesh = this._mesh(
         new T.CylinderGeometry(radiusTop, radiusBottom, height, bevelHint ? 32 : 20),
+        material,
+        name
+      );
+      mesh.position.set(position.x, position.y, position.z);
+      if (rotation) mesh.rotation.set(rotation.x || 0, rotation.y || 0, rotation.z || 0);
+      return mesh;
+    }
+
+    _cone(material, radius, height, position, rotation, name, detailHint) {
+      const T = this._three();
+      const mesh = this._mesh(
+        new T.ConeGeometry(radius, height, detailHint ? 32 : 20),
         material,
         name
       );
@@ -631,30 +791,9 @@
     }
 
     _addRibCage(parent, material, centerY, width, depth, count) {
-      const T = this._three();
-      for (let index = 0; index < count; index++) {
-        const t = count <= 1 ? 0 : index / (count - 1);
-        const rib = this._ring(
-          material,
-          width * (0.78 + Math.sin(t * Math.PI) * 0.22),
-          0.065,
-          { x: 0, y: centerY - t * 1.45, z: depth * 0.08 },
-          { x: Math.PI / 2, y: 0, z: Math.PI * 0.22 },
-          `rib_${index}`,
-          Math.PI * 1.55
-        );
-        rib.scale.z = depth / Math.max(0.01, width);
-        parent.add(rib);
-      }
-      parent.add(this._segment(
-        material,
-        new T.Vector3(0, centerY + 0.12, depth * 0.7),
-        new T.Vector3(0, centerY - 1.45, depth * 0.72),
-        0.08,
-        0.055,
-        'sternum_keel',
-        7
-      ));
+      // Rib arches, sternum and pectoral transitions are embedded in the chest
+      // loft. Separate torus hoops would float over this continuous anatomy.
+      return parent;
     }
 
     _addDorsalTubes(parent, material, baseY, size, count) {
@@ -692,14 +831,15 @@
       );
       root.add(palm);
 
-      const digits = isFoot ? 4 : 5;
+      const digits = isFoot ? 3 : 6;
       for (let index = 0; index < digits; index++) {
         const spread = (index - (digits - 1) / 2) * 0.13 * s;
         const finger = new T.Group();
         finger.name = `digit_${index}`;
         const base = new T.Vector3(spread, 0, 0.34 * s);
-        const knuckle = new T.Vector3(spread * 1.14, -0.025 * s, (0.59 + Math.abs(spread) * 0.18) * s);
-        const tip = new T.Vector3(spread * 1.28, -0.09 * s, (0.82 - Math.abs(spread) * 0.2) * s);
+        const lengthBias = 1 - Math.abs(index - (digits - 1) / 2) / digits * 0.24;
+        const knuckle = new T.Vector3(spread * 1.14, (isFoot ? -0.025 : -0.09) * s, 0.57 * lengthBias * s);
+        const tip = new T.Vector3(spread * 1.22, (isFoot ? -0.07 : -0.27) * s, 0.78 * lengthBias * s);
         finger.add(this._segment(material, base, knuckle, 0.065 * s, 0.05 * s, 'proximal_phalanx', 7));
         finger.add(this._joint(material, knuckle, 0.064 * s, 'knuckle'));
         finger.add(this._segment(material, knuckle, tip, 0.05 * s, 0.035 * s, 'distal_phalanx', 7));
@@ -712,7 +852,9 @@
           'terminal_claw',
           6
         ));
-        root.add(finger);
+        // Digits are static relative to their hand/foot joint. Flatten their
+        // identity groups so the material batcher can draw each hand in two calls.
+        while (finger.children.length) root.add(finger.children[0]);
       }
       return root;
     }
@@ -733,7 +875,7 @@
           radii[index],
           radii[index + 1],
           `${name}_segment_${index}`,
-          9
+          14
         ));
         if (index > 0 || index === points.length - 2) {
           limb.add(this._joint(jointMaterial, start, radii[index] * 1.12, `${name}_joint_${index}`));
@@ -769,8 +911,7 @@
 
     _addTail(parent, material, boneMaterial, origin, length, lift, side, thickness) {
       const T = this._three();
-      const tailRoot = new T.Group();
-      tailRoot.name = 'segmented_tail';
+      const tailRoot = new T.Group(); tailRoot.name = 'segmented_tail';
       tailRoot.position.set(origin.x, origin.y, origin.z);
       const points = [
         { x: 0, y: 0, z: 0 },
@@ -779,124 +920,108 @@
         { x: side * length * 0.36, y: lift * 0.15, z: -length * 0.7 },
         { x: side * length * 0.47, y: lift, z: -length }
       ];
-      tailRoot.add(this._tube(material, points, thickness, 'tail_skin', 34, 8));
-      for (let index = 1; index < points.length - 1; index++) {
-        tailRoot.add(this._ring(
-          boneMaterial,
-          thickness * 1.22,
-          thickness * 0.13,
-          points[index],
-          { x: Math.PI / 2, y: 0, z: 0 },
-          `tail_ring_${index}`
-        ));
-      }
+      tailRoot.add(this._sweptBody(material, points,
+        [thickness * 1.45, thickness * 1.16, thickness * 0.83, thickness * 0.5, thickness * 0.24],
+        'tail_skin', 128, 24));
+      const curve = new T.CatmullRomCurve3(points.map((p) => new T.Vector3(p.x, p.y, p.z)));
+      // Vertebral scutes are relief in the tapered tail surface, not ring beads.
       const tip = points[points.length - 1];
-      tailRoot.add(this._coneAlong(
-        boneMaterial,
-        tip,
-        { x: side * 0.35, y: lift * 0.3, z: -1 },
-        thickness * 1.8,
-        thickness * 6.5,
-        'tail_blade',
-        7
-      ));
-      parent.add(tailRoot);
-      return tailRoot;
+      const blade = this._ellipsoid(boneMaterial,
+        { x: thickness * 1.5, y: thickness * 0.2, z: thickness * 4.4 },
+        { x: tip.x, y: tip.y, z: tip.z - thickness * 2.9 }, 'tail_blade', 24);
+      blade.rotation.y = -side * 0.35;
+      tailRoot.add(blade);
+      parent.add(tailRoot); return tailRoot;
     }
 
     _addCrest(parent, material, size, isRoyal) {
       const T = this._three();
-      const crest = new T.Group();
-      crest.name = isRoyal ? 'royal_crown_crest' : 'guardian_crest';
-      const plates = isRoyal ? 9 : 6;
-      for (let index = 0; index < plates; index++) {
-        const t = plates <= 1 ? 0 : index / (plates - 1);
-        const plate = this._ellipsoid(
-          material,
-          {
-            x: size * (1.05 - t * 0.36),
-            y: size * (0.16 + Math.sin(t * Math.PI) * 0.06),
-            z: size * (0.72 + t * 0.34)
-          },
-          {
-            x: 0,
-            y: size * (0.18 + t * 0.3),
-            z: size * (-0.22 - t * 0.28)
-          },
-          `crest_plate_${index}`,
-          16
-        );
-        plate.rotation.x = -0.3 - t * 0.22;
-        plate.rotation.z = (index % 2 === 0 ? -1 : 1) * 0.025;
-        crest.add(plate);
+      const crest = new T.Group(); crest.name = isRoyal ? 'royal_crown_crest' : 'guardian_crest';
+      const positions = [], uvs = [], indices = [], rows = 22, columns = 72;
+      const stride = columns + 1, layerSize = (rows + 1) * stride;
+      for (let layer = 0; layer < 2; layer++) {
+        for (let row = 0; row <= rows; row++) {
+          const r = row / rows;
+          for (let col = 0; col <= columns; col++) {
+            const angle = (col / columns - .5) * Math.PI * 1.2;
+            const fluting = Math.pow(Math.max(0,Math.cos(angle * 8 + r * 1.6)),5);
+            const edgeRadius = (.27 + r * 1.55) * size;
+            const scallop = 1 + .055 * Math.cos(angle * 9) * Math.pow(r,5);
+            const dome = .2 + .29 * Math.sin(r * Math.PI * .9) - .09 * Math.abs(Math.sin(angle));
+            const keel = .11 * Math.exp(-Math.pow(angle/.23,2)) * Math.sin(r*Math.PI);
+            const grooves = -.055 * fluting * Math.sin(r*Math.PI);
+            const thickness = (.11 + .08 * Math.sin(r * Math.PI)) * size;
+            positions.push(Math.sin(angle) * edgeRadius * scallop,
+              (dome + keel + grooves) * size + (layer === 0 ? thickness / 2 : -thickness / 2),
+              -Math.cos(angle) * edgeRadius * scallop - size * .18);
+            uvs.push(col / columns,r);
+            if (row < rows && col < columns) {
+              const a = layer*layerSize+row*stride+col,b=a+stride;
+              if(layer===0)indices.push(a,a+1,b,b,a+1,b+1);
+              else indices.push(a,b,a+1,b,b+1,a+1);
+            }
+          }
+        }
       }
-      const edgeCount = isRoyal ? 11 : 7;
-      for (let index = 0; index < edgeCount; index++) {
-        const t = edgeCount <= 1 ? 0 : index / (edgeCount - 1);
-        crest.add(this._coneAlong(
-          material,
-          { x: (t - 0.5) * size * 1.8, y: size * 0.54, z: -size * 0.86 },
-          { x: (t - 0.5) * 0.65, y: 0.2, z: -1 },
-          size * 0.06,
-          size * (0.32 + Math.sin(t * Math.PI) * 0.18),
-          `crest_tooth_${index}`,
-          6
-        ));
+      // Weld top and underside around every edge into a closed, thick shield.
+      for(let col=0;col<columns;col++) {
+        for(const row of [0,rows]) {
+          const a=row*stride+col,b=a+1,c=a+layerSize,d=b+layerSize;
+          if(row===0)indices.push(a,c,b,b,c,d);else indices.push(a,b,c,b,d,c);
+        }
       }
-      parent.add(crest);
-      return crest;
+      for(let row=0;row<rows;row++)for(const col of [0,columns]) {
+        const a=row*stride+col,b=a+stride,c=a+layerSize,d=b+layerSize;
+        if(col===0)indices.push(a,b,c,b,d,c);else indices.push(a,c,b,b,c,d);
+      }
+      const geometry = new T.BufferGeometry();
+      geometry.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2));
+      geometry.setIndex(indices); geometry.computeVertexNormals();
+      const crownMaterial = material.clone(); crownMaterial.side = T.DoubleSide;
+      global.HiveSurfaceDetail?.apply?.(crownMaterial, material.userData.hiveMaterialKind);
+      this._managedMaterials.add(crownMaterial);
+      crownMaterial.addEventListener('dispose', () => this._managedMaterials.delete(crownMaterial));
+      crest.add(this._mesh(geometry, crownMaterial, 'sculpted_crown_shield'));
+      parent.add(crest); return crest;
     }
 
     _addJaw(parent, chitin, bone, position, scale, extended) {
       const T = this._three();
-      const jawRoot = new T.Group();
-      jawRoot.name = 'articulated_jaw';
+      const jawRoot = new T.Group(); jawRoot.name = 'articulated_jaw';
       jawRoot.position.set(position.x, position.y, position.z);
-      jawRoot.add(this._box(
-        chitin,
-        { x: 0.86 * scale, y: 0.22 * scale, z: 0.58 * scale },
-        { x: 0, y: -0.08 * scale, z: 0.08 * scale },
-        'lower_mandible',
-        true
-      ));
-      for (let index = 0; index < 6; index++) {
-        const x = (index - 2.5) * 0.13 * scale;
-        jawRoot.add(this._coneAlong(
-          bone,
-          { x, y: 0.02 * scale, z: 0.32 * scale },
-          { x: 0, y: 0.7, z: 0.12 },
-          0.035 * scale,
-          0.15 * scale,
-          `outer_tooth_${index}`,
-          5
-        ));
+      jawRoot.add(this._ellipsoid(chitin, { x: 0.39 * scale, y: 0.09 * scale, z: 0.3 * scale },
+        { x: 0, y: -0.06 * scale, z: 0.04 * scale }, 'lower_mandible', 28));
+      for (const side of [-1, 1]) {
+        jawRoot.add(this._tube(chitin, [
+          { x: side * 0.34 * scale, y: 0.08 * scale, z: -0.19 * scale },
+          { x: side * 0.32 * scale, y: -0.08 * scale, z: 0.12 * scale },
+          { x: side * 0.15 * scale, y: -0.06 * scale, z: 0.32 * scale }
+        ], 0.045 * scale, `mandibular_rail_${side}`, 20, 8));
+        for (let index = 0; index < 8; index++) {
+          const t = index / 7;
+          jawRoot.add(this._coneAlong(bone,
+            { x: (t - 0.5) * 0.59 * scale, y: side < 0 ? -0.005 * scale : 0.2 * scale, z: (0.27 - Math.abs(t - 0.5) * 0.08) * scale },
+            { x: 0, y: side < 0 ? 1 : -1, z: 0.04 }, 0.022 * scale,
+            (0.075 + Math.sin(t * Math.PI) * 0.025) * scale,
+            `dental_arcade_${side}_${index}`, 8));
+        }
       }
-      const innerLength = (extended ? 1.25 : 0.62) * scale;
-      jawRoot.add(this._segment(
-        chitin,
-        new T.Vector3(0, 0.14 * scale, 0.18 * scale),
-        new T.Vector3(0, 0.14 * scale, 0.18 * scale + innerLength),
-        0.13 * scale,
-        0.1 * scale,
-        'telescopic_inner_jaw',
-        8
-      ));
-      jawRoot.add(this._coneAlong(
-        bone,
-        { x: 0, y: 0.14 * scale, z: 0.18 * scale + innerLength },
-        { x: 0, y: 0, z: 1 },
-        0.16 * scale,
-        0.28 * scale,
-        'inner_jaw_crown',
-        6
-      ));
-      parent.add(jawRoot);
-      return jawRoot;
+      // The secondary pharyngeal jaw rests inside the mouth. It must not read
+      // as a permanent ivory horn projecting from the creature's face.
+      const inner = new T.Group(); inner.name = 'pharyngeal_jaw_slider';
+      inner.position.set(0, 0.095 * scale, -0.2 * scale);
+      inner.add(this._segment(chitin, new T.Vector3(0, 0, 0), new T.Vector3(0, 0, 0.35 * scale),
+        0.065 * scale, 0.048 * scale, 'telescopic_inner_jaw', 12));
+      inner.add(this._ellipsoid(bone, { x: 0.065 * scale, y: 0.045 * scale, z: 0.075 * scale },
+        { x: 0, y: 0, z: 0.36 * scale }, 'inner_jaw_crown', 16));
+      inner.position.z += extended ? 0.64 * scale : 0;
+      inner.userData.retractedZ = -0.2 * scale;
+      inner.userData.extensionLength = 0.7 * scale;
+      jawRoot.add(inner); jawRoot.userData.innerJaw = inner;
+      parent.add(jawRoot); return jawRoot;
     }
 
-    // -------------------------------------------------------------------------
-    // 6. MECHANICAL & HUMANOID DETAIL HELPERS
-    // -------------------------------------------------------------------------
     _addMechanicalLimb(parent, metal, dark, points, radii, name, addClamp) {
       const T = this._three();
       const limb = new T.Group();
@@ -2487,13 +2612,17 @@
         emissiveIntensity: 0.62
       });
 
-      root.add(this._ellipsoid(
-        shell,
-        { x: 1.42, y: 1.95, z: 1.42 },
-        { x: 0, y: 1.55, z: 0 },
-        'shell_body',
-        24
-      ));
+      const shellBody = this._ellipsoid(shell,
+        { x: 1.34, y: 1.95, z: 1.34 }, { x: 0, y: 1.55, z: 0 }, 'shell_body', 48);
+      const skinVertices = shellBody.geometry.attributes.position;
+      for (let i = 0; i < skinVertices.count; i++) {
+        const y = skinVertices.getY(i), angle = Math.atan2(skinVertices.getZ(i), skinVertices.getX(i));
+        const lobe = 1 + Math.sin(angle * 8 + y * 0.8) * 0.024 + Math.max(0, -y) * 0.08;
+        skinVertices.setX(i, skinVertices.getX(i) * lobe);
+        skinVertices.setZ(i, skinVertices.getZ(i) * lobe);
+      }
+      skinVertices.needsUpdate = true; shellBody.geometry.computeVertexNormals();
+      root.add(shellBody);
       root.add(this._ring(
         membrane,
         1.12,
@@ -2502,17 +2631,6 @@
         { x: Math.PI / 2, y: 0, z: 0 },
         'root_collar'
       ));
-      for (let ringIndex = 0; ringIndex < 5; ringIndex++) {
-        root.add(this._ring(
-          membrane,
-          1.18 - ringIndex * 0.12,
-          0.055,
-          { x: 0, y: 0.66 + ringIndex * 0.42, z: 0 },
-          { x: Math.PI / 2, y: 0, z: 0 },
-          `shell_vein_ring_${ringIndex}`
-        ));
-      }
-
       for (let petalIndex = 0; petalIndex < 4; petalIndex++) {
         const angle = petalIndex * Math.PI / 2;
         const petalRoot = new T.Group();
@@ -2527,14 +2645,14 @@
           { x: 0.8, y: 0.18, z: 1.06 },
           { x: 0, y: 0.06, z: 0.64 },
           'petal_shell',
-          20
+          36
         ));
         petalRoot.add(this._ellipsoid(
           membrane,
           { x: 0.59, y: 0.08, z: 0.79 },
           { x: 0, y: 0.2, z: 0.62 },
           'petal_membrane',
-          16
+          28
         ));
         for (let vein = -1; vein <= 1; vein++) {
           petalRoot.add(this._tube(
@@ -2561,7 +2679,7 @@
         { x: 0.84, y: 0.13, z: 0.84 },
         { x: 0, y: 3.25, z: 0 },
         'apical_seal',
-        20
+        32
       );
       root.add(apicalSeal);
 
@@ -2572,7 +2690,7 @@
         { x: 0.72, y: 0.42, z: 0.72 },
         { x: 0, y: 3.24, z: 0 },
         'incubator_core',
-        18
+        28
       ));
       for (let tendril = 0; tendril < 6; tendril++) {
         const angle = tendril / 6 * Math.PI * 2;
@@ -2633,20 +2751,20 @@
       const ankleJoints = [];
       const hide = isBlackGoo
         ? this._material('chitin', { color: 0x09090b, roughness: 0.18, metalness: 0.82 })
-        : this._material('chitinWarm', { color: 0x7c5b42, roughness: 0.52 });
+        : this._material('skin', { color: 0xc5b69b, roughness: 0.58, clearcoat: 0.2 });
       const joints = isBlackGoo
         ? this._material('emissiveRed', { color: 0xef4444, emissive: 0x991b1b, emissiveIntensity: 1.8 })
-        : this._material('resin', { color: 0x5c342b, opacity: 0.96 });
+        : this._material('skin', { color: 0x9f8f79, roughness: 0.64, clearcoat: 0.15 });
       const claw = isBlackGoo
         ? this._material('darkMetal', { color: 0x18181b, roughness: 0.2 })
         : this._material('bone', { color: 0xc6ad79 });
 
       root.add(this._ellipsoid(
         hide,
-        { x: 0.86, y: 0.25, z: 1.06 },
+        { x: 0.69, y: 0.23, z: 1.0 },
         { x: 0, y: 0.48, z: 0 },
         'central_carpal_body',
-        20
+        36
       ));
       for (let plateIndex = 0; plateIndex < 5; plateIndex++) {
         root.add(this._ellipsoid(
@@ -2677,19 +2795,19 @@
         limb.userData.side = side;
         limb.userData.row = row;
         limb.add(this._joint(joints, { x: 0, y: 0, z: 0 }, 0.145, 'hip'));
-        limb.add(this._segment(hide, new T.Vector3(), localKnee, 0.14, 0.1, 'femur', 8));
+        limb.add(this._segment(hide, new T.Vector3(), localKnee, 0.14, 0.1, 'femur', 14));
 
         const kneeJoint = new T.Group();
         kneeJoint.name = `crawler_knee_${legIndex}`;
         kneeJoint.position.copy(localKnee);
         kneeJoint.add(this._joint(joints, { x: 0, y: 0, z: 0 }, 0.13, 'knee'));
-        kneeJoint.add(this._segment(hide, new T.Vector3(), localAnkle, 0.1, 0.065, 'tibia', 8));
+        kneeJoint.add(this._segment(hide, new T.Vector3(), localAnkle, 0.1, 0.065, 'tibia', 12));
 
         const ankleJoint = new T.Group();
         ankleJoint.name = `crawler_ankle_${legIndex}`;
         ankleJoint.position.copy(localAnkle);
         ankleJoint.add(this._joint(joints, { x: 0, y: 0, z: 0 }, 0.085, 'ankle'));
-        ankleJoint.add(this._segment(hide, new T.Vector3(), localToe, 0.06, 0.035, 'tarsus', 7));
+        ankleJoint.add(this._segment(hide, new T.Vector3(), localToe, 0.06, 0.035, 'tarsus', 12));
         ankleJoint.add(this._coneAlong(
           claw,
           localToe,
@@ -2700,6 +2818,11 @@
           6
         ));
         kneeJoint.add(ankleJoint);
+        limb.add(this._tube(joints, [
+          { x: 0, y: -0.035, z: 0 },
+          { x: localKnee.x * 0.48, y: localKnee.y * 0.5 - 0.035, z: localKnee.z * 0.5 },
+          { x: localKnee.x, y: localKnee.y - 0.035, z: localKnee.z }
+        ], 0.025, `crawler_flexor_${legIndex}`, 18, 6));
         limb.add(kneeJoint);
         root.add(limb);
         legJoints.push(limb);
@@ -2724,8 +2847,8 @@
         tailPoints.map((point) => point.clone().sub(tailBase)),
         0.105,
         'prehensile_tail',
-        42,
-        8
+        72,
+        12
       ));
       tailJoint.add(this._coneAlong(
         claw,
@@ -2948,13 +3071,8 @@
       const T = this._three();
       const root = new T.Group();
       root.name = chrysalis ? 'metamorphic_pod' : 'juvenile_serpent';
-      const hide = this._material('chitinWarm', { color: 0x672f2f, roughness: 0.42 });
-      const chitin = this._material('chitin', { color: 0x24151d, roughness: 0.3, metalness: 0.22 });
-      const resin = this._material('resin', {
-        color: 0x3b1747,
-        emissive: 0x4c1d95,
-        emissiveIntensity: 0.44
-      });
+      const hide = chrysalis ? null : this._material('skin', { color: 0xc4a48d, roughness: 0.46, clearcoat: 0.45 });
+      const chitin = chrysalis ? null : this._material('chitin', { color: 0x9a9694, roughness: 0.4, metalness: 0.08 });
       const bone = this._material('bone', { color: 0xd6c58b });
 
       if (chrysalis) {
@@ -3173,23 +3291,16 @@
         });
       }
 
-      for (let segmentIndex = 0; segmentIndex < 8; segmentIndex++) {
-        const t = segmentIndex / 7;
-        const radius = 0.42 - t * 0.19;
-        root.add(this._ellipsoid(
-          segmentIndex % 2 === 0 ? hide : chitin,
-          { x: radius, y: radius * 0.78, z: 0.48 },
-          { x: 0, y: 0.58 + Math.sin(t * Math.PI) * 0.18, z: -0.18 - t * 0.62 },
-          `body_segment_${segmentIndex}`,
-          14
-        ));
-      }
+      root.add(this._sweptBody(hide, [
+        { x: 0, y: 0.58, z: -0.96 }, { x: 0.02, y: 0.7, z: -0.58 },
+        { x: 0, y: 0.77, z: -0.05 }, { x: 0, y: 0.7, z: 0.53 }
+      ], [0.19, 0.29, 0.37, 0.3], 'larval_trunk', 88, 28));
       root.add(this._ellipsoid(
         chitin,
-        { x: 0.55, y: 0.4, z: 0.82 },
+        { x: 0.4, y: 0.29, z: 1.02 },
         { x: 0, y: 0.78, z: 0.72 },
         'juvenile_head',
-        20
+        40
       ));
       this._addJaw(root, chitin, bone, { x: 0, y: 0.62, z: 1.25 }, 0.56, false);
       for (let side = -1; side <= 1; side += 2) {
@@ -3924,7 +4035,6 @@
           ));
         }
       }
-
       return this._finalize(root, {
         modelType: 'adult',
         caste,
@@ -3945,8 +4055,8 @@
       const T = this._three();
       const root = new T.Group();
       root.name = 'adult_runner';
-      const primary = this._material('chitin', { color: 0x291a16, roughness: 0.34, metalness: 0.3 });
-      const secondary = this._material('chitinWarm', { color: 0x5a3525 });
+      const primary = this._material('chitin', { color: 0x9a8980, roughness: 0.42, metalness: 0.12, clearcoat: 0.54 });
+      const secondary = this._material('resin', { color: 0x8e8174, opacity: 1, transparent: false });
       const bone = this._material('bone', { color: 0xc7b58b });
 
       root.add(this._ellipsoid(
@@ -3954,14 +4064,14 @@
         { x: 0.68, y: 0.62, z: 1.52 },
         { x: 0, y: 1.55, z: -0.15 },
         'runner_thorax',
-        20
+        36
       ));
       root.add(this._ellipsoid(
         primary,
-        { x: 0.62, y: 0.46, z: 1.0 },
+        { x: 0.42, y: 0.33, z: 1.28 },
         { x: 0, y: 1.72, z: 1.55 },
         'runner_head',
-        20
+        44
       ));
       root.add(this._ellipsoid(
         secondary,
@@ -3998,13 +4108,20 @@
           }
         );
       }
-      this._addTail(root, primary, bone, { x: 0, y: 1.55, z: -1.42 }, 5.5, 0.42, 0.55, 0.13);
+      this._addTail(root, primary, secondary, { x: 0, y: 1.55, z: -1.42 }, 5.5, 0.42, 0.55, 0.13);
       this._addCarapaceSpines(root, primary, 2.05, 11, 0.78, 1.42, -1);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'runner',
         height: 2.55,
-        animationJoints: Array.from({ length: 4 }, (_, index) => `runner_leg_${index}`)
+        animationJoints: {
+          head: 'runner_head', jaw: 'articulated_jaw', tail: 'segmented_tail',
+          legs: Array.from({ length: 4 }, (_, index) => `runner_leg_${index}`)
+        },
+        animationRoles: {
+          locomotion: Array.from({ length: 4 }, (_, index) => `runner_leg_${index}`),
+          attack: ['runner_head', 'articulated_jaw', 'segmented_tail']
+        }
       });
     }
 
@@ -4489,6 +4606,41 @@
       if (normalizedType === 'labhound' || normalizedType === 'weyland_cyber_hound') return this._createServiceAnimal(requestedType);
       if (normalizedType === 'labrodent') return this._createLaboratoryRodent(requestedType);
 
+      const imported = global.HiveAssetLibrary?.instantiate?.(normalizedType, { height: 4.25 });
+      if (imported) {
+        Object.assign(imported.userData, {
+          modelType: 'human', subtype: normalizedType, requestedSubtype: requestedType,
+          forwardAxis: '+Z', height: 4.25, hiveImportedModel: true
+        });
+        const hand = global.HiveAssetLibrary.getRuntime(imported)?.bindings.rightHand;
+        if (hand && ['guard', 'marine', 'smartgunner', 'incinerator', 'commando'].includes(normalizedType)) {
+          const T = this._three();
+          const metal = this._material('industrial', { color: 0x56616b });
+          const dark = this._material('darkMetal', { color: 0x20282d });
+          const accent = this._material('emissiveAmber', { emissiveIntensity: 0.25 });
+          const weapon = this._createEquipmentWeapon(normalizedType, metal, dark, accent);
+          global.HiveModelDetail?.mergeStatic?.(weapon);
+          const usedMaterials = new Set();
+          weapon.traverse(object => {
+            if (object.material) (Array.isArray(object.material) ? object.material : [object.material]).forEach(material => usedMaterials.add(material));
+          });
+          for (const material of [metal, dark, accent]) if (!usedMaterials.has(material)) material.dispose();
+          imported.updateMatrixWorld(true);
+          const grip = new T.Group(); grip.name = 'imported_weapon_grip';
+          const handScale = hand.getWorldScale(new T.Vector3());
+          grip.scale.set(1 / handScale.x, 1 / handScale.y, 1 / handScale.z);
+          const carried = imported.getWorldQuaternion(new T.Quaternion())
+            .multiply(new T.Quaternion().setFromEuler(new T.Euler(0.42, 0, 0)));
+          grip.quaternion.copy(hand.getWorldQuaternion(new T.Quaternion()).invert().multiply(carried));
+          weapon.position.set(0, 0.08, 0.12);
+          weapon.scale.setScalar(0.76);
+          grip.add(weapon); hand.add(grip);
+          imported.userData.equipmentType = normalizedType;
+        }
+        imported.userData.dispose = () => this.disposeModel(imported);
+        return imported;
+      }
+
       const root = this._createHumanFigure(normalizedType, false);
       return this._finalize(root, {
         modelType: 'human',
@@ -4507,8 +4659,10 @@
       const normalizedType = String(type || 'crate').toLowerCase();
       const root = new T.Group();
       root.name = `industrial_prop_${normalizedType}`;
-      const metal = this._material('industrial', { color: 0x475569 });
-      const dark = this._material('darkMetal', { color: 0x111827 });
+      // Extended prop families reuse these base materials. Allocate the full
+      // palette, then release any entry that the selected prop did not use.
+      const metal = this._material('industrial', { color: 0x617585 });
+      const dark = this._material('darkMetal', { color: 0x24333d });
       const hazard = this._material('emissiveAmber', { emissiveIntensity: 0.7 });
       const screen = this._material('emissiveGreen', { emissiveIntensity: 0.92 });
       const warning = this._material('emissiveRed', { emissiveIntensity: 0.82 });
@@ -6478,7 +6632,7 @@
         root.add(this._box(dark, { x: 0.15, y: 1.8, z: 2.8 }, { x: -1.35, y: 1.4, z: 0 }, 'duct_flange_w'));
         root.add(this._box(hatchHazard, { x: 1.4, y: 0.15, z: 1.4 }, { x: 0, y: 2.85, z: 0 }, 'duct_ceiling_ambush_hatch'));
         for (let r = 0; r < 4; r++) {
-          root.add(this._box(yellow, { x: 0.06, y: 0.06, z: 0.8 }, { x: -1.15, y: 0.6 + r * 0.55, z: 0 }, `duct_rung_${r}`));
+          root.add(this._box(hatchHazard, { x: 0.06, y: 0.06, z: 0.8 }, { x: -1.15, y: 0.6 + r * 0.55, z: 0 }, `duct_rung_${r}`));
         }
         root.add(this._cylinder(amberBeacon, 0.08, 0.08, 0.15, { x: 0.9, y: 2.9, z: 0.9 }, { x: 0, y: 0, z: 0 }, 'duct_indicator_beacon'));
       } else if (normalizedType === 'biocontainment_vault_alpha' || normalizedType === 'containment_vault') {
@@ -6643,11 +6797,12 @@
         const basinArmor = this._material('darkMetal', { color: 0x09090b, roughness: 0.8, metalness: 0.5 });
         const bayWater = this._material('emissiveBlue', { color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 1.4, opacity: 0.7, transparent: true });
         const cargoBox = this._material('industrial', { color: 0x334155, roughness: 0.5, metalness: 0.7 });
+        const ladderYellow = this._material('industrial', { color: 0xeab308, roughness: 0.35, metalness: 0.65 });
         root.add(this._box(basinArmor, { x: 4.8, y: 0.7, z: 4.0 }, { x: 0, y: 0.35, z: 0 }, 'auriga_sub_basin', true));
         root.add(this._box(bayWater, { x: 4.5, y: 0.15, z: 3.7 }, { x: 0, y: 0.65, z: 0 }, 'auriga_water_surface'));
         root.add(this._box(cargoBox, { x: 1.4, y: 1.2, z: 1.4 }, { x: -1.2, y: 0.8, z: -0.8 }, 'auriga_sunken_crate', true));
         for (let r = 0; r < 4; r++) {
-          root.add(this._box(yellow, { x: 0.05, y: 0.05, z: 0.7 }, { x: 2.1, y: 0.3 + r * 0.4, z: 0 }, `auriga_ladder_rung_${r}`));
+          root.add(this._box(ladderYellow, { x: 0.05, y: 0.05, z: 0.7 }, { x: 2.1, y: 0.3 + r * 0.4, z: 0 }, `auriga_ladder_rung_${r}`));
         }
       } else if (normalizedType === 'apollo_server_tower' || normalizedType === 'apollo_server_core') {
         // Chantier 248 : Sevastopol Apollo AI Server Core Tower (Alien: Isolation)
@@ -7577,6 +7732,35 @@
             this._addBolt(root, dark, { x: cornerX * 0.72, y: 0.96 + cornerY * 0.7, z: 1.02 }, 0.075, `crate_fastener_${cornerX}_${cornerY}`);
           }
         }
+      }
+
+      if (normalizedType === 'console') {
+        // A display is readable as instrumentation instead of a solid green slab.
+        for (let row = 0; row < 4; row++) {
+          const line = this._box(dark,
+            { x: 0.45 + (row % 3) * 0.18, y: 0.025, z: 0.012 },
+            { x: -0.17, y: 1.43 + row * 0.12, z: 0.38 - row * 0.04 },
+            `display_telemetry_${row}`);
+          line.rotation.x = -0.35;
+          root.add(line);
+        }
+      } else if (normalizedType === 'door') {
+        for (const side of [-1, 1]) {
+          root.add(this._box(dark, { x: 1.38, y: 0.055, z: 0.04 },
+            { x: side * 0.87, y: 1.14, z: 0.236 }, `door_panel_seam_${side}`));
+          root.add(this._box(hazard, { x: 0.54, y: 0.075, z: 0.04 },
+            { x: side * 0.97, y: 3.64, z: 0.236 }, `door_clearance_marker_${side}`));
+        }
+      }
+
+      const usedBaseMaterials = new Set();
+      root.traverse((object) => {
+        if (!object.material) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        materials.forEach((material) => usedBaseMaterials.add(material));
+      });
+      for (const material of [metal, dark, hazard, screen, warning]) {
+        if (!usedBaseMaterials.has(material)) material.dispose();
       }
 
       const finalized = this._finalize(root, {

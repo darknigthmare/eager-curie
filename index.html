@@ -4,13 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HIVE ASCENSION — Campagne de la Ruche</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Creepster&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="src/css/style.css?v=20260730-2">
+  <meta name="description" content="HIVE ASCENSION : une campagne tactique de survie en cinq actes, de l’ovomorphe à la Reine, à jouer dans votre navigateur.">
+  <meta name="theme-color" content="#040609">
+  <link rel="icon" type="image/svg+xml" href="assets/hive-icon.svg">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="src/css/style.css?v=20261020-modern">
 
-  <!-- Three.js runtime. The game shows a recovery message if the CDN or WebGL is unavailable. -->
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Pinned, integrity-verified runtime served locally; no external CDN required. -->
+  <script defer src="assets/vendor/three.r128.min.js"></script>
+  <script defer src="assets/vendor/GLTFLoader.r128.js"></script>
+  <script defer src="assets/vendor/SkeletonUtils.r128.js"></script>
+  <script defer src="assets/vendor/RGBELoader.r128.js"></script>
 </head>
 <body>
   <div id="app-container">
@@ -58,6 +62,7 @@
           <button type="button" id="btn-continue-campaign" class="front-secondary">CONTINUER</button>
           <button type="button" id="btn-open-codex-menu" class="front-tertiary">CODEX BIOLOGIQUE</button>
         </div>
+        <p id="boot-loading-status" class="front-meta" role="status" aria-live="polite">Préparation de la station…</p>
         <p class="front-meta">Campagne solo tactique · 5 actes · sauvegarde automatique · 3 conclusions</p>
       </div>
     </section>
@@ -296,9 +301,22 @@
           <button type="button" id="btn-close-settings" class="close-system-btn">FERMER</button>
         </header>
         <div class="settings-grid">
+          <label for="setting-graphics">QUALITÉ GRAPHIQUE
+            <select id="setting-graphics" aria-describedby="graphics-quality-help">
+              <option value="auto">AUTOMATIQUE — selon l’appareil</option>
+              <option value="mobile">ÉQUILIBRÉ — privilégier la fluidité</option>
+              <option value="high">ÉLEVÉ — détails et éclairage</option>
+              <option value="ultra">ULTRA — ombres et résolution maximales</option>
+            </select>
+          </label>
+          <p id="graphics-quality-help" class="settings-help">Les textures détaillées restent actives dans tous les modes. Le réglage ajuste les ombres, les effets et la résolution.</p>
+          <label for="setting-camera-distance">DISTANCE DE CAMÉRA <output id="camera-distance-value">100 %</output>
+            <input type="range" id="setting-camera-distance" min="50" max="135" step="5" value="100" aria-describedby="camera-distance-help">
+          </label>
+          <p id="camera-distance-help" class="settings-help">Rapprochez la caméra pour observer les détails. La molette ajuste aussi la distance pendant le jeu. La Ruche conserve sa vue d’ensemble.</p>
           <label>VOLUME PRINCIPAL <input type="range" id="setting-volume" min="0" max="100" value="70"></label>
           <label>LUMINOSITÉ <input type="range" id="setting-brightness" min="70" max="140" value="100"></label>
-          <label class="toggle-row"><input type="checkbox" id="setting-scanlines" checked><span>Effet de scan</span></label>
+          <label class="toggle-row"><input type="checkbox" id="setting-scanlines"><span>Effet de scan</span></label>
           <label class="toggle-row"><input type="checkbox" id="setting-reduced-motion"><span>Réduire les mouvements</span></label>
           <label class="toggle-row"><input type="checkbox" id="setting-high-contrast"><span>Contraste renforcé</span></label>
         </div>
@@ -348,9 +366,15 @@
   </div>
 
   <!-- Data, asset factories and systems are loaded before the standalone game. -->
-  <script defer src="src/content.js?v=20260730-1"></script>
-  <script defer src="src/models.js?v=20260730-2"></script>
-  <script defer src="src/game-systems.js?v=20260730-2"></script>
-  <script defer src="src/game.js?v=20260730-2"></script>
+  <script defer src="src/content.js?v=20261020-modern"></script>
+  <script defer src="src/organic-sculpt.js?v=20261020-modern"></script>
+  <script defer src="src/surface-detail.js?v=20261020-modern"></script>
+  <script defer src="src/model-detail.js?v=20261020-modern"></script>
+  <script defer src="src/asset-library.js?v=20261020-modern"></script>
+  <script defer src="src/models.js?v=20261020-modern"></script>
+  <script defer src="src/render-quality.js?v=20261020-modern"></script>
+  <script defer src="src/station-detail.js?v=20261020-modern"></script>
+  <script defer src="src/game-systems.js?v=20261020-modern"></script>
+  <script defer src="src/game.js?v=20261020-modern"></script>
 </body>
 </html>

@@ -9,6 +9,16 @@
   const SAVE_KEY = 'hive-ascension-campaign-v2';
   const SETTINGS_KEY = 'hive-ascension-settings-v2';
 
+  const isRecord = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
+  const boundedNumber = (value, fallback, minimum, maximum) => (
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.max(minimum, Math.min(maximum, value))
+      : fallback
+  );
+  const stringList = (value, fallback = []) => Array.isArray(value)
+    ? [...new Set(value.filter((entry) => typeof entry === 'string' && entry.length < 100))]
+    : [...fallback];
+
   // =============================================================
   // SAVE DATA — CAMPAIGN, DISCOVERIES AND ENDINGS
   // =============================================================
@@ -35,43 +45,72 @@
       };
     }
 
+    normalize(value) {
+      const parsed = isRecord(value) ? value : {};
+      const character = isRecord(parsed.campaignCharacters?.asterRho)
+        ? parsed.campaignCharacters.asterRho : {};
+      return {
+        ...this.defaultSave,
+        version: 2,
+        stage: Math.floor(boundedNumber(parsed.stage, 1, 1, 5)),
+        campaignStarted: parsed.campaignStarted === true,
+        difficulty: ['story', 'survivor', 'nightmare'].includes(parsed.difficulty)
+          ? parsed.difficulty : 'survivor',
+        expandedLore: typeof parsed.expandedLore === 'boolean' ? parsed.expandedLore : true,
+        adultCaste: ['drone', 'runner', 'warrior', 'worker', 'spitter', 'praetorian'].includes(parsed.adultCaste)
+          ? parsed.adultCaste : 'drone',
+        hostProfile: typeof parsed.hostProfile === 'string' && parsed.hostProfile.length < 100
+          ? parsed.hostProfile : null,
+        unlockedCodex: stringList(parsed.unlockedCodex, ['ovomorphe']),
+        completedEndings: stringList(parsed.completedEndings),
+        campaignCharacters: {
+          asterRho: {
+            alive: character.alive !== false,
+            usedAsHost: character.usedAsHost === true,
+            maskAttachments: Math.floor(boundedNumber(character.maskAttachments, 2, 0, 2))
+          }
+        },
+        updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null
+      };
+    }
+
     read() {
+      if (this.sessionOnly) return this.sessionSave ? this.normalize(this.sessionSave) : null;
       try {
         const raw = window.localStorage.getItem(SAVE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') return null;
-        return {
-          ...this.defaultSave,
-          ...parsed,
-          unlockedCodex: Array.isArray(parsed.unlockedCodex) ? parsed.unlockedCodex : ['ovomorphe'],
-          completedEndings: Array.isArray(parsed.completedEndings) ? parsed.completedEndings : [],
-          campaignCharacters: parsed.campaignCharacters && typeof parsed.campaignCharacters === 'object'
-            ? {
-              ...this.defaultSave.campaignCharacters,
-              ...parsed.campaignCharacters
-            }
-            : { ...this.defaultSave.campaignCharacters }
-        };
+        if (!isRecord(parsed)) return null;
+        return this.normalize(parsed);
       } catch (error) {
         console.warn('[Save] Lecture impossible', error);
-        return null;
+        return this.sessionSave ? this.normalize(this.sessionSave) : null;
       }
     }
 
     write(patch) {
-      const current = this.read() || { ...this.defaultSave };
-      const next = {
-        ...current,
-        ...patch,
-        updatedAt: new Date().toISOString()
-      };
+      const current = this.read() || this.normalize(this.defaultSave);
+      const next = this.normalize({ ...current, ...patch, updatedAt: new Date().toISOString() });
+      // Keep the current campaign usable when private browsing or quota limits
+      // prevent persistence. Checkpoints and discoveries must still accumulate.
+      this.sessionSave = next;
       try {
         window.localStorage.setItem(SAVE_KEY, JSON.stringify(next));
+        this.sessionOnly = false;
       } catch (error) {
-        console.warn('[Save] Écriture impossible', error);
+        this.sessionOnly = true;
+        if (!this.storageWarningShown) {
+          this.storageWarningShown = true;
+          console.warn('[Save] Stockage indisponible : progression conservée pour cette session.', error);
+          const toast = document.getElementById('toast-message');
+          if (toast) {
+            toast.textContent = 'Sauvegarde locale indisponible : votre progression sera perdue en fermant cette page.';
+            toast.classList.remove('hidden');
+            window.setTimeout(() => toast.classList.add('hidden'), 9000);
+          }
+        }
       }
-      return next;
+      return this.normalize(next);
     }
 
     startNew(difficulty, expandedLore) {
@@ -119,13 +158,17 @@
       this.defaults = {
         volume: 70,
         brightness: 100,
-        scanlines: true,
+        scanlines: false,
         reducedMotion: prefersReducedMotion,
-        highContrast: false
+        highContrast: false,
+        muted: false,
+        graphicsQuality: 'auto',
+        cameraDistance: 100
       };
       this.values = this.read();
       this.game = null;
       this.vfx = null;
+      this.audioMuted = false;
     }
 
     attachVFX(vfxManager) {
@@ -133,12 +176,24 @@
     }
 
     read() {
+      let parsed = {};
       try {
-        const parsed = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || '{}');
-        return { ...this.defaults, ...parsed };
+        const value = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || '{}');
+        if (isRecord(value)) parsed = value;
       } catch (_error) {
-        return { ...this.defaults };
+        // Retain usable defaults even when browser storage is unavailable.
       }
+      const values = { ...this.defaults };
+      values.volume = boundedNumber(parsed.volume, this.defaults.volume, 0, 100);
+      values.brightness = boundedNumber(parsed.brightness, this.defaults.brightness, 70, 140);
+      values.cameraDistance = Math.round(boundedNumber(parsed.cameraDistance, 100, 50, 135));
+      for (const key of ['scanlines', 'reducedMotion', 'highContrast', 'muted']) {
+        if (typeof parsed[key] === 'boolean') values[key] = parsed[key];
+      }
+      if (['auto', 'mobile', 'high', 'ultra'].includes(parsed.graphicsQuality)) {
+        values.graphicsQuality = parsed.graphicsQuality;
+      }
+      return values;
     }
 
     write() {
@@ -156,7 +211,9 @@
         brightness: document.getElementById('setting-brightness'),
         scanlines: document.getElementById('setting-scanlines'),
         reducedMotion: document.getElementById('setting-reduced-motion'),
-        highContrast: document.getElementById('setting-high-contrast')
+        highContrast: document.getElementById('setting-high-contrast'),
+        graphicsQuality: document.getElementById('setting-graphics'),
+        cameraDistance: document.getElementById('setting-camera-distance')
       };
 
       if (controls.volume) controls.volume.value = this.values.volume;
@@ -164,6 +221,8 @@
       if (controls.scanlines) controls.scanlines.checked = this.values.scanlines;
       if (controls.reducedMotion) controls.reducedMotion.checked = this.values.reducedMotion;
       if (controls.highContrast) controls.highContrast.checked = this.values.highContrast;
+      if (controls.graphicsQuality) controls.graphicsQuality.value = this.values.graphicsQuality;
+      if (controls.cameraDistance) controls.cameraDistance.value = this.values.cameraDistance;
 
       const sync = () => {
         this.values = {
@@ -171,7 +230,10 @@
           brightness: Number(controls.brightness?.value ?? this.values.brightness),
           scanlines: !!controls.scanlines?.checked,
           reducedMotion: !!controls.reducedMotion?.checked,
-          highContrast: !!controls.highContrast?.checked
+          highContrast: !!controls.highContrast?.checked,
+          muted: this.values.muted,
+          graphicsQuality: controls.graphicsQuality?.value || this.values.graphicsQuality,
+          cameraDistance: Number(controls.cameraDistance?.value ?? this.values.cameraDistance)
         };
         this.apply();
         this.write();
@@ -191,9 +253,34 @@
       app?.classList.toggle('scanlines-off', !this.values.scanlines);
       app?.classList.toggle('high-contrast', this.values.highContrast);
       app?.classList.toggle('reduce-motion', this.values.reducedMotion);
+      if (this.game && this.audioMuted !== this.values.muted) {
+        this.audioMuted = !!this.game.toggleAudio?.();
+      }
+      const audioButton = document.getElementById('btn-audio-toggle');
+      audioButton?.setAttribute('aria-pressed', String(this.values.muted));
+      if (audioButton) audioButton.textContent = this.values.muted ? 'SON COUPÉ' : 'SON';
       this.game?.setMasterVolume?.(this.values.volume / 100);
       this.game?.setReducedMotion?.(this.values.reducedMotion);
+      this.game?.setGraphicsQuality?.(this.values.graphicsQuality);
+      this.applyCameraDistance();
       this.vfx?.setReducedMotion?.(this.values.reducedMotion);
+    }
+
+    applyCameraDistance() {
+      this.game?.setCameraDistance?.(this.values.cameraDistance);
+      const control = document.getElementById('setting-camera-distance');
+      if (control) {
+        control.value = this.values.cameraDistance;
+        control.setAttribute('aria-valuetext', `${this.values.cameraDistance} %`);
+      }
+      const value = document.getElementById('camera-distance-value');
+      if (value) value.textContent = `${this.values.cameraDistance} %`;
+    }
+
+    setCameraDistance(value) {
+      this.values.cameraDistance = Math.round(boundedNumber(value, 100, 50, 135));
+      this.applyCameraDistance();
+      this.write();
     }
   }
 
@@ -864,25 +951,31 @@
     bindUtilityControls() {
       document.getElementById('btn-open-codex')?.addEventListener('click', () => this.openCodex(false));
       document.getElementById('btn-audio-toggle')?.addEventListener('click', () => {
-        const muted = this.game?.toggleAudio?.();
-        const button = document.getElementById('btn-audio-toggle');
-        button?.setAttribute('aria-pressed', String(!!muted));
-        if (button) button.textContent = muted ? 'SON COUPÉ' : 'SON';
+        this.settingsManager.values.muted = !this.settingsManager.values.muted;
+        this.settingsManager.apply();
+        this.settingsManager.write();
       });
       document.getElementById('btn-pause-game')?.addEventListener('click', () => this.openPause());
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && this.campaignActive) this.openPause();
+      });
 
       window.addEventListener('keydown', (event) => {
         if (event.defaultPrevented || event.repeat) return;
         const key = event.key.toLowerCase();
         const activeSystemLayer = this.visibleSystemLayer();
-        if (key === 'tab' && activeSystemLayer) {
-          this.trapFocus(event, activeSystemLayer);
+        const progressModal = document.getElementById('stage-modal');
+        const activeModal = activeSystemLayer || (this.isVisible(progressModal) ? progressModal : null);
+        if (key === 'tab' && activeModal) {
+          this.trapFocus(event, activeModal);
           return;
         }
 
         const target = event.target;
         const isForm = target instanceof Element && !!target.closest('input, select, textarea, [contenteditable="true"]');
-        if (isForm) return;
+        // Escape dismisses a dialog even when a slider or checkbox has focus.
+        if (isForm && event.key !== 'Escape') return;
 
         if (this.hasBlockingProgressModal() && (key === 'c' || event.key === 'Escape')) {
           event.preventDefault();

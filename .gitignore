@@ -12,6 +12,7 @@ coverage/
 # Local Vercel project link
 .vercel/
 .tools/
+__pycache__/
 
 # Local visual QA evidence
 audit/current-flow/

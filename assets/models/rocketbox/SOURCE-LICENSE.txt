@@ -1,0 +1,9 @@
+Microsoft Rocketbox
+MIT asset and animation library, copyright(c)2020Microsoft.
+The official README explicitly states: "The library of avatars is now released under MIT License."
+https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/README.md
+https://raw.githubusercontent.com/microsoft/Microsoft-Rocketbox/0943055db6ec570bcef9f2c8b41c9e5467c808f9/LICENSE.md
+
+Source FBX and TGA files are not shipped in the web app. Local GLB files include modified model/material/animation data under the same MIT license.
+
+Known limit: these are older authored avatars, not modern AAA scans. The medical scalp retains a few polygonal hair seams in extreme closeups.

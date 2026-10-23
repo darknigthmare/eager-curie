@@ -2,14 +2,14 @@
 
 :root {
   --color-hud-bg: rgba(5, 7, 10, 0.88);
-  --color-hud-border: #1e293b;
+  --color-hud-border: #2b3d4b;
   --color-hud-accent: #39ff14;
   --color-hud-accent-soft: #b7ff9f;
   --color-hud-cyan: #38bdf8;
   --color-hud-violet: #a855f7;
   --color-alert-red: #ef4444;
   --font-hud: 'Share Tech Mono', monospace;
-  --font-title: 'Orbitron', sans-serif;
+  --font-title: 'Orbitron', 'Arial Black', sans-serif;
   --hud-header-height: 64px;
   --rts-reserved-space: 96px;
   --game-brightness: 1;
@@ -107,7 +107,7 @@ button {
     rgba(0, 0, 0, 0.25) 50%
   );
   background-size: 100% 4px;
-  opacity: 0.6;
+  opacity: 0.28;
 }
 
 /* -------------------------------------------------------------
@@ -142,6 +142,13 @@ button {
   color: #39ff14;
   letter-spacing: 2px;
   text-shadow: 0 0 10px rgba(57, 255, 20, 0.7);
+  white-space: nowrap;
+}
+
+@media (min-width: 1051px) {
+  .hud-left { min-width: 0; gap: 12px; }
+  .hud-left .brand-title { flex-shrink: 0; }
+  .hud-left .stage-badge { max-width: 280px; font-size: 10px; line-height: 1.35; }
 }
 
 .stage-badge {
@@ -818,6 +825,23 @@ button {
   letter-spacing: 1px;
 }
 
+.settings-grid select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: #e2edf0;
+  background: #0b141d;
+  border: 1px solid #425465;
+  border-radius: 5px;
+  font: inherit;
+}
+
+.settings-help {
+  color: #a5b8c5;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .campaign-options select {
   width: 100%;
   min-height: 42px;
@@ -906,9 +930,10 @@ button {
 
 .front-meta {
   margin-top: 18px;
-  color: #64748b;
-  font-size: 10px;
-  letter-spacing: 0.7px;
+  color: #a5b4c5;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.4px;
   text-align: center;
 }
 
@@ -953,8 +978,8 @@ button {
 }
 
 .prologue-data dt {
-  color: #64748b;
-  font-size: 10px;
+  color: #a5b4c5;
+  font-size: 11px;
   letter-spacing: 1px;
 }
 
@@ -1429,7 +1454,7 @@ button {
 @media (max-width: 680px) {
   :root {
     --rts-reserved-space: 112px;
-    --mobile-mission-space: 76px;
+    --mobile-mission-space: 104px;
   }
 
   #hud-header {
@@ -1476,7 +1501,7 @@ button {
     right: calc(8px + env(safe-area-inset-right));
     width: auto;
     max-height: calc(100vh - var(--hud-header-height) - var(--mobile-mission-space) - 8px);
-    max-height: min(52dvh, calc(100dvh - var(--hud-header-height) - var(--mobile-mission-space) - 8px));
+    max-height: min(42dvh, calc(100dvh - var(--hud-header-height) - var(--mobile-mission-space) - 8px));
   }
 
   #hud-sidebar.mobile-collapsed {
@@ -1682,4 +1707,113 @@ button {
 .tracker-toggle-btn:hover {
   background: #15803d;
   color: #ffffff;
+}
+
+/* Navigation, readable telemetry and resilient small-screen layouts. */
+:root { color-scheme: dark; }
+
+.front-card,
+.system-panel {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 0 0, rgba(42, 91, 82, 0.13), transparent 55%),
+    linear-gradient(145deg, rgba(8, 15, 21, 0.99), rgba(10, 16, 26, 0.98));
+}
+
+.front-card::before,
+.system-panel::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 26px;
+  width: 76px;
+  height: 3px;
+  background: var(--color-hud-accent);
+  box-shadow: 0 0 16px rgba(57, 255, 20, 0.28);
+  pointer-events: none;
+}
+
+.front-primary {
+  background: linear-gradient(110deg, rgba(57, 255, 20, 0.2), rgba(28, 105, 51, 0.25));
+  box-shadow: inset 0 1px rgba(200, 255, 200, 0.08);
+  font-weight: 700;
+}
+
+button:not(:disabled):active { filter: brightness(1.2); }
+button:disabled { cursor: not-allowed; }
+select, input[type='range'] { touch-action: manipulation; }
+.toggle-row { min-height: 44px; }
+.toggle-row input[type='checkbox'] { flex-shrink: 0; }
+
+.front-screen,
+.system-overlay,
+.codex-list,
+.codex-detail { overscroll-behavior: contain; }
+
+.codex-detail *,
+.prologue-copy *,
+.instruction-box { user-select: text; }
+
+.codex-entry.locked { color: #9aa9ba; }
+.stat-header { font-variant-numeric: tabular-nums; }
+.vis-btn.active { font-weight: 700; }
+.vis-btn.active::before { content: '• '; }
+
+.high-contrast .panel-section,
+.high-contrast #mission-tracker,
+.high-contrast .instruction-box,
+.high-contrast .narrative-banner {
+  background: #020407;
+  border-color: #a4b9ce;
+}
+.high-contrast .front-meta,
+.high-contrast .codex-entry.locked,
+.high-contrast .prologue-data dt { color: #d8e4ef; }
+.high-contrast #crt-scanlines { display: none; }
+
+/* Keep the objective beside the sidebar on tablets, rather than underneath it. */
+@media (min-width: 681px) and (max-width: 1050px) {
+  #mission-tracker {
+    left: 16px;
+    width: calc(100vw - 420px);
+    min-width: 0;
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+  }
+  #mission-act { grid-column: 1 / -1; }
+  #mission-tracker > div { min-width: 0; }
+  .narrative-banner {
+    left: 16px;
+    width: calc(100vw - 420px);
+  }
+}
+
+@media (pointer: coarse) {
+  .utility-btn, .close-system-btn, .codex-tab, .codex-entry,
+  .vis-btn, .rts-cmd-btn { min-height: 44px; }
+}
+
+@media (max-width: 680px) {
+  .boot-card h1 { font-size: clamp(30px, 9vw, 44px); letter-spacing: 1px; }
+  .front-subtitle { font-size: 16px; }
+  .front-meta { text-align: left; }
+  .mobile-hud-toggle { min-width: 78px; line-height: 1.2; }
+  #mission-tracker { max-height: 88px; overflow-y: auto; }
+  #mission-tracker p { line-height: 1.4; }
+  #hud-sidebar { gap: 8px; }
+  #hud-sidebar > .panel-section:first-child { position: static; }
+  #hud-sidebar .section-title { font-size: 10px; margin-bottom: 8px; padding-bottom: 6px; }
+  #hud-sidebar .stat-bar-group { margin-bottom: 8px; }
+  #hud-sidebar .stat-header { font-size: 10px; }
+  #hud-sidebar .instruction-box { font-size: 12px; }
+  .narrative-banner { padding: 9px 12px; }
+  .narrative-banner p { font-size: 11px; }
+  .codex-tabs { margin-top: 12px; }
+}
+
+@media (max-height: 480px) {
+  .front-screen, .system-overlay { place-items: start center; }
+  .system-panel { margin-block: auto; }
+  .front-meta { margin-top: 10px; }
+  .codex-panel { min-height: 280px; }
 }

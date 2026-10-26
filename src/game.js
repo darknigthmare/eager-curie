@@ -7213,6 +7213,16 @@
     playMhdIonSurge(x = null, z = null) {
       this.playProceduralPropFx({ type: 'sine', f0: 45, f1: 1200, dur: 0.95, cutoff: 2800, vol: 0.6, radius: 45 }, x, z);
     }
+
+    // Audit QA #131 : Frémissement de Vapeur Surchauffée et Sifflement Cryo
+    playSuperheatedSteamHiss(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sawtooth', f0: 850, f1: 180, dur: 1.1, cutoff: 3600, vol: 0.55, radius: 42 }, x, z);
+    }
+
+    // Audit QA #133 : Détonation Mine Directionnelle USCM M20 Claymore
+    playM20ClaymoreDetonation(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'square', f0: 600, f1: 65, dur: 0.7, cutoff: 2600, vol: 0.65, radius: 40 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -7332,15 +7342,30 @@
       const caste = player.adultCaste || player.caste || 'drone';
       let casteRangeMod = 0;
       let sensoryProfileLabel = 'STD 22m';
-      if (['mantis_drone', 'raven'].includes(caste)) {
+      if (['queen_mother'].includes(caste)) {
+        casteRangeMod = 18.0;
+        sensoryProfileLabel = 'OMNISCIENT 40m';
+      } else if (['flying_queen'].includes(caste)) {
+        casteRangeMod = 14.0;
+        sensoryProfileLabel = 'AERIAL APEX 36m';
+      } else if (['mantis_drone', 'raven'].includes(caste)) {
         casteRangeMod = 12.0;
         sensoryProfileLabel = 'ACOUSTIC 34m';
-      } else if (['runner', 'cougar_drone'].includes(caste)) {
+      } else if (['pathogen_stalker'].includes(caste)) {
+        casteRangeMod = 8.0;
+        sensoryProfileLabel = 'PATHOGENIC 30m';
+      } else if (['spider_alien'].includes(caste)) {
+        casteRangeMod = 7.0;
+        sensoryProfileLabel = 'ARACHNID WEB 29m';
+      } else if (['runner', 'cougar_drone', 'charger', 'snake_alien'].includes(caste)) {
         casteRangeMod = 6.0;
         sensoryProfileLabel = 'ULTRASONIC 28m';
-      } else if (['rhino_drone', 'crusher', 'bull_drone'].includes(caste)) {
+      } else if (['rhino_drone', 'crusher', 'bull_drone', 'chrysalis_warrior'].includes(caste)) {
         casteRangeMod = 4.0;
         sensoryProfileLabel = 'SEISMIC 26m';
+      } else if (['infiltrator'].includes(caste)) {
+        casteRangeMod = -4.0;
+        sensoryProfileLabel = 'OPTICAL STEALTH 18m';
       }
       const maxRange = (this.focusedMode ? 35.0 : 22.0) + casteRangeMod;
       const radius = (w / 2) - 6;
@@ -12521,7 +12546,20 @@
         { id: 'transit_cart_1', factory: 'createSevastopolTransitMaintenanceCart', name: 'Draisine de Maintenance Transit Sevastopol', x: 72, z: 28, hx: 1.5, hz: 0.9, radius: 8.0, damage: 195, color: 0xeab308, label: 'DÉRAILLEMENT DRAISINE SEEGSON', toast: 'DRAISINE PROJETÉE HORS RAILS : Batteries éclatées et projecteur broyé !', log: '[TRANSIT CART] Collision et déraillement de la draisine de maintenance Lorenz.', fx: { type: 'sawtooth', f0: 310, f1: 50, dur: 0.85, cutoff: 1200, vol: 0.6 }, anim: 'cart_spotlight_head' },
         { id: 'ore_jaw_1', factory: 'createFiorinaOrePulverizerJaw', name: 'Concasseur de Minerai Fiorina', x: -36, z: 92, hx: 1.4, hz: 1.2, radius: 9.5, damage: 270, color: 0x78716c, label: 'ÉCLATEMENT DU CONCASSEUR', toast: 'MÂCHOIRES DE CONCASSEUR FRACTURÉES : Shrapnel de fonte et roche broyée !', log: '[ORE JAW] Rupture de l\'arbre excentrique du concasseur à mâchoires Fiorina.', fx: { type: 'sawtooth', f0: 180, f1: 30, dur: 1.1, cutoff: 800, vol: 0.7 }, anim: 'pulverizer_jaw_plate', slag: true }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs].forEach((def) => {
+      // VAGUE 37 (Chantiers 361 à 370) : Échangeurs Turbulés, Ponts Roulants, Préchauffeurs & Pots Claymore
+      const wave37Defs = [
+        { id: 'heat_exchanger_1', factory: 'createNostromoTurbulatedHeatExchanger', name: 'Échangeur Thermique Turbulé Nostromo', x: -25, z: -78, hx: 1.4, hz: 0.8, radius: 8.0, damage: 205, color: 0xf97316, label: 'SURPPRESSION VAPEUR SURCHAUFFÉE', toast: 'ÉCHANGEUR THERMIQUE DÉCHIRÉ : Jet de vapeur surchauffée à 300°C !', log: '[HEAT EXCHANGER] Rupture des tubulures turbulées de l\'échangeur Nostromo.', fx: { type: 'sawtooth', f0: 850, f1: 180, dur: 1.1, cutoff: 3600, vol: 0.55 }, anim: 'exchanger_turbulated_tube_0', chemical: true },
+        { id: 'crane_trolley_1', factory: 'createHadleyOverheadCraneTrolley', name: 'Chariot de Pont Roulant Hadley', x: 28, z: 52, hx: 1.5, hz: 1.1, radius: 8.5, damage: 220, color: 0xfbbf24, label: 'CHUTE DU CROCHET DE LEVAGE', toast: 'PONT ROULANT ROMPU : Des tonnes d\'acier s\'abattent sur la galerie !', log: '[CRANE TROLLEY] Rupture du câble de levage du chariot de pont roulant Hadley.', fx: { type: 'sawtooth', f0: 220, f1: 35, dur: 0.85, cutoff: 1100, vol: 0.65 }, anim: 'crane_forged_hook' },
+        { id: 'preheater_stand_1', factory: 'createFiorinaSlagPreheaterStand', name: 'Brûleur de Préchauffage Fiorina', x: -15, z: 85, hx: 1.2, hz: 1.0, radius: 9.0, damage: 245, color: 0xea580c, label: 'TORCHE DE PRÉCHAUFFAGE ÉVENTRÉE', toast: 'BRÛLEUR DE FONDERIE EXPLOSÉ : Flammes et scories projetées dans le corridor !', log: '[PREHEATER STAND] Rupture de la conduite de gaz du brûleur de poche Fiorina.', fx: { type: 'sawtooth', f0: 450, f1: 70, dur: 0.9, cutoff: 1800, vol: 0.65 }, anim: 'preheater_pilot_core', slag: true },
+        { id: 'cascade_tank_1', factory: 'createAurigaCryoFreonCascadeTank', name: 'Cuve Cryo Fréon Cascade Auriga', x: -62, z: -22, hx: 1.3, hz: 0.9, radius: 8.0, damage: 215, color: 0x06b6d4, label: 'ÉCLATEMENT CUVE FRÉON CRYO', toast: 'RÉSERVOIR CRYO PULVÉRISÉ : Onde de froid glacial et givre instantané !', log: '[CASCADE TANK] Dépressurisation explosive du réservoir de fréon Auriga.', fx: { type: 'sine', f0: 1100, f1: 250, dur: 0.75, cutoff: 3400, vol: 0.55 }, anim: 'cascade_freon_tank' },
+        { id: 'deflector_grille_1', factory: 'createRomulusDebrisDeflectorGrille', name: 'Grille Pare-Débris Renaissance', x: 45, z: 58, hx: 1.6, hz: 0.8, radius: 8.0, damage: 190, color: 0x64748b, label: 'FRACTURE DU BLINDAGE DÉBRIS', toast: 'GRILLE DÉFLECTRICE ARRACHÉE : Les persiennes blindées volent en éclats !', log: '[DEFLECTOR GRILLE] Éjection des lamelles déflectrices sous l\'impact.', fx: { type: 'triangle', f0: 380, f1: 75, dur: 0.7, cutoff: 1300, vol: 0.55 }, anim: 'deflector_louver_0' },
+        { id: 'qa_gantry_1', factory: 'createSevastopolSyntheticQaGantry', name: 'Portique de Diagnostic Synthétique Sevastopol', x: 55, z: -18, hx: 1.2, hz: 0.9, radius: 7.5, damage: 170, color: 0xa855f7, label: 'DÉCHARGE SCANNER SEEGSON 15kV', toast: 'PORTIQUE DE TEST ANDROÏDE FOUDROYÉ : Arcs ultraviolets et étincelles !', log: '[QA GANTRY] Surtension du faisceau d\'inspection qualité Working Joe.', fx: { type: 'square', f0: 1900, f1: 140, dur: 0.75, cutoff: 3800, vol: 0.55 }, anim: 'qa_scan_emitter', shock: true },
+        { id: 'scum_skimmer_1', factory: 'createHadleySumpScumSkimmer', name: 'Écumeur de Surnageant Hadley', x: 38, z: -65, hx: 1.3, hz: 1.0, radius: 8.0, damage: 185, color: 0x10b981, label: 'PROJECTION BOUES TOXIQUES', toast: 'TAMBOUR D\'ÉCUMAGE DÉBOÎTÉ : Déversement de boues toxiques et solvants !', log: '[SCUM SKIMMER] Rupture du réducteur du tambour d\'écumage Hadley.', fx: { type: 'sawtooth', f0: 290, f1: 65, dur: 0.8, cutoff: 1200, vol: 0.6 }, anim: 'skimmer_rotating_drum', chemical: true },
+        { id: 'claymore_pod_1', factory: 'createUscmM20ClaymorePod', name: 'Pot de Mines M20 USCM', x: -35, z: 38, hx: 1.1, hz: 0.5, radius: 7.0, damage: 160, color: 0x22c55e, label: 'SALVE DE MINES CLAYMORE M20', toast: 'MINES M20 DÉCLENCHÉES : Des milliers de billes d\'acier balayent le secteur !', log: '[CLAYMORE POD] Détonation d\'urgence du dispenseur de mines directionnelles USCM.', fx: { type: 'square', f0: 600, f1: 65, dur: 0.7, cutoff: 2600, vol: 0.65 }, anim: 'claymore_mine_pod_body', alarm: true },
+        { id: 'conveyor_track_1', factory: 'createSevastopolBaggageConveyorTrack', name: 'Convoyeur à Bagages Sevastopol', x: 58, z: 35, hx: 1.8, hz: 0.8, radius: 7.5, damage: 155, color: 0xeab308, label: 'CONVOYEUR EMBALLÉ HORS GUIDES', toast: 'LATTES DE CONVOYEUR PROJETÉES : Le carrousel à bagages se disloque !', log: '[CONVEYOR TRACK] Rupture de chaîne du carrousel de tri bagages Seegson.', fx: { type: 'triangle', f0: 340, f1: 90, dur: 0.65, cutoff: 1600, vol: 0.5 }, anim: 'conveyor_track_slats', spin: true },
+        { id: 'blast_stove_1', factory: 'createFiorinaBlastAirPreheatStove', name: 'Cowper de Préchauffage Fiorina', x: -48, z: 92, hx: 1.3, hz: 1.3, radius: 9.5, damage: 265, color: 0xd97706, label: 'EXPLOSION DU COWPER DE HAUT FOURNEAU', toast: 'TOUR DE PRÉCHAUFFAGE ÉVENTRÉE : Souffle de vent brûlant et réfractaires pulvérisés !', log: '[BLAST STOVE] Surpression critique et éclatement du cowper de fonderie Fiorina.', fx: { type: 'sawtooth', f0: 160, f1: 25, dur: 1.1, cutoff: 750, vol: 0.7 }, anim: 'blast_stove_burner_ring', slag: true }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -20118,6 +20156,12 @@
       if (prop.id.includes('mhd')) {
         audioManager.playMhdIonSurge?.(prop.x, prop.z);
       }
+      if (prop.id.includes('heat_exchanger') || prop.id.includes('preheat')) {
+        audioManager.playSuperheatedSteamHiss?.(prop.x, prop.z);
+      }
+      if (prop.id.includes('claymore')) {
+        audioManager.playM20ClaymoreDetonation?.(prop.x, prop.z);
+      }
       if (prop.shock) {
         audioManager.playHighVoltageArcDischarge?.(prop.x, prop.z);
         rendererEngine.addStrobeFlash?.(0x38bdf8, 0.22);
@@ -21764,6 +21808,65 @@
     // Chantier 52 : Création de Leurre Acoustique sur le Motion Tracker M314 (Aliens 1986 / Isolation)
     executeAcousticDecoy() {
       stationMap.createAcousticDecoy?.(this.x, this.z);
+      return true;
+    }
+
+    // Caste Charger : Ruée Cinétique Fracassante (Aliens: Fireteam Elite)
+    executeChargerRush() {
+      if (this.adultCaste !== 'charger' && this.caste !== 'charger' && this.adultCaste !== 'crusher') {
+        showToast('Capacité Ruée Fracassante réservée au phénotype Charger / Crusher.');
+        return false;
+      }
+      rendererEngine.addScreenShake?.(0.5, 0.4);
+      audioManager.playHeavyImpact?.(this.x, this.z);
+      (window.gameInstance?.humans || []).forEach((h) => {
+        if (!h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 7.0) {
+          h.takeDamage?.(120, this);
+          h.staggerTimer = 4.0;
+          h.x += (h.x - this.x) * 1.5;
+          h.z += (h.z - this.z) * 1.5;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-120 RUÉE CHARGER !', '#f97316', true);
+        }
+      });
+      showToast('RUÉE CHARGER ACTIVÉE : Ondes de choc cinétiques et dispersion des escouades !');
+      return true;
+    }
+
+    // Caste Infiltrator : Camouflage Optique Réfractif (Aliens: Colonial Marines)
+    executeInfiltratorCloak() {
+      if (this.adultCaste !== 'infiltrator' && this.caste !== 'infiltrator') {
+        showToast('Capacité Furtivité Réfractive réservée au phénotype Infiltrator.');
+        return false;
+      }
+      this.isCloaked = !this.isCloaked;
+      if (this.mesh) {
+        this.mesh.traverse((c) => {
+          if (c.material) {
+            c.material.transparent = true;
+            c.material.opacity = this.isCloaked ? 0.15 : 0.95;
+          }
+        });
+      }
+      showToast(this.isCloaked ? 'CAMOUFLAGE OPTIQUE ENGAGÉ : Invisibilité partielle active.' : 'CAMOUFLAGE DÉSACTIVÉ.');
+      return true;
+    }
+
+    // Caste Queen Mother : Onde Télépathique Suprême (Aliens: The Female War)
+    executeQueenMotherPheromone() {
+      if (this.adultCaste !== 'queen_mother' && this.caste !== 'queen_mother' && this.adultCaste !== 'queen') {
+        showToast('Capacité Onde Télépathique Suprême réservée à la Reine Mère.');
+        return false;
+      }
+      rendererEngine.addScreenShake?.(0.8, 0.6);
+      window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0xa855f7, 24);
+      (window.gameInstance?.humans || []).forEach((h) => {
+        if (!h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 24) {
+          h.stress = 100;
+          h.staggerTimer = 5.0;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, 'TERREUR TÉLÉPATHIQUE REINE MÈRE !', '#a855f7', true);
+        }
+      });
+      showToast('ONDE TÉLÉPATHIQUE DE LA REINE MÈRE : Soumission et tétanie psychique à 360° !');
       return true;
     }
 
@@ -24118,37 +24221,47 @@
       this.x = x; this.z = z;
       const isCyberHound = ['weyland_cyber_hound', 'cyberhound', 'cyber_hound'].includes(type);
       this.isCyberHound = isCyberHound;
-      this.hp = ['powerloader', 'exosuit'].includes(type)
-        ? 440
-        : (['weyland_commando_mk2'].includes(type)
-          ? 260
-          : (['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(type)
-            ? 240
-            : (['weyland_containment_squad'].includes(type)
-              ? 210
-              : (['uscm_heavy_flamer'].includes(type)
-                ? 195
-                : (['uscm_smartgun_flamer'].includes(type)
-                  ? 185
-                  : (['uscm_hazmat_tech'].includes(type)
-                    ? 175
-                    : (['uscm_combat_engineer'].includes(type)
-                      ? 165
-                      : (['uscm_sadar_operator'].includes(type)
-                        ? 160
-                        : (['weyland_plasma_gunner'].includes(type)
-                          ? 150
-                          : (['uscm_combat_medic', 'combatmedic', 'medic', 'combat_medic'].includes(type)
-                            ? 145
-                            : (['uscm_recon_sniper', 'reconsniper', 'recon_sniper', 'forward_observer'].includes(type)
-                              ? 135
-                              : (['uscm_recon_scout', 'reconscout', 'recon'].includes(type)
-                                ? 140
-                                : (['uscm_m42b_marksman'].includes(type)
-                                  ? 135
-                                  : (['weyland_drone_operator'].includes(type)
-                                    ? 130
-                                    : (isCyberHound ? 180 : (['android', 'synthetic'].includes(type) ? 190 : (['uscm_sniper'].includes(type) ? 125 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110))))))))))))))))));
+      this.hp = ['weyland_heavy_mech'].includes(type)
+        ? 480
+        : (['powerloader', 'exosuit', 'uscm_exosuit_commando'].includes(type)
+          ? 420
+          : (['weyland_commando_mk2'].includes(type)
+            ? 260
+            : (['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(type)
+              ? 240
+              : (['seegson_hazmat_joe'].includes(type)
+                ? 230
+                : (['uscm_phalanx_shield', 'weyland_strike_synth'].includes(type)
+                  ? 220
+                  : (['weyland_containment_squad', 'seegson_security_joe'].includes(type)
+                    ? 210
+                    : (['uscm_heavy_flamer'].includes(type)
+                      ? 195
+                      : (['uscm_smartgun_flamer'].includes(type)
+                        ? 185
+                        : (['uscm_demolitionist', 'weyland_director_officer'].includes(type)
+                          ? 180
+                          : (['uscm_hazmat_tech', 'uscm_field_commander'].includes(type)
+                            ? 175
+                            : (['uscm_breacher_shotgun', 'weyland_specimen_trapper'].includes(type)
+                              ? 170
+                              : (['uscm_combat_engineer', 'uscm_sentry_sapper'].includes(type)
+                                ? 165
+                                : (['uscm_sadar_operator'].includes(type)
+                                  ? 160
+                                  : (['weyland_plasma_gunner'].includes(type)
+                                    ? 150
+                                    : (['uscm_combat_medic', 'combatmedic', 'medic', 'combat_medic'].includes(type)
+                                      ? 145
+                                      : (['uscm_recon_sniper', 'reconsniper', 'recon_sniper', 'forward_observer'].includes(type)
+                                        ? 135
+                                        : (['uscm_recon_scout', 'reconscout', 'recon'].includes(type)
+                                          ? 140
+                                          : (['uscm_m42b_marksman'].includes(type)
+                                            ? 135
+                                            : (['weyland_drone_operator'].includes(type)
+                                              ? 130
+                                              : (isCyberHound ? 180 : (['android', 'synthetic'].includes(type) ? 190 : (['uscm_sniper'].includes(type) ? 125 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110)))))))))))))))))))))));
       this.maxHp = this.hp;
       this.reconLaserTimer = 0;
       this.medicHealCooldown = 3.0;
@@ -24177,9 +24290,9 @@
       this.cryoNetCooldown = 5.0;
       this.whitePhosphorusCooldown = 7.0 + Math.random() * 4.0;
       this.sadarRocketCooldown = 6.0 + Math.random() * 4.0;
-      this.hostEligibility = ['android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound'].includes(type)
+      this.hostEligibility = ['android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_heavy_mech'].includes(type)
         ? 'none'
-        : (['commando', 'uscm_hazmat_tech', 'weyland_containment_squad'].includes(type) ? 'protected' : 'viable');
+        : (['commando', 'uscm_hazmat_tech', 'weyland_containment_squad', 'uscm_exosuit_commando', 'uscm_phalanx_shield', 'weyland_specimen_trapper'].includes(type) ? 'protected' : 'viable');
       this.usedAsHost = false;
       this.isConsumedByCycle = false;
       this.characterKey = null;
@@ -24359,6 +24472,12 @@
     takeDamage(dmg, attacker = null) {
       if (this.isCocooned || this.isIncapacitated) return false;
       let appliedDamage = Math.max(0, dmg);
+
+      // Bouclier cinétique anti-émeute Phalanx : -65% dégâts frontaux
+      if (this.type === 'uscm_phalanx_shield' && attacker) {
+        appliedDamage *= 0.35;
+        window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 8, 0.1, 0.8);
+      }
 
       // Chantier 80 : Bonus de dégâts critiques +200% à l'embuscade depuis le mimétisme de résine
       if (attacker === playerCreature && playerCreature.isWallMimic) {
@@ -24667,19 +24786,37 @@
 
       // Audit QA #123 : Tétanie et Choc Neuromusculaire Haute Tension 50kV
       if (this.shockStunTimer > 0) {
-        this.shockStunTimer -= safeDelta;
-        if (this.mesh) {
-          this.mesh.rotation.z = (Math.random() - 0.5) * 0.22;
-          this.mesh.rotation.x = (Math.random() - 0.5) * 0.22;
+        if (this.type === 'seegson_hazmat_joe') {
+          this.shockStunTimer = 0; // Immune à la haute tension !
+        } else {
+          this.shockStunTimer -= safeDelta;
+          if (this.mesh) {
+            this.mesh.rotation.z = (Math.random() - 0.5) * 0.22;
+            this.mesh.rotation.x = (Math.random() - 0.5) * 0.22;
+          }
+          if (Math.random() < 0.28) {
+            window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 1, 0.12, 0.35);
+          }
+          return;
         }
-        if (Math.random() < 0.28) {
-          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 1, 0.12, 0.35);
-        }
-        return;
       }
 
       if (this.aimDisruptTimer > 0) {
         this.aimDisruptTimer -= safeDelta;
+      }
+
+      // Aura de Commandement USCM Field Commander
+      if (this.type === 'uscm_field_commander') {
+        this.commanderBuffTimer = (this.commanderBuffTimer || 0) - safeDelta;
+        if (this.commanderBuffTimer <= 0) {
+          this.commanderBuffTimer = 2.5;
+          (window.gameInstance?.humans || []).forEach((h) => {
+            if (h !== this && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 12) {
+              h.stress = Math.max(0, (h.stress || 0) - 15);
+              h.aimDisruptTimer = 0;
+            }
+          });
+        }
       }
 
       if (this.isRestrained) {

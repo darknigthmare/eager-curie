@@ -7198,6 +7198,11 @@
     playAirlockPressureHiss(x = null, z = null) {
       this.playProceduralPropFx({ type: 'square', f0: 1600, f1: 300, dur: 1.1, cutoff: 3200, vol: 0.32, radius: 45 }, x, z);
     }
+
+    // Audit QA #116 : Ronronnement Cyclique et Pulsation Frigorigène
+    playRefrigerantCompressorChug(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sawtooth', f0: 85, f1: 35, dur: 1.3, cutoff: 450, vol: 0.38, radius: 40 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -7247,6 +7252,15 @@
         this.deviceEl.classList.toggle('collapsed', this.isCollapsed);
       }
       showToast(this.isCollapsed ? 'M314 Replié [Touche M]' : 'M314 Déployé [Touche M]');
+    }
+
+    // Audit QA #120 : Écho de Choc Acoustique Environnemental sur le M314
+    registerAcousticShock(x, z, intensity = 12) {
+      this.staticInterferenceTimer = Math.max(this.staticInterferenceTimer || 0, 0.45);
+      if (this.statusEl) {
+        this.statusEl.textContent = 'CHOC ACOUSTIQUE !';
+        this.statusEl.style.color = '#ef4444';
+      }
     }
 
     // Audit QA #95 : Bascule du M314 en Schéma Holographique 3D Élargi
@@ -8205,6 +8219,12 @@
       this.directionalShakeZ = (dz / len) * intensity;
       this.screenShake = Math.min(1.4, (this.screenShake || 0) + intensity);
       this.shakeDuration = Math.max(this.shakeDuration || 0, duration);
+    }
+
+    // Audit QA #119 : Ralenti Cinématique et Hitstop sur Impact Majeur
+    addHitstop(duration = 0.08) {
+      if (this.reduceMotion || window.HiveSystems?.settings?.reducedMotion) return;
+      this.hitstopTimer = Math.max(this.hitstopTimer || 0, duration);
     }
 
     setCinematicCamera({ position, target, fov = 72, near = 0.025, exposure = 1.18 }, deltaSeconds = 1 / 60) {
@@ -12438,7 +12458,20 @@
         { id: 'scaffold_tower_1', factory: 'createSevastopolMaintenanceScaffold', name: 'Échafaudage de Maintenance Sevastopol', x: 18, z: -68, hx: 1.3, hz: 1.1, radius: 8.0, damage: 190, color: 0xf97316, label: 'EFFONDREMENT ÉCHAFAUDAGE', toast: 'ÉCHAFAUDAGE ROULANT DÉSTABILISÉ : Les tubulures et plateformes s\'abattent !', log: '[SCAFFOLD] Rupture des tirants de l\'échafaudage de maintenance technique Seegson.', fx: { type: 'triangle', f0: 240, f1: 60, dur: 0.75, cutoff: 900, vol: 0.6 }, anim: 'scaffold_platform' },
         { id: 'smelter_spout_1', factory: 'createFiorinaSmelterTappingSpout', name: 'Goulotte de Fonderie Fiorina', x: -32, z: 78, hx: 1.5, hz: 0.8, radius: 9.0, damage: 250, color: 0xd97706, label: 'DÉBORDEMENT FONTE LIQUIDE', toast: 'GOULOTTE DE DÉCANTATION CÉDÉE : Torrent d\'acier incandescent sur les dalles !', log: '[SMELTER SPOUT] Débordement de la goulotte de coulée du haut fourneau Fiorina.', fx: { type: 'sawtooth', f0: 160, f1: 30, dur: 1.0, cutoff: 800, vol: 0.65 }, anim: 'spout_molten_stream' }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs].forEach((def) => {
+      // VAGUE 34 (Chantiers 331 à 340) : Compresseurs, Silencieux d'Aération, Séparateurs & Casiers Seegson
+      const wave34Defs = [
+        { id: 'compressor_1', factory: 'createNostromoCryoRefrigerationCompressor', name: 'Compresseur Cryo Nostromo', x: -42, z: -55, hx: 1.3, hz: 0.8, radius: 7.5, damage: 185, color: 0x38bdf8, label: 'DÉGAZAGE DU COMPRESSEUR', toast: 'COMPRESSEUR CRYO ÉVENTRÉ : Souffle de fluide frigorigène à -120°C !', log: '[COMPRESSOR] Rupture du collecteur de compression cryostatique Nostromo.', fx: { type: 'sine', f0: 1400, f1: 220, dur: 0.75, cutoff: 2800, vol: 0.5 }, anim: 'compressor_flywheel', spin: true },
+        { id: 'switchboard_1', factory: 'createHadleyOperationsRelaySwitchboard', name: 'Tableau de Relais Opérations Hadley', x: 48, z: -12, hx: 1.4, hz: 0.8, radius: 7.0, damage: 165, color: 0xf59e0b, label: 'COURT-CIRCUIT DES RELAIS', toast: 'PUPITRE DE RELAIS SURVOLTÉ : Arcs électriques et disjonctions en chaîne !', log: '[SWITCHBOARD] Surtension du standard des relais du centre des opérations.', fx: { type: 'square', f0: 1600, f1: 280, dur: 0.6, cutoff: 3200, vol: 0.45 }, anim: 'relay_led_bank_0', alarm: true },
+        { id: 'silencer_baffle_1', factory: 'createFiorinaVentilationSilencerBaffle', name: 'Silencieux d\'Aération Fiorina', x: -55, z: 52, hx: 1.6, hz: 1.0, radius: 8.0, damage: 195, color: 0x78716c, label: 'CISAILLEMENT DES BAFFLES', toast: 'SILENCIEUX VENTILATION BROYÉ : Les lamelles d\'acier vibrent et tranchent !', log: '[SILENCER] Effondrement des baffles acoustiques du puits d\'aération Fiorina.', fx: { type: 'triangle', f0: 220, f1: 45, dur: 0.8, cutoff: 800, vol: 0.6 }, anim: 'silencer_blade_2' },
+        { id: 'embryo_vault_1', factory: 'createAurigaEmbryoCryoStorageVault', name: 'Coffre Cryo d\'Embryons Auriga', x: -75, z: -25, hx: 1.1, hz: 0.5, radius: 7.5, damage: 210, color: 0x4ade80, label: 'RUPTURE DU COFFRE EMBRYONS', toast: 'COFFRE DE STASE DÉFONCÉ : Fluide mutagène embryonnaire projeté !', log: '[EMBRYO VAULT] Brèche dans le coffre mural de conservation d\'embryons de l\'Auriga.', fx: { type: 'sine', f0: 2600, f1: 450, dur: 0.55, cutoff: 4500, vol: 0.5 }, anim: 'vault_bio_scanner' },
+        { id: 'docking_coupling_1', factory: 'createRomulusDockingUmbilicalCoupling', name: 'Raccord Ombilical Renaissance', x: 28, z: 85, hx: 1.4, hz: 1.1, radius: 8.5, damage: 220, color: 0xef4444, label: 'ÉJECTION PYROTECHNIQUE DU RACCORD', toast: 'OMBILICAL D\'AMARRAGE SECTIONNÉ : Détonation pyrotechnique des mâchoires !', log: '[DOCKING COUPLING] Déclenchement d\'urgence des boulons explosifs d\'amarrage.', fx: { type: 'sawtooth', f0: 320, f1: 60, dur: 0.85, cutoff: 1400, vol: 0.6 }, anim: 'pyro_clamp_0', alarm: true },
+        { id: 'checkpoint_desk_1', factory: 'createSevastopolSeegsonSecurityCheckpointDesk', name: 'Comptoir de Sécurité Seegson', x: 52, z: 22, hx: 1.5, hz: 0.7, radius: 6.5, damage: 140, color: 0xeab308, label: 'TASER DE SÉCURITÉ ACTIVÉ', toast: 'COMPTOIR DE SÉCURITÉ EN PANNE : Décharge défensive et alarme de poste !', log: '[SECURITY CHECKPOINT] Court-circuit de la barrière de contrôle Seegson.', fx: { type: 'square', f0: 950, f1: 300, dur: 0.5, cutoff: 2400, vol: 0.4 }, anim: 'security_crt_screen', alarm: true },
+        { id: 'water_separator_1', factory: 'createHadleySublevelWaterSeparator', name: 'Séparateur d\'Eau des Sous-Sols Hadley', x: 25, z: -62, hx: 1.0, hz: 1.0, radius: 7.5, damage: 175, color: 0x0284c7, label: 'JET D\'EAU SOUS PRESSION', toast: 'SÉPARATEUR HYDRAULIQUE DÉBOÎTÉ : Jet d\'eau bouillante dans les sous-sols !', log: '[WATER SEPARATOR] Rupture de cuve du séparateur d\'hydrocarbures de Hadley.', fx: { type: 'sawtooth', f0: 500, f1: 110, dur: 0.65, cutoff: 1500, vol: 0.5 }, anim: 'separator_sight_tube' },
+        { id: 'wheel_chock_rack_1', factory: 'createUscmM577ApcWheelChockRack', name: 'Râtelier Cales M577 USCM', x: -48, z: 48, hx: 1.3, hz: 0.7, radius: 6.5, damage: 155, color: 0xca8a04, label: 'CHUTE DES CALES BLINDÉES', toast: 'CALES M577 DÉLOGÉES : Blocs d\'acier précipités sur la coursive !', log: '[CHOCK RACK] Décrochage du berceau de cales de roues du blindé USCM.', fx: { type: 'triangle', f0: 180, f1: 50, dur: 0.6, cutoff: 700, vol: 0.55 }, anim: 'chock_wedge_0' },
+        { id: 'luggage_lockers_1', factory: 'createSevastopolLuggageLockersBank', name: 'Banque de Casiers Sevastopol', x: 65, z: 42, hx: 1.8, hz: 0.6, radius: 7.0, damage: 150, color: 0xd97706, label: 'EXPLOSION DES CASIERS', toast: 'CASIERS SEEGSON DÉFONCÉS : Portières projetées et serrures arrachées !', log: '[LUGGAGE LOCKERS] Éventration de la batterie de casiers à bagages de la gare.', fx: { type: 'square', f0: 400, f1: 90, dur: 0.6, cutoff: 1800, vol: 0.5 }, anim: 'locker_door_0_0' },
+        { id: 'lead_skimmer_1', factory: 'createFiorinaLeadRefiningSkimmer', name: 'Écumoire de Plomb Fiorina', x: -22, z: 92, hx: 1.4, hz: 0.7, radius: 9.0, damage: 245, color: 0xea580c, label: 'RACLAGE DE PLOMB EN FUSION', toast: 'ÉCUMOIRE DE FONDERIE RENVERSÉE : Plomb et scories pulvérisés !', log: '[LEAD SKIMMER] Rupture du chariot de raclage des scories incandescentes Fiorina.', fx: { type: 'sawtooth', f0: 150, f1: 30, dur: 0.9, cutoff: 750, vol: 0.65 }, anim: 'skimmer_lead_crust' }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -20028,6 +20061,9 @@
       if (prop.id.includes('airlock')) {
         audioManager.playAirlockPressureHiss?.(prop.x, prop.z);
       }
+      if (prop.id.includes('compressor')) {
+        audioManager.playRefrigerantCompressorChug?.(prop.x, prop.z);
+      }
       rendererEngine.addScreenShake?.(isChain ? 0.75 : 0.6, 0.4);
       rendererEngine.addDirectionalScreenShake?.(prop.x - playerCreature.x, prop.z - playerCreature.z, isChain ? 0.8 : 0.55);
       window.HiveSystems?.vfx?.burst?.(prop.x, prop.z, prop.color, 55, 0.4, 3.2);
@@ -20049,11 +20085,22 @@
               h.x += pushX;
               h.z += pushZ;
             }
+            // Audit QA #118 : Débris déstabilisants désorganisant les sentinelles et tirs
+            if (prop.damage >= 170) {
+              h.aimDisruptTimer = Math.max(h.aimDisruptTimer || 0, 3.2);
+            }
             victims++;
             window.HiveSystems?.vfx?.floatingText?.(h.x, 3.1, h.z, `-${prop.damage} ${prop.label} !`, '#' + prop.color.toString(16).padStart(6, '0'), true);
           }
         }
       });
+      // Audit QA #119 : Hitstop sur combo multi-victimes
+      if (victims >= 2) {
+        rendererEngine.addHitstop?.(0.08);
+      }
+
+      // Audit QA #120 : Écho de choc acoustique sur le Motion Tracker
+      window.gameInstance?.motionTracker?.registerAcousticShock?.(prop.x, prop.z, prop.radius * 1.5);
       // Audit QA #103 : Adrénaline de chasse — un piège environnemental réussi restaure la réserve de chasse
       if (victims > 0) {
         const stage = window.gameInstance?.currentStage;
@@ -20118,6 +20165,17 @@
         }
         const pulse = 0.82 + 0.3 * Math.sin(t + idx * 1.3) + (p.isTriggered ? 0.5 : 0);
         p.emissiveMats.forEach((e) => { e.m.emissiveIntensity = e.base * pulse; });
+
+        // Audit QA #117 : Ombrage volumétrique et calibration de perspective 1:1
+        if (!p.mesh.hasShadowsConfigured) {
+          p.mesh.traverse?.((c) => {
+            if (c.isMesh) {
+              c.castShadow = true;
+              c.receiveShadow = true;
+            }
+          });
+          p.mesh.hasShadowsConfigured = true;
+        }
       });
 
       if (this.comboTimer > 0) {

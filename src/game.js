@@ -7203,6 +7203,11 @@
     playRefrigerantCompressorChug(x = null, z = null) {
       this.playProceduralPropFx({ type: 'sawtooth', f0: 85, f1: 35, dur: 1.3, cutoff: 450, vol: 0.38, radius: 40 }, x, z);
     }
+
+    // Audit QA #121 : Décharge Foudroyante d'Arc 50kV et Bourdonnement 50Hz
+    playHighVoltageArcDischarge(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'square', f0: 2400, f1: 50, dur: 0.85, cutoff: 4200, vol: 0.58, radius: 45 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -8227,6 +8232,13 @@
       this.hitstopTimer = Math.max(this.hitstopTimer || 0, duration);
     }
 
+    // Audit QA #124 : Flash Optique Diégétique et Effet de Stroboscope
+    addStrobeFlash(colorHex = 0x38bdf8, duration = 0.2) {
+      if (this.reduceMotion || window.HiveSystems?.settings?.reducedMotion) return;
+      this.strobeFlashTimer = Math.max(this.strobeFlashTimer || 0, duration);
+      this.strobeFlashColor = colorHex;
+    }
+
     setCinematicCamera({ position, target, fov = 72, near = 0.025, exposure = 1.18 }, deltaSeconds = 1 / 60) {
       if (!position || !target) return;
       let projectionChanged = false;
@@ -8365,6 +8377,12 @@
       }
       if (this.lights.bioGreen && !this.reduceMotion) {
         this.lights.bioGreen.intensity = 48 + Math.sin(Date.now() * 0.0014) * 7;
+      }
+      if (this.strobeFlashTimer && this.strobeFlashTimer > 0) {
+        this.strobeFlashTimer = Math.max(0, this.strobeFlashTimer - 1 / 60);
+        if (this.lights.ambient) {
+          this.lights.ambient.intensity = Math.min(2.5, (this.lights.ambient.intensity || 0.8) + (this.strobeFlashTimer > 0 ? 0.75 : 0));
+        }
       }
       this.stationDetail?.update(Date.now() / 1000);
       if (this.renderQuality) this.renderQuality.render();
@@ -8798,6 +8816,7 @@
       this.comboCount = 0;
       this.comboTimer = 0;
       this.dropletTimer = 0;
+      this.electricArcTimer = 0;
     }
 
     buildMap() {
@@ -12471,7 +12490,20 @@
         { id: 'luggage_lockers_1', factory: 'createSevastopolLuggageLockersBank', name: 'Banque de Casiers Sevastopol', x: 65, z: 42, hx: 1.8, hz: 0.6, radius: 7.0, damage: 150, color: 0xd97706, label: 'EXPLOSION DES CASIERS', toast: 'CASIERS SEEGSON DÉFONCÉS : Portières projetées et serrures arrachées !', log: '[LUGGAGE LOCKERS] Éventration de la batterie de casiers à bagages de la gare.', fx: { type: 'square', f0: 400, f1: 90, dur: 0.6, cutoff: 1800, vol: 0.5 }, anim: 'locker_door_0_0' },
         { id: 'lead_skimmer_1', factory: 'createFiorinaLeadRefiningSkimmer', name: 'Écumoire de Plomb Fiorina', x: -22, z: 92, hx: 1.4, hz: 0.7, radius: 9.0, damage: 245, color: 0xea580c, label: 'RACLAGE DE PLOMB EN FUSION', toast: 'ÉCUMOIRE DE FONDERIE RENVERSÉE : Plomb et scories pulvérisés !', log: '[LEAD SKIMMER] Rupture du chariot de raclage des scories incandescentes Fiorina.', fx: { type: 'sawtooth', f0: 150, f1: 30, dur: 0.9, cutoff: 750, vol: 0.65 }, anim: 'skimmer_lead_crust' }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs].forEach((def) => {
+      // VAGUE 35 (Chantiers 341 à 350) : Pylônes Haute Tension, Nacelles Électriques, Sas de Purge & Convoyeurs de Fret
+      const wave35Defs = [
+        { id: 'transformer_1', factory: 'createNostromoAvionicsTransformerStation', name: 'Poste Transformateur Avionique Nostromo', x: -58, z: -62, hx: 1.3, hz: 0.7, radius: 8.0, damage: 210, color: 0x38bdf8, label: 'ARC HAUTE TENSION 50kV', toast: 'TRANSFORMATEUR EN COURT-CIRCUIT : Arcs foudroyants de 50 000 Volts !', log: '[TRANSFORMER] Rupture d\'isolement du transformateur avionique Nostromo.', fx: { type: 'square', f0: 2400, f1: 50, dur: 0.85, cutoff: 4200, vol: 0.6 }, anim: 'discharge_terminal_1', shock: true },
+        { id: 'refuel_gantry_1', factory: 'createHadleyTractorRefuelingGantry', name: 'Portique de Ravitaillement Tracteurs Hadley', x: 58, z: 62, hx: 1.4, hz: 0.7, radius: 8.5, damage: 220, color: 0xf97316, label: 'RUPTURE FLEXIBLE CARBURANT', toast: 'PORTIQUE DE CARBURANT ARRACHÉ : Jet de carburant sous pression et étincelles !', log: '[REFUEL GANTRY] Rupture du flexible d\'alimentation des tracteurs miniers.', fx: { type: 'sawtooth', f0: 380, f1: 80, dur: 0.8, cutoff: 1600, vol: 0.55 }, anim: 'gantry_beacon', alarm: true },
+        { id: 'ladle_crucible_1', factory: 'createFiorinaCastingLadleCrucible', name: 'Poche de Coulée Suspendue Fiorina', x: -18, z: 72, hx: 1.1, hz: 1.1, radius: 9.5, damage: 260, color: 0xea580c, label: 'DÉVERSEMENT FONTE EN FUSION', toast: 'CREUSET DE COULÉE BASCULÉ : Des tonnes de fonte liquide sur les passerelles !', log: '[CASTING LADLE] Rupture de l\'anneau de basculement de la poche de coulée Fiorina.', fx: { type: 'sawtooth', f0: 170, f1: 30, dur: 1.0, cutoff: 750, vol: 0.65 }, anim: 'ladle_molten_core' },
+        { id: 'biohazard_sluice_1', factory: 'createAurigaBiohazardIncinerationSluice', name: 'Sas d\'Incinération Bio-Danger Auriga', x: -80, z: -15, hx: 1.1, hz: 0.8, radius: 8.0, damage: 230, color: 0xef4444, label: 'TORCHE PLASMA BIO-DANGER', toast: 'SAS D\'INCINÉRATION FRACTURÉ : Souffle de plasma d\'incinération à 2000°C !', log: '[BIO INCINERATOR] Déclenchement d\'urgence des brûleurs du sas biologique Auriga.', fx: { type: 'sawtooth', f0: 900, f1: 180, dur: 0.7, cutoff: 3000, vol: 0.55 }, anim: 'incinerator_plasma_view', alarm: true },
+        { id: 'gyro_gimbal_1', factory: 'createRomulusGyroStabilizerGimbal', name: 'Nacelle Gyroscopique Renaissance', x: 32, z: 65, hx: 1.3, hz: 1.3, radius: 8.5, damage: 190, color: 0x06b6d4, label: 'DÉSORBITATION GYROSCOPIQUE', toast: 'NACELLE GYRO EN RUPTURE : Les anneaux centrifuges fauchent la galerie !', log: '[GYRO GIMBAL] Rupture des cardans de stabilisation gyroscopique Renaissance.', fx: { type: 'sine', f0: 120, f1: 550, dur: 0.85, cutoff: 1800, vol: 0.5 }, anim: 'gimbal_rotor', spin: true },
+        { id: 'pallet_turntable_1', factory: 'createSevastopolSeegsonFreightPalletTurntable', name: 'Plateau Tournant Fret Sevastopol', x: 68, z: 12, hx: 1.4, hz: 1.4, radius: 7.0, damage: 145, color: 0xeab308, label: 'PLATEAU TOURNANT EMBALLÉ', toast: 'PLATEAU DE FRET SEEGSON EN SURRÉGIME : Palettes projetées contre les parois !', log: '[PALLET TURNTABLE] Emballement du plateau rotatif de déchargement fret Seegson.', fx: { type: 'square', f0: 340, f1: 120, dur: 0.55, cutoff: 1500, vol: 0.5 }, anim: 'turntable_disc', spin: true },
+        { id: 'sewer_sluice_1', factory: 'createHadleySublevelSewerGrateSluice', name: 'Vanne d\'Égout des Sous-Sols Hadley', x: 42, z: -52, hx: 1.0, hz: 0.4, radius: 7.5, damage: 180, color: 0x64748b, label: 'CHUTE DE LA GRILLE GUILLOTINE', toast: 'VANNE D\'ÉGOUT DÉCROCHÉE : La herse en fonte s\'écrase sur les dalles !', log: '[SEWER SLUICE] Rupture de crémaillère de la vanne guillotine d\'assainissement.', fx: { type: 'triangle', f0: 210, f1: 40, dur: 0.7, cutoff: 800, vol: 0.6 }, anim: 'sewer_grate_gate' },
+        { id: 'tracker_depot_1', factory: 'createUscmMotionTrackerRechargeDepot', name: 'Poste de Charge Détecteurs USCM', x: -38, z: 25, hx: 1.1, hz: 0.4, radius: 6.5, damage: 150, color: 0x22c55e, label: 'SURCHARGE DU BANC INDUCTIF', toast: 'BANC DE CHARGE M314 COURT-CIRCUITÉ : Décharge inductive des condensateurs !', log: '[TRACKER DEPOT] Surtension du râtelier de charge des motion trackers USCM.', fx: { type: 'sine', f0: 1800, f1: 400, dur: 0.5, cutoff: 4000, vol: 0.45 }, anim: 'cradle_led_0', alarm: true },
+        { id: 'charging_alcove_alt_1', factory: 'createSevastopolSyntheticChargingAlcoveAlt', name: 'Alcôve Synthétique Working Joe', x: 58, z: -35, hx: 0.7, hz: 0.6, radius: 7.0, damage: 170, color: 0xa855f7, label: 'DÉCHARGE WORKING JOE 10kV', toast: 'ALCÔVE ANDROÏDE SURVOLTÉE : Arcs violet de 10 000 Volts dans le sas !', log: '[SYNTH ALCOVE] Emballement de la ligne de charge dorsale Working Joe.', fx: { type: 'square', f0: 1100, f1: 150, dur: 0.65, cutoff: 2600, vol: 0.5 }, anim: 'charging_status_display', shock: true },
+        { id: 'counterweight_stack_1', factory: 'createFiorinaCraneCounterweightStack', name: 'Contrepoids de Grue Fiorina', x: -42, z: 85, hx: 0.9, hz: 0.9, radius: 8.5, damage: 255, color: 0x78716c, label: 'EFFONDREMENT DES GUEUSES', toast: 'GUEUSES DE CONTREPOIDS ÉBOULÉES : Des tonnes de fonte broient la galerie !', log: '[COUNTERWEIGHT] Cisaillement de la broche de retenue des contrepoids de grue.', fx: { type: 'sawtooth', f0: 130, f1: 25, dur: 0.9, cutoff: 650, vol: 0.65 }, anim: 'counterweight_pin' }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -13100,6 +13132,7 @@
       this.updateStructuralTension(safeDelta);
       this.updateCameraStalkFOV(safeDelta);
       this.updateAmbientDroplets(safeDelta);
+      this.updateAmbientElectricArcs(safeDelta);
 
       // Audit QA #25 : Frustum culling optimisé et masquage automatique des props hors champ à plus de 45m
       this.cullingTimer = (this.cullingTimer || 0) + safeDelta;
@@ -20064,6 +20097,10 @@
       if (prop.id.includes('compressor')) {
         audioManager.playRefrigerantCompressorChug?.(prop.x, prop.z);
       }
+      if (prop.shock) {
+        audioManager.playHighVoltageArcDischarge?.(prop.x, prop.z);
+        rendererEngine.addStrobeFlash?.(0x38bdf8, 0.22);
+      }
       rendererEngine.addScreenShake?.(isChain ? 0.75 : 0.6, 0.4);
       rendererEngine.addDirectionalScreenShake?.(prop.x - playerCreature.x, prop.z - playerCreature.z, isChain ? 0.8 : 0.55);
       window.HiveSystems?.vfx?.burst?.(prop.x, prop.z, prop.color, 55, 0.4, 3.2);
@@ -20088,6 +20125,10 @@
             // Audit QA #118 : Débris déstabilisants désorganisant les sentinelles et tirs
             if (prop.damage >= 170) {
               h.aimDisruptTimer = Math.max(h.aimDisruptTimer || 0, 3.2);
+            }
+            // Audit QA #123 : Tétanie et choc électromusculaire 50kV
+            if (prop.shock) {
+              h.shockStunTimer = Math.max(h.shockStunTimer || 0, 2.8);
             }
             victims++;
             window.HiveSystems?.vfx?.floatingText?.(h.x, 3.1, h.z, `-${prop.damage} ${prop.label} !`, '#' + prop.color.toString(16).padStart(6, '0'), true);
@@ -20292,6 +20333,19 @@
       const ox = (Math.random() - 0.5) * 2.2;
       const oz = (Math.random() - 0.5) * 2.2;
       window.HiveSystems?.vfx?.burst?.(p.x + ox, p.z + oz, 0x38bdf8, 1, 0.25, 0.45);
+    }
+
+    // Audit QA #122 : Étincelles Diélectriques et Arcs Électriques Ambiants 50kV
+    updateAmbientElectricArcs(safeDelta) {
+      this.electricArcTimer -= safeDelta;
+      if (this.electricArcTimer > 0) return;
+      this.electricArcTimer = 0.35 + Math.random() * 0.3;
+      const sparkProps = (this.wave31Props || []).filter((p) => p.mesh && (p.shock || p.id.includes('transformer') || p.id.includes('switchboard') || p.id.includes('charging_alcove')) && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 22);
+      if (sparkProps.length === 0) return;
+      const p = sparkProps[Math.floor(Math.random() * sparkProps.length)];
+      const ox = (Math.random() - 0.5) * 1.8;
+      const oz = (Math.random() - 0.5) * 1.8;
+      window.HiveSystems?.vfx?.burst?.(p.x + ox, p.z + oz, 0x38bdf8, 2, 0.15, 0.6);
     }
 
     updateBlastFurnaceTuyeres(safeDelta) {
@@ -24582,6 +24636,23 @@
           this.mesh.rotation.x = recoil;
         }
         return;
+      }
+
+      // Audit QA #123 : Tétanie et Choc Neuromusculaire Haute Tension 50kV
+      if (this.shockStunTimer > 0) {
+        this.shockStunTimer -= safeDelta;
+        if (this.mesh) {
+          this.mesh.rotation.z = (Math.random() - 0.5) * 0.22;
+          this.mesh.rotation.x = (Math.random() - 0.5) * 0.22;
+        }
+        if (Math.random() < 0.28) {
+          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 1, 0.12, 0.35);
+        }
+        return;
+      }
+
+      if (this.aimDisruptTimer > 0) {
+        this.aimDisruptTimer -= safeDelta;
       }
 
       if (this.isRestrained) {

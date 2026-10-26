@@ -7223,6 +7223,16 @@
     playM20ClaymoreDetonation(x = null, z = null) {
       this.playProceduralPropFx({ type: 'square', f0: 600, f1: 65, dur: 0.7, cutoff: 2600, vol: 0.65, radius: 40 }, x, z);
     }
+
+    // Audit QA #136 : Sifflement d'Expansion Cryogénique Hélium Liquide (-269°C)
+    playHeliumExpansionHiss(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sine', f0: 1250, f1: 320, dur: 1.25, cutoff: 4200, vol: 0.55, radius: 44 }, x, z);
+    }
+
+    // Audit QA #136 : Rugissement de Souffle d'Air Chaud de Tuyère de Haut Fourneau (1200°C)
+    playTuyereAirBlastRoar(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sawtooth', f0: 240, f1: 45, dur: 1.15, cutoff: 950, vol: 0.7, radius: 48 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -7632,6 +7642,30 @@
             ctx.fill();
             ctx.font = '700 7px monospace';
             ctx.fillText('SWM', sx + 3, sy + 2);
+          }
+        }
+      }
+
+      // Audit QA #137 : Écho Radar M314 pour Relais Tactiques USCM, Commutateurs Haute Tension et Cryo
+      if (stationMap.wave31Props) {
+        for (const wp of stationMap.wave31Props) {
+          if (!wp.isTriggered && wp.id && (wp.id.includes('sentinel_relay') || wp.id.includes('power_commutator') || wp.id.includes('helium') || wp.id.includes('claymore') || wp.id.includes('tuyere'))) {
+            const pDist = Math.hypot(wp.x - player.x, wp.z - player.z);
+            if (pDist <= maxRange) {
+              const worldAngle = Math.atan2(wp.x - player.x, wp.z - player.z);
+              const relAngle = worldAngle - playerFacing;
+              const normDist = (pDist / maxRange) * radius;
+              const px = cx + Math.sin(relAngle) * normDist;
+              const py = cy - Math.cos(relAngle) * normDist;
+              const tag = wp.id.includes('sentinel_relay') ? 'USCM-TX' : (wp.id.includes('power_commutator') ? '20kV' : (wp.id.includes('claymore') ? 'M20' : (wp.id.includes('tuyere') ? '1200°C' : 'CRYO')));
+              const col = wp.id.includes('sentinel_relay') ? '#22c55e' : (wp.id.includes('power_commutator') ? '#60a5fa' : (wp.id.includes('claymore') ? '#f43f5e' : (wp.id.includes('tuyere') ? '#f97316' : '#38bdf8')));
+              ctx.fillStyle = col;
+              ctx.beginPath();
+              ctx.arc(px, py, 2.6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.font = '700 7.5px monospace';
+              ctx.fillText(tag, px + 4, py + 2);
+            }
           }
         }
       }
@@ -12559,7 +12593,20 @@
         { id: 'conveyor_track_1', factory: 'createSevastopolBaggageConveyorTrack', name: 'Convoyeur à Bagages Sevastopol', x: 58, z: 35, hx: 1.8, hz: 0.8, radius: 7.5, damage: 155, color: 0xeab308, label: 'CONVOYEUR EMBALLÉ HORS GUIDES', toast: 'LATTES DE CONVOYEUR PROJETÉES : Le carrousel à bagages se disloque !', log: '[CONVEYOR TRACK] Rupture de chaîne du carrousel de tri bagages Seegson.', fx: { type: 'triangle', f0: 340, f1: 90, dur: 0.65, cutoff: 1600, vol: 0.5 }, anim: 'conveyor_track_slats', spin: true },
         { id: 'blast_stove_1', factory: 'createFiorinaBlastAirPreheatStove', name: 'Cowper de Préchauffage Fiorina', x: -48, z: 92, hx: 1.3, hz: 1.3, radius: 9.5, damage: 265, color: 0xd97706, label: 'EXPLOSION DU COWPER DE HAUT FOURNEAU', toast: 'TOUR DE PRÉCHAUFFAGE ÉVENTRÉE : Souffle de vent brûlant et réfractaires pulvérisés !', log: '[BLAST STOVE] Surpression critique et éclatement du cowper de fonderie Fiorina.', fx: { type: 'sawtooth', f0: 160, f1: 25, dur: 1.1, cutoff: 750, vol: 0.7 }, anim: 'blast_stove_burner_ring', slag: true }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs].forEach((def) => {
+      // VAGUE 38 (Chantiers 371 à 380) : Recondenseurs Hélium, Râteliers APC, Cuves de Décantation & Tuyères de Fonderie
+      const wave38Defs = [
+        { id: 'helium_recondenser_1', factory: 'createNostromoCryoHeliumRecondenser', name: 'Recondenseur d\'Hélium Cryo Nostromo', x: -32, z: -84, hx: 1.2, hz: 0.8, radius: 8.0, damage: 210, color: 0x38bdf8, label: 'DÉPRESSURISATION HÉLIUM LIQUIDE', toast: 'COLONNE CRYO ÉVENTRÉE : Brouillard d\'hélium liquide à -269°C !', log: '[HELIUM RECONDENSER] Rupture du cryostat et détente explosive de l\'hélium.', fx: { type: 'sine', f0: 1250, f1: 320, dur: 1.2, cutoff: 4200, vol: 0.55 }, anim: 'recondenser_cryo_manifold', chemical: true },
+        { id: 'chock_rack_1', factory: 'createHadleyApcWheelChockRack', name: 'Râtelier de Cales APC M577 Hadley', x: 22, z: 46, hx: 1.4, hz: 0.8, radius: 7.5, damage: 175, color: 0xeab308, label: 'ÉJECTION DES CALES DE BLINDÉ', toast: 'RÂTELIER APC DÉBOÎTÉ : Cales d\'acier projetées à pleine vitesse !', log: '[CHOCK RACK] Rupture des goupilles magnétiques du râtelier de cales Hadley.', fx: { type: 'sawtooth', f0: 380, f1: 60, dur: 0.75, cutoff: 1400, vol: 0.6 }, anim: 'wheel_chock_wedge_left' },
+        { id: 'sludge_settling_vat_1', factory: 'createFiorinaToxicSludgeSettlingVat', name: 'Cuve de Décantation Boues Fiorina', x: -28, z: 88, hx: 1.3, hz: 1.3, radius: 9.0, damage: 250, color: 0x84cc16, label: 'RUPTURE CUVE DÉCANTATION TOXIQUE', toast: 'BOUES TOXIQUES ÉPANCHÉES : Déversement corrosif de plomb et mercure !', log: '[SLUDGE VAT] Éventration du cône de décantation des boues de fonderie.', fx: { type: 'sawtooth', f0: 270, f1: 45, dur: 1.0, cutoff: 1100, vol: 0.65 }, anim: 'sludge_bottom_purge_valve', chemical: true },
+        { id: 'necropsy_sink_1', factory: 'createAurigaNecropsySpecimenSink', name: 'Bac de Dissection Médicale Auriga', x: -55, z: -28, hx: 1.3, hz: 0.8, radius: 7.5, damage: 180, color: 0x0ea5e9, label: 'EXPLOSION BAC FORMOL DISSECTION', toast: 'LAVEUR FORMOL ÉCLATÉ : Projection de réactifs caustiques et shrapnel !', log: '[NECROPSY SINK] Rupture des conduites de formol du laboratoire médical Auriga.', fx: { type: 'triangle', f0: 620, f1: 140, dur: 0.7, cutoff: 2200, vol: 0.55 }, anim: 'necropsy_formalin_dispenser', chemical: true },
+        { id: 'coupler_spindle_1', factory: 'createRomulusMicrogravityCouplerSpindle', name: 'Broche d\'Amarrage Microgravité Renaissance', x: 50, z: 62, hx: 1.3, hz: 1.3, radius: 8.5, damage: 200, color: 0xf97316, label: 'RUPTURE DES VERROUS D\'AMARRAGE', toast: 'BROCHE D\'AMARRAGE PULVÉRISÉE : Détente pneumatique et pinces arrachées !', log: '[COUPLER SPINDLE] Défaillance des mors de serrage du sas orbital Romulus.', fx: { type: 'square', f0: 420, f1: 85, dur: 0.8, cutoff: 1700, vol: 0.6 }, anim: 'docking_laser_sensor_ring' },
+        { id: 'power_commutator_1', factory: 'createSevastopolSeegsonPowerCommutator', name: 'Commutateur de Puissance Seegson', x: 62, z: -25, hx: 1.3, hz: 1.3, radius: 8.5, damage: 225, color: 0x60a5fa, label: 'COURT-CIRCUIT COMMUTATEUR 20kV', toast: 'FLASH ÉLECTRIQUE SEEGSON : Arcs haute tension et balais de carbone vaporisés !', log: '[POWER COMMUTATOR] Arc de contournement du collecteur principal Sevastopol.', fx: { type: 'square', f0: 1800, f1: 110, dur: 0.85, cutoff: 3600, vol: 0.65 }, anim: 'commutator_spark_gap', shock: true },
+        { id: 'cyclone_desander_1', factory: 'createHadleyWaterCycloneDesander', name: 'Hydrocyclone Dessableur Hadley', x: 42, z: -58, hx: 1.2, hz: 1.2, radius: 8.0, damage: 195, color: 0x10b981, label: 'ÉCLATEMENT CÔNE HYDROCYCLONE', toast: 'DESSABLEUR FISSURÉ : Jet d\'eau sous pression et sable volcanique abrasif !', log: '[CYCLONE DESANDER] Rupture par abrasion du cône de séparation hydrocyclone.', fx: { type: 'sawtooth', f0: 360, f1: 80, dur: 0.8, cutoff: 1500, vol: 0.6 }, anim: 'desander_tangential_inlet', chemical: true },
+        { id: 'sentinel_relay_1', factory: 'createUscmSentinelRelayTransceiver', name: 'Émetteur-Récepteur Relais USCM', x: -38, z: 42, hx: 1.0, hz: 0.7, radius: 7.0, damage: 165, color: 0x22c55e, label: 'EXPLOSION RELAIS TACTIQUE USCM', toast: 'TERMINAL DE TRANSMISSION DÉTRUIT : Parabole pliée et tube CRT explosé !', log: '[SENTINEL RELAY] Explosion de la baie radiofréquence tactique USCM.', fx: { type: 'triangle', f0: 720, f1: 95, dur: 0.75, cutoff: 2400, vol: 0.6 }, anim: 'relay_parabolic_dish', alarm: true },
+        { id: 'brake_caliper_1', factory: 'createSevastopolMonorailBrakeCaliperAssembly', name: 'Étrier de Freinage Transit Sevastopol', x: 65, z: 40, hx: 1.2, hz: 0.9, radius: 8.0, damage: 185, color: 0xeab308, label: 'RUPTURE HYDRAULIQUE ÉTRIER DE FREIN', toast: 'FREIN DE MONORAIL DÉCHIRÉ : Fluide hydraulique brûlant sous 300 bars !', log: '[BRAKE CALIPER] Éclatement du cylindre de frein d\'urgence Seegson Transit.', fx: { type: 'sawtooth', f0: 310, f1: 65, dur: 0.8, cutoff: 1400, vol: 0.6 }, anim: 'brake_pneumatic_reservoir' },
+        { id: 'tuyere_blowpipe_1', factory: 'createFiorinaFoundryTuyereBlowpipe', name: 'Tuyère et Porte-Vent Fiorina', x: -52, z: 86, hx: 1.2, hz: 1.0, radius: 9.5, damage: 275, color: 0xd97706, label: 'ÉVENTRATION PORTE-VENT TUYÈRE', toast: 'BLOWPIPE DE FONDERIE FRACTURÉ : Jet d\'air surchauffé à 1200°C et métal liquide !', log: '[TUYERE BLOWPIPE] Perforation du nez de tuyère en cuivre refroidi à l\'eau.', fx: { type: 'sawtooth', f0: 240, f1: 45, dur: 1.15, cutoff: 950, vol: 0.7 }, anim: 'tuyere_angled_blowpipe', slag: true }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -20161,6 +20208,12 @@
       }
       if (prop.id.includes('claymore')) {
         audioManager.playM20ClaymoreDetonation?.(prop.x, prop.z);
+      }
+      if (prop.id.includes('helium') || prop.id.includes('cascade_tank')) {
+        audioManager.playHeliumExpansionHiss?.(prop.x, prop.z);
+      }
+      if (prop.id.includes('tuyere') || prop.id.includes('blast_stove')) {
+        audioManager.playTuyereAirBlastRoar?.(prop.x, prop.z);
       }
       if (prop.shock) {
         audioManager.playHighVoltageArcDischarge?.(prop.x, prop.z);

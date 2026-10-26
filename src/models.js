@@ -8569,6 +8569,120 @@
         root.add(this._cylinder(brick, 1.0, 1.1, 3.2, { x: 0, y: 1.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'blast_stove_tower', true));
         root.add(this._cylinder(dark, 0.25, 0.25, 1.6, { x: 0.8, y: 2.4, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'bustle_air_pipe'));
         root.add(this._torus(glow, 1.05, 0.08, { x: 0, y: 1.2, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'blast_stove_burner_ring'));
+      } else if (normalizedType === 'nostromo_cryo_helium_recondenser') {
+        // Chantier 371 : USCSS Nostromo Cryo-Stasis Helium Recondenser Column (Alien 1979)
+        const steel = this._material('lightMetal', { color: 0xd1d5db, roughness: 0.35, metalness: 0.85 });
+        const copper = this._material('copperCoil', { color: 0xb45309, roughness: 0.45, metalness: 0.8 });
+        const frostGlow = this._material('emissiveFrost', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.8 });
+        const dark = this._material('darkMetal', { color: 0x1e293b, roughness: 0.75, metalness: 0.8 });
+        root.add(this._cylinder(steel, 0.55, 0.55, 2.8, { x: 0, y: 1.4, z: 0 }, { x: 0, y: 0, z: 0 }, 'recondenser_vacuum_column', true));
+        for (let i = 0; i < 4; i++) {
+          root.add(this._torus(copper, 0.62, 0.045, { x: 0, y: 0.9 + i * 0.35, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `recondenser_coil_${i}`));
+        }
+        root.add(this._cylinder(dark, 0.28, 0.35, 0.4, { x: 0, y: 2.95, z: 0 }, { x: 0, y: 0, z: 0 }, 'recondenser_relief_valve'));
+        root.add(this._cylinder(frostGlow, 0.1, 0.1, 0.9, { x: 0.55, y: 1.4, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'recondenser_cryo_manifold'));
+        root.add(this._box(dark, { x: 1.4, y: 0.2, z: 1.4 }, { x: 0, y: 0.1, z: 0 }, 'recondenser_skid_mount', true));
+      } else if (normalizedType === 'hadley_apc_wheel_chock_rack') {
+        // Chantier 372 : Hadley's Hope M577 APC Heavy Wheel Chock Rack (Aliens 1986)
+        const yellow = this._material('hazardYellow', { color: 0xeab308, roughness: 0.45, metalness: 0.4 });
+        const darkSteel = this._material('darkMetal', { color: 0x27272a, roughness: 0.7, metalness: 0.85 });
+        const pin = this._material('steelPin', { color: 0xf43f5e, roughness: 0.3, metalness: 0.9 });
+        root.add(this._box(darkSteel, { x: 2.2, y: 0.15, z: 1.2 }, { x: 0, y: 0.08, z: 0 }, 'chock_rack_skid_base', true));
+        root.add(this._box(yellow, { x: 0.65, y: 0.55, z: 0.95 }, { x: -0.65, y: 0.42, z: 0 }, 'wheel_chock_wedge_left', true));
+        root.add(this._box(yellow, { x: 0.65, y: 0.55, z: 0.95 }, { x: 0.65, y: 0.42, z: 0 }, 'wheel_chock_wedge_right', true));
+        root.add(this._cylinder(pin, 0.07, 0.07, 1.8, { x: 0, y: 0.55, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'chock_magnetic_lock_pin'));
+        root.add(this._box(darkSteel, { x: 0.2, y: 0.9, z: 0.2 }, { x: 0, y: 0.55, z: 0 }, 'chock_central_stanchion'));
+      } else if (normalizedType === 'fiorina_toxic_sludge_settling_vat') {
+        // Chantier 373 : Fiorina 161 Toxic Sludge Settling Cone Vat (Alien 3)
+        const rust = this._material('rust', { color: 0x78350f, roughness: 0.88, metalness: 0.3 });
+        const dark = this._material('darkMetal', { color: 0x18181b, roughness: 0.8, metalness: 0.85 });
+        const sludgeGlow = this._material('emissiveSlime', { color: 0x84cc16, emissive: 0x4d7c0f, emissiveIntensity: 1.6 });
+        root.add(this._cylinder(rust, 1.15, 0.4, 2.4, { x: 0, y: 1.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'sludge_settling_cone', true));
+        for (let angle = 0; angle < 3; angle++) {
+          const a = (angle * Math.PI * 2) / 3;
+          root.add(this._cylinder(dark, 0.1, 0.1, 1.8, { x: Math.cos(a) * 0.85, y: 0.9, z: Math.sin(a) * 0.85 }, { x: 0.15 * Math.sin(a), y: 0, z: -0.15 * Math.cos(a) }, `settling_vat_leg_${angle}`, true));
+        }
+        root.add(this._cylinder(sludgeGlow, 0.35, 0.35, 0.3, { x: 0, y: 0.4, z: 0 }, { x: 0, y: 0, z: 0 }, 'sludge_bottom_purge_valve'));
+        root.add(this._box(dark, { x: 0.8, y: 0.4, z: 0.8 }, { x: 0, y: 2.9, z: 0 }, 'sludge_top_agitator_motor'));
+      } else if (normalizedType === 'auriga_necropsy_specimen_sink') {
+        // Chantier 374 : USM Auriga Medical Necropsy Dissecting Sink (Alien Resurrection)
+        const stainless = this._material('lightMetal', { color: 0xe2e8f0, roughness: 0.2, metalness: 0.92 });
+        const dark = this._material('darkMetal', { color: 0x334155, roughness: 0.6, metalness: 0.8 });
+        const formalinWash = this._material('emissiveBlue', { color: 0x0ea5e9, emissive: 0x0284c7, emissiveIntensity: 1.5 });
+        root.add(this._box(stainless, { x: 2.0, y: 0.85, z: 1.1 }, { x: 0, y: 0.75, z: 0 }, 'necropsy_sink_basin', true));
+        root.add(this._box(dark, { x: 1.85, y: 0.05, z: 0.95 }, { x: 0, y: 1.12, z: 0 }, 'necropsy_perforated_drain_plate'));
+        root.add(this._cylinder(stainless, 0.05, 0.05, 0.75, { x: -0.65, y: 1.5, z: -0.45 }, { x: 0.2, y: 0, z: 0 }, 'necropsy_formalin_faucet_l'));
+        root.add(this._cylinder(stainless, 0.05, 0.05, 0.75, { x: 0.65, y: 1.5, z: -0.45 }, { x: 0.2, y: 0, z: 0 }, 'necropsy_formalin_faucet_r'));
+        root.add(this._box(formalinWash, { x: 0.4, y: 0.08, z: 0.25 }, { x: 0, y: 1.15, z: 0.35 }, 'necropsy_formalin_dispenser'));
+        root.add(this._box(dark, { x: 0.15, y: 0.7, z: 0.9 }, { x: -0.85, y: 0.35, z: 0 }, 'necropsy_sink_leg_l', true));
+        root.add(this._box(dark, { x: 0.15, y: 0.7, z: 0.9 }, { x: 0.85, y: 0.35, z: 0 }, 'necropsy_sink_leg_r', true));
+      } else if (normalizedType === 'romulus_microgravity_coupler_spindle') {
+        // Chantier 375 : Renaissance Station Microgravity Coupler Spindle (Alien: Romulus)
+        const slate = this._material('darkMetal', { color: 0x334155, roughness: 0.5, metalness: 0.85 });
+        const brightSteel = this._material('lightMetal', { color: 0xf1f5f9, roughness: 0.25, metalness: 0.95 });
+        const sensorRing = this._material('emissiveOrange', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 2.0 });
+        root.add(this._cylinder(slate, 0.85, 0.85, 1.3, { x: 0, y: 0.65, z: 0 }, { x: 0, y: 0, z: 0 }, 'docking_spindle_hub', true));
+        for (let i = 0; i < 4; i++) {
+          const ang = (i * Math.PI) / 2;
+          root.add(this._box(brightSteel, { x: 0.3, y: 0.4, z: 0.7 }, { x: Math.cos(ang) * 0.95, y: 0.8, z: Math.sin(ang) * 0.95 }, `docking_clamp_arm_${i}`));
+        }
+        root.add(this._torus(sensorRing, 0.45, 0.06, { x: 0, y: 1.25, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'docking_laser_sensor_ring'));
+      } else if (normalizedType === 'sevastopol_seegson_power_commutator') {
+        // Chantier 376 : Sevastopol Station Seegson Heavy Power Commutator (Alien: Isolation)
+        const castIron = this._material('darkMetal', { color: 0x292524, roughness: 0.75, metalness: 0.8 });
+        const copper = this._material('copperCommutator', { color: 0xb45309, roughness: 0.4, metalness: 0.85 });
+        const arcGlow = this._material('emissiveCyan', { color: 0x60a5fa, emissive: 0x3b82f6, emissiveIntensity: 2.1 });
+        const yellow = this._material('hazardYellow', { color: 0xeab308, roughness: 0.5, metalness: 0.35 });
+        root.add(this._cylinder(copper, 0.7, 0.7, 1.8, { x: 0, y: 0.95, z: 0 }, { x: Math.PI * 0.5, y: 0, z: 0 }, 'commutator_copper_drum', true));
+        root.add(this._torus(yellow, 0.9, 0.09, { x: 0, y: 0.95, z: -0.7 }, { x: 0, y: 0, z: 0 }, 'commutator_stator_rim_b'));
+        root.add(this._torus(yellow, 0.9, 0.09, { x: 0, y: 0.95, z: 0.7 }, { x: 0, y: 0, z: 0 }, 'commutator_stator_rim_f'));
+        root.add(this._box(castIron, { x: 0.3, y: 1.2, z: 0.4 }, { x: 0.75, y: 0.95, z: 0 }, 'carbon_brush_holder_r'));
+        root.add(this._box(castIron, { x: 0.3, y: 1.2, z: 0.4 }, { x: -0.75, y: 0.95, z: 0 }, 'carbon_brush_holder_l'));
+        root.add(this._cylinder(arcGlow, 0.12, 0.12, 0.3, { x: 0, y: 1.65, z: 0 }, { x: 0, y: 0, z: 0 }, 'commutator_spark_gap'));
+        root.add(this._box(castIron, { x: 1.8, y: 0.2, z: 1.8 }, { x: 0, y: 0.1, z: 0 }, 'commutator_bedplate_skid', true));
+      } else if (normalizedType === 'hadley_water_cyclone_desander') {
+        // Chantier 377 : Hadley's Hope Hydrocyclone Water Desander Cone (Aliens 1986)
+        const green = this._material('industrialGreen', { color: 0x065f46, roughness: 0.55, metalness: 0.5 });
+        const steel = this._material('lightMetal', { color: 0x94a3b8, roughness: 0.45, metalness: 0.8 });
+        const dark = this._material('darkMetal', { color: 0x1e293b, roughness: 0.7, metalness: 0.85 });
+        root.add(this._cylinder(green, 0.75, 0.3, 2.6, { x: 0, y: 1.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'hydrocyclone_taper_cone', true));
+        root.add(this._cylinder(steel, 0.18, 0.18, 1.1, { x: 0.65, y: 2.4, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'desander_tangential_inlet'));
+        root.add(this._cylinder(steel, 0.22, 0.22, 0.6, { x: 0, y: 3.0, z: 0 }, { x: 0, y: 0, z: 0 }, 'desander_vortex_finder_overflow'));
+        root.add(this._box(dark, { x: 0.8, y: 0.5, z: 0.8 }, { x: 0, y: 0.35, z: 0 }, 'desander_sediment_purge_hopper', true));
+      } else if (normalizedType === 'uscm_sentinel_relay_transceiver') {
+        // Chantier 378 : USCM Sentinel Tactical Relay Transceiver Terminal (Colonial Marines / Dark Descent)
+        const olive = this._material('oliveDrab', { color: 0x3f4f24, roughness: 0.65, metalness: 0.35 });
+        const darkMetal = this._material('darkMetal', { color: 0x1c1917, roughness: 0.75, metalness: 0.85 });
+        const crtScreen = this._material('emissiveDisplay', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.2 });
+        const antenna = this._material('lightMetal', { color: 0xe2e8f0, roughness: 0.25, metalness: 0.9 });
+        root.add(this._box(olive, { x: 1.1, y: 0.85, z: 0.75 }, { x: 0, y: 0.85, z: 0 }, 'relay_telemetry_case', true));
+        root.add(this._box(crtScreen, { x: 0.55, y: 0.35, z: 0.05 }, { x: 0, y: 0.95, z: 0.4 }, 'relay_crt_spectral_display'));
+        for (let leg = 0; leg < 3; leg++) {
+          const lAng = (leg * Math.PI * 2) / 3;
+          root.add(this._cylinder(darkMetal, 0.06, 0.06, 1.0, { x: Math.cos(lAng) * 0.5, y: 0.45, z: Math.sin(lAng) * 0.5 }, { x: 0.35 * Math.sin(lAng), y: 0, z: -0.35 * Math.cos(lAng) }, `relay_tripod_leg_${leg}`, true));
+        }
+        root.add(this._cylinder(antenna, 0.7, 0.15, 0.25, { x: 0, y: 1.55, z: -0.15 }, { x: -Math.PI * 0.35, y: 0, z: 0 }, 'relay_parabolic_dish'));
+        root.add(this._cylinder(antenna, 0.02, 0.02, 0.8, { x: 0.4, y: 1.5, z: 0 }, { x: 0, y: 0, z: 0 }, 'relay_omni_whip_antenna'));
+      } else if (normalizedType === 'sevastopol_monorail_brake_caliper_assembly') {
+        // Chantier 379 : Sevastopol Transit Car Pneumatic Brake Caliper Assembly (Alien: Isolation)
+        const forgedIron = this._material('darkMetal', { color: 0x44403c, roughness: 0.75, metalness: 0.8 });
+        const ceramicPads = this._material('lightMetal', { color: 0xa8a29e, roughness: 0.6, metalness: 0.4 });
+        const yellow = this._material('hazardYellow', { color: 0xeab308, roughness: 0.4, metalness: 0.4 });
+        const redTank = this._material('redPaint', { color: 0xdc2626, roughness: 0.5, metalness: 0.6 });
+        root.add(this._box(forgedIron, { x: 1.6, y: 0.85, z: 1.1 }, { x: 0, y: 0.65, z: 0 }, 'brake_caliper_c_frame', true));
+        root.add(this._box(ceramicPads, { x: 0.3, y: 0.55, z: 0.8 }, { x: -0.45, y: 0.65, z: 0 }, 'brake_friction_pad_l'));
+        root.add(this._box(ceramicPads, { x: 0.3, y: 0.55, z: 0.8 }, { x: 0.45, y: 0.65, z: 0 }, 'brake_friction_pad_r'));
+        root.add(this._cylinder(redTank, 0.24, 0.24, 1.4, { x: 0, y: 1.25, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'brake_pneumatic_reservoir'));
+        root.add(this._box(yellow, { x: 1.62, y: 0.12, z: 0.05 }, { x: 0, y: 0.95, z: 0.56 }, 'brake_hazard_strip'));
+      } else if (normalizedType === 'fiorina_foundry_tuyere_blowpipe') {
+        // Chantier 380 : Fiorina 161 Foundry Blast Furnace Tuyere Stock & Blowpipe (Alien 3)
+        const iron = this._material('darkMetal', { color: 0x262626, roughness: 0.8, metalness: 0.85 });
+        const copper = this._material('copperTuyere', { color: 0xd97706, roughness: 0.4, metalness: 0.85 });
+        const hotGlow = this._material('emissiveFire', { color: 0xff5722, emissive: 0xe65100, emissiveIntensity: 2.5 });
+        root.add(this._cylinder(iron, 0.35, 0.35, 2.2, { x: 0, y: 1.3, z: 0 }, { x: 0.25, y: 0, z: 0 }, 'tuyere_angled_blowpipe', true));
+        root.add(this._sphere(iron, 0.5, { x: 0, y: 2.25, z: -0.28 }, 'tuyere_gooseneck_swivel'));
+        root.add(this._cylinder(copper, 0.48, 0.4, 0.7, { x: 0, y: 0.45, z: 0.22 }, { x: 0.25, y: 0, z: 0 }, 'tuyere_water_cooled_nose'));
+        root.add(this._cylinder(hotGlow, 0.14, 0.14, 0.2, { x: 0, y: 2.25, z: 0.15 }, { x: Math.PI * 0.5, y: 0, z: 0 }, 'tuyere_inspection_peephole'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -11229,6 +11343,17 @@
     createUscmM20ClaymorePod() { return this.createIndustrialProp('uscm_m20_claymore_pod'); }
     createSevastopolBaggageConveyorTrack() { return this.createIndustrialProp('sevastopol_baggage_conveyor_track'); }
     createFiorinaBlastAirPreheatStove() { return this.createIndustrialProp('fiorina_blast_air_preheat_stove'); }
+    // Vague 38 Props
+    createNostromoCryoHeliumRecondenser() { return this.createIndustrialProp('nostromo_cryo_helium_recondenser'); }
+    createHadleyApcWheelChockRack() { return this.createIndustrialProp('hadley_apc_wheel_chock_rack'); }
+    createFiorinaToxicSludgeSettlingVat() { return this.createIndustrialProp('fiorina_toxic_sludge_settling_vat'); }
+    createAurigaNecropsySpecimenSink() { return this.createIndustrialProp('auriga_necropsy_specimen_sink'); }
+    createRomulusMicrogravityCouplerSpindle() { return this.createIndustrialProp('romulus_microgravity_coupler_spindle'); }
+    createSevastopolSeegsonPowerCommutator() { return this.createIndustrialProp('sevastopol_seegson_power_commutator'); }
+    createHadleyWaterCycloneDesander() { return this.createIndustrialProp('hadley_water_cyclone_desander'); }
+    createUscmSentinelRelayTransceiver() { return this.createIndustrialProp('uscm_sentinel_relay_transceiver'); }
+    createSevastopolMonorailBrakeCaliperAssembly() { return this.createIndustrialProp('sevastopol_monorail_brake_caliper_assembly'); }
+    createFiorinaFoundryTuyereBlowpipe() { return this.createIndustrialProp('fiorina_foundry_tuyere_blowpipe'); }
   }
 
   // ---------------------------------------------------------------------------

@@ -7233,6 +7233,16 @@
     playTuyereAirBlastRoar(x = null, z = null) {
       this.playProceduralPropFx({ type: 'sawtooth', f0: 240, f1: 45, dur: 1.15, cutoff: 950, vol: 0.7, radius: 48 }, x, z);
     }
+
+    // Audit QA #141 : Déflagration Chimique d'Hydrazine Pure et Décompression
+    playHydrazineCombustionPop(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sawtooth', f0: 720, f1: 120, dur: 0.85, cutoff: 2800, vol: 0.65, radius: 46 }, x, z);
+    }
+
+    // Audit QA #141 : Bip d'Impulsion Fréquentielle de Leurre Électronique USCM M89
+    playDecoyPulseChirp(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sine', f0: 1650, f1: 580, dur: 0.45, cutoff: 3500, vol: 0.5, radius: 36 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -7649,7 +7659,7 @@
       // Audit QA #137 : Écho Radar M314 pour Relais Tactiques USCM, Commutateurs Haute Tension et Cryo
       if (stationMap.wave31Props) {
         for (const wp of stationMap.wave31Props) {
-          if (!wp.isTriggered && wp.id && (wp.id.includes('sentinel_relay') || wp.id.includes('power_commutator') || wp.id.includes('helium') || wp.id.includes('claymore') || wp.id.includes('tuyere'))) {
+          if (!wp.isTriggered && wp.id && (wp.id.includes('sentinel_relay') || wp.id.includes('power_commutator') || wp.id.includes('helium') || wp.id.includes('claymore') || wp.id.includes('tuyere') || wp.id.includes('decoy') || wp.id.includes('nitrogen') || wp.id.includes('hydrazine') || wp.id.includes('maglev'))) {
             const pDist = Math.hypot(wp.x - player.x, wp.z - player.z);
             if (pDist <= maxRange) {
               const worldAngle = Math.atan2(wp.x - player.x, wp.z - player.z);
@@ -7657,8 +7667,8 @@
               const normDist = (pDist / maxRange) * radius;
               const px = cx + Math.sin(relAngle) * normDist;
               const py = cy - Math.cos(relAngle) * normDist;
-              const tag = wp.id.includes('sentinel_relay') ? 'USCM-TX' : (wp.id.includes('power_commutator') ? '20kV' : (wp.id.includes('claymore') ? 'M20' : (wp.id.includes('tuyere') ? '1200°C' : 'CRYO')));
-              const col = wp.id.includes('sentinel_relay') ? '#22c55e' : (wp.id.includes('power_commutator') ? '#60a5fa' : (wp.id.includes('claymore') ? '#f43f5e' : (wp.id.includes('tuyere') ? '#f97316' : '#38bdf8')));
+              const tag = wp.id.includes('decoy') ? 'M89-DECOY' : (wp.id.includes('nitrogen') ? 'N2-PURGE' : (wp.id.includes('hydrazine') ? 'N2H4' : (wp.id.includes('maglev') ? 'MAG-LEV' : (wp.id.includes('sentinel_relay') ? 'USCM-TX' : (wp.id.includes('power_commutator') ? '20kV' : (wp.id.includes('claymore') ? 'M20' : (wp.id.includes('tuyere') ? '1200°C' : 'CRYO')))))));
+              const col = wp.id.includes('decoy') ? '#22c55e' : (wp.id.includes('nitrogen') ? '#38bdf8' : (wp.id.includes('hydrazine') ? '#f97316' : (wp.id.includes('maglev') ? '#fbbf24' : (wp.id.includes('sentinel_relay') ? '#22c55e' : (wp.id.includes('power_commutator') ? '#60a5fa' : (wp.id.includes('claymore') ? '#f43f5e' : (wp.id.includes('tuyere') ? '#f97316' : '#38bdf8')))))));
               ctx.fillStyle = col;
               ctx.beginPath();
               ctx.arc(px, py, 2.6, 0, Math.PI * 2);
@@ -12606,7 +12616,20 @@
         { id: 'brake_caliper_1', factory: 'createSevastopolMonorailBrakeCaliperAssembly', name: 'Étrier de Freinage Transit Sevastopol', x: 65, z: 40, hx: 1.2, hz: 0.9, radius: 8.0, damage: 185, color: 0xeab308, label: 'RUPTURE HYDRAULIQUE ÉTRIER DE FREIN', toast: 'FREIN DE MONORAIL DÉCHIRÉ : Fluide hydraulique brûlant sous 300 bars !', log: '[BRAKE CALIPER] Éclatement du cylindre de frein d\'urgence Seegson Transit.', fx: { type: 'sawtooth', f0: 310, f1: 65, dur: 0.8, cutoff: 1400, vol: 0.6 }, anim: 'brake_pneumatic_reservoir' },
         { id: 'tuyere_blowpipe_1', factory: 'createFiorinaFoundryTuyereBlowpipe', name: 'Tuyère et Porte-Vent Fiorina', x: -52, z: 86, hx: 1.2, hz: 1.0, radius: 9.5, damage: 275, color: 0xd97706, label: 'ÉVENTRATION PORTE-VENT TUYÈRE', toast: 'BLOWPIPE DE FONDERIE FRACTURÉ : Jet d\'air surchauffé à 1200°C et métal liquide !', log: '[TUYERE BLOWPIPE] Perforation du nez de tuyère en cuivre refroidi à l\'eau.', fx: { type: 'sawtooth', f0: 240, f1: 45, dur: 1.15, cutoff: 950, vol: 0.7 }, anim: 'tuyere_angled_blowpipe', slag: true }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs].forEach((def) => {
+      // VAGUE 39 (Chantiers 381 à 390) : Piles à Hydrazine, Séparateurs de Poussière, Autoclaves & Turbines Pelton
+      const wave39Defs = [
+        { id: 'hydrazine_cell_1', factory: 'createNostromoHydrazineFuelCell', name: 'Pile à Combustible Hydrazine Nostromo', x: -22, z: -88, hx: 1.2, hz: 1.2, radius: 8.5, damage: 235, color: 0xf97316, label: 'DÉFLAGRATION HYDRAZINE PRESSURISÉE', toast: 'PILE HYDRAZINE EN RUPTURE : Souffle chimique toxique et flammes hypergole !', log: '[HYDRAZINE CELL] Explosion du réservoir de combustible hydrazine auxiliaire Nostromo.', fx: { type: 'sawtooth', f0: 720, f1: 120, dur: 0.85, cutoff: 2800, vol: 0.65 }, anim: 'hydrazine_burst_disc', chemical: true },
+        { id: 'dust_cyclone_1', factory: 'createHadleyDustCycloneSeparator', name: 'Séparateur Cyclone de Poussière Hadley', x: 35, z: -82, hx: 1.3, hz: 1.3, radius: 8.0, damage: 200, color: 0x065f46, label: 'IMPACT CYCLONE POUSSIÈRE ACHERON', toast: 'SÉPARATEUR CYCLONE FISSURÉ : Vortex de poussières de silice et bris d\'acier !', log: '[DUST CYCLONE] Rupture de l\'entonnoir de purge du séparateur cyclone atmosphérique.', fx: { type: 'sawtooth', f0: 340, f1: 70, dur: 0.8, cutoff: 1300, vol: 0.6 }, anim: 'cyclone_vortex_inlet' },
+        { id: 'autoclave_drum_1', factory: 'createFiorinaAutoclaveSterilizerVessel', name: 'Autoclave de Stérilisation Médicale Fiorina', x: -32, z: 65, hx: 1.4, hz: 1.0, radius: 8.5, damage: 220, color: 0xd97706, label: 'DÉPRESSURISATION EXPLOSIVE VAPEUR', toast: 'AUTOCLAVE MÉDICAL ÉCLATÉ : Jet de vapeur d\'eau sous 15 bars et porte projetée !', log: '[AUTOCLAVE] Rupture des tirants de verrouillage de la cuve autoclave Fiorina.', fx: { type: 'sawtooth', f0: 520, f1: 95, dur: 0.9, cutoff: 2100, vol: 0.6 }, anim: 'autoclave_locking_door' },
+        { id: 'specimen_nacelle_1', factory: 'createAurigaCentrifugeSpecimenNacelle', name: 'Nacelle Centrifugeuse Éprouvettes Auriga', x: -68, z: -18, hx: 1.2, hz: 1.2, radius: 7.5, damage: 175, color: 0x06b6d4, label: 'DÉSÉQUILIBRAGE ROTOR CENTRIFUGEUSE', toast: 'CENTRIFUGEUSE BRISÉE : Nacelles à éprouvettes projetées à pleine vitesse !', log: '[CENTRIFUGE NACELLE] Rupture de l\'arbre centrifuge du laboratoire génétique Auriga.', fx: { type: 'sine', f0: 850, f1: 190, dur: 0.7, cutoff: 2900, vol: 0.55 }, anim: 'centrifuge_rotor_shaft', spin: true },
+        { id: 'pelton_turbine_1', factory: 'createRomulusPeltonImpulseTurbine', name: 'Turbine Pelton Circuit Fréon Renaissance', x: 58, z: 68, hx: 1.3, hz: 1.1, radius: 8.5, damage: 215, color: 0x38bdf8, label: 'ÉCLATEMENT CARTER TURBINE PELTON', toast: 'TURBINE PELTON FRACTURÉE : Aubes d\'impulsion et geyser de fluide frigorigène !', log: '[PELTON TURBINE] Surpression hydraulique et éclatement du carter de turbine Romulus.', fx: { type: 'sine', f0: 95, f1: 650, dur: 0.85, cutoff: 2200, vol: 0.6 }, anim: 'pelton_split_flange' },
+        { id: 'maglev_switch_1', factory: 'createSevastopolSeegsonMaglevSwitchPylon', name: 'Pylône d\'Aiguillage Mag-Lev Sevastopol', x: 75, z: 18, hx: 1.1, hz: 1.1, radius: 8.0, damage: 190, color: 0xf97316, label: 'COURT-CIRCUIT AIGUILLAGE MAG-LEV', toast: 'PYLÔNE D\'AIGUILLAGE FOUDROYÉ : Bobines d\'induction en fusion et éclairs !', log: '[MAGLEV SWITCH] Surtension dans les stators linéaires de l\'aiguillage transit Lorenz.', fx: { type: 'square', f0: 1400, f1: 130, dur: 0.75, cutoff: 3200, vol: 0.6 }, anim: 'maglev_warning_beacon', shock: true },
+        { id: 'nitrogen_manifold_1', factory: 'createHadleyNitrogenPurgeManifold', name: 'Rampe de Purge Azote Hadley', x: 18, z: 55, hx: 1.2, hz: 0.8, radius: 7.5, damage: 185, color: 0x38bdf8, label: 'DÉTENTE AZOTE LIQUIDE -196°C', toast: 'BOUTEILLES D\'AZOTE PERFORÉES : Brouillard givrant et onde de choc pneumatique !', log: '[NITROGEN MANIFOLD] Rupture des tubulures de la rampe de purge azote Hadley.', fx: { type: 'sine', f0: 1150, f1: 280, dur: 0.8, cutoff: 3600, vol: 0.55 }, anim: 'nitrogen_header_manifold', chemical: true },
+        { id: 'decoy_buoy_1', factory: 'createUscmM89ElectronicDecoyBuoy', name: 'Balise de Leurre Électronique USCM M89', x: -45, z: 48, hx: 0.9, hz: 0.9, radius: 7.0, damage: 160, color: 0x22c55e, label: 'EXPLOSION LEURRE BIOMÉTRIQUE M89', toast: 'LEURRE ÉLECTRONIQUE COURT-CIRCUITÉ : Décharge acoustique et étincelles radio !', log: '[DECOY BUOY] Détonation de sécurité du leurre biométrique USCM M89.', fx: { type: 'sine', f0: 1650, f1: 580, dur: 0.5, cutoff: 3500, vol: 0.5 }, anim: 'decoy_pulse_emitter_ring', alarm: true },
+        { id: 'xray_tunnel_1', factory: 'createSevastopolLuggageXrayScannerTunnel', name: 'Tunnel Scanner Rayons X Sevastopol', x: 52, z: 25, hx: 1.4, hz: 1.1, radius: 7.5, damage: 170, color: 0xeab308, label: 'IMPLOSION TUBE CATHODIQUE RAYONS X', toast: 'SCANNER DOUANE ÉVENTRÉ : Tube émetteur X brisé et blindage plomb déchiqueté !', log: '[XRAY TUNNEL] Rupture du blindage plomb et défaillance du tube émetteur Sevastopol.', fx: { type: 'square', f0: 680, f1: 90, dur: 0.65, cutoff: 2400, vol: 0.55 }, anim: 'xray_operator_crt' },
+        { id: 'desilverizing_kettle_1', factory: 'createFiorinaLeadDesilverizingKettle', name: 'Chaudière de Dézingage Fiorina', x: -42, z: 88, hx: 1.4, hz: 1.4, radius: 9.5, damage: 280, color: 0xe2e8f0, label: 'ÉCLATEMENT CHAUDIÈRE DE PLOMB LIQUIDE', toast: 'CHAUDIÈRE DE PLOMB EN RUPTURE : Des tonnes de plomb et zinc à 500°C projetées !', log: '[DESILVERIZING KETTLE] Fissure de la chaudière de désargentation du plomb Fiorina.', fx: { type: 'sawtooth', f0: 150, f1: 25, dur: 1.1, cutoff: 700, vol: 0.7 }, anim: 'molten_silver_lead_pool', slag: true }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -20214,6 +20237,12 @@
       }
       if (prop.id.includes('tuyere') || prop.id.includes('blast_stove')) {
         audioManager.playTuyereAirBlastRoar?.(prop.x, prop.z);
+      }
+      if (prop.id.includes('hydrazine')) {
+        audioManager.playHydrazineCombustionPop?.(prop.x, prop.z);
+      }
+      if (prop.id.includes('decoy')) {
+        audioManager.playDecoyPulseChirp?.(prop.x, prop.z);
       }
       if (prop.shock) {
         audioManager.playHighVoltageArcDischarge?.(prop.x, prop.z);

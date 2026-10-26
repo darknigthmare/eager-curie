@@ -7825,6 +7825,103 @@
         root.add(this._box(sheet, { x: 1.4, y: 0.1, z: 0.6 }, { x: -0.1, y: 1.06, z: 0 }, 'autopsy_sheet'));
         root.add(this._cylinder(dark, 0.04, 0.04, 2.2, { x: 0.8, y: 2.0, z: 0.4 }, { x: 0, y: 0, z: 0 }, 'autopsy_lamp_arm'));
         root.add(this._cylinder(lamp, 0.3, 0.3, 0.1, { x: 0.8, y: 3.05, z: 0.4 }, { x: 0, y: 0, z: 0 }, 'autopsy_lamp'));
+      } else if (normalizedType === 'nostromo_airlock_cycling_valve') {
+        // Chantier 321 : Nostromo Airlock Manual Cycling Valve & Actuator (Alien 1979)
+        const steel = this._material('steel', { color: 0x94a3b8, roughness: 0.35, metalness: 0.9 });
+        const dark = this._material('darkMetal', { color: 0x1e293b, roughness: 0.65, metalness: 0.85 });
+        const cyan = this._material('emissiveCyan', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.0 });
+        root.add(this._box(dark, { x: 1.4, y: 1.8, z: 0.35 }, { x: 0, y: 1.1, z: 0 }, 'airlock_valve_panel', true));
+        root.add(this._cylinder(steel, 0.25, 0.25, 0.45, { x: 0, y: 1.2, z: 0.22 }, { x: Math.PI / 2, y: 0, z: 0 }, 'airlock_valve_hub'));
+        root.add(this._torus(steel, 0.45, 0.06, { x: 0, y: 1.2, z: 0.46 }, { x: 0, y: 0, z: 0 }, 'airlock_valve_wheel'));
+        root.add(this._box(cyan, { x: 0.25, y: 0.1, z: 0.05 }, { x: 0.45, y: 1.7, z: 0.19 }, 'airlock_pressure_gauge'));
+      } else if (normalizedType === 'hadley_seismic_survey_drill') {
+        // Chantier 322 : Hadley's Hope Seismic Survey Drill Rig (Aliens 1986)
+        const frame = this._material('industrial', { color: 0xd97706, roughness: 0.45, metalness: 0.75 });
+        const bit = this._material('steel', { color: 0x475569, roughness: 0.3, metalness: 0.95 });
+        const amber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.4 });
+        root.add(this._cylinder(frame, 0.6, 0.8, 1.2, { x: 0, y: 0.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'drill_housing', true));
+        root.add(this._cylinder(bit, 0.15, 0.05, 1.4, { x: 0, y: 0.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'drill_bit'));
+        for (let l = 0; l < 3; l++) {
+          const ang = (l * Math.PI * 2) / 3;
+          root.add(this._cylinder(frame, 0.07, 0.07, 1.8, { x: Math.cos(ang) * 0.75, y: 0.85, z: Math.sin(ang) * 0.75 }, { x: Math.sin(ang) * 0.35, y: 0, z: -Math.cos(ang) * 0.35 }, `drill_leg_${l}`));
+        }
+        root.add(this._box(amber, { x: 0.2, y: 0.2, z: 0.2 }, { x: 0, y: 1.35, z: 0 }, 'drill_strobe'));
+      } else if (normalizedType === 'fiorina_toxic_sludge_centrifuge') {
+        // Chantier 323 : Fiorina 161 Toxic Sludge Decanter Centrifuge (Alien 3)
+        const rust = this._material('rust', { color: 0x78350f, roughness: 0.85, metalness: 0.4 });
+        const vat = this._material('darkMetal', { color: 0x27272a, roughness: 0.7, metalness: 0.8 });
+        const slime = this._material('emissiveGreen', { color: 0x84cc16, emissive: 0x65a30d, emissiveIntensity: 2.0 });
+        root.add(this._cylinder(vat, 1.1, 1.1, 1.6, { x: 0, y: 0.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'centrifuge_drum', true));
+        root.add(this._cylinder(rust, 0.2, 0.2, 1.8, { x: 0, y: 0.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'centrifuge_core'));
+        root.add(this._box(slime, { x: 0.8, y: 0.15, z: 0.8 }, { x: 0, y: 1.5, z: 0 }, 'centrifuge_sludge'));
+        root.add(this._cylinder(rust, 0.12, 0.12, 1.4, { x: 1.1, y: 1.1, z: 0 }, { x: 0, y: 0, z: -0.6 }, 'centrifuge_discharge_chute'));
+      } else if (normalizedType === 'auriga_specimen_autopsy_rig') {
+        // Chantier 324 : USM Auriga Vertical Specimen Autopsy Rig (Alien Resurrection)
+        const armor = this._material('darkMetal', { color: 0x0f172a, roughness: 0.5, metalness: 0.9 });
+        const arm = this._material('steel', { color: 0x64748b, roughness: 0.35, metalness: 0.9 });
+        const cyanGlow = this._material('emissiveCyan', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 2.2 });
+        root.add(this._box(armor, { x: 1.6, y: 2.8, z: 0.4 }, { x: 0, y: 1.4, z: 0 }, 'autopsy_backplate', true));
+        root.add(this._box(cyanGlow, { x: 1.1, y: 2.2, z: 0.08 }, { x: 0, y: 1.4, z: 0.18 }, 'autopsy_matrix_grid'));
+        root.add(this._cylinder(arm, 0.06, 0.06, 0.9, { x: -0.65, y: 2.1, z: 0.4 }, { x: 0.4, y: 0, z: 0 }, 'autopsy_tool_arm_l'));
+        root.add(this._cylinder(arm, 0.06, 0.06, 0.9, { x: 0.65, y: 2.1, z: 0.4 }, { x: 0.4, y: 0, z: 0 }, 'autopsy_tool_arm_r'));
+      } else if (normalizedType === 'romulus_centrifugal_ring_pylon') {
+        // Chantier 325 : Renaissance Station Centrifugal Ring Pylon (Alien: Romulus)
+        const hull = this._material('industrial', { color: 0x64748b, roughness: 0.4, metalness: 0.85 });
+        const beam = this._material('darkMetal', { color: 0x1e293b, roughness: 0.6, metalness: 0.9 });
+        const redBeacon = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.5 });
+        root.add(this._cylinder(hull, 0.4, 0.65, 3.2, { x: 0, y: 1.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'pylon_mast', true));
+        root.add(this._torus(beam, 0.85, 0.12, { x: 0, y: 2.6, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'pylon_ring'));
+        root.add(this._box(redBeacon, { x: 0.18, y: 0.28, z: 0.18 }, { x: 0, y: 3.3, z: 0 }, 'pylon_beacon'));
+      } else if (normalizedType === 'sevastopol_transit_turnstile_gate') {
+        // Chantier 326 : Sevastopol Transit Gate Turnstile (Alien: Isolation)
+        const yellow = this._material('industrial', { color: 0xeab308, roughness: 0.45, metalness: 0.65 });
+        const post = this._material('darkMetal', { color: 0x334155, roughness: 0.5, metalness: 0.85 });
+        const reader = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.2 });
+        root.add(this._box(post, { x: 0.4, y: 1.1, z: 1.2 }, { x: 0, y: 0.55, z: 0 }, 'turnstile_console', true));
+        root.add(this._cylinder(yellow, 0.05, 0.05, 0.9, { x: 0.25, y: 0.8, z: 0.45 }, { x: 0, y: 0, z: Math.PI / 2 }, 'turnstile_arm_a'));
+        root.add(this._cylinder(yellow, 0.05, 0.05, 0.9, { x: 0.25, y: 0.8, z: -0.45 }, { x: 0, y: 0, z: Math.PI / 2 }, 'turnstile_arm_b'));
+        root.add(this._box(reader, { x: 0.15, y: 0.06, z: 0.2 }, { x: 0, y: 1.12, z: 0.2 }, 'turnstile_badge_scanner'));
+      } else if (normalizedType === 'hadley_sublevel_sump_pump') {
+        // Chantier 327 : Hadley's Hope Sublevel Drainage Sump Pump (Aliens 1986)
+        const dark = this._material('darkMetal', { color: 0x1e293b, roughness: 0.65, metalness: 0.8 });
+        const blue = this._material('industrial', { color: 0x0284c7, roughness: 0.45, metalness: 0.7 });
+        const water = this._material('emissiveCyan', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 1.6 });
+        root.add(this._box(dark, { x: 1.8, y: 0.3, z: 1.4 }, { x: 0, y: 0.15, z: 0 }, 'sump_basin', true));
+        root.add(this._cylinder(blue, 0.35, 0.35, 1.2, { x: 0, y: 0.75, z: 0 }, { x: 0, y: 0, z: 0 }, 'sump_motor'));
+        root.add(this._cylinder(dark, 0.12, 0.12, 1.6, { x: 0.5, y: 1.0, z: 0 }, { x: 0, y: 0, z: 0.4 }, 'sump_pipe'));
+        root.add(this._box(water, { x: 1.5, y: 0.08, z: 1.1 }, { x: 0, y: 0.25, z: 0 }, 'sump_water'));
+      } else if (normalizedType === 'uscm_drop_beacon_tripod') {
+        // Chantier 328 : USCM Tactical Drop-Zone Beacon Tripod (Aliens: Dark Descent)
+        const olive = this._material('darkMetal', { color: 0x27272a, roughness: 0.6, metalness: 0.9 });
+        const dish = this._material('steel', { color: 0x71717a, roughness: 0.35, metalness: 0.95 });
+        const strobe = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.8 });
+        root.add(this._cylinder(olive, 0.06, 0.06, 2.4, { x: 0, y: 1.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'beacon_mast', true));
+        for (let t = 0; t < 3; t++) {
+          const a = (t * Math.PI * 2) / 3;
+          root.add(this._cylinder(olive, 0.05, 0.05, 1.2, { x: Math.cos(a) * 0.45, y: 0.55, z: Math.sin(a) * 0.45 }, { x: Math.sin(a) * 0.45, y: 0, z: -Math.cos(a) * 0.45 }, `beacon_foot_${t}`));
+        }
+        root.add(this._cylinder(dish, 0.35, 0.05, 0.15, { x: 0, y: 2.3, z: 0 }, { x: 0.4, y: 0, z: 0 }, 'beacon_dish'));
+        root.add(this._cylinder(strobe, 0.1, 0.1, 0.2, { x: 0, y: 2.45, z: 0 }, { x: 0, y: 0, z: 0 }, 'beacon_led'));
+      } else if (normalizedType === 'sevastopol_maintenance_scaffold') {
+        // Chantier 329 : Sevastopol Mobile Maintenance Scaffold Tower (Alien: Isolation)
+        const frame = this._material('industrial', { color: 0xf97316, roughness: 0.4, metalness: 0.8 });
+        const deck = this._material('steel', { color: 0x475569, roughness: 0.6, metalness: 0.9 });
+        const dark = this._material('darkMetal', { color: 0x18181b, roughness: 0.7, metalness: 0.85 });
+        for (let col = 0; col < 4; col++) {
+          const cx = (col % 2 === 0 ? -1 : 1) * 0.9;
+          const cz = (col < 2 ? -1 : 1) * 0.7;
+          root.add(this._cylinder(frame, 0.05, 0.05, 3.4, { x: cx, y: 1.7, z: cz }, { x: 0, y: 0, z: 0 }, `scaffold_leg_${col}`));
+        }
+        root.add(this._box(deck, { x: 2.0, y: 0.1, z: 1.6 }, { x: 0, y: 2.2, z: 0 }, 'scaffold_platform', true));
+        root.add(this._torus(dark, 0.12, 0.04, { x: 0.9, y: 0.12, z: 0.7 }, { x: 0, y: 0, z: 0 }, 'scaffold_wheel'));
+      } else if (normalizedType === 'fiorina_smelter_tapping_spout') {
+        // Chantier 330 : Fiorina 161 Blast Smelter Tapping Spout & Launder (Alien 3)
+        const stone = this._material('rust', { color: 0x451a03, roughness: 0.9, metalness: 0.2 });
+        const lead = this._material('emissiveAmber', { color: 0xf97316, emissive: 0xd97706, emissiveIntensity: 2.8 });
+        const guard = this._material('darkMetal', { color: 0x1c1917, roughness: 0.75, metalness: 0.85 });
+        root.add(this._box(stone, { x: 2.6, y: 0.5, z: 1.0 }, { x: 0, y: 0.9, z: 0 }, 'spout_trough', true));
+        root.add(this._box(lead, { x: 2.4, y: 0.1, z: 0.6 }, { x: 0, y: 1.12, z: 0 }, 'spout_molten_stream'));
+        root.add(this._box(guard, { x: 0.15, y: 1.2, z: 1.2 }, { x: 1.3, y: 1.2, z: 0 }, 'spout_splash_shield'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -10398,6 +10495,20 @@
     createSevastopolVendingRow() { return this.createIndustrialProp('sevastopol_vending_row'); }
     createFiorinaAutopsyTable() {
       return this.createIndustrialProp('fiorina_autopsy_table');
+    }
+
+    // Chantiers 321 à 330 (Vague 33)
+    createNostromoAirlockCyclingValve() { return this.createIndustrialProp('nostromo_airlock_cycling_valve'); }
+    createHadleySeismicSurveyDrill() { return this.createIndustrialProp('hadley_seismic_survey_drill'); }
+    createFiorinaToxicSludgeCentrifuge() { return this.createIndustrialProp('fiorina_toxic_sludge_centrifuge'); }
+    createAurigaSpecimenAutopsyRig() { return this.createIndustrialProp('auriga_specimen_autopsy_rig'); }
+    createRomulusCentrifugalRingPylon() { return this.createIndustrialProp('romulus_centrifugal_ring_pylon'); }
+    createSevastopolTransitTurnstileGate() { return this.createIndustrialProp('sevastopol_transit_turnstile_gate'); }
+    createHadleySublevelSumpPump() { return this.createIndustrialProp('hadley_sublevel_sump_pump'); }
+    createUscmDropBeaconTripod() { return this.createIndustrialProp('uscm_drop_beacon_tripod'); }
+    createSevastopolMaintenanceScaffold() { return this.createIndustrialProp('sevastopol_maintenance_scaffold'); }
+    createFiorinaSmelterTappingSpout() {
+      return this.createIndustrialProp('fiorina_smelter_tapping_spout');
     }
   }
 

@@ -7193,6 +7193,11 @@
     playSecondaryDetonation(x = null, z = null) {
       this.playProceduralPropFx({ type: 'sawtooth', f0: 140, f1: 30, dur: 0.95, cutoff: 850, vol: 0.55, radius: 50 }, x, z);
     }
+
+    // Audit QA #111 : Sifflement Pneumatique des Sas et Tuyauteries sous Pression
+    playAirlockPressureHiss(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'square', f0: 1600, f1: 300, dur: 1.1, cutoff: 3200, vol: 0.32, radius: 45 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -8192,6 +8197,16 @@
       this.shakeDuration = Math.max(this.shakeDuration || 0, duration);
     }
 
+    // Audit QA #114 : Impulsion de Secousse Directionnelle Alignée sur l'Onde de Choc
+    addDirectionalScreenShake(dx, dz, intensity = 0.25, duration = 0.3) {
+      if (this.reduceMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || window.HiveSystems?.settings?.reducedMotion) return;
+      const len = Math.hypot(dx, dz) || 1;
+      this.directionalShakeX = (dx / len) * intensity;
+      this.directionalShakeZ = (dz / len) * intensity;
+      this.screenShake = Math.min(1.4, (this.screenShake || 0) + intensity);
+      this.shakeDuration = Math.max(this.shakeDuration || 0, duration);
+    }
+
     setCinematicCamera({ position, target, fov = 72, near = 0.025, exposure = 1.18 }, deltaSeconds = 1 / 60) {
       if (!position || !target) return;
       let projectionChanged = false;
@@ -8762,6 +8777,7 @@
       this.dustTimer = 0;
       this.comboCount = 0;
       this.comboTimer = 0;
+      this.dropletTimer = 0;
     }
 
     buildMap() {
@@ -12409,7 +12425,20 @@
         { id: 'vending_row_1', factory: 'createSevastopolVendingRow', name: 'Distributeurs du Réfectoire Sevastopol', x: 48, z: 40, hx: 1.5, hz: 0.5, radius: 6.5, damage: 145, color: 0xef4444, label: 'DISTRIBUTEURS RENVERSÉS', toast: 'DISTRIBUTEURS RENVERSÉS : Le fracas de la tôle alerte la station !', log: '[VENDING] Basculement de la rangée de distributeurs du réfectoire Seegson.', fx: { type: 'triangle', f0: 220, f1: 50, dur: 0.6, cutoff: 700, vol: 0.55 }, anim: 'vend_face_1' },
         { id: 'autopsy_table_1', factory: 'createFiorinaAutopsyTable', name: 'Table d\'Autopsie de l\'Infirmerie Fiorina', x: -25, z: 62, hx: 1.1, hz: 0.5, radius: 6.5, damage: 135, color: 0xfef9c3, label: 'LAMPE SCIALYTIQUE EN CHUTE', toast: 'SCIALYTIQUE ARRACHÉ : La lampe s\'écrase sur la table d\'autopsie !', log: '[AUTOPSY] Chute du scialytique de l\'infirmerie de Fiorina 161.', fx: { type: 'sine', f0: 1800, f1: 400, dur: 0.4, cutoff: 5000, vol: 0.45 }, anim: 'autopsy_lamp' }
       ];
-      [...wave31Defs, ...wave32Defs].forEach((def) => {
+      // VAGUE 33 (Chantiers 321 à 330) : Sas Hydrauliques, Stations de Pompage, Baies de Télécommunications & Fours d'Incinération
+      const wave33Defs = [
+        { id: 'airlock_valve_1', factory: 'createNostromoAirlockCyclingValve', name: 'Valve de Sas Nostromo', x: -78, z: 25, hx: 0.9, hz: 0.5, radius: 7.5, damage: 170, color: 0x38bdf8, label: 'DÉCOMPRESSION CYCLIQUE', toast: 'VALVE DE SAS FRACTURÉE : Décompression brutale dans le sas !', log: '[AIRLOCK VALVE] Éventration de la vanne cyclique du sas de décompression Nostromo.', fx: { type: 'square', f0: 800, f1: 150, dur: 0.7, cutoff: 2200, vol: 0.5 }, anim: 'airlock_valve_wheel', spin: true },
+        { id: 'seismic_drill_1', factory: 'createHadleySeismicSurveyDrill', name: 'Foreuse Sismique Hadley', x: 72, z: -70, hx: 1.2, hz: 1.2, radius: 8.5, damage: 210, color: 0xf59e0b, label: 'FORAGE SISMIQUE EMBALLÉ', toast: 'FOREUSE SISMIQUE EN SURRÉGIME : Ondes de choc et vibrations telluriques !', log: '[SEISMIC DRILL] Emballement du trépied de forage géologique de la colonie.', fx: { type: 'sawtooth', f0: 120, f1: 50, dur: 0.9, cutoff: 950, vol: 0.6 }, anim: 'drill_bit', spin: true },
+        { id: 'sludge_centrifuge_1', factory: 'createFiorinaToxicSludgeCentrifuge', name: 'Centrifugeuse à Boues Fiorina', x: -12, z: 88, hx: 1.3, hz: 1.3, radius: 8.0, damage: 225, color: 0x84cc16, label: 'ÉCLATEMENT CUVE À BOUES', toast: 'DÉCANTEUR CENTRIFUGE ÉVENTRÉ : Projection de boues toxiques bouillantes !', log: '[SLUDGE CENTRIFUGE] Rupture de cuve du décanteur centrifuge de la fonderie Fiorina.', fx: { type: 'sawtooth', f0: 380, f1: 75, dur: 0.8, cutoff: 1300, vol: 0.55 }, anim: 'centrifuge_sludge' },
+        { id: 'specimen_rig_1', factory: 'createAurigaSpecimenAutopsyRig', name: 'Banc de Dissection Auriga', x: -68, z: -35, hx: 1.1, hz: 0.5, radius: 7.0, damage: 180, color: 0x06b6d4, label: 'DÉCHARGE CHIRURGICALE', toast: 'BANC CHIRURGICAL SURCHARGÉ : Arcs scalpel haute fréquence et décharge !', log: '[SPECIMEN RIG] Court-circuit de la matrice chirurgicale verticale de l\'Auriga.', fx: { type: 'square', f0: 1200, f1: 400, dur: 0.5, cutoff: 3500, vol: 0.45 }, anim: 'autopsy_tool_arm_l' },
+        { id: 'ring_pylon_1', factory: 'createRomulusCentrifugalRingPylon', name: 'Pylône Anneau Centrifuge Renaissance', x: 40, z: 75, hx: 1.1, hz: 1.1, radius: 8.5, damage: 200, color: 0xef4444, label: 'OSCILLATION DU PYLÔNE', toast: 'PYLÔNE GYROSCOPIQUE DÉRÉGLÉ : Balancement inertiel violent de l\'anneau !', log: '[RING PYLON] Déphasage du mât gyroscopique de l\'anneau centrifuge de Renaissance.', fx: { type: 'sine', f0: 90, f1: 340, dur: 0.85, cutoff: 1600, vol: 0.5 }, anim: 'pylon_ring', spin: true, alarm: true },
+        { id: 'transit_gate_1', factory: 'createSevastopolTransitTurnstileGate', name: 'Portique Transit Sevastopol', x: 62, z: 18, hx: 0.6, hz: 1.0, radius: 6.0, damage: 125, color: 0xeab308, label: 'PORTIQUE TRANSIT VERROUILLÉ', toast: 'PORTIQUE DE TRANSIT ENRAYÉ : Barres percutantes et sonnerie Seegson !', log: '[TRANSIT GATE] Verrouillage magnétique d\'urgence du tourniquet de transit.', fx: { type: 'triangle', f0: 520, f1: 260, dur: 0.5, cutoff: 2000, vol: 0.4 }, anim: 'turnstile_arm_a', spin: true },
+        { id: 'sump_pump_1', factory: 'createHadleySublevelSumpPump', name: 'Pompe d\'Épuisement Hadley', x: 32, z: -42, hx: 1.2, hz: 1.0, radius: 7.5, damage: 160, color: 0x0284c7, label: 'COUP DE BÉLIER HYDRAULIQUE', toast: 'POMPE D\'ÉPUISEMENT DÉBOÎTÉE : Trombe d\'eau sous pression dans le sous-sol !', log: '[SUMP PUMP] Surtension hydraulique de la pompe d\'assèchement des niveaux inférieurs.', fx: { type: 'sawtooth', f0: 450, f1: 90, dur: 0.65, cutoff: 1200, vol: 0.5 }, anim: 'sump_motor' },
+        { id: 'drop_beacon_1', factory: 'createUscmDropBeaconTripod', name: 'Balise de Largage USCM', x: -52, z: 12, hx: 0.8, hz: 0.8, radius: 7.0, damage: 150, color: 0x22c55e, label: 'IMPULSION EMP BALISE', toast: 'BALISE TACTIQUE SURVOLTÉE : Impulsion EMP et sifflement radio USCM !', log: '[DROP BEACON] Surcharge de l\'émetteur UHF de guidage tactique USCM.', fx: { type: 'sine', f0: 2200, f1: 600, dur: 0.6, cutoff: 4500, vol: 0.45 }, anim: 'beacon_led', alarm: true },
+        { id: 'scaffold_tower_1', factory: 'createSevastopolMaintenanceScaffold', name: 'Échafaudage de Maintenance Sevastopol', x: 18, z: -68, hx: 1.3, hz: 1.1, radius: 8.0, damage: 190, color: 0xf97316, label: 'EFFONDREMENT ÉCHAFAUDAGE', toast: 'ÉCHAFAUDAGE ROULANT DÉSTABILISÉ : Les tubulures et plateformes s\'abattent !', log: '[SCAFFOLD] Rupture des tirants de l\'échafaudage de maintenance technique Seegson.', fx: { type: 'triangle', f0: 240, f1: 60, dur: 0.75, cutoff: 900, vol: 0.6 }, anim: 'scaffold_platform' },
+        { id: 'smelter_spout_1', factory: 'createFiorinaSmelterTappingSpout', name: 'Goulotte de Fonderie Fiorina', x: -32, z: 78, hx: 1.5, hz: 0.8, radius: 9.0, damage: 250, color: 0xd97706, label: 'DÉBORDEMENT FONTE LIQUIDE', toast: 'GOULOTTE DE DÉCANTATION CÉDÉE : Torrent d\'acier incandescent sur les dalles !', log: '[SMELTER SPOUT] Débordement de la goulotte de coulée du haut fourneau Fiorina.', fx: { type: 'sawtooth', f0: 160, f1: 30, dur: 1.0, cutoff: 800, vol: 0.65 }, anim: 'spout_molten_stream' }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -13037,6 +13066,7 @@
       this.updateAmbientDustMotes(safeDelta);
       this.updateStructuralTension(safeDelta);
       this.updateCameraStalkFOV(safeDelta);
+      this.updateAmbientDroplets(safeDelta);
 
       // Audit QA #25 : Frustum culling optimisé et masquage automatique des props hors champ à plus de 45m
       this.cullingTimer = (this.cullingTimer || 0) + safeDelta;
@@ -19984,7 +20014,7 @@
     }
 
     // -------------------------------------------------------------------------
-    // Chantiers 301 à 320 : Props générique Vagues 31 & 32 (déclenchement acide [X] / physique [E])
+    // Chantiers 301 à 330 : Props générique Vagues 31, 32 & 33 (déclenchement acide [X] / physique [E])
     // -------------------------------------------------------------------------
     triggerWave31Prop(prop, isChain = false) {
       if (!prop || prop.isTriggered) return false;
@@ -19995,18 +20025,33 @@
       } else {
         audioManager.playProceduralPropFx?.(prop.fx, prop.x, prop.z);
       }
+      if (prop.id.includes('airlock')) {
+        audioManager.playAirlockPressureHiss?.(prop.x, prop.z);
+      }
       rendererEngine.addScreenShake?.(isChain ? 0.75 : 0.6, 0.4);
+      rendererEngine.addDirectionalScreenShake?.(prop.x - playerCreature.x, prop.z - playerCreature.z, isChain ? 0.8 : 0.55);
       window.HiveSystems?.vfx?.burst?.(prop.x, prop.z, prop.color, 55, 0.4, 3.2);
       window.HiveSystems?.vfx?.ring?.(prop.x, prop.z, prop.color, prop.radius + 2);
 
       let victims = 0;
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {
-        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - prop.x, h.z - prop.z) <= prop.radius) {
-          h.takeDamage?.(prop.damage, playerCreature);
-          h.staggerTimer = 3.5;
-          victims++;
-          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.1, h.z, `-${prop.damage} ${prop.label} !`, '#' + prop.color.toString(16).padStart(6, '0'), true);
+        if (!h.isIncapacitated && !h.isCocooned) {
+          const d = Math.hypot(h.x - prop.x, h.z - prop.z);
+          if (d <= prop.radius) {
+            h.takeDamage?.(prop.damage, playerCreature);
+            h.staggerTimer = 3.5;
+            // Audit QA #113 : Projection cinétique violente des corps humains sous le blast
+            if (d > 0.1) {
+              const pushForce = Math.max(1.5, 4.2 - d * 0.35);
+              const pushX = ((h.x - prop.x) / d) * pushForce;
+              const pushZ = ((h.z - prop.z) / d) * pushForce;
+              h.x += pushX;
+              h.z += pushZ;
+            }
+            victims++;
+            window.HiveSystems?.vfx?.floatingText?.(h.x, 3.1, h.z, `-${prop.damage} ${prop.label} !`, '#' + prop.color.toString(16).padStart(6, '0'), true);
+          }
         }
       });
       // Audit QA #103 : Adrénaline de chasse — un piège environnemental réussi restaure la réserve de chasse
@@ -20176,6 +20221,19 @@
         rendererEngine.camera.fov += (targetFov - curFov) * Math.min(1.0, safeDelta * 2.8);
         rendererEngine.camera.updateProjectionMatrix();
       }
+    }
+
+    // Audit QA #112 : Condensation et Gouttes de Suintement Industrielles
+    updateAmbientDroplets(safeDelta) {
+      this.dropletTimer -= safeDelta;
+      if (this.dropletTimer > 0) return;
+      this.dropletTimer = 0.4 + Math.random() * 0.3;
+      const wetProps = (this.wave31Props || []).filter((p) => p.mesh && (p.id.includes('sump') || p.id.includes('airlock') || p.id.includes('sludge') || p.id.includes('hydro')) && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 22);
+      if (wetProps.length === 0) return;
+      const p = wetProps[Math.floor(Math.random() * wetProps.length)];
+      const ox = (Math.random() - 0.5) * 2.2;
+      const oz = (Math.random() - 0.5) * 2.2;
+      window.HiveSystems?.vfx?.burst?.(p.x + ox, p.z + oz, 0x38bdf8, 1, 0.25, 0.45);
     }
 
     updateBlastFurnaceTuyeres(safeDelta) {

@@ -169,7 +169,19 @@
     mercenary_smuggler_pirate: 'mercenary_smuggler_pirate',
     smuggler: 'mercenary_smuggler_pirate',
     pirate: 'mercenary_smuggler_pirate',
-    bettycrew: 'mercenary_smuggler_pirate'
+    bettycrew: 'mercenary_smuggler_pirate',
+    uscm_dropship_pilot: 'uscm_dropship_pilot',
+    dropshippilot: 'uscm_dropship_pilot',
+    ferro: 'uscm_dropship_pilot',
+    uscm_synthetic_bishop: 'uscm_synthetic_bishop',
+    bishop: 'uscm_synthetic_bishop',
+    synthmedic: 'uscm_synthetic_bishop',
+    weyland_ape_suit_specialist: 'weyland_ape_suit_specialist',
+    apesuit: 'weyland_ape_suit_specialist',
+    dogcatcher: 'weyland_ape_suit_specialist',
+    weyland_corporate_synth_guard: 'weyland_corporate_synth_guard',
+    corpsynth: 'weyland_corporate_synth_guard',
+    romulussynth: 'weyland_corporate_synth_guard'
   });
 
   // ---------------------------------------------------------------------------
@@ -2410,6 +2422,36 @@
         for (let side = -1; side <= 1; side += 2) {
           root.add(this._box(dark, { x: 0.09, y: 0.18, z: 0.42 }, { x: side * (profile.shoulderX + 0.12), y: torsoY - 0.7, z: 0.4 }, `pirate_heavy_pistol_${side}`, true));
         }
+      } else if (type === 'uscm_dropship_pilot') {
+        // Pilote de Dropship UD-4L USCM type Ferro (Aliens 1986) : casque de vol HGU-55/P à visière noire et carabine
+        const flightGreen = this._material('oliveDrab', { color: 0x365314, roughness: 0.55 });
+        const darkVisor = this._material('darkMetal', { color: 0x09090b, roughness: 0.12, metalness: 0.95 });
+        root.add(this._ellipsoid(flightGreen, { x: 0.36, y: 0.38, z: 0.38 }, { x: 0, y: torsoY + 1.28, z: 0.04 }, 'pilot_flight_helmet', 14));
+        root.add(this._box(darkVisor, { x: 0.32, y: 0.16, z: 0.12 }, { x: 0, y: torsoY + 1.28, z: 0.36 }, 'pilot_tinted_visor'));
+        root.add(this._box(dark, { x: 0.1, y: 0.2, z: 0.52 }, { x: profile.shoulderX + 0.14, y: torsoY - 0.68, z: 0.42 }, 'pilot_carbine_sidearm', true));
+      } else if (type === 'uscm_synthetic_bishop') {
+        // Technicien Synthétique USCM type Bishop 341-B (Aliens 1986) : combinaison bleue Sulaco et scanner médical
+        const sulacoBlue = this._material('fabric', { color: 0x1e3a8a, roughness: 0.65 });
+        const scannerGlow = this._material('emissiveDisplay', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.0 });
+        root.add(this._box(sulacoBlue, { x: profile.torsoWidth * 1.04, y: 0.9, z: 0.48 }, { x: 0, y: torsoY + 0.05, z: 0 }, 'bishop_tech_jumpsuit', true));
+        root.add(this._box(dark, { x: 0.18, y: 0.12, z: 0.26 }, { x: -profile.shoulderX - 0.12, y: torsoY - 0.65, z: 0.36 }, 'bishop_biomedical_scanner'));
+        root.add(this._box(scannerGlow, { x: 0.14, y: 0.04, z: 0.18 }, { x: -profile.shoulderX - 0.12, y: torsoY - 0.58, z: 0.36 }, 'bishop_scanner_screen'));
+      } else if (type === 'weyland_ape_suit_specialist') {
+        // Spécialiste Weyland-Yutani en combinaison blindée APE Suit "Dog Catcher" (Alien 3 / Fireteam Elite)
+        const apeRed = this._material('industrial', { color: 0xdc2626, roughness: 0.4, metalness: 0.45 });
+        const apeWhite = this._material('lightMetal', { color: 0xf8fafc, roughness: 0.35, metalness: 0.5 });
+        const goldGlass = this._material('emissiveAmber', { color: 0xfbbf24, emissive: 0xd97706, emissiveIntensity: 1.4 });
+        root.add(this._box(apeWhite, { x: profile.torsoWidth * 1.22, y: 1.05, z: 0.62 }, { x: 0, y: torsoY + 0.08, z: 0 }, 'ape_suit_heavy_plastron', true));
+        root.add(this._ellipsoid(apeRed, { x: 0.42, y: 0.44, z: 0.42 }, { x: 0, y: torsoY + 1.3, z: 0.04 }, 'ape_suit_sealed_hood', 14));
+        root.add(this._box(goldGlass, { x: 0.28, y: 0.16, z: 0.1 }, { x: 0, y: torsoY + 1.28, z: 0.42 }, 'ape_suit_thermal_visor'));
+        root.add(this._box(dark, { x: 0.14, y: 0.24, z: 0.88 }, { x: profile.shoulderX + 0.18, y: torsoY - 0.65, z: 0.48 }, 'ape_suit_capture_rifle', true));
+      } else if (type === 'weyland_corporate_synth_guard') {
+        // Garde Synthétique Corporatif Weyland-Yutani (Alien: Romulus / Isolation)
+        const corpGrey = this._material('industrial', { color: 0x334155, roughness: 0.45, metalness: 0.7 });
+        const amberEye = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.2 });
+        root.add(this._box(corpGrey, { x: profile.torsoWidth * 1.1, y: 0.95, z: 0.52 }, { x: 0, y: torsoY + 0.06, z: 0 }, 'corp_synth_ballistic_vest', true));
+        root.add(this._box(amberEye, { x: 0.26, y: 0.07, z: 0.06 }, { x: 0, y: torsoY + 1.28, z: 0.36 }, 'corp_synth_optic_bar'));
+        root.add(this._box(dark, { x: 0.11, y: 0.22, z: 0.78 }, { x: profile.shoulderX + 0.15, y: torsoY - 0.68, z: 0.46 }, 'corp_synth_f44aa_rifle', true));
       }
     }
 
@@ -3610,6 +3652,10 @@
       if (normalizedCaste === 'chrysalis_warrior' || normalizedCaste === 'chrysalis') return this._createUprightAdult('chrysalis_warrior');
       if (normalizedCaste === 'lurker') return this._createUprightAdult('lurker');
       if (normalizedCaste === 'gorilla_alien' || normalizedCaste === 'gorilla') return this._createUprightAdult('gorilla_alien');
+      if (normalizedCaste === 'empress') return this._createUprightAdult('empress');
+      if (normalizedCaste === 'pathogen_brute') return this._createUprightAdult('pathogen_brute');
+      if (normalizedCaste === 'grid_alien' || normalizedCaste === 'grid') return this._createUprightAdult('grid_alien');
+      if (normalizedCaste === 'defender') return this._createUprightAdult('defender');
       return this._createUprightAdult(normalizedCaste);
     }
 
@@ -3617,7 +3663,11 @@
       const T = this._three();
       const root = new T.Group();
       root.name = `adult_${caste}`;
-      const royal = caste === 'queen';
+      const royal = caste === 'queen' || caste === 'empress';
+      const empress = caste === 'empress';
+      const pathogenBrute = caste === 'pathogen_brute';
+      const gridAlien = caste === 'grid_alien';
+      const defender = caste === 'defender';
       const palatine = caste === 'palatine';
       const guardian = caste === 'praetorian';
       const warrior = caste === 'warrior';
@@ -3651,9 +3701,13 @@
       const lurker = caste === 'lurker';
       const gorillaAlien = caste === 'gorilla_alien';
 
-      const scale = queenMother ? 1.75 : (flyingQueen ? 1.58 : (king ? 1.62 : (deaconess ? 1.55 : (raven ? 1.48 : (abomination ? 1.48 : (royal ? 1.42 : (alpha ? 1.38 : (gorillaAlien ? 1.36 : (newborn ? 1.35 : (deaconAdult ? 1.34 : (charger ? 1.32 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (chrysalisWarrior ? 1.25 : (spiderAlien ? 1.2 : (snakeAlien ? 1.18 : (pathogenStalker ? 1.16 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (warrior ? 1.06 : (infiltrator ? 1.05 : (lurker ? 1.04 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1))))))))))))))))))))))))))))));
+      const scale = queenMother ? 1.75 : (empress ? 1.65 : (flyingQueen ? 1.58 : (king ? 1.62 : (deaconess ? 1.55 : (raven ? 1.48 : (abomination ? 1.48 : (pathogenBrute ? 1.44 : (royal ? 1.42 : (alpha ? 1.38 : (gorillaAlien ? 1.36 : (newborn ? 1.35 : (deaconAdult ? 1.34 : (charger ? 1.32 : (palatine ? 1.28 : (guardian ? 1.24 : (carrier ? 1.22 : (predalien ? 1.32 : (chrysalisWarrior ? 1.25 : (defender ? 1.18 : (spiderAlien ? 1.2 : (snakeAlien ? 1.18 : (pathogenStalker ? 1.16 : (gridAlien ? 1.15 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (warrior ? 1.06 : (infiltrator ? 1.05 : (lurker ? 1.04 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1))))))))))))))))))))))))))))))))));
       let chitinColor = 0x0b1518;
-      if (royal) chitinColor = 0x221033;
+      if (empress) chitinColor = 0x31102f; // Matriarche Ancienne Empress (AvP 2000 / 2010)
+      else if (pathogenBrute) chitinColor = 0xdbeafe; // Brute Mutante Pathogène A0-3959X (Fireteam Elite Pathogen)
+      else if (gridAlien) chitinColor = 0x0f172a; // Alpha Guerrier Grid balafré (AVP 2004)
+      else if (defender) chitinColor = 0x1e293b; // Defender à bouclier chitineux blindé (Colonial Marines / AvP)
+      else if (royal) chitinColor = 0x221033;
       else if (queenMother) chitinColor = 0x150824; // Reine Mère Suprême Obsidienne Nacrée Pourpre (Aliens: Female War)
       else if (flyingQueen) chitinColor = 0x1e102e; // Reine Ailée Royale Pourpre Abyssal (Aliens: Genocide 1991)
       else if (gorillaAlien) chitinColor = 0x27201c; // Chitine massive brun terre Gorilla Alien (Aliens Kenner 1992 / Genocide)
@@ -4313,6 +4367,39 @@
         const stonePlate = this._material('industrial', { color: 0x78716c, roughness: 0.85, metalness: 0.2 });
         root.add(this._box(stonePlate, { x: 1.15 * scale, y: 0.55 * scale, z: 1.35 * scale }, { x: 0, y: 4.8 * scale, z: 0.2 * scale }, 'chrysalis_petrified_crest', true));
         root.add(this._box(stonePlate, { x: 0.95 * scale, y: 1.15 * scale, z: 0.35 * scale }, { x: 0, y: 3.15 * scale, z: 0.45 * scale }, 'chrysalis_chest_carapace', true));
+      }
+      if (empress) {
+        // Matriarche Empress Ancienne (AvP 2000 / 2010) : couronne royale dorée-pourpre et épines dorsales impériales
+        const goldChitin = this._material('chitin', { color: 0xb45309, emissive: 0x78350f, emissiveIntensity: 0.5, roughness: 0.22, metalness: 0.82 });
+        root.add(this._box(goldChitin, { x: 2.0 * scale, y: 0.95 * scale, z: 2.2 * scale }, { x: 0, y: 5.35 * scale, z: -0.4 * scale }, 'empress_imperial_crown', true));
+        for (let s = -2; s <= 2; s++) {
+          root.add(this._coneAlong(goldChitin, { x: s * 0.38 * scale, y: 5.65 * scale, z: -0.9 * scale }, { x: s * 0.15, y: 0.4, z: -1 }, 0.08 * scale, 0.75 * scale, `empress_crown_horn_${s + 2}`, 8));
+        }
+      }
+      if (pathogenBrute) {
+        // Pathogen Brute (Aliens: Fireteam Elite - Pathogen) : excroissances fongiques luminescentes et bras droit hypertrophié
+        const fungalWhite = this._material('bone', { color: 0xf8fafc, roughness: 0.4 });
+        const pathogenGlow = this._material('emissiveGreen', { color: 0x34d399, emissive: 0x059669, emissiveIntensity: 2.4 });
+        root.add(this._ellipsoid(fungalWhite, { x: 0.58 * scale, y: 0.52 * scale, z: 0.55 * scale }, { x: 0.95 * scale, y: 3.6 * scale, z: 0.1 * scale }, 'pathogen_brute_mutant_shoulder', 14));
+        for (let f = 0; f < 6; f++) {
+          root.add(this._coneAlong(pathogenGlow, { x: ((f % 2 === 0 ? 1 : -1) * 0.42) * scale, y: (3.0 + f * 0.25) * scale, z: -0.3 * scale }, { x: 0, y: 0.4, z: -1 }, 0.09 * scale, 0.52 * scale, `pathogen_brute_spire_${f}`, 7));
+        }
+      }
+      if (gridAlien) {
+        // Grid Xenomorph Alpha (Alien vs. Predator 2004) : cicatrice quadrillée de filet plasmique Yautja sur le dôme
+        const scarGlow = this._material('emissiveGreen', { color: 0x84cc16, emissive: 0x4d7c0f, emissiveIntensity: 2.2 });
+        for (let g = -1; g <= 1; g++) {
+          root.add(this._box(scarGlow, { x: 0.62 * scale, y: 0.03 * scale, z: 0.03 * scale }, { x: 0, y: (4.86 + g * 0.05) * scale, z: (0.45 + g * 0.22) * scale }, `grid_scar_lat_${g + 1}`));
+          root.add(this._box(scarGlow, { x: 0.03 * scale, y: 0.03 * scale, z: 0.85 * scale }, { x: g * 0.16 * scale, y: 4.88 * scale, z: 0.45 * scale }, `grid_scar_lon_${g + 1}`));
+        }
+      }
+      if (defender) {
+        // Defender Xenomorph (Colonial Marines / AvP) : bouclier céphalique blindé et grèves tibiales chitineuses
+        const defenderPlate = this._material('darkMetal', { color: 0x334155, roughness: 0.35, metalness: 0.8 });
+        root.add(this._box(defenderPlate, { x: 1.18 * scale, y: 0.62 * scale, z: 1.38 * scale }, { x: 0, y: 4.78 * scale, z: 0.35 * scale }, 'defender_cephalic_shield', true));
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._box(defenderPlate, { x: 0.26 * scale, y: 0.85 * scale, z: 0.32 * scale }, { x: side * 0.52 * scale, y: 1.05 * scale, z: 0.18 * scale }, `defender_tibial_greave_${side}`, true));
+        }
       }
       if (!newborn) {
         this._addTail(
@@ -9094,6 +9181,98 @@
           root.add(this._box(dark, { x: 1.8, y: 0.32, z: 0.06 }, { x: 0, y: 0.3 + d * 0.45, z: 0.53 }, `morgue_drawer_front_${d}`));
           root.add(this._box(frost, { x: 0.3, y: 0.05, z: 0.04 }, { x: 0, y: 0.38 + d * 0.45, z: 0.58 }, `morgue_frost_handle_${d}`));
         }
+      } else if (normalizedType === 'nostromo_exhaust_diffuser_cone') {
+        // Chantier 411 : Nostromo Main Thruster Exhaust Diffuser Cone (Alien 1979)
+        const dark = this._material('darkMetal', { color: 0x1e293b, roughness: 0.72, metalness: 0.88 });
+        const steel = this._material('lightMetal', { color: 0x94a3b8, roughness: 0.42, metalness: 0.85 });
+        const ember = this._material('emissiveFlame', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 2.2 });
+        root.add(this._box(dark, { x: 2.1, y: 0.28, z: 2.1 }, { x: 0, y: 0.14, z: 0 }, 'diffuser_mounting_plinth', true));
+        root.add(this._cylinder(dark, 0.92, 0.55, 1.8, { x: 0, y: 1.15, z: 0 }, { x: 0, y: 0, z: 0 }, 'diffuser_nozzle_bell', true));
+        for (let r = 0; r < 3; r++) {
+          root.add(this._torus(steel, 0.65 + r * 0.1, 0.04, { x: 0, y: 0.65 + r * 0.5, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, `diffuser_cooling_ring_${r}`));
+        }
+        root.add(this._cylinder(ember, 0.36, 0.36, 0.25, { x: 0, y: 1.95, z: 0 }, { x: 0, y: 0, z: 0 }, 'diffuser_afterburner_core'));
+      } else if (normalizedType === 'hadley_turbine_test_stand') {
+        // Chantier 412 : Hadley's Hope Atmospheric Processor Turbine Test Stand (Aliens 1986)
+        const yellow = this._material('hazardYellow', { color: 0xeab308, roughness: 0.45, metalness: 0.4 });
+        const dark = this._material('darkMetal', { color: 0x1f2937, roughness: 0.7, metalness: 0.85 });
+        const steel = this._material('lightMetal', { color: 0xe2e8f0, roughness: 0.3, metalness: 0.9 });
+        root.add(this._box(yellow, { x: 2.2, y: 0.6, z: 1.2 }, { x: 0, y: 0.3, z: 0 }, 'turbine_test_cradle', true));
+        root.add(this._cylinder(dark, 0.52, 0.52, 1.7, { x: 0, y: 1.15, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'turbine_stator_casing', true));
+        root.add(this._cylinder(steel, 0.46, 0.46, 0.14, { x: 0.88, y: 1.15, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'turbine_axial_impeller'));
+        root.add(this._box(dark, { x: 0.45, y: 1.1, z: 0.45 }, { x: -0.9, y: 1.1, z: 0.38 }, 'turbine_sensor_pedestal', true));
+      } else if (normalizedType === 'fiorina_oil_quench_tank') {
+        // Chantier 413 : Fiorina 161 Foundry Boiling Oil Quench Tank (Alien 3)
+        const rust = this._material('rust', { color: 0x78350f, roughness: 0.88, metalness: 0.35 });
+        const darkOil = this._material('darkMetal', { color: 0x09090b, roughness: 0.15, metalness: 0.9 });
+        const hotGlow = this._material('emissiveFlame', { color: 0xf97316, emissive: 0xdc2626, emissiveIntensity: 2.0 });
+        root.add(this._cylinder(rust, 1.05, 1.05, 1.35, { x: 0, y: 0.68, z: 0 }, { x: 0, y: 0, z: 0 }, 'quench_tank_drum', true));
+        root.add(this._cylinder(darkOil, 0.96, 0.96, 0.08, { x: 0, y: 1.28, z: 0 }, { x: 0, y: 0, z: 0 }, 'quench_boiling_oil_surface'));
+        root.add(this._box(hotGlow, { x: 0.9, y: 0.35, z: 0.9 }, { x: 0, y: 1.48, z: 0 }, 'quench_dipping_basket'));
+      } else if (normalizedType === 'auriga_genetic_sequencer_rack') {
+        // Chantier 414 : USM Auriga Cloning Lab Genetic Sequencer Rack (Alien Resurrection)
+        const slate = this._material('darkMetal', { color: 0x1e293b, roughness: 0.55, metalness: 0.85 });
+        const bioGreen = this._material('emissiveGreen', { color: 0x34d399, emissive: 0x059669, emissiveIntensity: 2.3 });
+        const steel = this._material('lightMetal', { color: 0xcbd5e1, roughness: 0.3, metalness: 0.85 });
+        root.add(this._box(slate, { x: 1.9, y: 2.2, z: 0.85 }, { x: 0, y: 1.1, z: 0 }, 'sequencer_main_cabinet', true));
+        for (let c = -1; c <= 1; c++) {
+          root.add(this._cylinder(bioGreen, 0.14, 0.14, 1.35, { x: c * 0.52, y: 1.2, z: 0.38 }, { x: 0, y: 0, z: 0 }, `sequencer_dna_column_${c + 1}`));
+        }
+        root.add(this._box(steel, { x: 1.7, y: 0.18, z: 0.25 }, { x: 0, y: 1.98, z: 0.38 }, 'sequencer_laser_header'));
+      } else if (normalizedType === 'romulus_zero_g_tether_winch') {
+        // Chantier 415 : Renaissance Station Zero-G Magnetic Tether Winch (Alien: Romulus)
+        const orange = this._material('hazardOrange', { color: 0xf97316, roughness: 0.45, metalness: 0.4 });
+        const dark = this._material('darkMetal', { color: 0x18181b, roughness: 0.72, metalness: 0.88 });
+        const strobe = this._material('emissiveAmber', { color: 0xfbbf24, emissive: 0xd97706, emissiveIntensity: 2.4 });
+        root.add(this._box(dark, { x: 1.6, y: 0.35, z: 1.2 }, { x: 0, y: 0.18, z: 0 }, 'tether_winch_pedestal', true));
+        root.add(this._cylinder(orange, 0.48, 0.48, 1.1, { x: 0, y: 0.9, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'tether_cable_spool', true));
+        root.add(this._box(dark, { x: 0.35, y: 0.95, z: 0.35 }, { x: 0.68, y: 0.85, z: 0 }, 'tether_motor_housing', true));
+        root.add(this._cylinder(strobe, 0.09, 0.09, 0.16, { x: 0.68, y: 1.42, z: 0 }, { x: 0, y: 0, z: 0 }, 'tether_warning_strobe'));
+      } else if (normalizedType === 'sevastopol_working_joe_diagnostic_pod') {
+        // Chantier 416 : Sevastopol Seegson Working Joe Diagnostic Pod (Alien: Isolation)
+        const white = this._material('lightMetal', { color: 0xf1f5f9, roughness: 0.35, metalness: 0.55 });
+        const orange = this._material('hazardOrange', { color: 0xea580c, roughness: 0.45, metalness: 0.35 });
+        const crtGlow = this._material('emissiveGreen', { color: 0x4ade80, emissive: 0x16a34a, emissiveIntensity: 2.0 });
+        root.add(this._box(white, { x: 1.5, y: 2.35, z: 1.0 }, { x: 0, y: 1.18, z: 0 }, 'joe_pod_alcove_shell', true));
+        root.add(this._torus(orange, 0.42, 0.06, { x: 0, y: 1.68, z: 0.32 }, { x: Math.PI / 2, y: 0, z: 0 }, 'joe_neural_scan_halo'));
+        root.add(this._box(crtGlow, { x: 0.42, y: 0.32, z: 0.05 }, { x: 0.52, y: 1.35, z: 0.52 }, 'joe_diagnostic_crt'));
+      } else if (normalizedType === 'hadley_weather_radar_radome') {
+        // Chantier 417 : Hadley's Hope Atmospheric Weather Radar Radome (Aliens 1986)
+        const dark = this._material('darkMetal', { color: 0x334155, roughness: 0.7, metalness: 0.82 });
+        const whiteDome = this._material('lightMetal', { color: 0xf8fafc, roughness: 0.32, metalness: 0.4 });
+        const amber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.5 });
+        root.add(this._box(dark, { x: 1.6, y: 1.1, z: 1.6 }, { x: 0, y: 0.55, z: 0 }, 'radome_truss_base', true));
+        root.add(this._ellipsoid(whiteDome, { x: 0.92, y: 0.92, z: 0.92 }, { x: 0, y: 1.75, z: 0 }, 'radome_geodesic_sphere', 18));
+        root.add(this._cylinder(amber, 0.08, 0.08, 0.18, { x: 0, y: 2.72, z: 0 }, { x: 0, y: 0, z: 0 }, 'radome_storm_beacon'));
+      } else if (normalizedType === 'uscm_ua571_ammo_crate_pallet') {
+        // Chantier 418 : USCM UA 571-C Sentry Gun 10x28mm Ammo Crate Pallet (Aliens 1986)
+        const olive = this._material('oliveDrab', { color: 0x3f4f24, roughness: 0.65, metalness: 0.35 });
+        const dark = this._material('darkMetal', { color: 0x1c1917, roughness: 0.75, metalness: 0.85 });
+        const yellow = this._material('hazardYellow', { color: 0xeab308, roughness: 0.5, metalness: 0.3 });
+        root.add(this._box(dark, { x: 2.0, y: 0.18, z: 1.5 }, { x: 0, y: 0.09, z: 0 }, 'ua571_steel_pallet', true));
+        for (let c = 0; c < 4; c++) {
+          const cx = (c % 2 === 0 ? -0.45 : 0.45);
+          const cz = (c < 2 ? -0.32 : 0.32);
+          root.add(this._box(olive, { x: 0.82, y: 0.85, z: 0.58 }, { x: cx, y: 0.6, z: cz }, `ua571_ammo_drum_crate_${c}`, true));
+        }
+        root.add(this._box(yellow, { x: 1.85, y: 0.08, z: 1.35 }, { x: 0, y: 1.06, z: 0 }, 'ua571_cargo_straps'));
+      } else if (normalizedType === 'sevastopol_plasma_torch_recharger') {
+        // Chantier 419 : Sevastopol Station Plasma Torch Recharger Kiosk (Alien: Isolation)
+        const yellow = this._material('hazardYellow', { color: 0xfacc15, roughness: 0.45, metalness: 0.35 });
+        const dark = this._material('darkMetal', { color: 0x27272a, roughness: 0.75, metalness: 0.85 });
+        const plasmaBlue = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.4 });
+        root.add(this._box(yellow, { x: 1.3, y: 1.9, z: 0.8 }, { x: 0, y: 0.95, z: 0 }, 'plasma_recharger_cabinet', true));
+        root.add(this._cylinder(plasmaBlue, 0.16, 0.16, 1.1, { x: -0.32, y: 1.05, z: 0.42 }, { x: 0, y: 0, z: 0 }, 'plasma_gas_cell_l'));
+        root.add(this._cylinder(plasmaBlue, 0.16, 0.16, 1.1, { x: 0.32, y: 1.05, z: 0.42 }, { x: 0, y: 0, z: 0 }, 'plasma_gas_cell_r'));
+        root.add(this._box(dark, { x: 0.5, y: 0.25, z: 0.25 }, { x: 0, y: 1.65, z: 0.45 }, 'plasma_torch_cradle'));
+      } else if (normalizedType === 'fiorina_infirmary_incinerator_chute') {
+        // Chantier 420 : Fiorina 161 Infirmary Medical Waste Incinerator Chute (Alien 3)
+        const rust = this._material('rust', { color: 0x7c2d12, roughness: 0.85, metalness: 0.4 });
+        const dark = this._material('darkMetal', { color: 0x1c1917, roughness: 0.8, metalness: 0.85 });
+        const fire = this._material('emissiveFlame', { color: 0xf97316, emissive: 0xdc2626, emissiveIntensity: 2.4 });
+        root.add(this._box(rust, { x: 1.6, y: 2.1, z: 1.1 }, { x: 0, y: 1.05, z: 0 }, 'incinerator_chute_body', true));
+        root.add(this._box(dark, { x: 1.0, y: 0.75, z: 0.28 }, { x: 0, y: 1.25, z: 0.62 }, 'incinerator_hopper_door'));
+        root.add(this._cylinder(fire, 0.16, 0.16, 0.08, { x: 0, y: 1.8, z: 0.56 }, { x: Math.PI * 0.5, y: 0, z: 0 }, 'incinerator_pilot_window'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -11801,10 +11980,29 @@
     // Unités et Castes Manquantes
     createLurker() { return this.createAdult('lurker'); }
     createGorillaAlien() { return this.createAdult('gorilla_alien'); }
+    createEmpress() { return this.createAdult('empress'); }
+    createPathogenBrute() { return this.createAdult('pathogen_brute'); }
+    createGridAlien() { return this.createAdult('grid_alien'); }
+    createDefender() { return this.createAdult('defender'); }
     createWeylandCombatAndroid(compact = false) { return this.createHuman('weyland_combat_android', compact); }
     createWeylandContainmentCommando(compact = false) { return this.createHuman('weyland_containment_commando', compact); }
     createSeegsonIndustrialJoe(compact = false) { return this.createHuman('seegson_industrial_joe', compact); }
     createMercenarySmugglerPirate(compact = false) { return this.createHuman('mercenary_smuggler_pirate', compact); }
+    createUscmDropshipPilot(compact = false) { return this.createHuman('uscm_dropship_pilot', compact); }
+    createUscmSyntheticBishop(compact = false) { return this.createHuman('uscm_synthetic_bishop', compact); }
+    createWeylandApeSuitSpecialist(compact = false) { return this.createHuman('weyland_ape_suit_specialist', compact); }
+    createWeylandCorporateSynthGuard(compact = false) { return this.createHuman('weyland_corporate_synth_guard', compact); }
+    // Vague 42 Props
+    createNostromoExhaustDiffuserCone() { return this.createIndustrialProp('nostromo_exhaust_diffuser_cone'); }
+    createHadleyTurbineTestStand() { return this.createIndustrialProp('hadley_turbine_test_stand'); }
+    createFiorinaOilQuenchTank() { return this.createIndustrialProp('fiorina_oil_quench_tank'); }
+    createAurigaGeneticSequencerRack() { return this.createIndustrialProp('auriga_genetic_sequencer_rack'); }
+    createRomulusZeroGTetherWinch() { return this.createIndustrialProp('romulus_zero_g_tether_winch'); }
+    createSevastopolWorkingJoeDiagnosticPod() { return this.createIndustrialProp('sevastopol_working_joe_diagnostic_pod'); }
+    createHadleyWeatherRadarRadome() { return this.createIndustrialProp('hadley_weather_radar_radome'); }
+    createUscmUa571AmmoCratePallet() { return this.createIndustrialProp('uscm_ua571_ammo_crate_pallet'); }
+    createSevastopolPlasmaTorchRecharger() { return this.createIndustrialProp('sevastopol_plasma_torch_recharger'); }
+    createFiorinaInfirmaryIncineratorChute() { return this.createIndustrialProp('fiorina_infirmary_incinerator_chute'); }
   }
 
   // ---------------------------------------------------------------------------

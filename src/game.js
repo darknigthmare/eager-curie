@@ -7183,6 +7183,16 @@
     playDistantMetalCreak(x = null, z = null) {
       this.playProceduralPropFx({ type: 'sawtooth', f0: 210, f1: 95, dur: 1.4, cutoff: 520, vol: 0.28, radius: 70 }, x, z);
     }
+
+    // Audit QA #108 : Tension Structurelle Imminente (grincement lourd avant rupture)
+    playStructuralTensionWarning(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'triangle', f0: 95, f1: 320, dur: 0.8, cutoff: 650, vol: 0.35, radius: 35 }, x, z);
+    }
+
+    // Audit QA #106 : Détonation Secondaire en Réaction en Chaîne
+    playSecondaryDetonation(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sawtooth', f0: 140, f1: 30, dur: 0.95, cutoff: 850, vol: 0.55, radius: 50 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -8746,6 +8756,12 @@
       this.wave31Props = [];
       this.creakTimer = 12;
       this.interactPromptTimer = 0;
+      // Chantiers 311 à 320 & Audits QA 106 à 110 (Level Design 1:1)
+      this.chainQueue = [];
+      this.tensionTimer = 0;
+      this.dustTimer = 0;
+      this.comboCount = 0;
+      this.comboTimer = 0;
     }
 
     buildMap() {
@@ -12380,7 +12396,20 @@
         { id: 'control_rod_1', factory: 'createSevastopolControlRodGantry', name: 'Portique Barres de Contrôle Réacteur Sevastopol', x: 5, z: -75, hx: 1.7, hz: 0.5, radius: 9.0, damage: 220, color: 0x06b6d4, label: 'ÉJECTION DES BARRES DE CONTRÔLE', toast: 'BARRES DE CONTRÔLE ÉJECTÉES : Pic de radiations dans le réacteur !', log: '[CONTROL RODS] Retrait d\'urgence des barres de contrôle du réacteur Sevastopol.', fx: { type: 'sine', f0: 60, f1: 1200, dur: 1.0, cutoff: 2500, vol: 0.55 }, anim: 'control_rod_0', alarm: true },
         { id: 'ingot_rack_1', factory: 'createFiorinaIngotMoldRack', name: 'Râtelier Lingots de Plomb Fiorina', x: 5, z: 80, hx: 1.6, hz: 0.7, radius: 8.0, damage: 240, color: 0xea580c, label: 'COULÉE DE PLOMB RENVERSÉE', toast: 'RÂTELIER DE LINGOTS RENVERSÉ : Plomb en fusion sur le pont !', log: '[INGOT RACK] Renversement des moules à lingots de plomb incandescents.', fx: { type: 'sawtooth', f0: 130, f1: 35, dur: 0.85, cutoff: 800, vol: 0.6 }, anim: 'ingot_2' }
       ];
-      wave31Defs.forEach((def) => {
+      // VAGUE 32 (Chantiers 311 à 320) : Réfectoire, Serres, Chapelle, Passerelle, Cryo & Infirmerie
+      const wave32Defs = [
+        { id: 'galley_table_1', factory: 'createNostromoGalleyTable', name: 'Table du Réfectoire Nostromo', x: -35, z: -72, hx: 1.5, hz: 0.7, radius: 7.0, damage: 140, color: 0xf59e0b, label: 'ÉCLABOUSSURE DE CAFÉ BOUILLANT', toast: 'DISTRIBUTEUR DE CAFÉ SURCHAUFFÉ : Jet de vapeur dans le réfectoire !', log: '[GALLEY] Surpression de la machine à café du réfectoire du Nostromo.', fx: { type: 'sawtooth', f0: 700, f1: 200, dur: 0.6, cutoff: 2500, vol: 0.4 }, anim: 'galley_coffee_led' },
+        { id: 'hydro_planter_1', factory: 'createHadleyHydroponicPlanter', name: 'Serre Hydroponique Hadley', x: 65, z: -65, hx: 1.6, hz: 0.9, radius: 7.5, damage: 165, color: 0xa855f7, label: 'SURTENSION LAMPES UV', toast: 'LAMPES UV DE SERRE EN SURCHARGE : Rayonnement et verre pulvérisé !', log: '[HYDROPONICS] Court-circuit du rail d\'éclairage de la serre coloniale.', fx: { type: 'square', f0: 1500, f1: 250, dur: 0.6, cutoff: 3500, vol: 0.45 }, anim: 'hydro_lamp' },
+        { id: 'chapel_altar_1', factory: 'createFiorinaChapelAltar', name: 'Autel de la Chapelle Fiorina', x: -60, z: 60, hx: 1.1, hz: 0.5, radius: 7.0, damage: 155, color: 0xfbbf24, label: 'EMBRASEMENT DE LA CHAPELLE', toast: 'CHAPELLE EMBRASÉE : Les cierges renversés enflamment la nef !', log: '[CHAPEL] Renversement du rack de cierges de la chapelle de Fiorina 161.', fx: { type: 'triangle', f0: 320, f1: 90, dur: 0.7, cutoff: 900, vol: 0.5 }, anim: 'chapel_candle_2' },
+        { id: 'command_console_1', factory: 'createAurigaCommandConsole', name: 'Console de Navigation Auriga', x: -72, z: 8, hx: 1.7, hz: 0.6, radius: 8.0, damage: 185, color: 0x06b6d4, label: 'SURCHARGE DE LA PASSERELLE', toast: 'CONSOLE DE COMMANDEMENT SURCHARGÉE : Écrans en implosion et arcs !', log: '[COMMAND BRIDGE] Surcharge de la console de navigation de l\'Auriga.', fx: { type: 'square', f0: 1100, f1: 160, dur: 0.7, cutoff: 3000, vol: 0.5 }, anim: 'bridge_screen_1' },
+        { id: 'cryo_pod_rack_1', factory: 'createRomulusCryoPodRack', name: 'Rack de Capsules Cryo Renaissance', x: 45, z: 68, hx: 1.6, hz: 0.7, radius: 8.0, damage: 195, color: 0x38bdf8, label: 'DÉGAZAGE CRYOGÉNIQUE', toast: 'CAPSULES CRYO ÉVENTRÉES : Dégazage d\'azote liquide dans la coursive !', log: '[CRYO PODS] Rupture des capsules d\'hypersommeil de Renaissance.', fx: { type: 'sine', f0: 3000, f1: 700, dur: 0.6, cutoff: 6000, vol: 0.45 }, anim: 'pod_glow_0' },
+        { id: 'medical_bed_1', factory: 'createSevastopolMedicalBed', name: 'Lit de Diagnostic Sevastopol', x: 30, z: 75, hx: 1.1, hz: 0.5, radius: 6.5, damage: 130, color: 0x22c55e, label: 'DÉCHARGE DU SCANNER', toast: 'SCANNER MÉDICAL DÉRÉGLÉ : Impulsion de diagnostic à pleine puissance !', log: '[MED BED] Emballement de l\'arche de diagnostic de l\'infirmerie Sevastopol.', fx: { type: 'sine', f0: 400, f1: 1600, dur: 0.7, cutoff: 3000, vol: 0.4 }, anim: 'scanner_arch' },
+        { id: 'hangar_hoist_1', factory: 'createHadleyHangarChainHoist', name: 'Palan à Chaîne du Hangar Hadley', x: 22, z: -58, hx: 1.6, hz: 0.5, radius: 7.5, damage: 210, color: 0xeab308, label: 'CHUTE DU PALAN', toast: 'PALAN DE HANGAR DÉCROCHÉ : Chaîne et crochet s\'abattent !', log: '[HANGAR HOIST] Rupture de la chaîne du palan du hangar des dropships.', fx: { type: 'sawtooth', f0: 500, f1: 70, dur: 0.7, cutoff: 1400, vol: 0.55 }, anim: 'hoist_hook' },
+        { id: 'smartgun_rig_1', factory: 'createUscmSmartgunRig', name: 'Banc de Calibration Smartgun USCM', x: -45, z: 32, hx: 0.8, hz: 0.6, radius: 6.5, damage: 175, color: 0x22c55e, label: 'RAFALE DE CALIBRATION', toast: 'BANC DE CALIBRATION DÉCLENCHÉ : Rafale de smartgun non maîtrisée !', log: '[SMARTGUN RIG] Tir de calibration incontrôlé du M56 sur son banc gyroscopique.', fx: { type: 'square', f0: 260, f1: 120, dur: 0.5, cutoff: 1800, vol: 0.6 }, anim: 'rig_gyro', spin: true },
+        { id: 'vending_row_1', factory: 'createSevastopolVendingRow', name: 'Distributeurs du Réfectoire Sevastopol', x: 48, z: 40, hx: 1.5, hz: 0.5, radius: 6.5, damage: 145, color: 0xef4444, label: 'DISTRIBUTEURS RENVERSÉS', toast: 'DISTRIBUTEURS RENVERSÉS : Le fracas de la tôle alerte la station !', log: '[VENDING] Basculement de la rangée de distributeurs du réfectoire Seegson.', fx: { type: 'triangle', f0: 220, f1: 50, dur: 0.6, cutoff: 700, vol: 0.55 }, anim: 'vend_face_1' },
+        { id: 'autopsy_table_1', factory: 'createFiorinaAutopsyTable', name: 'Table d\'Autopsie de l\'Infirmerie Fiorina', x: -25, z: 62, hx: 1.1, hz: 0.5, radius: 6.5, damage: 135, color: 0xfef9c3, label: 'LAMPE SCIALYTIQUE EN CHUTE', toast: 'SCIALYTIQUE ARRACHÉ : La lampe s\'écrase sur la table d\'autopsie !', log: '[AUTOPSY] Chute du scialytique de l\'infirmerie de Fiorina 161.', fx: { type: 'sine', f0: 1800, f1: 400, dur: 0.4, cutoff: 5000, vol: 0.45 }, anim: 'autopsy_lamp' }
+      ];
+      [...wave31Defs, ...wave32Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -13004,6 +13033,10 @@
       this.updateWave31Props(safeDelta);
       this.updateAmbientHullCreaks(safeDelta);
       this.updateInteractionPrompt(safeDelta);
+      this.updateChainReaction(safeDelta);
+      this.updateAmbientDustMotes(safeDelta);
+      this.updateStructuralTension(safeDelta);
+      this.updateCameraStalkFOV(safeDelta);
 
       // Audit QA #25 : Frustum culling optimisé et masquage automatique des props hors champ à plus de 45m
       this.cullingTimer = (this.cullingTimer || 0) + safeDelta;
@@ -19951,14 +19984,18 @@
     }
 
     // -------------------------------------------------------------------------
-    // Chantiers 301 à 310 : Props générique Vague 31 (déclenchement acide [X] / physique [E])
+    // Chantiers 301 à 320 : Props générique Vagues 31 & 32 (déclenchement acide [X] / physique [E])
     // -------------------------------------------------------------------------
-    triggerWave31Prop(prop) {
+    triggerWave31Prop(prop, isChain = false) {
       if (!prop || prop.isTriggered) return false;
       prop.isTriggered = true;
       prop.resetTimer = 14.0;
-      audioManager.playProceduralPropFx?.(prop.fx, prop.x, prop.z);
-      rendererEngine.addScreenShake?.(0.6, 0.4);
+      if (isChain) {
+        audioManager.playSecondaryDetonation?.(prop.x, prop.z);
+      } else {
+        audioManager.playProceduralPropFx?.(prop.fx, prop.x, prop.z);
+      }
+      rendererEngine.addScreenShake?.(isChain ? 0.75 : 0.6, 0.4);
       window.HiveSystems?.vfx?.burst?.(prop.x, prop.z, prop.color, 55, 0.4, 3.2);
       window.HiveSystems?.vfx?.ring?.(prop.x, prop.z, prop.color, prop.radius + 2);
 
@@ -19981,7 +20018,33 @@
           window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.8, playerCreature.z, '+12 RÉSERVE DE CHASSE', '#39ff14', false);
         }
       }
-      showToast(prop.toast);
+
+      // Audit QA #106 : Réaction en chaîne vers les props industriels adjacents (< 10m)
+      if (prop.damage >= 160) {
+        (this.wave31Props || []).forEach((otherProp) => {
+          if (otherProp !== prop && !otherProp.isTriggered) {
+            const dist = Math.hypot(otherProp.x - prop.x, otherProp.z - prop.z);
+            if (dist <= 10.0 && !this.chainQueue.some((item) => item.prop === otherProp)) {
+              this.chainQueue.push({ prop: otherProp, delay: 0.35 + Math.random() * 0.15 });
+            }
+          }
+        });
+      }
+
+      // Audit QA #110 : Combo environnemental Weyland-Yutani
+      this.comboTimer = 3.2;
+      this.comboCount++;
+      if (this.comboCount >= 2) {
+        const stage = window.gameInstance?.currentStage;
+        if (stage && typeof stage.huntReserve === 'number') {
+          stage.huntReserve = Math.min(100, stage.huntReserve + 8);
+          stage.updateReserveUI?.();
+        }
+        window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 3.6, playerCreature.z, `COMBO TACTIQUE x${this.comboCount} !`, '#f59e0b', true);
+        showToast(`COMBO ENVIRONNEMENTAL x${this.comboCount} : Dégâts en cascade Weyland-Yutani !`);
+      } else {
+        showToast(prop.toast);
+      }
       appendSensorLog(prop.log, 'alert');
       return true;
     }
@@ -20011,6 +20074,11 @@
         const pulse = 0.82 + 0.3 * Math.sin(t + idx * 1.3) + (p.isTriggered ? 0.5 : 0);
         p.emissiveMats.forEach((e) => { e.m.emissiveIntensity = e.base * pulse; });
       });
+
+      if (this.comboTimer > 0) {
+        this.comboTimer -= safeDelta;
+        if (this.comboTimer <= 0) this.comboCount = 0;
+      }
     }
 
     // Audit QA #101 : Grincements Métalliques Lointains de la Coque
@@ -20051,6 +20119,62 @@
         this.promptEl.style.display = 'block';
       } else {
         this.promptEl.style.display = 'none';
+      }
+    }
+
+    // Audit QA #106 : File de Réaction en Chaîne des Détonations Secondaires
+    updateChainReaction(safeDelta) {
+      if (!this.chainQueue || this.chainQueue.length === 0) return;
+      for (let i = this.chainQueue.length - 1; i >= 0; i--) {
+        const item = this.chainQueue[i];
+        item.delay -= safeDelta;
+        if (item.delay <= 0) {
+          this.chainQueue.splice(i, 1);
+          if (!item.prop.isTriggered) {
+            this.triggerWave31Prop(item.prop, true);
+          }
+        }
+      }
+    }
+
+    // Audit QA #107 : Poussières Volumétriques et Braises Flottantes Industrielles
+    updateAmbientDustMotes(safeDelta) {
+      this.dustTimer -= safeDelta;
+      if (this.dustTimer > 0) return;
+      this.dustTimer = 0.35 + Math.random() * 0.25;
+      const candidates = (this.wave31Props || []).filter((p) => p.mesh && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 24);
+      if (candidates.length === 0) return;
+      const p = candidates[Math.floor(Math.random() * candidates.length)];
+      const ox = (Math.random() - 0.5) * 3.5;
+      const oz = (Math.random() - 0.5) * 3.5;
+      const isHot = p.id.includes('ingot') || p.id.includes('chapel') || p.id.includes('fuel');
+      const col = isHot ? 0xf59e0b : 0x94a3b8;
+      window.HiveSystems?.vfx?.burst?.(p.x + ox, p.z + oz, col, 1, 0.35, 0.7);
+    }
+
+    // Audit QA #108 : Avertissement de Tension Structurelle avant Rupture Catastrophique
+    updateStructuralTension(safeDelta) {
+      this.tensionTimer -= safeDelta;
+      if (this.tensionTimer > 0) return;
+      const nearHeavy = (this.wave31Props || []).find((p) => !p.isTriggered && p.damage >= 180 && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 3.8);
+      if (nearHeavy) {
+        this.tensionTimer = 3.6;
+        audioManager.playStructuralTensionWarning?.(nearHeavy.x, nearHeavy.z);
+        rendererEngine.addScreenShake?.(0.08, 0.2);
+        window.HiveSystems?.vfx?.burst?.(nearHeavy.x, nearHeavy.z, nearHeavy.color, 4, 0.15, 0.9);
+      }
+    }
+
+    // Audit QA #109 : Resserrement Dynamique du FOV Caméra en Traque Furtive
+    updateCameraStalkFOV(safeDelta) {
+      if (!rendererEngine?.camera) return;
+      const humans = window.gameInstance?.humans || [];
+      const stalking = humans.some((h) => !h.isIncapacitated && !h.isCocooned && (h.state === 'patrol' || h.state === 'investigate' || !h.alertLevel) && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 9.0);
+      const targetFov = stalking ? 53 : 60;
+      const curFov = rendererEngine.camera.fov || 60;
+      if (Math.abs(curFov - targetFov) > 0.1) {
+        rendererEngine.camera.fov += (targetFov - curFov) * Math.min(1.0, safeDelta * 2.8);
+        rendererEngine.camera.updateProjectionMatrix();
       }
     }
 

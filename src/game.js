@@ -1,4 +1,4 @@
-﻿/* HIVE ASCENSION
+/* HIVE ASCENSION
  * Complete campaign pass: lore-safe castes, original characters, detailed models,
  * mission tracking, save data, accessibility, expanded enemies, bosses and endings.
  */
@@ -7253,6 +7253,16 @@
     playThrusterPneumaticHiss(x = null, z = null) {
       this.playProceduralPropFx({ type: 'sine', f0: 1400, f1: 220, dur: 0.9, cutoff: 3800, vol: 0.6, radius: 40 }, x, z);
     }
+
+    // Audit QA #151 : Détente Cryogénique d'Évaporateur Fréon et Souffle de Givre
+    playFreonEvaporatorBurst(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sine', f0: 1250, f1: 190, dur: 0.95, cutoff: 3400, vol: 0.65, radius: 44 }, x, z);
+    }
+
+    // Audit QA #151 : Salve Télémétrique de Terminal d'Interconnexion Noyau APOLLO
+    playApolloUplinkDataChirp(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'square', f0: 1850, f1: 620, dur: 0.55, cutoff: 3600, vol: 0.55, radius: 38 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -7669,7 +7679,7 @@
       // Audit QA #137 : Écho Radar M314 pour Relais Tactiques USCM, Commutateurs Haute Tension et Cryo
       if (stationMap.wave31Props) {
         for (const wp of stationMap.wave31Props) {
-          if (!wp.isTriggered && wp.id && (wp.id.includes('sentinel_relay') || wp.id.includes('power_commutator') || wp.id.includes('helium') || wp.id.includes('claymore') || wp.id.includes('tuyere') || wp.id.includes('decoy') || wp.id.includes('nitrogen') || wp.id.includes('hydrazine') || wp.id.includes('maglev') || wp.id.includes('rtg') || wp.id.includes('thruster') || wp.id.includes('pantograph') || wp.id.includes('smartgun'))) {
+          if (!wp.isTriggered && wp.id && (wp.id.includes('sentinel_relay') || wp.id.includes('power_commutator') || wp.id.includes('helium') || wp.id.includes('claymore') || wp.id.includes('tuyere') || wp.id.includes('decoy') || wp.id.includes('nitrogen') || wp.id.includes('hydrazine') || wp.id.includes('maglev') || wp.id.includes('rtg') || wp.id.includes('thruster') || wp.id.includes('pantograph') || wp.id.includes('smartgun') || wp.id.includes('evaporator') || wp.id.includes('apollo') || wp.id.includes('quarantine') || wp.id.includes('satellite_dish'))) {
             const pDist = Math.hypot(wp.x - player.x, wp.z - player.z);
             if (pDist <= maxRange) {
               const worldAngle = Math.atan2(wp.x - player.x, wp.z - player.z);
@@ -7677,8 +7687,8 @@
               const normDist = (pDist / maxRange) * radius;
               const px = cx + Math.sin(relAngle) * normDist;
               const py = cy - Math.cos(relAngle) * normDist;
-              const tag = wp.id.includes('rtg') ? 'RTG-238' : (wp.id.includes('thruster') ? 'THRUST' : (wp.id.includes('pantograph') ? 'PANTOGRAPH' : (wp.id.includes('smartgun') ? 'M56-MOUNT' : (wp.id.includes('decoy') ? 'M89-DECOY' : (wp.id.includes('nitrogen') ? 'N2-PURGE' : (wp.id.includes('hydrazine') ? 'N2H4' : (wp.id.includes('maglev') ? 'MAG-LEV' : (wp.id.includes('sentinel_relay') ? 'USCM-TX' : (wp.id.includes('power_commutator') ? '20kV' : (wp.id.includes('claymore') ? 'M20' : (wp.id.includes('tuyere') ? '1200°C' : 'CRYO')))))))))));
-              const col = wp.id.includes('rtg') ? '#eab308' : (wp.id.includes('thruster') ? '#64748b' : (wp.id.includes('pantograph') ? '#f97316' : (wp.id.includes('smartgun') ? '#22c55e' : (wp.id.includes('decoy') ? '#22c55e' : (wp.id.includes('nitrogen') ? '#38bdf8' : (wp.id.includes('hydrazine') ? '#f97316' : (wp.id.includes('maglev') ? '#fbbf24' : (wp.id.includes('sentinel_relay') ? '#22c55e' : (wp.id.includes('power_commutator') ? '#60a5fa' : (wp.id.includes('claymore') ? '#f43f5e' : (wp.id.includes('tuyere') ? '#f97316' : '#38bdf8')))))))))));
+              const tag = wp.id.includes('evaporator') ? 'FREON' : (wp.id.includes('apollo') ? 'APOLLO-TX' : (wp.id.includes('quarantine') ? 'BIO-LOCK' : (wp.id.includes('satellite_dish') ? 'SAT-COM' : (wp.id.includes('rtg') ? 'RTG-238' : (wp.id.includes('thruster') ? 'THRUST' : (wp.id.includes('pantograph') ? 'PANTOGRAPH' : (wp.id.includes('smartgun') ? 'M56-MOUNT' : (wp.id.includes('decoy') ? 'M89-DECOY' : (wp.id.includes('nitrogen') ? 'N2-PURGE' : (wp.id.includes('hydrazine') ? 'N2H4' : (wp.id.includes('maglev') ? 'MAG-LEV' : (wp.id.includes('sentinel_relay') ? 'USCM-TX' : (wp.id.includes('power_commutator') ? '20kV' : (wp.id.includes('claymore') ? 'M20' : (wp.id.includes('tuyere') ? '1200°C' : 'CRYO')))))))))))))));
+              const col = wp.id.includes('evaporator') ? '#38bdf8' : (wp.id.includes('apollo') ? '#fbbf24' : (wp.id.includes('quarantine') ? '#ef4444' : (wp.id.includes('satellite_dish') ? '#22c55e' : (wp.id.includes('rtg') ? '#eab308' : (wp.id.includes('thruster') ? '#64748b' : (wp.id.includes('pantograph') ? '#f97316' : (wp.id.includes('smartgun') ? '#22c55e' : (wp.id.includes('decoy') ? '#22c55e' : (wp.id.includes('nitrogen') ? '#38bdf8' : (wp.id.includes('hydrazine') ? '#f97316' : (wp.id.includes('maglev') ? '#fbbf24' : (wp.id.includes('sentinel_relay') ? '#22c55e' : (wp.id.includes('power_commutator') ? '#60a5fa' : (wp.id.includes('claymore') ? '#f43f5e' : (wp.id.includes('tuyere') ? '#f97316' : '#38bdf8')))))))))))))));
               ctx.fillStyle = col;
               ctx.beginPath();
               ctx.arc(px, py, 2.6, 0, Math.PI * 2);
@@ -12652,7 +12662,20 @@
         { id: 'power_pantograph_1', factory: 'createSevastopolTransitPowerPantograph', name: 'Pantographe de Ligne Sevastopol', x: 55, z: 45, hx: 1.1, hz: 0.7, radius: 8.0, damage: 185, color: 0xf97316, label: 'ARRACHEMENT PANTOGRAPHE 25kV', toast: 'PANTOGRAPHE TRANSIT BRISÉ : Frotteurs de graphite projetés et court-circuit !', log: '[POWER PANTOGRAPH] Rupture des bras en ciseaux du pantographe monorail Seegson.', fx: { type: 'square', f0: 1700, f1: 140, dur: 0.8, cutoff: 3400, vol: 0.6 }, anim: 'pantograph_contact_shoe', shock: true },
         { id: 'skimming_trough_1', factory: 'createFiorinaFoundrySkimmingTrough', name: 'Rigole d\'Écrémage Laitier Fiorina', x: -22, z: 92, hx: 1.5, hz: 1.0, radius: 9.5, damage: 270, color: 0xea580c, label: 'RUPTURE RIGOLE LAITIER EN FUSION', toast: 'RIGOLE RÉFRACTAIRE FISSURÉE : Geyser de laitier liquide à 1100°C !', log: '[SKIMMING TROUGH] Brèche dans la rigole d\'écrémage de haut fourneau Fiorina.', fx: { type: 'sawtooth', f0: 190, f1: 30, dur: 1.05, cutoff: 800, vol: 0.7 }, anim: 'skimmer_dam_separator', slag: true }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs, ...wave40Defs].forEach((def) => {
+      // VAGUE 41 (Chantiers 401 à 410) : Évaporateurs Fréon, Sas Quarantaine, Consoles Uplink & Terminaux APOLLO
+      const wave41Defs = [
+        { id: 'freon_evaporator_1', factory: 'createNostromoFreonEvaporatorCoil', name: 'Batterie d\'Évaporateur Fréon Nostromo', x: -32, z: -85, hx: 1.2, hz: 0.7, radius: 8.5, damage: 215, color: 0x38bdf8, label: 'ÉCLATEMENT ÉVAPORATEUR FRÉON CRYO', toast: 'BATTERIE D\'ÉVAPORATION PERFORÉE : Serpentin de cuivre rompu et nuage de fréon givrant !', log: '[FREON EVAPORATOR] Rupture haute pression du banc d\'évaporation cryo-stase Nostromo.', fx: { type: 'sine', f0: 1250, f1: 190, dur: 0.95, cutoff: 3400, vol: 0.65 }, anim: 'evaporator_frosted_fins', chemical: true },
+        { id: 'quarantine_airlock_1', factory: 'createHadleyQuarantineCryoAirlock', name: 'Sas Cryo de Quarantaine Medlab Hadley', x: 32, z: 48, hx: 1.3, hz: 0.8, radius: 8.0, damage: 195, color: 0xef4444, label: 'BRÈCHE SAS DE QUARANTAINE MEDLAB', toast: 'SAS BIO-CONFINEMENT ÉVENTRÉ : Dépressurisation stérile et sirène d\'alerte biologique !', log: '[QUARANTINE AIRLOCK] Perte d\'étanchéité du sas de confinement médical Hadley\'s Hope.', fx: { type: 'square', f0: 880, f1: 210, dur: 0.8, cutoff: 2800, vol: 0.6 }, anim: 'quarantine_inner_hatch', alarm: true },
+        { id: 'regulation_valve_1', factory: 'createFiorinaRegulationGateValve', name: 'Vanne d\'Arrêt Vapeur Fourneau Fiorina', x: -45, z: 72, hx: 1.3, hz: 0.7, radius: 9.0, damage: 245, color: 0xd97706, label: 'ARRACHEMENT VANNE VAPEUR SURCHAUFFÉE', toast: 'COLLECTEUR VAPEUR EN RUPTURE : Volant de bronze projeté et jet de vapeur à 450°C !', log: '[REGULATION VALVE] Éclatement du chapeau de la vanne d\'arrêt vapeur Fiorina 161.', fx: { type: 'sawtooth', f0: 340, f1: 55, dur: 0.95, cutoff: 1400, vol: 0.65 }, anim: 'regulation_handwheel' },
+        { id: 'uplink_console_1', factory: 'createAurigaUplinkConsole', name: 'Console Télémétrique Longue Portée Auriga', x: -72, z: -28, hx: 1.2, hz: 0.7, radius: 7.5, damage: 185, color: 0x22d3ee, label: 'SURTENSION CONSOLE UPLINK AURIGA', toast: 'PUPITRE DE COMMANDE FOUDROYÉ : Écran holographique explosé et arcs haute tension !', log: '[UPLINK CONSOLE] Court-circuit destructeur du pupitre de liaison orbitale USM Auriga.', fx: { type: 'square', f0: 1550, f1: 180, dur: 0.7, cutoff: 3200, vol: 0.6 }, anim: 'uplink_main_display', shock: true },
+        { id: 'butterfly_valve_1', factory: 'createRomulusCoolantButterflyValve', name: 'Vanne Papillon Caloporteur Renaissance', x: 54, z: 62, hx: 1.0, hz: 0.8, radius: 8.5, damage: 210, color: 0xf97316, label: 'RUPTURE VANNE PAPILLON CALOPORTEUR', toast: 'ACTIONNEUR PNEUMATIQUE ARRACHÉ : Brides acier rompues et geyser cryogénique !', log: '[BUTTERFLY VALVE] Défaillance explosive de la vanne papillon du circuit Renaissance.', fx: { type: 'sine', f0: 980, f1: 150, dur: 0.85, cutoff: 2900, vol: 0.6 }, anim: 'butterfly_pneumatic_actuator', chemical: true },
+        { id: 'apollo_terminal_1', factory: 'createSevastopolApolloUplinkTerminal', name: 'Terminal d\'Interconnexion APOLLO Sevastopol', x: 64, z: -18, hx: 0.8, hz: 0.7, radius: 7.5, damage: 180, color: 0xfbbf24, label: 'IMPLOSION TERMINAL RELAIS APOLLO', toast: 'TERMINAL SEEGSON DÉTRUIT : Moniteur CRT ambre implosé et décharge de condensateurs !', log: '[APOLLO TERMINAL] Perte de liaison avec le noyau central APOLLO sur Sevastopol.', fx: { type: 'square', f0: 1850, f1: 620, dur: 0.65, cutoff: 3600, vol: 0.55 }, anim: 'apollo_amber_crt', shock: true },
+        { id: 'decon_shower_1', factory: 'createHadleyDeconShowerStall', name: 'Cabine de Décontamination Medlab Hadley', x: 14, z: 48, hx: 0.9, hz: 0.9, radius: 7.5, damage: 175, color: 0x67e8f9, label: 'PULVÉRISATION CABINE DÉCONTAMINATION', toast: 'CABINE BIOCIDE ÉVENTRÉE : Paroi vitrée brisée et brouillard d\'agent neutralisant !', log: '[DECON SHOWER] Explosion des conduites de stérilisation chimique Medlab Hadley.', fx: { type: 'sine', f0: 1120, f1: 260, dur: 0.75, cutoff: 3100, vol: 0.55 }, anim: 'decon_glass_door', chemical: true },
+        { id: 'satellite_dish_1', factory: 'createUscmUplinkSatelliteDishCart', name: 'Chariot Antenne Parabolique USCM Sulaco', x: -55, z: 32, hx: 1.0, hz: 0.8, radius: 8.0, damage: 190, color: 0x22c55e, label: 'DESTRUCTION RELAIS SAT-COM USCM', toast: 'CHARIOT TRANSPONDEUR PULVÉRISÉ : Parabole arrachée et batterie tactique en feu !', log: '[SATELLITE DISH] Perte du chariot de liaison orbitale USCM Sulaco.', fx: { type: 'square', f0: 1420, f1: 240, dur: 0.75, cutoff: 3000, vol: 0.6 }, anim: 'uplink_parabolic_dish', alarm: true },
+        { id: 'pressure_station_1', factory: 'createSevastopolPressureRegulationStation', name: 'Station de Régulation Pression Sevastopol', x: 72, z: 34, hx: 1.2, hz: 0.8, radius: 8.5, damage: 220, color: 0xf97316, label: 'EXPLOSION BALLONS DE PRESSION SEEGSON', toast: 'STATION DE RÉGULATION ÉVENTRÉE : Réservoirs d\'air sous 120 bars déchiquetés !', log: '[PRESSURE STATION] Rupture catastrophique des ballons de régulation atmosphérique Sevastopol.', fx: { type: 'sawtooth', f0: 460, f1: 90, dur: 0.9, cutoff: 1800, vol: 0.65 }, anim: 'pressure_gauge_face' },
+        { id: 'morgue_drawer_1', factory: 'createFiorinaMorgueCryoDrawerBank', name: 'Casier Réfrigéré Morgue Fiorina 161', x: -18, z: 78, hx: 1.2, hz: 0.8, radius: 8.0, damage: 195, color: 0x38bdf8, label: 'DÉCOMPRESSION CASIERS MORGUE CRYO', toast: 'CASIERS MORGUE INFIRMERIE ÉVENTRÉS : Portes inox éjectées et souffle d\'azote glacé !', log: '[MORGUE DRAWER] Rupture du groupe frigorifique des casiers mortuaires Fiorina 161.', fx: { type: 'sine', f0: 990, f1: 180, dur: 0.8, cutoff: 2700, vol: 0.6 }, anim: 'morgue_drawer_front_0' }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs, ...wave40Defs, ...wave41Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -20272,6 +20295,12 @@
       }
       if (prop.id.includes('thruster')) {
         audioManager.playThrusterPneumaticHiss?.(prop.x, prop.z);
+      }
+      if (prop.id.includes('evaporator') || prop.id.includes('morgue') || prop.id.includes('butterfly')) {
+        audioManager.playFreonEvaporatorBurst?.(prop.x, prop.z);
+      }
+      if (prop.id.includes('apollo') || prop.id.includes('uplink') || prop.id.includes('satellite_dish')) {
+        audioManager.playApolloUplinkDataChirp?.(prop.x, prop.z);
       }
       if (prop.shock) {
         audioManager.playHighVoltageArcDischarge?.(prop.x, prop.z);

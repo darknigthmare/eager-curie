@@ -1,4 +1,4 @@
-/* HIVE ASCENSION
+﻿/* HIVE ASCENSION
  * Complete campaign pass: lore-safe castes, original characters, detailed models,
  * mission tracking, save data, accessibility, expanded enemies, bosses and endings.
  */
@@ -7243,6 +7243,16 @@
     playDecoyPulseChirp(x = null, z = null) {
       this.playProceduralPropFx({ type: 'sine', f0: 1650, f1: 580, dur: 0.45, cutoff: 3500, vol: 0.5, radius: 36 }, x, z);
     }
+
+    // Audit QA #146 : Bourdonnement de Résonance Thermique Cœur RTG Plutonium-238
+    playRtgCoreHum(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sawtooth', f0: 60, f1: 340, dur: 1.2, cutoff: 1100, vol: 0.65, radius: 45 }, x, z);
+    }
+
+    // Audit QA #146 : Détente Pneumatique et Souffle de Tuyère de Propulseur Orbital
+    playThrusterPneumaticHiss(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sine', f0: 1400, f1: 220, dur: 0.9, cutoff: 3800, vol: 0.6, radius: 40 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -7380,10 +7390,10 @@
       } else if (['runner', 'cougar_drone', 'charger', 'snake_alien'].includes(caste)) {
         casteRangeMod = 6.0;
         sensoryProfileLabel = 'ULTRASONIC 28m';
-      } else if (['rhino_drone', 'crusher', 'bull_drone', 'chrysalis_warrior'].includes(caste)) {
+      } else if (['rhino_drone', 'crusher', 'bull_drone', 'chrysalis_warrior', 'gorilla_alien'].includes(caste)) {
         casteRangeMod = 4.0;
         sensoryProfileLabel = 'SEISMIC 26m';
-      } else if (['infiltrator'].includes(caste)) {
+      } else if (['infiltrator', 'lurker'].includes(caste)) {
         casteRangeMod = -4.0;
         sensoryProfileLabel = 'OPTICAL STEALTH 18m';
       }
@@ -7659,7 +7669,7 @@
       // Audit QA #137 : Écho Radar M314 pour Relais Tactiques USCM, Commutateurs Haute Tension et Cryo
       if (stationMap.wave31Props) {
         for (const wp of stationMap.wave31Props) {
-          if (!wp.isTriggered && wp.id && (wp.id.includes('sentinel_relay') || wp.id.includes('power_commutator') || wp.id.includes('helium') || wp.id.includes('claymore') || wp.id.includes('tuyere') || wp.id.includes('decoy') || wp.id.includes('nitrogen') || wp.id.includes('hydrazine') || wp.id.includes('maglev'))) {
+          if (!wp.isTriggered && wp.id && (wp.id.includes('sentinel_relay') || wp.id.includes('power_commutator') || wp.id.includes('helium') || wp.id.includes('claymore') || wp.id.includes('tuyere') || wp.id.includes('decoy') || wp.id.includes('nitrogen') || wp.id.includes('hydrazine') || wp.id.includes('maglev') || wp.id.includes('rtg') || wp.id.includes('thruster') || wp.id.includes('pantograph') || wp.id.includes('smartgun'))) {
             const pDist = Math.hypot(wp.x - player.x, wp.z - player.z);
             if (pDist <= maxRange) {
               const worldAngle = Math.atan2(wp.x - player.x, wp.z - player.z);
@@ -7667,8 +7677,8 @@
               const normDist = (pDist / maxRange) * radius;
               const px = cx + Math.sin(relAngle) * normDist;
               const py = cy - Math.cos(relAngle) * normDist;
-              const tag = wp.id.includes('decoy') ? 'M89-DECOY' : (wp.id.includes('nitrogen') ? 'N2-PURGE' : (wp.id.includes('hydrazine') ? 'N2H4' : (wp.id.includes('maglev') ? 'MAG-LEV' : (wp.id.includes('sentinel_relay') ? 'USCM-TX' : (wp.id.includes('power_commutator') ? '20kV' : (wp.id.includes('claymore') ? 'M20' : (wp.id.includes('tuyere') ? '1200°C' : 'CRYO')))))));
-              const col = wp.id.includes('decoy') ? '#22c55e' : (wp.id.includes('nitrogen') ? '#38bdf8' : (wp.id.includes('hydrazine') ? '#f97316' : (wp.id.includes('maglev') ? '#fbbf24' : (wp.id.includes('sentinel_relay') ? '#22c55e' : (wp.id.includes('power_commutator') ? '#60a5fa' : (wp.id.includes('claymore') ? '#f43f5e' : (wp.id.includes('tuyere') ? '#f97316' : '#38bdf8')))))));
+              const tag = wp.id.includes('rtg') ? 'RTG-238' : (wp.id.includes('thruster') ? 'THRUST' : (wp.id.includes('pantograph') ? 'PANTOGRAPH' : (wp.id.includes('smartgun') ? 'M56-MOUNT' : (wp.id.includes('decoy') ? 'M89-DECOY' : (wp.id.includes('nitrogen') ? 'N2-PURGE' : (wp.id.includes('hydrazine') ? 'N2H4' : (wp.id.includes('maglev') ? 'MAG-LEV' : (wp.id.includes('sentinel_relay') ? 'USCM-TX' : (wp.id.includes('power_commutator') ? '20kV' : (wp.id.includes('claymore') ? 'M20' : (wp.id.includes('tuyere') ? '1200°C' : 'CRYO')))))))))));
+              const col = wp.id.includes('rtg') ? '#eab308' : (wp.id.includes('thruster') ? '#64748b' : (wp.id.includes('pantograph') ? '#f97316' : (wp.id.includes('smartgun') ? '#22c55e' : (wp.id.includes('decoy') ? '#22c55e' : (wp.id.includes('nitrogen') ? '#38bdf8' : (wp.id.includes('hydrazine') ? '#f97316' : (wp.id.includes('maglev') ? '#fbbf24' : (wp.id.includes('sentinel_relay') ? '#22c55e' : (wp.id.includes('power_commutator') ? '#60a5fa' : (wp.id.includes('claymore') ? '#f43f5e' : (wp.id.includes('tuyere') ? '#f97316' : '#38bdf8')))))))))));
               ctx.fillStyle = col;
               ctx.beginPath();
               ctx.arc(px, py, 2.6, 0, Math.PI * 2);
@@ -12629,7 +12639,20 @@
         { id: 'xray_tunnel_1', factory: 'createSevastopolLuggageXrayScannerTunnel', name: 'Tunnel Scanner Rayons X Sevastopol', x: 52, z: 25, hx: 1.4, hz: 1.1, radius: 7.5, damage: 170, color: 0xeab308, label: 'IMPLOSION TUBE CATHODIQUE RAYONS X', toast: 'SCANNER DOUANE ÉVENTRÉ : Tube émetteur X brisé et blindage plomb déchiqueté !', log: '[XRAY TUNNEL] Rupture du blindage plomb et défaillance du tube émetteur Sevastopol.', fx: { type: 'square', f0: 680, f1: 90, dur: 0.65, cutoff: 2400, vol: 0.55 }, anim: 'xray_operator_crt' },
         { id: 'desilverizing_kettle_1', factory: 'createFiorinaLeadDesilverizingKettle', name: 'Chaudière de Dézingage Fiorina', x: -42, z: 88, hx: 1.4, hz: 1.4, radius: 9.5, damage: 280, color: 0xe2e8f0, label: 'ÉCLATEMENT CHAUDIÈRE DE PLOMB LIQUIDE', toast: 'CHAUDIÈRE DE PLOMB EN RUPTURE : Des tonnes de plomb et zinc à 500°C projetées !', log: '[DESILVERIZING KETTLE] Fissure de la chaudière de désargentation du plomb Fiorina.', fx: { type: 'sawtooth', f0: 150, f1: 25, dur: 1.1, cutoff: 700, vol: 0.7 }, anim: 'molten_silver_lead_pool', slag: true }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs].forEach((def) => {
+      // VAGUE 40 (Chantiers 391 à 400) : Générateurs RTG, Bras Ombilicaux, Sluices de Réacteur & Treuils Fret
+      const wave40Defs = [
+        { id: 'rtg_generator_1', factory: 'createNostromoRtgThermoelectricGenerator', name: 'Générateur RTG Plutonium Nostromo', x: -28, z: -92, hx: 1.2, hz: 1.2, radius: 9.0, damage: 240, color: 0xeab308, label: 'DÉCONFINEMENT COEUR RTG Pu-238', toast: 'GÉNÉRATEUR RTG FISSURÉ : Rayonnement ionisant et souffle thermique intense !', log: '[RTG GENERATOR] Éventration du blindage béryllium du générateur thermoélectrique Nostromo.', fx: { type: 'sawtooth', f0: 60, f1: 340, dur: 1.2, cutoff: 1100, vol: 0.65 }, anim: 'rtg_emitter_cap', alarm: true },
+        { id: 'fueling_boom_1', factory: 'createHadleyUmbilicalFuelingBoom', name: 'Bras Ombilical Ravitaillement Hadley', x: 48, z: 48, hx: 1.4, hz: 0.8, radius: 8.5, damage: 215, color: 0xf97316, label: 'RUPTURE BRAS OMBILICAL CARBURANT', toast: 'BRAS D\'ALIMENTATION DROPSHIP ARRACHÉ : Flexible sous 80 bars et étincelles !', log: '[FUELING BOOM] Rupture du compensateur hydraulique du bras de ravitaillement UD-4L.', fx: { type: 'sawtooth', f0: 410, f1: 85, dur: 0.8, cutoff: 1600, vol: 0.6 }, anim: 'fueling_boom_cantilever' },
+        { id: 'coolant_flume_1', factory: 'createFiorinaReactorCoolantDumpFlume', name: 'Canal de Décharge Réacteur Fiorina', x: -35, z: 75, hx: 1.3, hz: 1.1, radius: 9.0, damage: 250, color: 0x78350f, label: 'ÉVENTRATION VANNE DE DÉCHARGE', toast: 'CANAL DE REFROIDISSEMENT ROMPU : Torrent de fluide caloporteur brûlant !', log: '[COOLANT FLUME] Rupture de crémaillère de la vanne guillotine de vidange réacteur Fiorina.', fx: { type: 'sawtooth', f0: 220, f1: 40, dur: 1.0, cutoff: 900, vol: 0.65 }, anim: 'flume_guillotine_gate', slag: true },
+        { id: 'stasis_pod_1', factory: 'createAurigaCryoStasisRackPod', name: 'Caisson Cryo-Stase Militaire Auriga', x: -75, z: -12, hx: 1.3, hz: 0.8, radius: 7.5, damage: 180, color: 0x06b6d4, label: 'IMPLOSION VERRIÈRE STASE MILITAIRE', toast: 'CAISSON D\'HYPERSOMMEIL PULVÉRISÉ : Verrière brisée et fluide cryogénique !', log: '[STASIS POD] Dépressurisation explosive du caisson de stase militaire Auriga.', fx: { type: 'sine', f0: 1050, f1: 240, dur: 0.7, cutoff: 3200, vol: 0.55 }, anim: 'stasis_vitrine_canopy' },
+        { id: 'thruster_gimbal_1', factory: 'createRomulusOrbitalThrusterGimbal', name: 'Nacelle Propulseur Orbital Renaissance', x: 62, z: 72, hx: 1.2, hz: 1.2, radius: 8.0, damage: 195, color: 0x64748b, label: 'EXPLOSION CARDAN PROPULSEUR', toast: 'PROPULSEUR D\'ATTITUDE DÉBOÎTÉ : Jet d\'azote comprimé et tuyères arrachées !', log: '[THRUSTER GIMBAL] Rupture de la rotule sphérique du propulseur d\'attitude Romulus.', fx: { type: 'sine', f0: 1400, f1: 220, dur: 0.9, cutoff: 3800, vol: 0.6 }, anim: 'thruster_gimbal_sphere' },
+        { id: 'freight_winch_1', factory: 'createSevastopolSeegsonFreightElevatorWinch', name: 'Treuil de Monte-Charge Fret Sevastopol', x: 68, z: -32, hx: 1.4, hz: 1.1, radius: 8.5, damage: 210, color: 0xeab308, label: 'RUPTURE TAMBOUR TREUIL SEEGSON', toast: 'TREUIL DE FRET DÉBOÎTÉ : Câbles d\'acier fouettant le puits d\'ascenseur !', log: '[FREIGHT WINCH] Éclatement du tambour à câbles du monte-charge lourd Lorenz.', fx: { type: 'square', f0: 360, f1: 75, dur: 0.8, cutoff: 1400, vol: 0.6 }, anim: 'winch_cable_drum' },
+        { id: 'ash_hopper_1', factory: 'createHadleyVolcanicAshHopper', name: 'Trémie d\'Extraction Cendres Hadley', x: 25, z: -68, hx: 1.3, hz: 1.3, radius: 8.0, damage: 190, color: 0x475569, label: 'ÉBOULIS TRÉMIE CENDRES ACHERON', toast: 'TRÉMIE D\'EXTRACTION ROMPUE : Des tonnes de poussières de basalte incandescentes !', log: '[ASH HOPPER] Fissure de la trémie conique des scrubbers atmosphériques Hadley.', fx: { type: 'triangle', f0: 290, f1: 50, dur: 0.85, cutoff: 1100, vol: 0.55 }, anim: 'ash_hopper_cone' },
+        { id: 'smartgun_mount_1', factory: 'createUscmM56SmartgunTripodMount', name: 'Affût Trépied Smartgun M56 USCM', x: -48, z: 38, hx: 1.1, hz: 0.8, radius: 7.5, damage: 175, color: 0x22c55e, label: 'DÉFLAGRATION TRÉPIED M56 SMARTGUN', toast: 'AFFÛT SMARTGUN DÉTRUIT : Tambour de munitions 10x28mm détoné en chaîne !', log: '[SMARTGUN MOUNT] Explosion de la sellette gyro-stabilisée et de l\'affût M56.', fx: { type: 'square', f0: 680, f1: 110, dur: 0.7, cutoff: 2600, vol: 0.6 }, anim: 'smartgun_barrel_assembly', alarm: true },
+        { id: 'power_pantograph_1', factory: 'createSevastopolTransitPowerPantograph', name: 'Pantographe de Ligne Sevastopol', x: 55, z: 45, hx: 1.1, hz: 0.7, radius: 8.0, damage: 185, color: 0xf97316, label: 'ARRACHEMENT PANTOGRAPHE 25kV', toast: 'PANTOGRAPHE TRANSIT BRISÉ : Frotteurs de graphite projetés et court-circuit !', log: '[POWER PANTOGRAPH] Rupture des bras en ciseaux du pantographe monorail Seegson.', fx: { type: 'square', f0: 1700, f1: 140, dur: 0.8, cutoff: 3400, vol: 0.6 }, anim: 'pantograph_contact_shoe', shock: true },
+        { id: 'skimming_trough_1', factory: 'createFiorinaFoundrySkimmingTrough', name: 'Rigole d\'Écrémage Laitier Fiorina', x: -22, z: 92, hx: 1.5, hz: 1.0, radius: 9.5, damage: 270, color: 0xea580c, label: 'RUPTURE RIGOLE LAITIER EN FUSION', toast: 'RIGOLE RÉFRACTAIRE FISSURÉE : Geyser de laitier liquide à 1100°C !', log: '[SKIMMING TROUGH] Brèche dans la rigole d\'écrémage de haut fourneau Fiorina.', fx: { type: 'sawtooth', f0: 190, f1: 30, dur: 1.05, cutoff: 800, vol: 0.7 }, anim: 'skimmer_dam_separator', slag: true }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs, ...wave40Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -20244,6 +20267,12 @@
       if (prop.id.includes('decoy')) {
         audioManager.playDecoyPulseChirp?.(prop.x, prop.z);
       }
+      if (prop.id.includes('rtg')) {
+        audioManager.playRtgCoreHum?.(prop.x, prop.z);
+      }
+      if (prop.id.includes('thruster')) {
+        audioManager.playThrusterPneumaticHiss?.(prop.x, prop.z);
+      }
       if (prop.shock) {
         audioManager.playHighVoltageArcDischarge?.(prop.x, prop.z);
         rendererEngine.addStrobeFlash?.(0x38bdf8, 0.22);
@@ -24307,28 +24336,30 @@
         ? 480
         : (['powerloader', 'exosuit', 'uscm_exosuit_commando'].includes(type)
           ? 420
-          : (['weyland_commando_mk2'].includes(type)
+          : (['weyland_commando_mk2', 'weyland_combat_android'].includes(type)
             ? 260
-            : (['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(type)
-              ? 240
-              : (['seegson_hazmat_joe'].includes(type)
-                ? 230
-                : (['uscm_phalanx_shield', 'weyland_strike_synth'].includes(type)
-                  ? 220
-                  : (['weyland_containment_squad', 'seegson_security_joe'].includes(type)
-                    ? 210
-                    : (['uscm_heavy_flamer'].includes(type)
-                      ? 195
-                      : (['uscm_smartgun_flamer'].includes(type)
-                        ? 185
-                        : (['uscm_demolitionist', 'weyland_director_officer'].includes(type)
-                          ? 180
-                          : (['uscm_hazmat_tech', 'uscm_field_commander'].includes(type)
-                            ? 175
-                            : (['uscm_breacher_shotgun', 'weyland_specimen_trapper'].includes(type)
-                              ? 170
-                              : (['uscm_combat_engineer', 'uscm_sentry_sapper'].includes(type)
-                                ? 165
+            : (['seegson_industrial_joe'].includes(type)
+              ? 250
+              : (['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(type)
+                ? 240
+                : (['seegson_hazmat_joe'].includes(type)
+                  ? 230
+                  : (['uscm_phalanx_shield', 'weyland_strike_synth', 'weyland_containment_commando'].includes(type)
+                    ? 220
+                    : (['weyland_containment_squad', 'seegson_security_joe'].includes(type)
+                      ? 210
+                      : (['uscm_heavy_flamer'].includes(type)
+                        ? 195
+                        : (['uscm_smartgun_flamer'].includes(type)
+                          ? 185
+                          : (['uscm_demolitionist', 'weyland_director_officer'].includes(type)
+                            ? 180
+                            : (['uscm_hazmat_tech', 'uscm_field_commander'].includes(type)
+                              ? 175
+                              : (['uscm_breacher_shotgun', 'weyland_specimen_trapper'].includes(type)
+                                ? 170
+                                : (['uscm_combat_engineer', 'uscm_sentry_sapper', 'mercenary_smuggler_pirate'].includes(type)
+                                  ? 165
                                 : (['uscm_sadar_operator'].includes(type)
                                   ? 160
                                   : (['weyland_plasma_gunner'].includes(type)
@@ -24343,7 +24374,7 @@
                                             ? 135
                                             : (['weyland_drone_operator'].includes(type)
                                               ? 130
-                                              : (isCyberHound ? 180 : (['android', 'synthetic'].includes(type) ? 190 : (['uscm_sniper'].includes(type) ? 125 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110)))))))))))))))))))))));
+                                              : (isCyberHound ? 180 : (['android', 'synthetic'].includes(type) ? 190 : (['uscm_sniper'].includes(type) ? 125 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110))))))))))))))))))))))));
       this.maxHp = this.hp;
       this.reconLaserTimer = 0;
       this.medicHealCooldown = 3.0;
@@ -24372,9 +24403,9 @@
       this.cryoNetCooldown = 5.0;
       this.whitePhosphorusCooldown = 7.0 + Math.random() * 4.0;
       this.sadarRocketCooldown = 6.0 + Math.random() * 4.0;
-      this.hostEligibility = ['android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_heavy_mech'].includes(type)
+      this.hostEligibility = ['android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_heavy_mech', 'weyland_combat_android', 'seegson_industrial_joe'].includes(type)
         ? 'none'
-        : (['commando', 'uscm_hazmat_tech', 'weyland_containment_squad', 'uscm_exosuit_commando', 'uscm_phalanx_shield', 'weyland_specimen_trapper'].includes(type) ? 'protected' : 'viable');
+        : (['commando', 'uscm_hazmat_tech', 'weyland_containment_squad', 'uscm_exosuit_commando', 'uscm_phalanx_shield', 'weyland_specimen_trapper', 'weyland_containment_commando'].includes(type) ? 'protected' : 'viable');
       this.usedAsHost = false;
       this.isConsumedByCycle = false;
       this.characterKey = null;
@@ -24868,7 +24899,7 @@
 
       // Audit QA #123 : Tétanie et Choc Neuromusculaire Haute Tension 50kV
       if (this.shockStunTimer > 0) {
-        if (this.type === 'seegson_hazmat_joe') {
+        if (this.type === 'seegson_hazmat_joe' || this.type === 'weyland_combat_android') {
           this.shockStunTimer = 0; // Immune à la haute tension !
         } else {
           this.shockStunTimer -= safeDelta;

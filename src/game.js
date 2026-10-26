@@ -7208,6 +7208,11 @@
     playHighVoltageArcDischarge(x = null, z = null) {
       this.playProceduralPropFx({ type: 'square', f0: 2400, f1: 50, dur: 0.85, cutoff: 4200, vol: 0.58, radius: 45 }, x, z);
     }
+
+    // Audit QA #126 : Bourdonnement Magnétique et Décharge Ionique MHD
+    playMhdIonSurge(x = null, z = null) {
+      this.playProceduralPropFx({ type: 'sine', f0: 45, f1: 1200, dur: 0.95, cutoff: 2800, vol: 0.6, radius: 45 }, x, z);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -12503,7 +12508,20 @@
         { id: 'charging_alcove_alt_1', factory: 'createSevastopolSyntheticChargingAlcoveAlt', name: 'Alcôve Synthétique Working Joe', x: 58, z: -35, hx: 0.7, hz: 0.6, radius: 7.0, damage: 170, color: 0xa855f7, label: 'DÉCHARGE WORKING JOE 10kV', toast: 'ALCÔVE ANDROÏDE SURVOLTÉE : Arcs violet de 10 000 Volts dans le sas !', log: '[SYNTH ALCOVE] Emballement de la ligne de charge dorsale Working Joe.', fx: { type: 'square', f0: 1100, f1: 150, dur: 0.65, cutoff: 2600, vol: 0.5 }, anim: 'charging_status_display', shock: true },
         { id: 'counterweight_stack_1', factory: 'createFiorinaCraneCounterweightStack', name: 'Contrepoids de Grue Fiorina', x: -42, z: 85, hx: 0.9, hz: 0.9, radius: 8.5, damage: 255, color: 0x78716c, label: 'EFFONDREMENT DES GUEUSES', toast: 'GUEUSES DE CONTREPOIDS ÉBOULÉES : Des tonnes de fonte broient la galerie !', log: '[COUNTERWEIGHT] Cisaillement de la broche de retenue des contrepoids de grue.', fx: { type: 'sawtooth', f0: 130, f1: 25, dur: 0.9, cutoff: 650, vol: 0.65 }, anim: 'counterweight_pin' }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs].forEach((def) => {
+      // VAGUE 36 (Chantiers 351 à 360) : Générateurs MHD, Vérins Sismiques, Bacs de Neutralisation & Mâts d'Épuration
+      const wave36Defs = [
+        { id: 'mhd_gen_1', factory: 'createNostromoMhdGenerator', name: 'Générateur MHD Nostromo', x: -32, z: -82, hx: 1.5, hz: 0.9, radius: 8.5, damage: 225, color: 0x3b82f6, label: 'SURTENSION MAGNÉTIQUE MHD', toast: 'GÉNÉRATEUR MHD EN SURRÉGIME : Flux magnétique et plasma ionisé !', log: '[MHD GENERATOR] Rupture du confinement magnétique du générateur Nostromo.', fx: { type: 'sine', f0: 45, f1: 1200, dur: 0.95, cutoff: 2800, vol: 0.6 }, anim: 'mhd_magnetic_flux', shock: true },
+        { id: 'seismic_jack_1', factory: 'createHadleySeismicStabilizerJack', name: 'Vérin Sismique de Fondation Hadley', x: 35, z: -75, hx: 1.2, hz: 1.2, radius: 8.0, damage: 215, color: 0xf59e0b, label: 'RUPTURE VÉRIN HYDRAULIQUE', toast: 'VÉRIN SISMIQUE CISAILLÉ : Jet d\'huile sous 400 bars et affaissement !', log: '[SEISMIC JACK] Rupture des boulons de cisaillement du vérin sismique Hadley.', fx: { type: 'triangle', f0: 280, f1: 60, dur: 0.8, cutoff: 1400, vol: 0.6 }, anim: 'hydraulic_cylinder_piston' },
+        { id: 'chem_vat_1', factory: 'createFiorinaChemicalNeutralizationVat', name: 'Bac de Neutralisation Chimique Fiorina', x: -28, z: 82, hx: 1.3, hz: 1.0, radius: 9.0, damage: 250, color: 0x84cc16, label: 'PROJECTION ACIDE & LAIT DE CHAUX', toast: 'BAC DE NEUTRALISATION ÉVENTRÉ : Geyser d\'acide sulfurique neutralisant !', log: '[CHEM VAT] Ébullition violente et rupture de cuve du bac acide Fiorina.', fx: { type: 'sawtooth', f0: 600, f1: 90, dur: 0.9, cutoff: 2200, vol: 0.65 }, anim: 'neutralization_slurry_surface', chemical: true },
+        { id: 'microtome_1', factory: 'createAurigaCryoMicrotomeWorkbench', name: 'Banc Microtome Cryo Auriga', x: -72, z: -32, hx: 1.1, hz: 0.7, radius: 7.0, damage: 160, color: 0x06b6d4, label: 'DÉFLAGRATION AZOTE LIQUIDE', toast: 'MICROTOME CRYO BRISÉ : Brouillard d\'azote liquide à -196°C !', log: '[CRYO MICROTOME] Éjection de lame et purge azote du banc Auriga.', fx: { type: 'sine', f0: 950, f1: 220, dur: 0.65, cutoff: 3200, vol: 0.5 }, anim: 'microtome_blade_arm' },
+        { id: 'clamp_arm_1', factory: 'createRomulusDockingClampArm', name: 'Pince d\'Amarrage Renaissance', x: 48, z: 82, hx: 1.4, hz: 1.0, radius: 8.5, damage: 235, color: 0xef4444, label: 'DÉVERROUILLAGE PYROTECHNIQUE', toast: 'PINCE D\'AMARRAGE ÉJECTÉE : Mâchoires pneumatiques projetées dans la travée !', log: '[CLAMP ARM] Déclenchement accidentel des mors de verrouillage Renaissance.', fx: { type: 'square', f0: 550, f1: 75, dur: 0.8, cutoff: 1900, vol: 0.6 }, anim: 'docking_jaw_upper', alarm: true },
+        { id: 'synth_rig_1', factory: 'createSevastopolSyntheticMaintenanceRig', name: 'Banc de Test Synthétique Working Joe', x: 62, z: -25, hx: 1.2, hz: 0.8, radius: 7.5, damage: 175, color: 0xa855f7, label: 'SURTENSION NEURO-SYNTHÉTIQUE', toast: 'BANC DE DIAGNOSTIC SURVOLTÉ : Éclairs Seegson et court-circuit cybernétique !', log: '[SYNTH RIG] Surcharge du casque de calibration neuronale Working Joe.', fx: { type: 'square', f0: 1600, f1: 180, dur: 0.7, cutoff: 3600, vol: 0.55 }, anim: 'synth_test_harness', shock: true },
+        { id: 'scrubber_1', factory: 'createHadleyMoistureScrubberColumn', name: 'Colonne d\'Épuration d\'Humidité Hadley', x: 15, z: -48, hx: 0.9, hz: 0.9, radius: 7.5, damage: 185, color: 0x64748b, label: 'ÉVENTRATION CONDENSEUR VAPEUR', toast: 'COLONNE D\'ÉPURATION EN RUPTURE : Nuage de vapeur surchauffée et condensats !', log: '[SCRUBBER] Surpression du condenseur d\'humidité des sous-sols Hadley.', fx: { type: 'sawtooth', f0: 420, f1: 90, dur: 0.85, cutoff: 1500, vol: 0.55 }, anim: 'scrubber_fan_core' },
+        { id: 'ammo_hoist_1', factory: 'createUscmSentryAmmoHoist', name: 'Monte-Munitions Sentinelle USCM', x: -42, z: 15, hx: 1.2, hz: 0.8, radius: 7.0, damage: 165, color: 0x22c55e, label: 'DÉFLAGRATION MUNITIONS 10x28mm', toast: 'MONTE-CHARGE MUNITIONS EXPLOSÉ : Munitions sans étui en feu d\'artifice !', log: '[AMMO HOIST] Détonation en chaîne dans le monte-charge à munitions USCM.', fx: { type: 'square', f0: 750, f1: 110, dur: 0.75, cutoff: 2400, vol: 0.55 }, anim: 'ammo_hoist_basket', alarm: true },
+        { id: 'transit_cart_1', factory: 'createSevastopolTransitMaintenanceCart', name: 'Draisine de Maintenance Transit Sevastopol', x: 72, z: 28, hx: 1.5, hz: 0.9, radius: 8.0, damage: 195, color: 0xeab308, label: 'DÉRAILLEMENT DRAISINE SEEGSON', toast: 'DRAISINE PROJETÉE HORS RAILS : Batteries éclatées et projecteur broyé !', log: '[TRANSIT CART] Collision et déraillement de la draisine de maintenance Lorenz.', fx: { type: 'sawtooth', f0: 310, f1: 50, dur: 0.85, cutoff: 1200, vol: 0.6 }, anim: 'cart_spotlight_head' },
+        { id: 'ore_jaw_1', factory: 'createFiorinaOrePulverizerJaw', name: 'Concasseur de Minerai Fiorina', x: -36, z: 92, hx: 1.4, hz: 1.2, radius: 9.5, damage: 270, color: 0x78716c, label: 'ÉCLATEMENT DU CONCASSEUR', toast: 'MÂCHOIRES DE CONCASSEUR FRACTURÉES : Shrapnel de fonte et roche broyée !', log: '[ORE JAW] Rupture de l\'arbre excentrique du concasseur à mâchoires Fiorina.', fx: { type: 'sawtooth', f0: 180, f1: 30, dur: 1.1, cutoff: 800, vol: 0.7 }, anim: 'pulverizer_jaw_plate', slag: true }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -20097,9 +20115,18 @@
       if (prop.id.includes('compressor')) {
         audioManager.playRefrigerantCompressorChug?.(prop.x, prop.z);
       }
+      if (prop.id.includes('mhd')) {
+        audioManager.playMhdIonSurge?.(prop.x, prop.z);
+      }
       if (prop.shock) {
         audioManager.playHighVoltageArcDischarge?.(prop.x, prop.z);
         rendererEngine.addStrobeFlash?.(0x38bdf8, 0.22);
+      }
+      if (prop.damage >= 200) {
+        rendererEngine.triggerCameraFovPunch?.(1.8);
+      }
+      if (prop.chemical || prop.slag) {
+        window.HiveSystems?.vfx?.burst?.(prop.x, prop.z, prop.chemical ? 0x84cc16 : 0xea580c, 32, 0.5, 2.5);
       }
       rendererEngine.addScreenShake?.(isChain ? 0.75 : 0.6, 0.4);
       rendererEngine.addDirectionalScreenShake?.(prop.x - playerCreature.x, prop.z - playerCreature.z, isChain ? 0.8 : 0.55);

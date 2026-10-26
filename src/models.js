@@ -8115,6 +8115,109 @@
         for (let w = 0; w < 5; w++) {
           root.add(this._cylinder(iron, 0.8, 0.8, 0.32, { x: 0, y: 0.25 + w * 0.4, z: 0 }, { x: 0, y: 0, z: 0 }, `counterweight_slab_${w}`));
         }
+      } else if (normalizedType === 'nostromo_mhd_generator') {
+        // Chantier 351 : Nostromo Engine Room Magnetohydrodynamic Generator (Alien 1979)
+        const dark = this._material('darkMetal', { color: 0x1e293b, roughness: 0.6, metalness: 0.85 });
+        const copper = this._material('copper', { color: 0xb45309, roughness: 0.35, metalness: 0.9 });
+        const glow = this._material('emissiveBlue', { color: 0x60a5fa, emissive: 0x3b82f6, emissiveIntensity: 2.2 });
+        root.add(this._box(dark, { x: 2.6, y: 0.35, z: 1.5 }, { x: 0, y: 0.18, z: 0 }, 'mhd_base_skid', true));
+        root.add(this._cylinder(dark, 0.6, 0.6, 2.0, { x: 0, y: 1.0, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'mhd_vacuum_chamber', true));
+        for (let c = -1; c <= 1; c++) {
+          root.add(this._cylinder(copper, 0.78, 0.78, 0.28, { x: c * 0.65, y: 1.0, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, `mhd_magnetic_coil_${c}`));
+        }
+        root.add(this._box(copper, { x: 1.8, y: 0.12, z: 0.12 }, { x: 0, y: 1.75, z: 0.3 }, 'mhd_busbar_upper'));
+        root.add(this._cylinder(glow, 0.15, 0.15, 1.8, { x: 0, y: 1.0, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'mhd_magnetic_flux'));
+      } else if (normalizedType === 'hadley_seismic_stabilizer_jack') {
+        // Chantier 352 : Hadley's Hope Seismic Stabilizer Jack Rig (Aliens 1986)
+        const steel = this._material('steel', { color: 0x64748b, roughness: 0.4, metalness: 0.85 });
+        const chrome = this._material('steelBright', { color: 0x94a3b8, roughness: 0.2, metalness: 0.95 });
+        const amber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 1.8 });
+        root.add(this._box(steel, { x: 1.8, y: 0.25, z: 1.8 }, { x: 0, y: 0.12, z: 0 }, 'jack_base_foot', true));
+        root.add(this._cylinder(steel, 0.45, 0.45, 1.6, { x: 0, y: 0.95, z: 0 }, { x: 0, y: 0, z: 0 }, 'hydraulic_cylinder_barrel', true));
+        root.add(this._cylinder(chrome, 0.28, 0.28, 1.2, { x: 0, y: 1.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'hydraulic_cylinder_piston', true));
+        root.add(this._box(steel, { x: 1.2, y: 0.2, z: 1.2 }, { x: 0, y: 2.5, z: 0 }, 'jack_head_saddle', true));
+        root.add(this._box(amber, { x: 0.25, y: 0.35, z: 0.1 }, { x: 0, y: 1.1, z: 0.48 }, 'jack_pressure_dial'));
+      } else if (normalizedType === 'fiorina_chemical_neutralization_vat') {
+        // Chantier 353 : Fiorina 161 Chemical Neutralization Acid Bath Vat (Alien 3)
+        const lead = this._material('rust', { color: 0x475569, roughness: 0.8, metalness: 0.5 });
+        const acid = this._material('acidSlurry', { color: 0x65a30d, roughness: 0.2, metalness: 0.2 });
+        const dark = this._material('darkMetal', { color: 0x1e293b, roughness: 0.7, metalness: 0.85 });
+        root.add(this._box(lead, { x: 2.2, y: 1.1, z: 1.6 }, { x: 0, y: 0.55, z: 0 }, 'neutralization_vat_tub', true));
+        root.add(this._box(acid, { x: 1.9, y: 0.08, z: 1.3 }, { x: 0, y: 0.95, z: 0 }, 'neutralization_slurry_surface'));
+        root.add(this._cylinder(dark, 0.06, 0.06, 1.4, { x: 0, y: 1.1, z: 0 }, { x: 0, y: 0, z: 0 }, 'vat_agitator_shaft'));
+        root.add(this._box(dark, { x: 0.8, y: 0.15, z: 0.05 }, { x: 0, y: 0.65, z: 0 }, 'vat_agitator_blade'));
+      } else if (normalizedType === 'auriga_cryo_microtome_workbench') {
+        // Chantier 354 : USM Auriga Surgical Cryo-Microtome Workbench (Alien Resurrection)
+        const steel = this._material('steel', { color: 0x94a3b8, roughness: 0.35, metalness: 0.9 });
+        const cyanGlow = this._material('emissiveCyan', { color: 0x22d3ee, emissive: 0x06b6d4, emissiveIntensity: 2.0 });
+        const dark = this._material('darkMetal', { color: 0x0f172a, roughness: 0.6, metalness: 0.8 });
+        root.add(this._box(steel, { x: 1.8, y: 0.85, z: 1.1 }, { x: 0, y: 0.42, z: 0 }, 'microtome_bench_body', true));
+        root.add(this._cylinder(steel, 0.32, 0.3, 0.25, { x: -0.35, y: 0.95, z: 0 }, { x: 0, y: 0, z: 0 }, 'cryo_sample_chamber', true));
+        root.add(this._box(dark, { x: 0.45, y: 0.15, z: 0.15 }, { x: -0.35, y: 1.1, z: 0 }, 'microtome_blade_arm'));
+        root.add(this._box(dark, { x: 0.25, y: 0.45, z: 0.25 }, { x: 0.45, y: 1.05, z: 0 }, 'microscope_stand'));
+        root.add(this._box(cyanGlow, { x: 0.35, y: 0.2, z: 0.05 }, { x: 0.3, y: 1.25, z: 0.45 }, 'cryo_temp_display'));
+      } else if (normalizedType === 'romulus_docking_clamp_arm') {
+        // Chantier 355 : Renaissance Station Docking Clamp Hydraulic Arm (Alien: Romulus)
+        const frame = this._material('industrial', { color: 0x334155, roughness: 0.55, metalness: 0.75 });
+        const hazard = this._material('hazard', { color: 0xd97706, roughness: 0.45, metalness: 0.6 });
+        const dark = this._material('darkMetal', { color: 0x18181b, roughness: 0.7, metalness: 0.85 });
+        root.add(this._box(frame, { x: 1.2, y: 2.4, z: 0.8 }, { x: 0, y: 1.2, z: -0.2 }, 'clamp_pylon_base', true));
+        root.add(this._box(hazard, { x: 1.6, y: 0.4, z: 0.6 }, { x: 0, y: 2.2, z: 0.35 }, 'docking_jaw_upper', true));
+        root.add(this._box(dark, { x: 1.4, y: 0.4, z: 0.6 }, { x: 0, y: 1.4, z: 0.35 }, 'docking_jaw_lower', true));
+        root.add(this._cylinder(dark, 0.09, 0.09, 0.8, { x: -0.65, y: 1.8, z: 0.2 }, { x: 0, y: 0, z: 0 }, 'jaw_hydraulic_cylinder'));
+      } else if (normalizedType === 'sevastopol_synthetic_maintenance_rig') {
+        // Chantier 356 : Sevastopol Synthetic Maintenance Test Rig (Alien: Isolation)
+        const frame = this._material('industrial', { color: 0x475569, roughness: 0.5, metalness: 0.75 });
+        const purple = this._material('emissiveViolet', { color: 0xc084fc, emissive: 0xa855f7, emissiveIntensity: 2.2 });
+        const steel = this._material('steel', { color: 0x94a3b8, roughness: 0.35, metalness: 0.9 });
+        root.add(this._box(frame, { x: 1.2, y: 2.4, z: 0.3 }, { x: 0, y: 1.2, z: -0.25 }, 'synth_backboard_cradle', true));
+        root.add(this._box(steel, { x: 0.15, y: 0.55, z: 0.45 }, { x: -0.5, y: 1.3, z: 0 }, 'synth_arm_clamp_l'));
+        root.add(this._box(steel, { x: 0.15, y: 0.55, z: 0.45 }, { x: 0.5, y: 1.3, z: 0 }, 'synth_arm_clamp_r'));
+        root.add(this._cylinder(steel, 0.2, 0.22, 0.25, { x: 0, y: 1.95, z: 0 }, { x: 0, y: 0, z: 0 }, 'synth_test_harness'));
+        root.add(this._box(purple, { x: 0.45, y: 0.3, z: 0.08 }, { x: 0.4, y: 1.9, z: -0.05 }, 'synth_diagnostic_scope'));
+      } else if (normalizedType === 'hadley_moisture_scrubber_column') {
+        // Chantier 357 : Hadley's Hope Ventilation Moisture Scrubber Column (Aliens 1986)
+        const steel = this._material('steel', { color: 0x64748b, roughness: 0.45, metalness: 0.8 });
+        const dark = this._material('darkMetal', { color: 0x334155, roughness: 0.6, metalness: 0.85 });
+        root.add(this._cylinder(steel, 0.55, 0.55, 2.7, { x: 0, y: 1.35, z: 0 }, { x: 0, y: 0, z: 0 }, 'scrubber_column_shell', true));
+        for (let ring = 0; ring < 4; ring++) {
+          root.add(this._cylinder(dark, 0.66, 0.66, 0.1, { x: 0, y: 0.5 + ring * 0.6, z: 0 }, { x: 0, y: 0, z: 0 }, `scrubber_cooling_fin_${ring}`));
+        }
+        root.add(this._cylinder(dark, 0.4, 0.4, 0.3, { x: 0, y: 2.75, z: 0 }, { x: 0, y: 0, z: 0 }, 'scrubber_fan_core'));
+        root.add(this._cylinder(steel, 0.75, 0.75, 0.18, { x: 0, y: 0.09, z: 0 }, { x: 0, y: 0, z: 0 }, 'scrubber_drip_pan'));
+      } else if (normalizedType === 'uscm_sentry_ammo_hoist') {
+        // Chantier 358 : USCM Sentry Gun Ammunition Hoist Elevator (Aliens: Dark Descent)
+        const olive = this._material('oliveDrab', { color: 0x4d533c, roughness: 0.65, metalness: 0.55 });
+        const dark = this._material('darkMetal', { color: 0x1f2421, roughness: 0.7, metalness: 0.85 });
+        const ammo = this._material('ammoBox', { color: 0x3f4e38, roughness: 0.7, metalness: 0.5 });
+        root.add(this._box(dark, { x: 0.1, y: 2.5, z: 0.1 }, { x: -0.5, y: 1.25, z: -0.3 }, 'hoist_guide_rail_l', true));
+        root.add(this._box(dark, { x: 0.1, y: 2.5, z: 0.1 }, { x: 0.5, y: 1.25, z: -0.3 }, 'hoist_guide_rail_r', true));
+        root.add(this._box(olive, { x: 1.1, y: 0.8, z: 0.75 }, { x: 0, y: 0.75, z: 0 }, 'ammo_hoist_basket', true));
+        root.add(this._box(ammo, { x: 0.45, y: 0.28, z: 0.5 }, { x: -0.15, y: 0.95, z: 0 }, 'ammo_crate_stack_1'));
+        root.add(this._box(ammo, { x: 0.45, y: 0.28, z: 0.5 }, { x: 0.2, y: 0.95, z: 0 }, 'ammo_crate_stack_2'));
+      } else if (normalizedType === 'sevastopol_transit_maintenance_cart') {
+        // Chantier 359 : Sevastopol Transit Line Maintenance Cart (Alien: Isolation)
+        const yellow = this._material('transportYellow', { color: 0xeab308, roughness: 0.45, metalness: 0.65 });
+        const dark = this._material('darkMetal', { color: 0x1e293b, roughness: 0.65, metalness: 0.85 });
+        const glow = this._material('emissiveYellow', { color: 0xfef08a, emissive: 0xeab308, emissiveIntensity: 2.0 });
+        root.add(this._box(yellow, { x: 2.2, y: 0.3, z: 1.2 }, { x: 0, y: 0.35, z: 0 }, 'cart_flatbed_chassis', true));
+        for (let wx = -0.75; wx <= 0.75; wx += 1.5) {
+          for (let wz = -0.62; wz <= 0.62; wz += 1.24) {
+            root.add(this._cylinder(dark, 0.18, 0.18, 0.12, { x: wx, y: 0.18, z: wz }, { x: Math.PI * 0.5, y: 0, z: 0 }, `cart_wheel_${wx}_${wz}`));
+          }
+        }
+        root.add(this._box(dark, { x: 0.7, y: 0.5, z: 0.8 }, { x: -0.55, y: 0.75, z: 0 }, 'cart_tool_chest', true));
+        root.add(this._cylinder(dark, 0.05, 0.05, 0.9, { x: 0.7, y: 0.9, z: 0.35 }, { x: 0, y: 0, z: 0 }, 'cart_spotlight_pole'));
+        root.add(this._box(glow, { x: 0.22, y: 0.22, z: 0.18 }, { x: 0.7, y: 1.35, z: 0.35 }, 'cart_spotlight_head'));
+      } else if (normalizedType === 'fiorina_ore_pulverizer_jaw') {
+        // Chantier 360 : Fiorina 161 Underground Ore Pulverizer Jaw (Alien 3)
+        const rust = this._material('rust', { color: 0x57534e, roughness: 0.85, metalness: 0.45 });
+        const dark = this._material('darkMetal', { color: 0x1c1917, roughness: 0.75, metalness: 0.8 });
+        const steel = this._material('steel', { color: 0x78716c, roughness: 0.5, metalness: 0.85 });
+        root.add(this._box(rust, { x: 1.8, y: 1.7, z: 1.5 }, { x: 0, y: 0.85, z: 0 }, 'pulverizer_housing', true));
+        root.add(this._cylinder(steel, 0.65, 0.65, 0.25, { x: -0.98, y: 1.1, z: 0 }, { x: 0, y: 0, z: Math.PI * 0.5 }, 'pulverizer_flywheel', true));
+        root.add(this._box(dark, { x: 1.1, y: 0.8, z: 0.25 }, { x: 0, y: 1.1, z: 0.45 }, 'pulverizer_jaw_plate'));
+        root.add(this._box(rust, { x: 1.4, y: 0.5, z: 1.1 }, { x: 0, y: 1.85, z: 0 }, 'pulverizer_hopper_funnel', true));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -10731,6 +10834,16 @@
     createFiorinaCraneCounterweightStack() {
       return this.createIndustrialProp('fiorina_crane_counterweight_stack');
     }
+    createNostromoMhdGenerator() { return this.createIndustrialProp('nostromo_mhd_generator'); }
+    createHadleySeismicStabilizerJack() { return this.createIndustrialProp('hadley_seismic_stabilizer_jack'); }
+    createFiorinaChemicalNeutralizationVat() { return this.createIndustrialProp('fiorina_chemical_neutralization_vat'); }
+    createAurigaCryoMicrotomeWorkbench() { return this.createIndustrialProp('auriga_cryo_microtome_workbench'); }
+    createRomulusDockingClampArm() { return this.createIndustrialProp('romulus_docking_clamp_arm'); }
+    createSevastopolSyntheticMaintenanceRig() { return this.createIndustrialProp('sevastopol_synthetic_maintenance_rig'); }
+    createHadleyMoistureScrubberColumn() { return this.createIndustrialProp('hadley_moisture_scrubber_column'); }
+    createUscmSentryAmmoHoist() { return this.createIndustrialProp('uscm_sentry_ammo_hoist'); }
+    createSevastopolTransitMaintenanceCart() { return this.createIndustrialProp('sevastopol_transit_maintenance_cart'); }
+    createFiorinaOrePulverizerJaw() { return this.createIndustrialProp('fiorina_ore_pulverizer_jaw'); }
   }
 
   // ---------------------------------------------------------------------------

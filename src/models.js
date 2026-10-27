@@ -2182,8 +2182,28 @@
           uniformColor: 0x18181b, armorColor: 0xef4444,
           torso: { x: 0.8, y: 1.04, z: 0.48 }, pelvis: { x: 0.6, y: 0.39, z: 0.4 }, chest: { x: 1.3, y: 1.02, z: 0.42 }, pack: { x: 0.94, y: 1.12, z: 0.5 },
           shoulderX: 0.79, hipX: 0.39, helmetScale: 1.18
-        }
+        },
       };
+        uscm_forward_sensor_operator: {
+          uniformColor: 0x334155, armorColor: 0x15803d,
+          torso: { x: 0.72, y: 0.96, z: 0.43 }, pelvis: { x: 0.54, y: 0.35, z: 0.36 }, chest: { x: 1.16, y: 0.92, z: 0.34 }, pack: { x: 0.9, y: 1.08, z: 0.48 },
+          shoulderX: 0.72, hipX: 0.36, helmetScale: 1.1
+        },
+        uscm_heavy_anti_armor_gunner: {
+          uniformColor: 0x1e293b, armorColor: 0x365314,
+          torso: { x: 0.78, y: 1.02, z: 0.48 }, pelvis: { x: 0.58, y: 0.38, z: 0.4 }, chest: { x: 1.28, y: 1.0, z: 0.4 }, pack: { x: 0.96, y: 1.14, z: 0.52 },
+          shoulderX: 0.78, hipX: 0.39, helmetScale: 1.16
+        },
+        weyland_sublevel_containment_marshal: {
+          uniformColor: 0x0f172a, armorColor: 0xeab308,
+          torso: { x: 0.76, y: 1.0, z: 0.46 }, pelvis: { x: 0.56, y: 0.37, z: 0.38 }, chest: { x: 1.24, y: 0.96, z: 0.38 }, pack: { x: 0.92, y: 1.12, z: 0.5 },
+          shoulderX: 0.76, hipX: 0.38, helmetScale: 1.14
+        },
+        weyland_elite_combat_synth_centurion: {
+          uniformColor: 0x18181b, armorColor: 0xdc2626,
+          torso: { x: 0.8, y: 1.04, z: 0.48 }, pelvis: { x: 0.6, y: 0.39, z: 0.4 }, chest: { x: 1.3, y: 1.02, z: 0.42 }, pack: { x: 0.94, y: 1.12, z: 0.5 },
+          shoulderX: 0.8, hipX: 0.39, helmetScale: 1.18
+        },
       const profile = Object.assign({}, profiles[type] || profiles.civilian);
       profile.compact = !!compact;
       return profile;
@@ -2195,7 +2215,7 @@
       const dark = materials.dark;
       const visor = materials.visor;
       const accent = materials.accent;
-      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic', 'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander', 'uscm_breacher_shotgun', 'uscm_exosuit_commando', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_specimen_trapper', 'weyland_director_officer', 'weyland_heavy_mech', 'weyland_combat_android', 'weyland_containment_commando', 'seegson_industrial_joe', 'mercenary_smuggler_pirate', 'uscm_tracker_specialist', 'uscm_riot_suppressor', 'weyland_xenoborg_handler', 'weyland_black_ops_assassin', 'uscm_cn20_nerve_gas_specialist', 'uscm_colonial_marshal', 'weyland_cyborg_enforcer', 'weyland_hazmat_incinerator', 'uscm_cryo_sweeper', 'uscm_orbital_comms_tech', 'weyland_apex_handler', 'weyland_heavy_incinerator_synth', 'uscm_heavy_grenadier', 'uscm_cbrn_decon_sweeper', 'weyland_shock_enforcer', 'weyland_neomorph_researcher', 'uscm_pulse_lance_gunner', 'uscm_drop_pod_pathfinder', 'weyland_synth_overseer', 'weyland_mutagen_flamer_specialist', 'uscm_railgun_marksman', 'uscm_exo_rig_loader', 'weyland_android_infiltrator', 'weyland_cryo_containment_ward', 'uscm_command_apc_gunner', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'weyland_praetorian_droid', 'uscm_smart_missile_spotter', 'uscm_breach_torch_sapper', 'weyland_xeno_tamer_commando', 'weyland_combat_medic_synth', 'uscm_heavy_plasma_gunner', 'uscm_orbital_drop_medic', 'weyland_black_goo_specialist', 'weyland_exec_security_synth', 'uscm_combat_cyberneticist', 'uscm_recon_drone_handler', 'weyland_subzero_cryo_trooper', 'weyland_nano_repair_synth', 'uscm_combat_synapse_operator', 'uscm_orbital_defense_gunner', 'weyland_apex_containment_specialist', 'weyland_sublevel_heavy_sentry_synth', 'uscm_point_defense_technician', 'uscm_heavy_mortar_spotter', 'weyland_genetic_security_enforcer', 'weyland_cryo_containment_mech_suit'].indexOf(type) >= 0;
+      const combatRole = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'weyland_commando_mk2', 'weyland_steel_team_synth', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_sniper', 'weyland_containment_squad', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic', 'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander', 'uscm_breacher_shotgun', 'uscm_exosuit_commando', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_specimen_trapper', 'weyland_director_officer', 'weyland_heavy_mech', 'weyland_combat_android', 'weyland_containment_commando', 'seegson_industrial_joe', 'mercenary_smuggler_pirate', 'uscm_tracker_specialist', 'uscm_riot_suppressor', 'weyland_xenoborg_handler', 'weyland_black_ops_assassin', 'uscm_cn20_nerve_gas_specialist', 'uscm_colonial_marshal', 'weyland_cyborg_enforcer', 'weyland_hazmat_incinerator', 'uscm_cryo_sweeper', 'uscm_orbital_comms_tech', 'weyland_apex_handler', 'weyland_heavy_incinerator_synth', 'uscm_heavy_grenadier', 'uscm_cbrn_decon_sweeper', 'weyland_shock_enforcer', 'weyland_neomorph_researcher', 'uscm_pulse_lance_gunner', 'uscm_drop_pod_pathfinder', 'weyland_synth_overseer', 'weyland_mutagen_flamer_specialist', 'uscm_railgun_marksman', 'uscm_exo_rig_loader', 'weyland_android_infiltrator', 'weyland_cryo_containment_ward', 'uscm_command_apc_gunner', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'weyland_praetorian_droid', 'uscm_smart_missile_spotter', 'uscm_breach_torch_sapper', 'weyland_xeno_tamer_commando', 'weyland_combat_medic_synth', 'uscm_heavy_plasma_gunner', 'uscm_orbital_drop_medic', 'weyland_black_goo_specialist', 'weyland_exec_security_synth', 'uscm_combat_cyberneticist', 'uscm_recon_drone_handler', 'weyland_subzero_cryo_trooper', 'weyland_nano_repair_synth', 'uscm_combat_synapse_operator', 'uscm_orbital_defense_gunner', 'weyland_apex_containment_specialist', 'weyland_sublevel_heavy_sentry_synth', 'uscm_point_defense_technician', 'uscm_heavy_mortar_spotter', 'weyland_genetic_security_enforcer', 'weyland_cryo_containment_mech_suit', 'uscm_forward_sensor_operator', 'uscm_heavy_anti_armor_gunner', 'weyland_sublevel_containment_marshal', 'weyland_elite_combat_synth_centurion'].indexOf(type) >= 0;
 
       if (combatRole) {
         for (let side = -1; side <= 1; side += 2) {
@@ -3054,6 +3074,39 @@
         const exoMetal = this._material('darkMetal', { color: 0x1e293b, roughness: 0.45, metalness: 0.88 });
         root.add(this._box(exoMetal, { x: profile.torsoWidth * 1.35, y: 1.05, z: 0.6 }, { x: 0, y: torsoY + 0.1, z: 0 }, 'cryo_mech_heavy_carapace', true));
         root.add(this._cylinder(cryoCyan, 0.12, 0.12, 0.95, { x: profile.shoulderX + 0.22, y: torsoY - 0.6, z: 0.5 }, { x: Math.PI / 2, y: 0, z: 0 }, 'cryo_vapor_cannon_arm', true));
+      } else if (type === 'uscm_forward_sensor_operator') {
+        // Opérateur Détecteur Avancé & Relais Radar USCM (Aliens: Fireteam Elite / Colonial Marines)
+        const sensorGreen = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.2 });
+        // Mât d'antenne repliable haute fréquence sur le pack dorsal
+        root.add(this._cylinder(dark, 0.025, 0.025, 1.25, { x: 0.28, y: torsoY + 0.85, z: -0.35 }, { x: 0.1, y: 0, z: 0.08 }, 'sensor_operator_antenna_mast'));
+        root.add(this._box(sensorGreen, { x: 0.08, y: 0.08, z: 0.08 }, { x: 0.33, y: torsoY + 1.48, z: -0.3 }, 'sensor_antenna_beacon_light'));
+        // Mini-écran tactique vert phosphorescent au poignet gauche
+        root.add(this._box(sensorGreen, { x: 0.12, y: 0.06, z: 0.16 }, { x: -profile.shoulderX - 0.12, y: torsoY - 0.25, z: 0.28 }, 'wrist_tactical_display_glow'));
+      } else if (type === 'uscm_heavy_anti_armor_gunner') {
+        // Artilleur Lourd Anti-Blindage SADAR USCM (Aliens 1986 / Dark Horse / AVP Extinction)
+        const sadarOlive = this._material('armorSadard', { color: 0x365314, roughness: 0.45, metalness: 0.7 });
+        // Lance-roquettes lourd bi-tube d'épaule avec optique collimatée
+        root.add(this._cylinder(sadarOlive, 0.09, 0.09, 1.35, { x: 0.32, y: torsoY + 0.45, z: 0.15 }, { x: Math.PI / 2, y: 0, z: 0.05 }, 'sadar_twin_tube_right', true));
+        root.add(this._cylinder(sadarOlive, 0.09, 0.09, 1.35, { x: 0.5, y: torsoY + 0.45, z: 0.15 }, { x: Math.PI / 2, y: 0, z: 0.05 }, 'sadar_twin_tube_left', true));
+        // Épaulière renforcée anti-souffle en alliage céramique
+        root.add(this._box(armor, { x: 0.42, y: 0.28, z: 0.36 }, { x: profile.shoulderX + 0.12, y: torsoY + 0.25, z: 0.05 }, 'anti_armor_blast_pauldron', true));
+      } else if (type === 'weyland_sublevel_containment_marshal') {
+        // Prévôt de Sécurité Confinement Weyland-Yutani (Alien 3 / Isolation / Dark Descent)
+        const hazardYellow = this._material('hazardYellow', { color: 0xeab308, roughness: 0.4, metalness: 0.6 });
+        const shockCyan = this._material('emissiveCyanShock', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.4 });
+        // Plastron jaune sécurité Weyland avec chevrons d'avertissement noirs
+        root.add(this._box(hazardYellow, { x: 0.46, y: 0.36, z: 0.08 }, { x: 0, y: torsoY + 0.36, z: 0.38 }, 'hazard_heavy_breastplate'));
+        // Bouclier anti-émeute électrifié haute tension
+        root.add(this._box(shockCyan, { x: 0.38, y: 0.65, z: 0.04 }, { x: -profile.shoulderX - 0.15, y: torsoY - 0.2, z: 0.35 }, 'containment_shock_shield', true));
+      } else if (type === 'weyland_elite_combat_synth_centurion') {
+        // Centurion Synthétique de Choc Weyland-Yutani (Aliens: Defiance / Fireteam Elite)
+        const chromeCrimson = this._material('chromeCrimson', { color: 0xdc2626, metalness: 0.85, roughness: 0.25 });
+        const synthChrome = this._material('synthDarkChrome', { color: 0x27272a, metalness: 0.9, roughness: 0.2 });
+        // Châssis humanoïde lourd caréné
+        root.add(this._box(synthChrome, { x: 0.52, y: 0.55, z: 0.32 }, { x: 0, y: torsoY + 0.15, z: 0 }, 'centurion_dense_torso_exoskeleton', true));
+        root.add(this._box(chromeCrimson, { x: 0.42, y: 0.32, z: 0.06 }, { x: 0, y: torsoY + 0.35, z: 0.38 }, 'centurion_crimson_crest_plate'));
+        // Lame rétractable à impulsions au poignet droit
+        root.add(this._box(chromeCrimson, { x: 0.04, y: 0.65, z: 0.08 }, { x: profile.shoulderX + 0.16, y: torsoY - 0.42, z: 0.32 }, 'centurion_pulse_blade', true));
       }
     }
 
@@ -4310,6 +4363,10 @@
       if (normalizedCaste === 'synth_chitin_hybrid_xeno') return this._createUprightAdult('synth_chitin_hybrid_xeno');
       if (normalizedCaste === 'radioactive_chernobyl_xeno') return this._createUprightAdult('radioactive_chernobyl_xeno');
       if (normalizedCaste === 'primordial_engineer_deacon_apex') return this._createUprightAdult('primordial_engineer_deacon_apex');
+      if (normalizedCaste === 'pyro_slag_juggernaut') return this._createUprightAdult('pyro_slag_juggernaut');
+      if (normalizedCaste === 'shadow_crawler_ambusher') return this._createUprightAdult('shadow_crawler_ambusher');
+      if (normalizedCaste === 'acid_spore_carrier_queen') return this._createUprightAdult('acid_spore_carrier_queen');
+      if (normalizedCaste === 'biomech_dune_strider') return this._createUprightAdult('biomech_dune_strider');
       return this._createUprightAdult(normalizedCaste);
     }
 
@@ -4367,6 +4424,10 @@
       const synthChitinHybridXeno = caste === 'synth_chitin_hybrid_xeno';
       const radioactiveChernobylXeno = caste === 'radioactive_chernobyl_xeno';
       const primordialEngineerDeaconApex = caste === 'primordial_engineer_deacon_apex';
+      const pyroSlagJuggernaut = caste === 'pyro_slag_juggernaut';
+      const shadowCrawlerAmbusher = caste === 'shadow_crawler_ambusher';
+      const acidSporeCarrierQueen = caste === 'acid_spore_carrier_queen';
+      const biomechDuneStrider = caste === 'biomech_dune_strider';
       const pathogenBrute = caste === 'pathogen_brute';
       const gridAlien = caste === 'grid_alien';
       const defender = caste === 'defender';
@@ -4407,7 +4468,7 @@
       const lurker = caste === 'lurker';
       const gorillaAlien = caste === 'gorilla_alien';
 
-      const scale = queenMother ? 1.75 : (ancientProgenitorQueen ? 1.74 : (myceliumQueenBroodmother ? 1.73 : (omegaPrimeEmpress ? 1.72 : (matriarchQueen ? 1.68 : (empress ? 1.65 : (primordialEngineerDeaconApex ? 1.55 : (synthChitinHybridXeno ? 1.35 : (radioactiveChernobylXeno ? 1.29 : (wingedNightStalker ? 1.25 : (titanCrusherBerserker ? 1.64 : (flyingQueen ? 1.58 : (king ? 1.62 : (ultramorph ? 1.56 : (deaconess ? 1.55 : (magmaCrustCrusher ? 1.55 : (wingedHarpyQueen ? 1.54 : (titanBoneBehemoth ? 1.53 : (goliathSiegeCrusher ? 1.52 : (cyberImplantRavager ? 1.49 : (chitinShieldPhalanx ? 1.48 : (raven ? 1.48 : (abomination ? 1.48 : (tungstenRibRavager ? 1.47 : (armoredJuggernaut ? 1.46 : (empressPraetorianVanguard ? 1.45 : (boneCrusherRavager ? 1.45 : (royalChestbursterAdult ? 1.44 : (pathogenBrute ? 1.44 : (obsidienneEmpressGuard ? 1.43 : (royal ? 1.42 : (acidBoilerMatriarch ? 1.41 : (berserkerAlien ? 1.4 : (praetorianExecutioner ? 1.39 : (alpha ? 1.38 : (pyroSlagXenomorph ? 1.37 : (gorillaAlien ? 1.36 : (newborn ? 1.35 : (irradiatedReactorXeno ? 1.34 : (plasmaFusedXeno ? 1.34 : (deaconAdult ? 1.34 : (royalGuard ? 1.33 : (parasiticCarrier ? 1.32 : (charger ? 1.32 : (corrosiveOvomorphCarrier ? 1.31 : (xenoborg ? 1.3 : (fungalMyceliumHost ? 1.29 : (anubiteXeno ? 1.28 : (bioMechanicalDefianceStalker ? 1.28 : (abyssalTrenchXeno ? 1.28 : (bullSpitter ? 1.28 : (palatine ? 1.28 : (voidVacuumStalker ? 1.27 : (razorWingGliderXeno ? 1.26 : (neomorphApex ? 1.26 : (causticBileBursterAdult ? 1.25 : (mutagenicSporeBurster ? 1.25 : (neomorphBloodbursterAlpha ? 1.25 : (cryoStalkerXeno ? 1.24 : (arachnidAlien ? 1.24 : (guardian ? 1.24 : (tarkatanStalker ? 1.23 : (neuroToxinWaspXeno ? 1.22 : (arachnoSpitter ? 1.22 : (carrier ? 1.22 : (bioElectricEelXeno ? 1.21 : (scorpionSpitter ? 1.21 : (predalien ? 1.32 : (chrysalisWarrior ? 1.25 : (defender ? 1.18 : (spiderAlien ? 1.2 : (snakeAlien ? 1.18 : (chameleonOpticStalker ? 1.16 : (pathogenStalker ? 1.16 : (gridAlien ? 1.15 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (phantomLurker ? 1.07 : (warrior ? 1.06 : (infiltrator ? 1.05 : (lurker ? 1.04 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+      const scale = acidSporeCarrierQueen ? 1.71 : (pyroSlagJuggernaut ? 1.57 : (biomechDuneStrider ? 1.33 : (shadowCrawlerAmbusher ? 1.14 : (queenMother ? 1.75 : (ancientProgenitorQueen ? 1.74 : (myceliumQueenBroodmother ? 1.73 : (omegaPrimeEmpress ? 1.72 : (matriarchQueen ? 1.68 : (empress ? 1.65 : (primordialEngineerDeaconApex ? 1.55 : (synthChitinHybridXeno ? 1.35 : (radioactiveChernobylXeno ? 1.29 : (wingedNightStalker ? 1.25 : (titanCrusherBerserker ? 1.64 : (flyingQueen ? 1.58 : (king ? 1.62 : (ultramorph ? 1.56 : (deaconess ? 1.55 : (magmaCrustCrusher ? 1.55 : (wingedHarpyQueen ? 1.54 : (titanBoneBehemoth ? 1.53 : (goliathSiegeCrusher ? 1.52 : (cyberImplantRavager ? 1.49 : (chitinShieldPhalanx ? 1.48 : (raven ? 1.48 : (abomination ? 1.48 : (tungstenRibRavager ? 1.47 : (armoredJuggernaut ? 1.46 : (empressPraetorianVanguard ? 1.45 : (boneCrusherRavager ? 1.45 : (royalChestbursterAdult ? 1.44 : (pathogenBrute ? 1.44 : (obsidienneEmpressGuard ? 1.43 : (royal ? 1.42 : (acidBoilerMatriarch ? 1.41 : (berserkerAlien ? 1.4 : (praetorianExecutioner ? 1.39 : (alpha ? 1.38 : (pyroSlagXenomorph ? 1.37 : (gorillaAlien ? 1.36 : (newborn ? 1.35 : (irradiatedReactorXeno ? 1.34 : (plasmaFusedXeno ? 1.34 : (deaconAdult ? 1.34 : (royalGuard ? 1.33 : (parasiticCarrier ? 1.32 : (charger ? 1.32 : (corrosiveOvomorphCarrier ? 1.31 : (xenoborg ? 1.3 : (fungalMyceliumHost ? 1.29 : (anubiteXeno ? 1.28 : (bioMechanicalDefianceStalker ? 1.28 : (abyssalTrenchXeno ? 1.28 : (bullSpitter ? 1.28 : (palatine ? 1.28 : (voidVacuumStalker ? 1.27 : (razorWingGliderXeno ? 1.26 : (neomorphApex ? 1.26 : (causticBileBursterAdult ? 1.25 : (mutagenicSporeBurster ? 1.25 : (neomorphBloodbursterAlpha ? 1.25 : (cryoStalkerXeno ? 1.24 : (arachnidAlien ? 1.24 : (guardian ? 1.24 : (tarkatanStalker ? 1.23 : (neuroToxinWaspXeno ? 1.22 : (arachnoSpitter ? 1.22 : (carrier ? 1.22 : (bioElectricEelXeno ? 1.21 : (scorpionSpitter ? 1.21 : (predalien ? 1.32 : (chrysalisWarrior ? 1.25 : (defender ? 1.18 : (spiderAlien ? 1.2 : (snakeAlien ? 1.18 : (chameleonOpticStalker ? 1.16 : (pathogenStalker ? 1.16 : (gridAlien ? 1.15 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (phantomLurker ? 1.07 : (warrior ? 1.06 : (infiltrator ? 1.05 : (lurker ? 1.04 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
       let chitinColor = 0x0b1518;
       if (empress) chitinColor = 0x31102f; // Matriarche Ancienne Empress (AvP 2000 / 2010)
       else if (matriarchQueen) chitinColor = 0x1c1917; // Reine Matriarche Primordiale Calcifiée (Colonial Marines / Fireteam Elite)
@@ -4454,6 +4515,10 @@
       else if (bioMechanicalDefianceStalker) chitinColor = 0x0f172a; // Traqueur Biomécanique d'Élite (Aliens: Defiance)
       else if (titanCrusherBerserker) chitinColor = 0x3b0764; // Écraseur Berserker Corne de Titane (Extinction / Berserker)
       else if (primordialEngineerDeaconApex) chitinColor = 0x1e3a8a; // DÃ©acon Primordial Apex des IngÃ©nieurs (Prometheus / Fire and Stone)
+      else if (pyroSlagJuggernaut) chitinColor = 0x431407; // Juggernaut de Slag Incandescent et Basalte (AvP Extinction / Eradication)
+      else if (shadowCrawlerAmbusher) chitinColor = 0x09090b; // Rampeur des Ombres Invisible (Aliens: Labyrinth / Nocturne)
+      else if (acidSporeCarrierQueen) chitinColor = 0x14532d; // Reine Porteuse de Spores Acides et Nid Embryonnaire (Alien: Earth / Genocide)
+      else if (biomechDuneStrider) chitinColor = 0x78350f; // Enjambeur Silicate des Dunes BiomÃ©caniques (Prometheus / Fire and Stone)
       else if (synthChitinHybridXeno) chitinColor = 0x334155; // XÃ©nomorphe Hybride Ã  Chitine SynthÃ©tique (Aliens: Defiance)
       else if (radioactiveChernobylXeno) chitinColor = 0x14532d; // XÃ©nomorphe Radioactif d'Irradiation Totale (Fireteam / Isolation)
       else if (wingedNightStalker) chitinColor = 0x1e1b4b; // Traqueur de Nuit AilÃ© Nocturne (AvP Extinction)
@@ -5493,6 +5558,45 @@
         const archonSpur = this._material('bone', { color: 0x64748b, roughness: 0.4, metalness: 0.6 });
         root.add(this._coneAlong(paleDeaconMat, { x: 0, y: 4.6 * scale, z: 0.5 * scale }, { x: 0, y: -0.15, z: 1.1 }, 0.28 * scale, 1.35 * scale, 'deacon_premaxillary_mandible', 12));
         root.add(this._segment(archonSpur, new T.Vector3(0, 2.5 * scale, -0.65 * scale), new T.Vector3(0, 4.6 * scale, -0.9 * scale), 0.14 * scale, 0.08 * scale, 'deacon_dorsal_spinal_ridge', 10));
+      }
+      if (pyroSlagJuggernaut) {
+        // Pyro Slag Juggernaut (AvP Extinction / Eradication) : crête céphalique hyper-massifiée en basalte et fissures magmatiques
+        const basaltMat = this._material('darkChitin', { color: 0x27272a, roughness: 0.85, metalness: 0.15 });
+        const moltenSlagGlow = this._material('moltenGlow', { color: 0xea580c, emissive: 0xc2410c, emissiveIntensity: 2.8 });
+        root.add(this._box(basaltMat, { x: 0.85 * scale, y: 0.35 * scale, z: 1.15 * scale }, { x: 0, y: 5.25 * scale, z: 0.3 * scale }, 'pyro_slag_head_ram_crust', true));
+        root.add(this._box(moltenSlagGlow, { x: 0.65 * scale, y: 0.08 * scale, z: 0.9 * scale }, { x: 0, y: 5.35 * scale, z: 0.35 * scale }, 'pyro_slag_dorsal_fissure_glow'));
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._cone(basaltMat, 0.12 * scale, 0.65 * scale, { x: side * 0.42 * scale, y: 4.5 * scale, z: -0.3 * scale }, { x: -0.4, y: 0, z: side * 0.5 }, 'pyro_slag_shoulder_ram_' + side, true));
+        }
+      }
+      if (shadowCrawlerAmbusher) {
+        // Shadow Crawler Ambusher (Aliens: Labyrinth / Nocturne) : griffes rétractiles acérées et dard caudal effilé
+        const obsidianMat = this._material('obsidianBlack', { color: 0x09090b, roughness: 0.2, metalness: 0.95 });
+        const clawMat = this._material('sharpClaw', { color: 0x18181b, roughness: 0.1, metalness: 0.8 });
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._box(clawMat, { x: 0.05 * scale, y: 0.35 * scale, z: 0.05 * scale }, { x: side * 0.35 * scale, y: 2.1 * scale, z: 0.55 * scale }, 'shadow_talon_claw_' + side, true));
+          root.add(this._cone(obsidianMat, 0.06 * scale, 0.45 * scale, { x: side * 0.28 * scale, y: 3.4 * scale, z: -0.25 * scale }, { x: -0.3, y: 0, z: side * 0.4 }, 'shadow_dorsal_spike_' + side, true));
+        }
+        root.add(this._cone(clawMat, 0.08 * scale, 0.6 * scale, { x: 0, y: 1.2 * scale, z: -1.4 * scale }, { x: Math.PI / 3, y: 0, z: 0 }, 'shadow_barbed_tail_stinger', true));
+      }
+      if (acidSporeCarrierQueen) {
+        // Acid Spore Carrier Queen (Alien: Earth / Genocide) : collerette royale ornée de conduits d'acide vésiculaires et grappes de spores
+        const acidSporeGlow = this._material('acidSporeVesicle', { color: 0x84cc16, emissive: 0x65a30d, emissiveIntensity: 2.6 });
+        const royalCrestMat = this._material('royalChitin', { color: 0x14532d, roughness: 0.6, metalness: 0.4 });
+        root.add(this._box(royalCrestMat, { x: 1.35 * scale, y: 0.15 * scale, z: 1.45 * scale }, { x: 0, y: 5.6 * scale, z: -0.5 * scale }, 'acid_queen_royal_crest', true));
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._ellipsoid(acidSporeGlow, { x: 0.22 * scale, y: 0.32 * scale, z: 0.22 * scale }, { x: side * 0.45 * scale, y: 4.8 * scale, z: -0.45 * scale }, 'acid_spore_sac_cluster_' + side, 10));
+          root.add(this._cylinder(royalCrestMat, 0.05 * scale, 0.08 * scale, 0.6 * scale, { x: side * 0.55 * scale, y: 4.2 * scale, z: 0.1 * scale }, { x: 0.2, y: 0, z: side * 0.3 }, 'acid_conduit_duct_' + side, true));
+        }
+      }
+      if (biomechDuneStrider) {
+        // Biomech Dune Strider (Prometheus / Fire and Stone) : échasses tibiales effilées et filtres céphaliques anti-tempête
+        const duneOchreMat = this._material('duneChitin', { color: 0x78350f, roughness: 0.7, metalness: 0.3 });
+        const silicateFilterMat = this._material('silicateFilter', { color: 0xd97706, emissive: 0xb45309, emissiveIntensity: 1.8 });
+        root.add(this._cylinder(silicateFilterMat, 0.08 * scale, 0.12 * scale, 0.45 * scale, { x: 0, y: 4.9 * scale, z: 0.65 * scale }, { x: Math.PI / 4, y: 0, z: 0 }, 'silicate_storm_intake_filter'));
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._cylinder(duneOchreMat, 0.06 * scale, 0.04 * scale, 1.4 * scale, { x: side * 0.38 * scale, y: 1.2 * scale, z: 0.1 * scale }, { x: 0, y: 0, z: side * 0.1 }, 'strider_elongated_tibial_brace_' + side, true));
+        }
       }
       if (!newborn) {
         this._addTail(
@@ -11254,6 +11358,95 @@
         const cableSheave = this._material('darkMetal', { color: 0x27272a, roughness: 0.45, metalness: 0.85 });
         root.add(this._box(rustTower, { x: 1.7, y: 1.9, z: 1.2 }, { x: 0, y: 0.95, z: 0 }, 'ingot_lift_mast_frame', true));
         root.add(this._cylinder(cableSheave, 0.32, 0.32, 0.65, { x: 0, y: 1.78, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'lift_counterweight_sheave_pulley'));
+      } else if (normalizedType === 'nostromo_airway_decompression_hatch') {
+        // Chantier 551 : Sas de Décompression & Conduit d'Air Primaire Nostromo (Alien 1979)
+        const frameMetal = this._material('darkMetal', { color: 0x334155, roughness: 0.5, metalness: 0.8 });
+        const hatchDoor = this._material('hazardWhite', { color: 0xe2e8f0, roughness: 0.4, metalness: 0.6 });
+        const cyanGlow = this._material('emissiveCyan', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.2 });
+        const ringYellow = this._material('hazardStripe', { color: 0xeab308, roughness: 0.4, metalness: 0.5 });
+        root.add(this._box(frameMetal, { x: 1.8, y: 2.2, z: 0.4 }, { x: 0, y: 1.1, z: 0 }, 'airway_outer_frame', true));
+        root.add(this._cylinder(hatchDoor, 0.7, 0.7, 0.25, { x: 0, y: 1.1, z: 0.1 }, { x: Math.PI / 2, y: 0, z: 0 }, 'airway_circular_plug_door', true));
+        root.add(this._cylinder(ringYellow, 0.28, 0.28, 0.08, { x: 0, y: 1.1, z: 0.26 }, { x: Math.PI / 2, y: 0, z: 0 }, 'airway_manual_handwheel'));
+        root.add(this._box(cyanGlow, { x: 0.14, y: 0.14, z: 0.06 }, { x: 0.6, y: 1.8, z: 0.22 }, 'airway_decompression_indicator'));
+      } else if (normalizedType === 'hadley_blackwater_pumping_station') {
+        // Chantier 552 : Station de Pompage Boues Toxiques & Huiles Hadley (Aliens 1986)
+        const pumpCast = this._material('sludgeCastIron', { color: 0x1e293b, roughness: 0.7, metalness: 0.4 });
+        const purpleToxic = this._material('emissivePurple', { color: 0xa855f7, emissive: 0x7e22ce, emissiveIntensity: 2.0 });
+        const yellowPipes = this._material('hazardYellow', { color: 0xeab308, roughness: 0.4, metalness: 0.6 });
+        root.add(this._box(pumpCast, { x: 2.2, y: 1.4, z: 1.8 }, { x: 0, y: 0.7, z: 0 }, 'blackwater_sump_tank', true));
+        root.add(this._cylinder(pumpCast, 0.45, 0.45, 1.2, { x: -0.6, y: 1.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'blackwater_impeller_motor', true));
+        root.add(this._cylinder(yellowPipes, 0.14, 0.14, 2.0, { x: 0.4, y: 1.3, z: 0.5 }, { x: 0, y: 0, z: Math.PI / 2 }, 'sludge_intake_manifold'));
+        root.add(this._box(purpleToxic, { x: 0.12, y: 0.9, z: 0.08 }, { x: -0.9, y: 0.8, z: 0.92 }, 'sludge_toxic_level_sightglass'));
+      } else if (normalizedType === 'fiorina_foundry_core_molding_pit') {
+        // Chantier 553 : Fosse de Coulée & Moules Réfractaires Fiorina 161 (Alien 3)
+        const refractoryBrick = this._material('refractoryBrick', { color: 0x57534e, roughness: 0.9, metalness: 0.1 });
+        const moltenSlag = this._material('moltenOrange', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 2.5 });
+        const heavySteel = this._material('foundrySteel', { color: 0x292524, roughness: 0.5, metalness: 0.85 });
+        root.add(this._box(refractoryBrick, { x: 2.2, y: 0.8, z: 1.8 }, { x: 0, y: 0.4, z: 0 }, 'molding_pit_masonry', true));
+        root.add(this._box(moltenSlag, { x: 1.6, y: 0.1, z: 1.2 }, { x: 0, y: 0.82, z: 0 }, 'molding_pit_molten_core_glow'));
+        root.add(this._box(heavySteel, { x: 0.15, y: 1.6, z: 0.15 }, { x: -0.9, y: 1.4, z: 0.7 }, 'mold_crane_upright_left', true));
+        root.add(this._box(heavySteel, { x: 0.15, y: 1.6, z: 0.15 }, { x: 0.9, y: 1.4, z: 0.7 }, 'mold_crane_upright_right', true));
+        root.add(this._box(heavySteel, { x: 1.95, y: 0.15, z: 0.15 }, { x: 0, y: 2.15, z: 0.7 }, 'mold_crane_crossbeam'));
+      } else if (normalizedType === 'auriga_cryo_incubation_vault') {
+        // Chantier 554 : Chambre Froide d'Incubation Cryogénique USM Auriga (Alien Resurrection)
+        const vaultMetal = this._material('vaultChamber', { color: 0x1e293b, roughness: 0.4, metalness: 0.8 });
+        const stasisCyan = this._material('emissiveCyan', { color: 0x22d3ee, emissive: 0x0891b2, emissiveIntensity: 2.4 });
+        root.add(this._box(vaultMetal, { x: 2.0, y: 2.1, z: 1.6 }, { x: 0, y: 1.05, z: 0 }, 'incubation_cryo_vault_casing', true));
+        root.add(this._box(stasisCyan, { x: 1.2, y: 1.3, z: 0.1 }, { x: 0, y: 1.2, z: 0.81 }, 'incubation_cryo_viewport_glow'));
+        root.add(this._cylinder(vaultMetal, 0.12, 0.12, 1.8, { x: -1.05, y: 1.0, z: 0.4 }, { x: 0, y: 0, z: 0 }, 'incubation_nitrogen_manifold'));
+      } else if (normalizedType === 'romulus_cryo_stasis_exhaust_diffuser') {
+        // Chantier 555 : Diffuseur d'Échappement Cryo-Stase Renaissance Romulus (Alien: Romulus)
+        const stationAlloy = this._material('stationHull', { color: 0x475569, roughness: 0.5, metalness: 0.75 });
+        const exhaustVent = this._material('emissiveCyanVent', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.2 });
+        root.add(this._cone(stationAlloy, 0.75, 1.4, { x: 0, y: 0.7, z: 0 }, { x: 0, y: 0, z: 0 }, 'diffuser_conical_shroud', true));
+        root.add(this._box(exhaustVent, { x: 0.8, y: 0.08, z: 0.8 }, { x: 0, y: 1.42, z: 0 }, 'diffuser_exhaust_mesh_glow'));
+        root.add(this._cylinder(stationAlloy, 0.82, 0.82, 0.2, { x: 0, y: 0.1, z: 0 }, { x: 0, y: 0, z: 0 }, 'diffuser_mounting_flange'));
+        root.add(this._box(stationAlloy, { x: 0.35, y: 0.45, z: 0.35 }, { x: 0.7, y: 0.6, z: 0 }, 'diffuser_trim_actuator', true));
+      } else if (normalizedType === 'sevastopol_kinetic_security_grille') {
+        // Chantier 556 : Grille de Sécurité Cinétique Motorisée Sevastopol (Alien: Isolation)
+        const grilleSteel = this._material('seegsonSteel', { color: 0x334155, roughness: 0.4, metalness: 0.8 });
+        const warningAmber = this._material('emissiveAmber', { color: 0xeab308, emissive: 0xca8a04, emissiveIntensity: 2.5 });
+        root.add(this._box(grilleSteel, { x: 2.0, y: 0.4, z: 0.5 }, { x: 0, y: 2.2, z: 0 }, 'grille_motor_winch_housing', true));
+        root.add(this._box(grilleSteel, { x: 0.15, y: 2.2, z: 0.3 }, { x: -0.95, y: 1.1, z: 0 }, 'grille_guide_track_left', true));
+        root.add(this._box(grilleSteel, { x: 0.15, y: 2.2, z: 0.3 }, { x: 0.95, y: 1.1, z: 0 }, 'grille_guide_track_right', true));
+        for (let i = -3; i <= 3; i++) {
+          root.add(this._cylinder(grilleSteel, 0.03, 0.03, 1.9, { x: i * 0.22, y: 1.05, z: 0 }, { x: 0, y: 0, z: 0 }, 'kinetic_grille_rod_' + i));
+        }
+        root.add(this._cylinder(warningAmber, 0.08, 0.08, 0.15, { x: 0.85, y: 2.45, z: 0 }, { x: 0, y: 0, z: 0 }, 'grille_warning_beacon'));
+      } else if (normalizedType === 'uscm_sulaco_tactical_holo_plinth') {
+        // Chantier 557 : Socle Holographique Stratégique USS Sulaco (Aliens 1986 / Dark Descent)
+        const deckMat = this._material('sulacoGreen', { color: 0x1e3a1e, roughness: 0.6, metalness: 0.4 });
+        const holoBlue = this._material('emissiveHolo', { color: 0x38bdf8, emissive: 0x0ea5e9, emissiveIntensity: 2.6 });
+        root.add(this._cylinder(deckMat, 0.8, 0.9, 0.85, { x: 0, y: 0.42, z: 0 }, { x: 0, y: 0, z: 0 }, 'holo_pedestal_base', true));
+        root.add(this._cylinder(holoBlue, 0.45, 0.45, 0.05, { x: 0, y: 0.86, z: 0 }, { x: 0, y: 0, z: 0 }, 'holo_emitter_lens'));
+        root.add(this._box(deckMat, { x: 0.4, y: 0.2, z: 0.3 }, { x: 0.6, y: 0.75, z: 0.5 }, 'holo_tactical_control_keyboard'));
+      } else if (normalizedType === 'hadley_ud4l_missile_loading_davit') {
+        // Chantier 558 : Potence Palan de Chargement Missiles UD-4L Cheyenne (Aliens 1986)
+        const craneYellow = this._material('hadleyYellow', { color: 0xeab308, roughness: 0.45, metalness: 0.55 });
+        const wireDark = this._material('cableSteel', { color: 0x1e293b, roughness: 0.5, metalness: 0.85 });
+        root.add(this._cylinder(craneYellow, 0.15, 0.18, 2.4, { x: -0.6, y: 1.2, z: 0 }, { x: 0, y: 0, z: 0 }, 'missile_davit_mast', true));
+        root.add(this._box(craneYellow, { x: 1.6, y: 0.2, z: 0.2 }, { x: 0.2, y: 2.35, z: 0 }, 'missile_davit_horizontal_boom', true));
+        root.add(this._cylinder(wireDark, 0.02, 0.02, 1.2, { x: 0.7, y: 1.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'davit_hoist_cable'));
+        root.add(this._box(craneYellow, { x: 0.5, y: 0.15, z: 0.25 }, { x: 0.7, y: 0.95, z: 0 }, 'missile_cradle_clamp'));
+      } else if (normalizedType === 'hadley_geothermal_turbopump_lubricator') {
+        // Chantier 559 : Graisseur Pressurisé de Turbopompe Géothermique Hadley (Aliens 1986 / RPG)
+        const greaseDrum = this._material('drumBronze', { color: 0xd97706, roughness: 0.5, metalness: 0.6 });
+        const skidFrame = this._material('skidDark', { color: 0x1e293b, roughness: 0.7, metalness: 0.4 });
+        const orangeGlow = this._material('emissiveOrange', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.2 });
+        root.add(this._box(skidFrame, { x: 1.8, y: 0.25, z: 1.6 }, { x: 0, y: 0.12, z: 0 }, 'lubricator_base_skid', true));
+        root.add(this._cylinder(greaseDrum, 0.35, 0.35, 1.5, { x: -0.45, y: 0.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'lube_reservoir_drum_1', true));
+        root.add(this._cylinder(greaseDrum, 0.35, 0.35, 1.5, { x: 0.45, y: 0.9, z: 0 }, { x: 0, y: 0, z: 0 }, 'lube_reservoir_drum_2', true));
+        root.add(this._box(skidFrame, { x: 0.5, y: 0.6, z: 0.4 }, { x: 0, y: 0.7, z: 0.6 }, 'peristaltic_metering_pump'));
+        root.add(this._cylinder(orangeGlow, 0.12, 0.12, 0.08, { x: 0, y: 1.1, z: 0.75 }, { x: Math.PI / 2, y: 0, z: 0 }, 'lube_pressure_gauge'));
+      } else if (normalizedType === 'sevastopol_industrial_laundry_steam_ironer') {
+        // Chantier 560 : Calandreuse à Vapeur de Buanderie Sevastopol (Alien: Isolation)
+        const ironerBody = this._material('seegsonOffWhite', { color: 0x94a3b8, roughness: 0.4, metalness: 0.5 });
+        const steamRoller = this._material('rollerChrome', { color: 0x475569, roughness: 0.25, metalness: 0.85 });
+        const amberPilot = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.2 });
+        root.add(this._box(ironerBody, { x: 2.0, y: 1.1, z: 1.4 }, { x: 0, y: 0.55, z: 0 }, 'ironer_cabinet_base', true));
+        root.add(this._cylinder(steamRoller, 0.28, 0.28, 1.8, { x: 0, y: 1.15, z: -0.1 }, { x: 0, y: 0, z: Math.PI / 2 }, 'steam_heated_rotary_cylinder', true));
+        root.add(this._cylinder(ironerBody, 0.08, 0.08, 1.4, { x: -0.9, y: 1.3, z: -0.4 }, { x: 0, y: 0, z: 0 }, 'ironer_steam_supply_pipe'));
+        root.add(this._box(amberPilot, { x: 0.1, y: 0.1, z: 0.06 }, { x: 0.8, y: 1.0, z: 0.72 }, 'ironer_steam_temp_indicator'));
       } else {
         root.add(this._box(metal, { x: 1.9, y: 1.9, z: 1.9 }, { x: 0, y: 0.95, z: 0 }, 'crate_body', true));
         for (let side = -1; side <= 1; side += 2) {
@@ -14244,6 +14437,26 @@
     createUscmSulacoHeavyOrdnancePalletJack() { return this.createIndustrialProp('uscm_sulaco_heavy_ordnance_pallet_jack'); }
     createSevastopolReactorHeliumDeaeratorTank() { return this.createIndustrialProp('sevastopol_reactor_helium_deaerator_tank'); }
     createFiorinaFoundryLeadIngotLiftTower() { return this.createIndustrialProp('fiorina_foundry_lead_ingot_lift_tower'); }
+    // Castes et Unités Vague 56
+    createPyroSlagJuggernaut() { return this.createAdult('pyro_slag_juggernaut'); }
+    createShadowCrawlerAmbusher() { return this.createAdult('shadow_crawler_ambusher'); }
+    createAcidSporeCarrierQueen() { return this.createAdult('acid_spore_carrier_queen'); }
+    createBiomechDuneStrider() { return this.createAdult('biomech_dune_strider'); }
+    createUscmForwardSensorOperator(compact = false) { return this.createHuman('uscm_forward_sensor_operator', compact); }
+    createUscmHeavyAntiArmorGunner(compact = false) { return this.createHuman('uscm_heavy_anti_armor_gunner', compact); }
+    createWeylandSublevelContainmentMarshal(compact = false) { return this.createHuman('weyland_sublevel_containment_marshal', compact); }
+    createWeylandEliteCombatSynthCenturion(compact = false) { return this.createHuman('weyland_elite_combat_synth_centurion', compact); }
+    // Vague 56 Props (Chantiers 551 à 560 - Cap 260 Props !)
+    createNostromoAirwayDecompressionHatch() { return this.createIndustrialProp('nostromo_airway_decompression_hatch'); }
+    createHadleyBlackwaterPumpingStation() { return this.createIndustrialProp('hadley_blackwater_pumping_station'); }
+    createFiorinaFoundryCoreMoldingPit() { return this.createIndustrialProp('fiorina_foundry_core_molding_pit'); }
+    createAurigaCryoIncubationVault() { return this.createIndustrialProp('auriga_cryo_incubation_vault'); }
+    createRomulusCryoStasisExhaustDiffuser() { return this.createIndustrialProp('romulus_cryo_stasis_exhaust_diffuser'); }
+    createSevastopolKineticSecurityGrille() { return this.createIndustrialProp('sevastopol_kinetic_security_grille'); }
+    createUscmSulacoTacticalHoloPlinth() { return this.createIndustrialProp('uscm_sulaco_tactical_holo_plinth'); }
+    createHadleyUd4lMissileLoadingDavit() { return this.createIndustrialProp('hadley_ud4l_missile_loading_davit'); }
+    createHadleyGeothermalTurbopumpLubricator() { return this.createIndustrialProp('hadley_geothermal_turbopump_lubricator'); }
+    createSevastopolIndustrialLaundrySteamIroner() { return this.createIndustrialProp('sevastopol_industrial_laundry_steam_ironer'); }
   }
 
   // ---------------------------------------------------------------------------

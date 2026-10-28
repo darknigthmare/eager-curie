@@ -29,7 +29,7 @@
     return {role:isCombatant(type)?'rifle':'civilian',aim:.46,memory:6,range:26,halfFov:1.50};
   }
   function createState() {
-    return {lastKnown:null,remaining:0,source:null,searchIndex:0,searchGoal:null,seenAge:Infinity,
+    return {lastKnown:null,remaining:0,source:null,searchIndex:0,searchGoal:null,goalCheckRemaining:0,seenAge:Infinity,
       aimRemaining:0,aimTarget:null,aimStarted:false};
   }
   function squadRecipients(reporter, humans, radius=35, limit=4) {
@@ -63,8 +63,28 @@
   function report(state, point, source='radio') {
     if (!finitePoint(point) || (source !== 'visual' && state.seenAge < .8)) return false;
     state.lastKnown={x:point.x,z:point.z};state.source=source;
-    state.remaining=source==='visual'?6:3.6;state.searchIndex=0;state.searchGoal=null;
+    state.remaining=source==='visual'?6:3.6;state.searchIndex=0;state.searchGoal=null;state.goalCheckRemaining=0;
     return true;
+  }
+  function approachGoal(position, contact, options={}) {
+    if (!finitePoint(position)||!finitePoint(contact)) return null;
+    const candidates=[],angle=(Number(options.id)||0)*2.399963;
+    // A report is an uncertain location, not an order to stack on one point.
+    // Different responders inspect different nearby approaches. Blocked sound
+    // coordinates can still be inspected from the reachable side of a wall.
+    if (!options.spread) candidates.push({...contact});
+    for (const radius of [2.2,4.2]) for (const offset of [0,2.094395,-2.094395]) {
+      candidates.push({x:contact.x+Math.cos(angle+offset)*radius,z:contact.z+Math.sin(angle+offset)*radius});
+    }
+    // Preserve the exact location as a fallback if only a narrow approach fits.
+    if (options.spread) candidates.splice(3,0,{...contact});
+    let searches=0;
+    for (const candidate of candidates) {
+      if (options.walkable && !options.walkable(candidate.x,candidate.z)) continue;
+      if (options.reachable && searches++ >= 6) break;
+      if (!options.reachable || options.reachable(candidate.x,candidate.z)) return candidate;
+    }
+    return null;
   }
   function observe(state, input) {
     const dt=Math.max(0,Math.min(.25,Number(input.delta)||0));
@@ -75,10 +95,22 @@
     }
     state.remaining=Math.max(0,state.remaining-dt);
     if (!state.lastKnown || state.remaining<=0 || input.detectable===false) {
-      state.lastKnown=null;state.remaining=0;state.source=null;
+      state.lastKnown=null;state.remaining=0;state.source=null;state.searchGoal=null;state.goalCheckRemaining=0;
       return {mode:'PATROL',goal:null};
     }
     let goal={...state.lastKnown};
+    state.goalCheckRemaining=Math.max(0,(state.goalCheckRemaining||0)-dt);
+    if (state.goalCheckRemaining===0) {
+      state.goalCheckRemaining=.8;
+      const current=state.searchGoal||goal;
+      const blocked=(input.walkable&&!input.walkable(current.x,current.z)) ||
+        (input.reachable&&!input.reachable(current.x,current.z));
+      if (blocked || (!state.searchGoal && state.source==='radio')) {
+        state.searchGoal=approachGoal(input.position,goal,{
+          id:input.id,spread:true,walkable:input.walkable,reachable:input.reachable
+        });
+      }
+    }
     if (finitePoint(input.position) && ((!state.searchGoal && distance(input.position,goal)<1.1) ||
       (state.searchGoal && distance(input.position,state.searchGoal)<.8))) {
       const angle=(Number(input.id)||0)*2.399963+state.searchIndex*Math.PI*.5;
@@ -112,5 +144,5 @@
       hasLineOfSight(shot.originX,shot.originZ,shot.x,shot.z,0) &&
       hasLineOfSight(shot.x,shot.z,target.x,target.z,0);
   }
-  global.HiveTacticalAI=Object.freeze({isCombatant,profile,createState,squadRecipients,escapeGoal,report,observe,inFieldOfView,aim,validImpact});
+  global.HiveTacticalAI=Object.freeze({isCombatant,profile,createState,squadRecipients,escapeGoal,approachGoal,report,observe,inFieldOfView,aim,validImpact});
 })(typeof window==='undefined'?globalThis:window);

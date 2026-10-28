@@ -462,5 +462,101 @@
     }
     return root;
   }
-  global.HiveModernLifecycle={createEgg,prepare,getDiagnostics:()=>({version:1,cachedTemplates:templates.size})};
+  function fitSuspendedHost(factory,cocoon,host,{ceilingHeight=6.12}={}) {
+    const T=global.THREE,body=cocoon?.getObjectByName?.('cocoon_main_body'),human=host?.mesh||host;
+    if(!T||!body?.isMesh||!human?.isObject3D||body.parent!==cocoon)return null;
+    if(cocoon.userData.suspendedHostFit)return cocoon.userData.suspendedHostFit.host===human?cocoon.userData.suspendedHostFit.pose:null;
+    const assets=global.HiveAssetLibrary,importedRuntimes=[];
+    const equipmentVisibility=[],previousTransforms=[],previousHostPose={position:human.position.clone(),quaternion:human.quaternion.clone(),scale:human.scale.clone()};
+    const previousCocoonPose={position:cocoon.position.clone(),quaternion:cocoon.quaternion.clone(),scale:cocoon.scale.clone()};
+    human.traverse(object=>previousTransforms.push({object,position:object.position.clone(),quaternion:object.quaternion.clone(),scale:object.scale.clone()}));
+    const restore=()=>{
+      for(const entry of previousTransforms){entry.object.position.copy(entry.position);entry.object.quaternion.copy(entry.quaternion);entry.object.scale.copy(entry.scale);}
+      for(const entry of equipmentVisibility)entry.object.visible=entry.visible;
+      for(const entry of importedRuntimes){
+        if(entry.hadLock)entry.root.userData.suspendedHostLock=entry.previousLock;
+        else delete entry.root.userData.suspendedHostLock;
+        const runtime=assets.getRuntime(entry.root);if(runtime!==entry.runtime)continue;
+        // setState merges keys. Delete only keys this fit introduced, then
+        // restore through the same API without changing state-object identity.
+        for(const key of Object.keys(runtime.state))if(!Object.prototype.hasOwnProperty.call(entry.state,key))delete runtime.state[key];
+        assets.setState(entry.root,entry.state);
+      }
+      cocoon.position.copy(previousCocoonPose.position);cocoon.quaternion.copy(previousCocoonPose.quaternion);cocoon.scale.copy(previousCocoonPose.scale);
+    };
+    let lockFailed=false;
+    human.traverse(object=>{
+      if(!assets?.handlesRoot?.(object))return;
+      const runtime=assets.getRuntime?.(object);
+      if(!runtime||runtime.disposed){lockFailed=true;return;}
+      const saved={root:object,runtime,state:{...runtime.state},
+        hadLock:Object.prototype.hasOwnProperty.call(object.userData,'suspendedHostLock'),previousLock:object.userData.suspendedHostLock,lock:{owner:cocoon}};
+      importedRuntimes.push(saved);object.userData.suspendedHostLock=saved.lock;
+      // Imported animationRig.resetPose is intentionally a no-op. Freeze the
+      // real asset-library clock BEFORE measuring its current skinned pose;
+      // otherwise the next mixer tick can walk outside the fitted membrane.
+      if(!assets.setState(object,{frozen:true,movement:0,attack:0,crouch:0,pulse:0,pose:'',poseProgress:0,folded:false}))lockFailed=true;
+    });
+    if(lockFailed){restore();return null;}
+    human.traverse(object=>{
+      if(object.userData.equipmentType){equipmentVisibility.push({object,visible:object.visible});object.visible=false;}
+      object.userData.animationRig?.resetPose?.();
+      const rest=object.userData.runtimeBasePose;
+      if(rest){object.position.copy(rest.position);object.quaternion.copy(rest.quaternion);object.scale.copy(rest.scale);}
+    });
+    human.rotation.x=0;human.rotation.z=0;human.position.set(previousHostPose.position.x,0,previousHostPose.position.z);
+    cocoon.position.set(human.position.x,0,human.position.z);cocoon.rotation.y=human.rotation.y;
+    let hierarchy=human;while(hierarchy.parent)hierarchy=hierarchy.parent;hierarchy.updateMatrixWorld(true);cocoon.updateMatrixWorld(true);
+    const inverse=new T.Matrix4().copy(cocoon.matrixWorld).invert(),point=new T.Vector3(),bounds=new T.Box3(),points=[];
+    human.traverse(object=>{
+      if(!object.isMesh||!object.geometry?.attributes.position)return;
+      for(let parent=object;parent;parent=parent.parent)if(!parent.visible)return;
+      if(object.isSkinnedMesh)object.skeleton.update();
+      const positions=object.geometry.attributes.position;
+      for(let i=0;i<positions.count;i++){
+        point.fromBufferAttribute(positions,i);if(object.isSkinnedMesh)object.boneTransform(i,point);
+        point.applyMatrix4(object.matrixWorld).applyMatrix4(inverse);bounds.expandByPoint(point);points.push(point.x,point.y,point.z);
+      }
+    });
+    if(bounds.isEmpty()){restore();return null;}
+    const size=bounds.getSize(new T.Vector3()),center=bounds.getCenter(new T.Vector3());
+    const centerY=Math.min(3.05,ceilingHeight/2),maximumY=Math.min(centerY-.32,ceilingHeight-.35-centerY);
+    if(size.y/2>=maximumY*Math.sqrt(.92)){restore();return null;}
+    // Grow only the resin body. Uniformly scaling the factory's stem and webs
+    // to enclose a 4.25-unit human would put them above the station ceiling.
+    const rx=Math.max(1.2,size.x/2+.13),rz=Math.max(1.1,size.z/2+.13);
+    let ry=Math.min(maximumY,Math.max(2.35,size.y/2+.22)),xzScale=1;
+    const requiredScale=radiusY=>{
+      let squared=1;
+      for(let i=0;i<points.length;i+=3){
+        const y=(points[i+1]-center.y)/radiusY,remaining=.92-y*y;
+        if(remaining<=0)return Infinity;
+        squared=Math.max(squared,(((points[i]-center.x)/rx)**2+((points[i+2]-center.z)/rz)**2)/remaining);
+      }
+      return Math.sqrt(squared);
+    };
+    // Prefer a narrow suspended pouch; spend available vertical clearance
+    // before widening it. The final test includes every visible real vertex,
+    // including any legacy batched equipment whose tag was already lost.
+    for(;;){xzScale=requiredScale(ry);if(xzScale<=1.02||ry>=maximumY)break;ry=Math.min(maximumY,ry+.10);}
+    const radii=new T.Vector3(rx*xzScale,ry,rz*xzScale);
+    const attachment=new T.Box3().setFromObject(cocoon),attachmentTop=attachment.max.y;
+    cocoon.position.y=ceilingHeight-attachmentTop;
+    if(!body.geometry.boundingBox)body.geometry.computeBoundingBox();
+    const geometryCenter=body.geometry.boundingBox.getCenter(new T.Vector3()),geometrySize=body.geometry.boundingBox.getSize(new T.Vector3());
+    body.scale.set(radii.x*2/geometrySize.x,radii.y*2/geometrySize.y,radii.z*2/geometrySize.z);
+    body.position.set(center.x-geometryCenter.x*body.scale.x,centerY-cocoon.position.y-geometryCenter.y*body.scale.y,center.z-geometryCenter.z*body.scale.z);
+    const embedded=cocoon.getObjectByName('cocoon_embedded_host');if(embedded)embedded.visible=false;
+    for(const material of Array.isArray(body.material)?body.material:[body.material])if(material){material.opacity=1;material.transparent=false;material.depthWrite=true;material.needsUpdate=true;}
+    human.position.y=centerY-center.y;
+    cocoon.updateMatrixWorld(true);human.updateMatrixWorld(true);
+    let maximumNormalizedSquared=0;
+    for(let i=0;i<points.length;i+=3)maximumNormalizedSquared=Math.max(maximumNormalizedSquared,
+      ((points[i]-center.x)/radii.x)**2+((points[i+1]-center.y)/radii.y)**2+((points[i+2]-center.z)/radii.z)**2);
+    const pose={hostY:human.position.y,cocoonY:cocoon.position.y,centerY,
+      shellRadii:radii.toArray(),shellHeight:radii.y*2,hostHeight:size.y,
+      maximumNormalizedSquared,vertices:points.length/3,hiddenEquipment:equipmentVisibility.length,frozenImportedRoots:importedRuntimes.length,ceilingHeight};
+    cocoon.userData.suspendedHostFit={pose,host:human,previousHostPose,previousTransforms,equipmentVisibility,importedRuntimes};return pose;
+  }
+  global.HiveModernLifecycle={createEgg,prepare,fitSuspendedHost,getDiagnostics:()=>({version:1,cachedTemplates:templates.size})};
 })(typeof window==='undefined'?globalThis:window);

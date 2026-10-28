@@ -25,6 +25,8 @@
       this.soundscape = { stage: 1, alert: 0, tension: 0, targetTension: 0, elapsed: 0, untilPhrase: 3.6, phrase: 0 };
       this.soundscapeDuckUntil = 0;
       this.soundscapeDuckRatio = .42;
+      this.spatialUpdateRemaining = 0;
+      this.footstepSequence = 0;
       window.audioManager = this;
     }
 
@@ -112,6 +114,98 @@
       }
     }
 
+    listenerState() {
+      const camera = rendererEngine?.camera;
+      const matrix = camera?.matrixWorld?.elements;
+      const rightX = Number.isFinite(matrix?.[0]) ? matrix[0] : 1;
+      const rightZ = Number.isFinite(matrix?.[2]) ? matrix[2] : 0;
+      const length = Math.hypot(rightX, rightZ) || 1;
+      return { x: playerCreature?.x ?? camera?.position?.x ?? 0,
+        z: playerCreature?.z ?? camera?.position?.z ?? 0,
+        rightX: rightX / length, rightZ: rightZ / length,
+        forwardX: Number.isFinite(matrix?.[8]) ? -matrix[8] : 0,
+        forwardZ: Number.isFinite(matrix?.[10]) ? -matrix[10] : 0,
+        vent: !!playerCreature?.isInVent };
+    }
+
+    spatialState(x, z, radius, listener = this.listenerState()) {
+      const dx = x - listener.x, dz = z - listener.z, distance = Math.hypot(dx, dz);
+      const normalized = Math.min(1, distance / radius);
+      let barriers = 0;
+      const seenDoors = new Set(), seenBounds = new Set();
+      const intersects = (bounds, owner = null) => {
+        if (!bounds || ![bounds.minX,bounds.maxX,bounds.minZ,bounds.maxZ].every(Number.isFinite) ||
+            bounds.maxX <= bounds.minX || bounds.maxZ <= bounds.minZ || barriers >= 3) return;
+        if (owner && seenDoors.has(owner)) return;
+        if (owner) seenDoors.add(owner);
+        const key = [bounds.minX,bounds.maxX,bounds.minZ,bounds.maxZ].map(n => n.toFixed(2)).join(':');
+        if (seenBounds.has(key)) return;
+        seenBounds.add(key);
+        // A sound emitted by the door itself must not be muffled by its own
+        // collider. Endpoint contact also isn't a whole additional partition.
+        const inside = (px,pz) => px > bounds.minX && px < bounds.maxX && pz > bounds.minZ && pz < bounds.maxZ;
+        if (inside(x,z) || inside(listener.x,listener.z)) return;
+        if (stationMap.segmentIntersectsCollider(listener.x,listener.z,x,z,bounds)) barriers++;
+      };
+      if (distance > .1 && stationMap?.segmentIntersectsCollider) {
+        for (const wall of stationMap.walls || []) {
+          const bounds = wall.geometry?.parameters, position = wall.position;
+          if (!bounds || !position || (bounds.height || 0) < 2) continue;
+          // Overhead portal beams do not seal an acoustically open doorway.
+          const height = bounds.height * (wall.scale?.y || 1);
+          if (Number.isFinite(position.y) && position.y - height / 2 > 2.4) continue;
+          const width = bounds.width * (wall.scale?.x || 1), depth = bounds.depth * (wall.scale?.z || 1);
+          intersects({minX:position.x-width/2,maxX:position.x+width/2,minZ:position.z-depth/2,maxZ:position.z+depth/2});
+          if (barriers >= 3) break;
+        }
+        for (const door of stationMap.blastDoors || []) {
+          if (door.isOpen || door.isPried) continue;
+          intersects(door.collider || {minX:door.x-(door.width||4.8)/2,maxX:door.x+(door.width||4.8)/2,
+            minZ:door.z-(door.depth||1.2)/2,maxZ:door.z+(door.depth||1.2)/2}, door);
+        }
+        for (const collider of stationMap.colliders || []) {
+          if (!collider.doorRef || collider.doorRef.isOpen || collider.doorRef.isPried) continue;
+          intersects(collider, collider.doorRef);
+        }
+      }
+      const front = distance > .01 ? (dx * listener.forwardX + dz * listener.forwardZ) / distance : 1;
+      const rear = Math.max(0, -front);
+      return { distance, normalized, barriers,
+        gain: Math.pow(1-normalized*normalized,2)/(1+normalized*normalized*4) * Math.pow(.38,barriers),
+        cutoff: listener.vent ? 880 : barriers ? Math.max(260,1100/barriers) :
+          Math.max(1000,16000/(1+distance*.1)) * (1-rear*.32),
+        filterType: listener.vent ? 'bandpass' : 'lowpass',
+        pan: Math.max(-.9,Math.min(.9,(dx*listener.rightX+dz*listener.rightZ)/Math.max(2,distance))),
+        wet: listener.vent ? .22 : .12 + normalized*.12 };
+    }
+
+    applySpatialState(route, listener, immediate = false) {
+      const state = this.spatialState(route.x,route.z,route.radius,listener), now = this.ctx.currentTime;
+      const set = (param,value) => {
+        if (!param) return;
+        if (immediate) param.value = value;
+        else { param.cancelScheduledValues(now); param.setTargetAtTime(value,now,.035); }
+      };
+      set(route.distanceGain.gain,state.gain);
+      if (route.spatialFilter) {
+        route.spatialFilter.type = state.filterType;
+        route.spatialFilter.Q.value = listener.vent ? .85 : .7;
+        set(route.spatialFilter.frequency,state.cutoff);
+      }
+      set(route.panner?.pan,state.pan);
+      set(route.send?.gain,state.wet);
+      route.spatial = state;
+    }
+
+    updateSpatialAudio(deltaSeconds = 0, force = false) {
+      if (!this.ctx || this.isPaused || this.ctx.state === 'suspended') return;
+      this.spatialUpdateRemaining -= Math.max(0,Math.min(.25,Number(deltaSeconds)||0));
+      if (!force && this.spatialUpdateRemaining > 0) return;
+      this.spatialUpdateRemaining = .08;
+      const listener = this.listenerState();
+      for (const route of this.routes) if (route.distanceGain) this.applySpatialState(route,listener);
+    }
+
     connect(node, x = null, z = null, radius = 58, options = {}) {
       if (!node || !this.ctx) return;
       // A bounded, disposable route also covers old play* methods, not just new sounds.
@@ -123,79 +217,39 @@
       const route = { nodes: [node], persistent: !!options.persistent, timer: null };
       this.routes.add(route);
       const spatial = Number.isFinite(x) && Number.isFinite(z);
-      const listenerX = playerCreature?.x ?? rendererEngine?.camera?.position?.x ?? 0;
-      const listenerZ = playerCreature?.z ?? rendererEngine?.camera?.position?.z ?? 0;
-      const dx = spatial ? x - listenerX : 0;
-      const dz = spatial ? z - listenerZ : 0;
-      const distance = Math.hypot(dx, dz);
       const range = Number.isFinite(radius) ? Math.max(1, radius) : 58;
-      const normalized = Math.min(1, distance / range);
-      const attenuation = spatial ? Math.pow(1 - normalized * normalized, 2) / (1 + normalized * normalized * 4) : 1;
       const distanceGain = this.ctx.createGain();
-      distanceGain.gain.value = attenuation;
+      distanceGain.gain.value = 1;
       node.connect(distanceGain);
       route.nodes.push(distanceGain);
       let output = distanceGain;
       if (this.ctx.createBiquadFilter) {
         const filter = this.ctx.createBiquadFilter();
-        const inVent = playerCreature?.isInVent;
-        if (inVent) {
-          filter.type = 'bandpass';
-          filter.frequency.value = 880;
-          filter.Q.value = 0.85;
-        } else {
-          filter.type = 'lowpass';
-          filter.frequency.value = spatial ? Math.max(1000, 16000 / (1 + distance * 0.1)) : 18000;
-          // Test the actual source/listener segment: a nearby door off to one side must not muffle it.
-          if (spatial && stationMap?.segmentIntersectsCollider) {
-            let barriers = 0;
-            for (const wall of stationMap.walls || []) {
-              const bounds = wall.geometry?.parameters;
-              if (!bounds || (bounds.height || 0) < 2) continue;
-              if (stationMap.segmentIntersectsCollider(listenerX, listenerZ, x, z, {
-                minX: wall.position.x - bounds.width / 2, maxX: wall.position.x + bounds.width / 2,
-                minZ: wall.position.z - bounds.depth / 2, maxZ: wall.position.z + bounds.depth / 2
-              })) barriers++;
-              if (barriers >= 3) break;
-            }
-            for (const door of stationMap.blastDoors || []) {
-              if (door.isOpen) continue;
-              if (stationMap.segmentIntersectsCollider(listenerX, listenerZ, x, z, door.collider || {
-                minX: door.x - (door.width || 4.8) / 2, maxX: door.x + (door.width || 4.8) / 2,
-                minZ: door.z - (door.depth || 1.2) / 2, maxZ: door.z + (door.depth || 1.2) / 2
-              })) barriers++;
-            }
-            for (const collider of stationMap.colliders || []) {
-              if (!collider.doorRef || collider.doorRef.isOpen || collider.doorRef.isPried) continue;
-              if (stationMap.segmentIntersectsCollider(listenerX, listenerZ, x, z, collider)) barriers++;
-            }
-            if (barriers) {
-              filter.frequency.value = Math.max(260, 1100 / Math.min(3, barriers));
-              distanceGain.gain.value *= Math.pow(0.38, Math.min(3, barriers));
-            }
-          }
-        }
+        filter.type = 'lowpass';
+        filter.frequency.value = 18000;
         distanceGain.connect(filter);
         output = filter;
+        if (spatial) route.spatialFilter = filter;
         route.nodes.push(filter);
       }
       if (spatial && this.reverbDelay) {
         const send = this.ctx.createGain();
-        send.gain.value = playerCreature?.isInVent ? 0.22 : 0.12 + normalized * 0.12;
+        send.gain.value = .12;
         output.connect(send);
         send.connect(this.reverbDelay);
         route.nodes.push(send);
+        route.send = send;
       }
       if (spatial && this.ctx.createStereoPanner) {
         const panner = this.ctx.createStereoPanner();
-        const matrix = rendererEngine?.camera?.matrixWorld?.elements;
-        const rightX = matrix?.[0] ?? 1;
-        const rightZ = matrix?.[2] ?? 0;
-        const rightLength = Math.hypot(rightX, rightZ) || 1;
-        panner.pan.value = Math.max(-0.9, Math.min(0.9, (dx * rightX + dz * rightZ) / (rightLength * Math.max(2, distance))));
         output.connect(panner);
         output = panner;
         route.nodes.push(panner);
+        route.panner = panner;
+      }
+      if (spatial) {
+        Object.assign(route,{x,z,radius:range,distanceGain});
+        this.applySpatialState(route,this.listenerState(),true);
       }
       output.connect(options.bus === 'music' && this.ambienceNodes?.musicGain
         ? this.ambienceNodes.musicGain : (this.masterGain || this.ctx.destination));
@@ -355,6 +409,18 @@
       gain.gain.value = 1;
       musicGain.gain.value = this.musicVolume;
       gain.connect(mix); musicGain.connect(mix);
+      let musicReflection = null;
+      if (this.ctx.createDelay) {
+        const delay = this.ctx.createDelay(), filter = this.ctx.createBiquadFilter();
+        musicReflection = this.ctx.createGain();
+        delay.delayTime.value = .173;
+        filter.type = 'lowpass'; filter.frequency.value = 850;
+        musicReflection.gain.value = .10;
+        // The reflection is downstream of the music slider and belongs to
+        // this campaign route; it cannot bypass music mute or survive stop.
+        musicGain.connect(delay); delay.connect(filter); filter.connect(musicReflection); musicReflection.connect(mix);
+        route.nodes.push(delay,filter,musicReflection);
+      }
       const drone = this.ctx.createOscillator();
       const harmonic = this.ctx.createOscillator();
       const air = this.ctx.createBufferSource();
@@ -386,15 +452,20 @@
         source.detune.value = [-3.2, 2.1, -.9][index];
         filter.type = 'lowpass'; filter.frequency.value = [270, 520, 760][index]; filter.Q.value = .55;
         envelope.gain.value = [.009, .0035, .0018][index];
-        source.connect(filter); filter.connect(envelope); envelope.connect(musicGain);
-        voices.push({ source, filter, envelope });
+        const panner = this.ctx.createStereoPanner?.();
+        source.connect(filter); filter.connect(envelope);
+        if (panner) {
+          panner.pan.value = [-.30,.24,.08][index];
+          envelope.connect(panner); panner.connect(musicGain); route.nodes.push(panner);
+        } else envelope.connect(musicGain);
+        voices.push({ source, filter, envelope, panner });
       }
       const sources = [drone, harmonic, air, lfo, ...voices.map(voice => voice.source)];
       route.nodes.push(gain, musicGain, humGain, airFilter, airGain, lfoGain,
         ...sources, ...voices.flatMap(voice => [voice.filter, voice.envelope]));
       this.soundscape = { stage: 1, alert: 0, tension: 0, targetTension: 0, elapsed: 0, untilPhrase: 3.6, phrase: 0 };
       this.soundscapeDuckUntil = 0;
-      this.ambienceNodes = { drone, harmonic, gain, musicGain, lfo, lfoGain, route, voices, airFilter, airGain, humGain, sources };
+      this.ambienceNodes = { drone, harmonic, gain, musicGain, lfo, lfoGain, route, voices, airFilter, airGain, humGain, sources, musicReflection };
       for (const source of sources) source.start();
       this.updateSoundscape(0);
     }
@@ -419,6 +490,28 @@
       }
     }
 
+    acousticSpace() {
+      const listener = this.listenerState(), architecture = window.HiveStationArchitecture;
+      const sector = architecture?.zoneAt?.(listener.x,listener.z)?.id || 'transit';
+      const bay = architecture?.getRoomBays?.().find(room => {
+        const b = room.bounds;
+        return b && listener.x >= b[0] && listener.x <= b[1] && listener.z >= b[2] && listener.z <= b[3];
+      });
+      // These are restrained authored spaces, not random room switches. Resin
+      // absorbs bright reflections; steel cargo bays retain a longer tail.
+      const profiles = {
+        transit: [.047,.21,2450,1,.014,1], cryo: [.034,.16,3100,.8,.010,.78],
+        security: [.039,.17,2800,.87,.011,.85], freight: [.069,.25,2200,1.12,.016,1.1],
+        colony: [.033,.15,1850,.78,.009,.75], refinery: [.058,.23,1900,1.22,.018,1],
+        nursery: [.025,.10,1000,.62,.009,.56], vent: [.019,.18,1250,.68,.010,.45]
+      };
+      const key = listener.vent ? 'vent' : sector;
+      const [delay,feedback,cutoff,air,hum,spread] = profiles[key] || profiles.transit;
+      return {id:listener.vent ? 'vent' : bay?.id || sector, sector:key,
+        delay:bay && !listener.vent ? delay*.72 : delay, feedback:bay && !listener.vent ? feedback*.8 : feedback,
+        cutoff,air,hum,spread};
+    }
+
     soundscapeState() {
       const game = window.gameInstance, player = typeof playerCreature === 'undefined' ? null : playerCreature;
       const stage = Math.max(1, Math.min(5, Number(game?.currentStageIndex) || 1));
@@ -440,7 +533,9 @@
     }
 
     updateSoundscape(deltaSeconds, state = null) {
-      if (!this.initialized || !this.ambienceNodes || this.isPaused || this.ctx.state === 'suspended') return;
+      if (!this.initialized || this.isPaused || this.ctx.state === 'suspended') return;
+      this.updateSpatialAudio(deltaSeconds);
+      if (!this.ambienceNodes) return;
       const dt = Math.max(0, Math.min(.25, Number(deltaSeconds) || 0));
       const input = state || this.soundscapeState(), score = this.soundscape, nodes = this.ambienceNodes;
       const finite = (value, fallback, lo, hi) => Number.isFinite(value) ? Math.max(lo, Math.min(hi, value)) : fallback;
@@ -461,16 +556,28 @@
       score.untilMix = (score.untilMix || 0) - dt;
       if (score.untilMix <= 0 || previousStage !== score.stage) {
         score.untilMix = .2;
+        const room = this.acousticSpace();
+        score.roomId = room.id;
+        score.roomSector = room.sector;
+        const smooth = (param,value,time=.75) => param?.setTargetAtTime(value,now,time);
+        smooth(this.reverbDelay?.delayTime,room.delay,1.2);
+        smooth(this.reflectionDelay?.delayTime,room.delay*1.68,1.2);
+        smooth(this.reverbGain?.gain,room.feedback);
+        smooth(this.reverbFilter?.frequency,room.cutoff);
         nodes.voices.forEach((voice, index) => {
           voice.source.frequency.setTargetAtTime(root * intervals[index] * (index === 2 ? 1 + tension * .006 : 1), now, .85);
           const level = [.009 + tension * .011, .0035 + tension * .006, .0018 + tension * .004][index];
           voice.envelope.gain.setTargetAtTime(level, now, .32);
-          voice.filter.frequency.setTargetAtTime([270, 520, 760][index] + tension * [170, 600, 1100][index], now, .55);
+          voice.filter.frequency.setTargetAtTime(([270, 520, 760][index] + tension * [170, 600, 1100][index]) *
+            (room.sector === 'nursery' || room.sector === 'vent' ? .78 : 1), now, .55);
+          smooth(voice.panner?.pan,[-.30,.24,.08][index]*room.spread);
         });
+        smooth(nodes.musicReflection?.gain,room.sector === 'nursery' ? .045 : room.sector === 'vent' ? .035 : .10);
+        smooth(nodes.humGain.gain,room.hum);
         nodes.drone.frequency.setTargetAtTime(score.stage === 5 ? 32.7 : 41 + tension * 2, now, .9);
         nodes.harmonic.frequency.setTargetAtTime(63 + tension * 7, now, .8);
-        nodes.airFilter.frequency.setTargetAtTime(300 + score.stage * 38 + tension * 720, now, .7);
-        nodes.airGain.gain.setTargetAtTime(.025 + tension * .035, now, .6);
+        nodes.airFilter.frequency.setTargetAtTime((300 + score.stage * 38 + tension * 720)*room.air, now, .7);
+        nodes.airGain.gain.setTargetAtTime((.025 + tension * .035)*Math.sqrt(room.air), now, .6);
       }
       score.untilPhrase -= dt;
       if (score.untilPhrase <= 0) {
@@ -1121,14 +1228,56 @@
       osc.start(now); osc.stop(now + 0.8);
     }
 
-    playFootstep(type = 'human', x = null, z = null) {
+    playFootstep(type = 'human', x = null, z = null, options = {}) {
       const heavy = ['powerloader', 'exosuit'].includes(type);
-      const creature = ['facehugger', 'chestburster', 'juvenile', 'xenomorph', 'drone', 'warrior'].includes(type);
-      this.playLayers([
-        { noise: 'brown', cutoff: heavy ? 860 : creature ? 1900 : 1450, duration: heavy ? 0.13 : 0.075, level: heavy ? 0.25 : creature ? 0.045 : 0.08 },
-        { f0: heavy ? 67 : 138, f1: heavy ? 28 : 65, duration: heavy ? 0.2 : 0.09, level: heavy ? 0.27 : creature ? 0.025 : 0.07, cutoff: 700 },
-        { noise: 'white', filter: 'bandpass', cutoff: heavy ? 1900 : 2600, duration: 0.035, delay: 0.025, level: heavy ? 0.06 : 0.025 }
-      ], x, z, heavy ? 46 : creature ? 15 : 25);
+      const masses = {facehugger:.22,chestburster:.32,juvenile:.45,runner:.65,xenomorph:.9,drone:.9,
+        warrior:1.1,praetorian:1.5,crusher:1.8,queen:2};
+      const creature = Object.hasOwn(masses,type), mass = heavy ? 2.5 : masses[type] || 1;
+      const intensity = Number.isFinite(options.intensity) ? Math.max(0,Math.min(1,options.intensity)) : 1;
+      if (!intensity) return;
+      const speed = Number.isFinite(options.speed) ? Math.max(.3,Math.min(2,options.speed)) : 1;
+      const surface = options.surface || 'metal';
+      const variation = [1,.947,1.037,.981,1.063,.926,1.018,.963][this.footstepSequence++ % 8];
+      const pitch = variation/Math.sqrt(mass), level = intensity*Math.sqrt(mass);
+      const softened = surface === 'resin' || surface === 'water';
+      const layers = [
+        {noise:'brown',cutoff:(softened?650:1450)*pitch,duration:.065+mass*.025,
+          level:(heavy?.18:creature?.052:.08)*level},
+        {f0:(heavy?67:124)*pitch,f1:(heavy?28:57)*pitch,duration:.075+mass*.035,
+          level:(heavy?.20:creature?.031:.063)*level,cutoff:softened?280:700}
+      ];
+      if (surface === 'water') layers.push(
+        {noise:'white',filter:'bandpass',cutoff:1600*variation,cutoffEnd:620,duration:.15,attack:.012,level:.065*level},
+        {noise:'brown',filter:'bandpass',cutoff:440,cutoffEnd:1100,duration:.10,delay:.045,level:.052*level});
+      else if (surface === 'resin') layers.push(
+        {noise:'brown',filter:'bandpass',cutoff:1100*variation,cutoffEnd:230,duration:.17,attack:.014,level:.075*level},
+        {noise:'white',filter:'bandpass',cutoff:1800,cutoffEnd:580,duration:.045,delay:.05,level:.018*level});
+      else if (surface === 'vent' || surface === 'ceiling') layers.push(
+        {noise:'white',filter:'bandpass',cutoff:3200*variation,duration:.027,level:.033*level},
+        ...[1,1.57].map((ratio,index)=>({f0:570*ratio*variation,f1:550*ratio*variation,
+          duration:.11-index*.025,delay:.012,cutoff:2800,level:.024*level/(index+1)})));
+      else layers.push(
+        {noise:'white',filter:'bandpass',cutoff:2600*variation,duration:.032,delay:.018/speed,level:.025*level},
+        {type:'sine',f0:840*variation,f1:810*variation,duration:.09,delay:.004,cutoff:2000,level:.011*level});
+      this.playLayers(layers,x,z,heavy?46:creature?12+mass*5:25);
+    }
+
+    playBodyContact(action, x = null, z = null, options = {}) {
+      const intensity = Number.isFinite(options.intensity) ? Math.max(0,Math.min(1,options.intensity)) : .5;
+      if (!intensity) return;
+      if (action === 'land') {
+        this.playFootstep(options.type || 'drone',x,z,{...options,intensity});
+        this.playLayers([{noise:'brown',cutoff:490,cutoffEnd:180,duration:.20,level:.14*intensity},
+          {f0:73,f1:29,cutoff:320,duration:.18,level:.11*intensity}],x,z,26);
+      } else if (action === 'scrape' || action === 'drag') {
+        const organic = options.surface === 'resin' || options.surface === 'water';
+        this.playLayers([
+          {noise:'brown',filter:'bandpass',cutoff:organic?620:1200,cutoffEnd:organic?260:600,
+            duration:action==='drag'?.28:.17,attack:.018,level:.1*intensity},
+          {noise:'white',filter:'bandpass',cutoff:organic?1100:2900,cutoffEnd:organic?400:1700,
+            duration:.11,delay:.035,attack:.015,level:.036*intensity}
+        ],x,z,organic?12:20);
+      }
     }
 
     playHostCough(x = null, z = null) {
@@ -8019,6 +8168,7 @@
         this.renderQuality.setQuality(this.graphicsQuality);
         this.renderQuality.setSize(this.width, this.height);
         this.stationDetail?.setQuality(this.renderQuality.getDiagnostics().quality);
+        stationMap.architecture?.setQuality(this.renderQuality.getDiagnostics().quality);
       } else this.renderer.setSize(this.width, this.height);
     }
 
@@ -8059,6 +8209,7 @@
       this.renderQuality?.setQuality(this.graphicsQuality);
       const resolved = this.renderQuality?.getDiagnostics().quality || this.graphicsQuality;
       this.stationDetail?.setQuality(resolved);
+      stationMap.architecture?.setQuality(resolved);
     }
 
     setCameraTarget(x, z, heightOffset = 0, isRTS = false, deltaSeconds = 1 / 60) {
@@ -12371,7 +12522,8 @@
         this.wave31Props.push(prop);
       });
       window.HiveStationArchitecture?.build?.(this, { THREE, mapGroup: rendererEngine.mapGroup,
-        propsGroup: rendererEngine.propsGroup, floorMaterial: floorMat, addWall });
+        propsGroup: rendererEngine.propsGroup, floorMaterial: floorMat, addWall,
+        quality: rendererEngine.renderQuality?.getDiagnostics().quality || 'high' });
       window.HiveStationLayout?.apply?.(this,{propsGroup:rendererEngine.propsGroup});
     }
 
@@ -13462,6 +13614,7 @@
         !this.hasLineOfSight(playerCreature.x, playerCreature.z, host.x, host.z, .1) ||
         (this.ceilingCocoons || []).length >= 12) return false;
       const mesh = window.HiveModelFactory?.createCeilingCocoon?.();
+      if (!mesh) return false;
       const cocoon = {
         x: host.x,
         y: 4.8,
@@ -13478,6 +13631,15 @@
       if (mesh) {
         mesh.position.set(cocoon.x, 2.0, cocoon.z);
         rendererEngine.propsGroup.add(mesh);
+        const fit = window.HiveModernLifecycle?.fitSuspendedHost;
+        if (fit) {
+          const pose = fit(window.HiveModelFactory, mesh, host, { ceilingHeight: 6.12 });
+          if (!pose) {
+            rendererEngine.removeObject(mesh);
+            return false;
+          }
+          cocoon.y = pose.centerY;
+        }
       }
       this.ceilingCocoons.push(cocoon);
       host.isCocooned = true;
@@ -18700,22 +18862,26 @@
     // Audit QA #79 : Cocon Aérien Suspendu aux Poutres de Plafond (Aliens 1986 / Romulus)
     // -------------------------------------------------------------------------
     suspendOverheadCocoon(victim) {
-      if (!victim) return false;
-      victim.isCocooned = true;
+      const game = window.gameInstance;
+      if (!window.HiveAdvancedCombat?.active(playerCreature, game, { allowCeiling: true }) ||
+        !playerCreature.isCeilingProwling || playerCreature.isLeaping || !victim?.mesh ||
+        !(victim.isIncapacitated || victim.staggerTimer > 0)) return false;
+      // Reuse the actual nursery cocoon, including eligibility, LOS, capacity,
+      // stage ownership and model creation. A floating body is not a cocoon.
+      const cocoon = this.hangCeilingCocoon(victim);
+      if (!cocoon) return false;
       audioManager.playWetImpact?.(victim.x, victim.z);
       audioManager.playHissSound?.();
       rendererEngine.addScreenShake?.(0.35, 0.25);
       window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0xd97706, 36, 0.3, 2.4);
 
-      if (victim.mesh) {
-        victim.mesh.position.y = 5.2;
-      }
       this.overheadCocoons.push({
         id: `overhead_cocoon_${Date.now()}`,
         name: `Cocon Aérien Poutrelle (${victim.name})`,
         x: victim.x,
         z: victim.z,
-        victimRef: victim
+        victimRef: victim,
+        cocoonRef: cocoon
       });
       window.HiveSystems?.vfx?.floatingText?.(victim.x, 5.4, victim.z, 'COCON SUSPENDU AUX POUTRELLES HAUTES !', '#d97706', true);
       showToast(`COCON AÉRIEN [V] : ${victim.name} emmuré dans la résine et suspendu au plafond !`);
@@ -20691,6 +20857,7 @@
 
   function animateProceduralModel(container, {
     phase = 0,
+    idlePhase = phase,
     movement = 0,
     attack = 0,
     crouch = 0,
@@ -20701,7 +20868,15 @@
   } = {}) {
     const model = getAnimationModel(container);
     if (window.HiveAssetLibrary?.handlesRoot?.(model)) {
-      window.HiveAssetLibrary.setState(model, { phase, movement, attack, crouch, pulse, action, pose, poseProgress, frozen: false });
+      const lock = model.userData.suspendedHostLock;
+      const owner = lock?.owner;
+      const captured = owner && !owner.userData?.hiveFactoryDisposed &&
+        owner.userData?.suspendedHostFit?.importedRuntimes?.some(entry => entry.root === model && entry.lock === lock);
+      // Incubation can request a gestation pose after capture. A cocoon-owned
+      // imported root must retain the exact skinned pose used for shell fitting.
+      window.HiveAssetLibrary.setState(model, captured
+        ? { phase, movement: 0, attack: 0, crouch: 0, pulse: 0, action, pose: '', poseProgress: 0, folded: false, frozen: true }
+        : { phase, movement, attack, crouch, pulse, action, pose, poseProgress, frozen: false });
       return;
     }
     const rig = model?.userData?.animationRig;
@@ -20747,11 +20922,15 @@
 
     const locomotion = Array.isArray(rig.roles?.locomotion) ? rig.roles.locomotion : [];
     locomotion.forEach((joint, index) => {
+      // Modern continuous skin owns coherent hip/knee phases and sole support.
+      // Retain legacy gait for every other stage and imported/custom caste.
+      if (model.userData.modernMotionRig?.bends?.some(entry => entry.proximal === joint)) return;
       const alternating = index % 2 === 0 ? 1 : -1;
       const gait = Math.sin(phase + index * 0.7);
       joint.rotation.x += gait * (isTail(joint) ? 0.12 : 0.42) * movement * alternating;
       joint.rotation.z += Math.cos(phase * 0.5 + index) * 0.08 * movement;
-      if (isTail(joint)) joint.rotation.y += Math.sin(phase * 0.64) * (0.04 + movement * 0.18);
+      if (isTail(joint)) joint.rotation.y += Math.sin(phase * 0.64) * movement * 0.18
+        + (rendererEngine.reduceMotion ? 0 : Math.sin(idlePhase * 0.64) * 0.04);
     });
 
     const attackJoints = Array.isArray(rig.roles?.attack) ? rig.roles.attack : [];
@@ -20863,15 +21042,17 @@
       }
     }
 
-    if (crouch > 0) {
+    if (crouch > 0 && !model.userData.modernMotionRig) {
       model.position.y -= Math.sin(Math.min(1, crouch) * Math.PI) * 0.22;
       model.rotation.x += Math.sin(Math.min(1, crouch) * Math.PI) * 0.12;
     }
-    if (pulse > 0) {
-      const pulseScale = 1 + Math.sin(phase * 1.8) * 0.032 * pulse;
+    // Whole-body breathing scales would move modern contact soles and change
+    // stride length. Those adults idle through their articulated arms/tail.
+    if (pulse > 0 && !rendererEngine.reduceMotion && !model.userData.modernMotionRig) {
+      const pulseScale = 1 + Math.sin(idlePhase * 1.8) * 0.032 * pulse;
       model.scale.copy(basePose.scale).multiplyScalar(pulseScale);
     }
-    window.HiveAlienMotion?.apply?.(model, {phase, movement, attack, crouch, action, pose, poseProgress,
+    window.HiveAlienMotion?.apply?.(model, {phase, idlePhase, movement, attack, crouch, action, pose, poseProgress,
       reducedMotion: rendererEngine.reduceMotion});
   }
 
@@ -21850,38 +22031,86 @@
     }
 
     toggleDragHost() {
+      if(window.gameInstance?.isSystemPaused)return false;
       if (this.draggedHost) {
-        showToast(`Hôte ${this.draggedHost.name} relâché au sol.`);
-        this.draggedHost = null;
-        return;
+        return this.releaseDraggedHost(`Hôte ${this.draggedHost.name} relâché au sol.`);
       }
+      const game=window.gameInstance,controls=window.HiveGameplayControls;
+      if(!window.HiveAdvancedCombat?.active(this,game)||this.isLeaping)return false;
       const humans = window.gameInstance?.humans || [];
       const incapacitated = humans.filter((h) => (
-        (h.isIncapacitated || h.hp <= 0) && !h.isCocooned && !h.isConsumedByCycle &&
-        Math.hypot(h.x - this.x, h.z - this.z) <= 4.0
+        h.mesh && Number.isFinite(h.hp) && (h.isIncapacitated || h.hp <= 0) &&
+        !h.isCocooned && !h.isConsumedByCycle && !h.isDestroyed && !h.isEscaped &&
+        !h.directInoculated && !h.bloodbursterIncubating &&
+        controls?.inReach(stationMap,this,h,4) && controls.clearSegment(stationMap,this,h,.35)
       )).sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z))[0];
 
       if (!incapacitated) {
-        showToast('Aucun corps neutralisé à portée (4.0m) à traîner [V].');
-        return;
+        showToast('Aucun corps neutralisé accessible à portée (4 m) à traîner [V].');
+        return false;
       }
       this.draggedHost = incapacitated;
+      this.draggedHostStage=game.currentStage;this.draggedHostGame=game;
       showToast(`CORPS SAISI [V] : Vous traînez ${incapacitated.name}. Approchez d'une paroi pour l'emmurer [V ou F].`);
       appendSensorLog(`[CAPTURE] Proie ${incapacitated.name} saisie par les griffes. Transport vers le nid.`, 'bio');
+      this.moveTarget=null;this.moveWaypoints=[];this.actionTarget=null;
+      return true;
+    }
+
+    releaseDraggedHost(message = '') {
+      const hadHost=!!this.draggedHost;
+      this.draggedHost=null;this.draggedHostStage=null;this.draggedHostGame=null;this.dragContactDistance=0;
+      if(hadHost&&message)showToast(message);
+      return hadHost;
+    }
+
+    updateDraggedHost(deltaSeconds) {
+      const host=this.draggedHost;
+      if(!host)return;
+      const game=window.gameInstance,controls=window.HiveGameplayControls;
+      if(!window.HiveAdvancedCombat?.active(this,game)||this.isLeaping||
+        (this.draggedHostStage&&this.draggedHostStage!==game.currentStage)||
+        (this.draggedHostGame&&this.draggedHostGame!==game)||
+        !(game.humans||[]).includes(host)||!host.mesh||host.isCocooned||host.isConsumedByCycle||
+        host.isDestroyed||host.isEscaped||host.directInoculated||host.bloodbursterIncubating||
+        !(host.isIncapacitated||host.hp<=0)||!controls?.inReach(stationMap,this,host,4.2)||
+        !controls.clearSegment(stationMap,this,host,.35)) {
+        this.releaseDraggedHost('Prise rompue : le corps reste à sa dernière position accessible.');return;
+      }
+      const angle=this.mesh.rotation.y||0;
+      const desired={x:this.x-Math.sin(angle)*1.6,z:this.z-Math.cos(angle)*1.6};
+      const length=Math.hypot(desired.x-host.x,desired.z-host.z);
+      // Pull over a real, swept segment; turning must never snap the body
+      // through a corner or move a distant corpse instantaneously.
+      const step=Math.min(length,Math.max(0,deltaSeconds)*Math.max(4,this.speed*60*.9));
+      if(length<.03||step<=0)return;
+      const destination={x:host.x+(desired.x-host.x)*step/length,z:host.z+(desired.z-host.z)*step/length};
+      const resolved=controls.moveWithSlide(stationMap,host,destination,.35);
+      if(!resolved.moved)return;
+      const moved=Math.hypot(resolved.x-host.x,resolved.z-host.z);
+      host.x=resolved.x;host.z=resolved.z;
+      host.mesh.position.set(host.x,.22,host.z);host.mesh.rotation.z=Math.PI/2;
+      this.dragContactDistance=(this.dragContactDistance||0)+moved;
+      if(this.dragContactDistance>=1.4){
+        this.dragContactDistance%=1.4;
+        audioManager.playBodyContact?.('drag',host.x,host.z,{type:this.adultCaste,surface:'metal',intensity:.35});
+      }
     }
 
     wallCocoonDraggedHost() {
       if (!this.draggedHost) return false;
+      if(!window.HiveAdvancedCombat?.active(this,window.gameInstance,{allowCeiling:true})||this.isLeaping)return false;
       const host = this.draggedHost;
       if(!(window.gameInstance?.humans||[]).includes(host) || !(host.hp>0) || host.isDestroyed ||
-        host.isConsumedByCycle || !window.HiveGameplayControls?.inReach(stationMap,this,host,4.2))return false;
+        host.isConsumedByCycle || host.isEscaped || host.isCocooned ||
+        (window.HiveFidelityRules&&!window.HiveFidelityRules.canImplant(host)) ||
+        !window.HiveGameplayControls?.inReach(stationMap,this,host,4.2))return false;
       if (this.isCeilingProwling) {
         // Chantier 39 : Cocon suspendu aux poutrelles du plafond (Aliens 1986)
         if(!stationMap.hangCeilingCocoon?.(host))return false;
         host.isCocooned = true;
         host.isIncapacitated = true;
-        if (host.mesh) host.mesh.position.y = 4.8;
-        this.draggedHost = null;
+        this.releaseDraggedHost();
         return true;
       }
       if(!host.cocoonInResin?.())return false;
@@ -21895,12 +22124,25 @@
       window.HiveSystems?.vfx?.burst(host.x, host.z, 0x9d4edd, 20, 0.16, 1.6);
       audioManager.playWetImpact?.(host.x, host.z);
       audioManager.playAcidSizzle?.();
-      this.draggedHost = null;
+      this.releaseDraggedHost();
       return true;
+    }
+
+    recoverFromOrganicDamage(target, healthBefore, maximum) {
+      const classification=window.HiveFidelityRules?.classifyHost?.(target);
+      const organic=!target?.isSynthetic&&(classification ? classification.organic :
+        !/(synthetic|android|synth|turret|exosuit|powerloader|cyber.?hound)/i.test(target?.type||''));
+      const dealt=Number.isFinite(healthBefore)&&Number.isFinite(target?.hp)
+        ? Math.max(0,healthBefore-Math.max(0,target.hp)) : 0;
+      const recovered=organic?Math.min(maximum,dealt*.4,this.maxHealth-this.health):0;
+      if(recovered>0)this.health+=recovered;
+      return Math.max(0,recovered);
     }
 
     executeAcidSpit(target = null, { onImpact = null } = {}) {
       if (this.form !== 'drone') return false;
+      const combat=window.HiveAdvancedCombat,game=window.gameInstance;
+      if(!combat?.ready(this,game,'acidSpit')){showToast(combat?.failure(this)||'Projection acide indisponible.');return false;}
       const policy = window.HiveFidelityRules.getAbilityPolicy(this.adultCaste, 'acid_spit');
       if (!policy.allowed) {
         showToast(policy.reason);
@@ -21931,6 +22173,7 @@
         }
       }
 
+      combat.commit(this,game,'acidSpit',1.1);
       if (isSpitter) {
         audioManager.playSpitterAcidGurgle?.(this.x, this.z);
         audioManager.playSpitterAcidHiss?.(targetPos.x, targetPos.z);
@@ -22455,11 +22698,12 @@
       if(!victim){showToast(combat?.failure(this)||"Conduit requis et proie affaiblie ou étourdie à portée.");return false;}
       audioManager.playVentSnatchSnap?.(victim.x,victim.z);
       rendererEngine.addScreenShake?.(.42,.28);
+      const healthBefore=victim.hp;
       victim.takeDamage?.(220,this);victim.staggerTimer=4;
       if(victim.hp<=0&&victim.mesh)victim.mesh.position.y=-.8;
-      this.health=Math.min(this.maxHealth,this.health+35);
+      const recovered=this.recoverFromOrganicDamage(victim,healthBefore,35);
       window.HiveSystems?.vfx?.burst?.(victim.x,victim.z,0xef4444,32,.22,1.8);
-      window.HiveSystems?.vfx?.floatingText?.(victim.x,2.6,victim.z,'-220 SAISIE SOUS GRILLE (+35 PV)','#ef4444',true);
+      window.HiveSystems?.vfx?.floatingText?.(victim.x,2.6,victim.z,`-220 SAISIE SOUS GRILLE (+${Math.ceil(recovered)} PV)`,'#ef4444',true);
       showToast("SAISIE DU CONDUIT : "+victim.name+" frappé ; une capture biologique exige toujours un hôte vivant.");
       appendSensorLog("[CONDUIT] Attaque de contact sur une proie vulnérable. Aucun cocon ni embryon gratuit.",'stealth');
       return true;
@@ -22474,13 +22718,13 @@
       audioManager.playDeaconArchonBite?.(target.x, target.z);
       rendererEngine.addScreenShake?.(0.42, 0.28);
       window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0x1e3a5f, 32, 0.24, 2.2);
-      window.HiveSystems?.vfx?.floatingText?.(target.x, 2.8, target.z, '-140 SUCCION PRÉMAXILLAIRE (+55 PV) !', '#38bdf8', true);
-
+      const healthBefore=target.hp;
       target.takeDamage(140, this);
       target.staggerTimer = 3.0;
-      this.health = Math.min(this.maxHealth, this.health + 55);
-      showToast(`DEACON APEX ARCHON : Mâchoire télescopique projetée sur ${target.name} (+55 PV) !`);
-      appendSensorLog(`[APEX ARCHON] Succion organique prémaxillaire réussie. Biomasse absorbée.`, 'bio');
+      const recovered=this.recoverFromOrganicDamage(target,healthBefore,55);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 2.8, target.z, `-140 SUCCION PRÉMAXILLAIRE (+${Math.ceil(recovered)} PV) !`, '#38bdf8', true);
+      showToast(`DEACON APEX ARCHON : Mâchoire télescopique projetée sur ${target.name} (+${Math.ceil(recovered)} PV) !`);
+      appendSensorLog('[APEX ARCHON] Soin proportionnel à la biomasse réellement prélevée ; les châssis synthétiques ne nourrissent pas.', 'bio');
       return true;
     }
 
@@ -22753,7 +22997,8 @@
       target.takeDamage(165, this);
       target.staggerTimer = 3.5;
       target.stress = 100;
-      target.isRestrained = true;
+      // A combat hold expires with native stagger; isRestrained is reserved
+      // for real host attachment/incubation and has no autonomous expiry.
       if (target.hp <= 0) {
         target.isIncapacitated = true;
         if (target.mesh) target.mesh.rotation.z = Math.PI / 2;
@@ -22949,7 +23194,6 @@
       target.takeDamage(190, this);
       target.staggerTimer = 3.5;
       target.stress = 100;
-      target.isRestrained = true;
       if (target.hp <= 0) {
         target.isIncapacitated = true;
         if (target.mesh) target.mesh.rotation.z = Math.PI / 2;
@@ -23019,7 +23263,6 @@
       target.takeDamage(175, this);
       target.staggerTimer = 4.5;
       target.stress = 100;
-      target.isRestrained = true;
       if (target.hp <= 0) {
         target.isIncapacitated = true;
         if (target.mesh) target.mesh.rotation.x = Math.PI / 2;
@@ -23099,7 +23342,6 @@
       target.takeDamage(240, this);
       target.staggerTimer = 4.5;
       target.stress = 100;
-      target.isRestrained = true;
       if (target.hp <= 0) {
         target.isIncapacitated = true;
         if (target.mesh) target.mesh.rotation.z = Math.PI / 2;
@@ -23214,7 +23456,37 @@
         showToast('Trajectoire de bond bloquée par un obstacle.');
         return false;
       }
-      combat.commit(this,game,'prowlLeap',1.2);
+      const startPos = { x: this.x, z: this.z };
+      const launched=combat.travel(this,game,stationMap,'prowlLeap',
+        {allowCeiling:true,dropCeiling:true,range:leapDist,cooldown:1.2,arcHeight:isRunner?1.1:1.7},
+        {x:destX,z:destZ},()=>{
+        window.HiveSystems?.vfx?.organicTrail?.(startPos.x, 1.5, startPos.z, this.x, 1.5, this.z, isRunner ? 0xf59e0b : 0x39ff14);
+        window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xef4444, 24, 0.18, 1.8);
+        window.HiveSystems?.vfx?.ring?.(this.x, this.z, isRunner ? 0xf59e0b : 0x39ff14, 4.2);
+
+        const hitHumans = combat.targets(game,stationMap,this,isWarrior?4.2:3.4);
+        if (hitHumans.length > 0) {
+          audioManager.playBoneCrunch?.();
+          audioManager.playWetImpact?.(this.x, this.z);
+          hitHumans.forEach((victim) => {
+            const pDmg = isWarrior ? 130 : (isRunner ? 110 : (isProwler ? 100 : 85));
+            victim.takeDamage(pDmg, this);
+            victim.staggerTimer = isWarrior ? 2.0 : (isRunner ? 1.5 : 1.25);
+            const leapLabel = isRunner ? 'BOND QUADRUPÈDE' : (isWarrior ? 'CHARGE BRUTALE' : 'BOND PRÉDATEUR');
+            window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, `-${pDmg} ${leapLabel} !`, '#ef4444', true);
+          });
+          showToast(isRunner
+            ? `BOND FOUDROYANT RUNNER [K] ! ${hitHumans[0].name} plaqué et renversé au sol !`
+            : (isWarrior
+              ? `CHARGE D'ASSAUT GUERRIER [K] ! ${hitHumans[0].name} broyé sous l'impact !`
+              : `BOND DE TRAQUE FOUDROYANT [K] ! ${hitHumans[0].name} fauché par surprise !`));
+          appendSensorLog(`[BOND PRÉDATEUR] Rupture brutale de posture. Projection cinétique sur ${hitHumans.map(h => h.name).join(', ')}.`, 'bio');
+        } else {
+          showToast(isRunner ? 'Bond quadrupède longue portée réussi [K].' : 'Bond de traque réussi [K].');
+        }
+      });
+      if(!launched){showToast(combat.failure(this));return false;}
+      if(this.isWallMimic)this.toggleResinWallMimicry(false);
       if (agilityBonus > 1.0) {
         window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, 'WALL-RUN & CATWALK LEAP +35% !', '#38bdf8', true);
       }
@@ -23223,35 +23495,7 @@
       window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x39ff14, 16, 0.12, 1.2);
       this.triggerAttack('leap');
 
-      const startPos = { x: this.x, z: this.z };
-      this.x = destX;
-      this.z = destZ;
-      this.mesh?.position.set(destX, this.isCeilingProwling?5.85:0, destZ);
-
-      window.HiveSystems?.vfx?.organicTrail?.(startPos.x, 1.5, startPos.z, destX, 1.5, destZ, isRunner ? 0xf59e0b : 0x39ff14);
-      window.HiveSystems?.vfx?.burst?.(destX, destZ, 0xef4444, 24, 0.18, 1.8);
-      window.HiveSystems?.vfx?.ring?.(destX, destZ, isRunner ? 0xf59e0b : 0x39ff14, 4.2);
-
-      const hitHumans = combat.targets(game,stationMap,this,isWarrior?4.2:3.4);
-      if (hitHumans.length > 0) {
-        audioManager.playBoneCrunch?.();
-        audioManager.playWetImpact?.(destX, destZ);
-        hitHumans.forEach((victim) => {
-          const pDmg = isWarrior ? 130 : (isRunner ? 110 : (isProwler ? 100 : 85));
-          victim.takeDamage(pDmg, this);
-          victim.staggerTimer = isWarrior ? 2.0 : (isRunner ? 1.5 : 1.25);
-          const leapLabel = isRunner ? 'BOND QUADRUPÈDE' : (isWarrior ? 'CHARGE BRUTALE' : 'BOND PRÉDATEUR');
-          window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, `-${pDmg} ${leapLabel} !`, '#ef4444', true);
-        });
-        showToast(isRunner
-          ? `BOND FOUDROYANT RUNNER [K] ! ${hitHumans[0].name} plaqué et renversé au sol !`
-          : (isWarrior
-            ? `CHARGE D'ASSAUT GUERRIER [K] ! ${hitHumans[0].name} broyé sous l'impact !`
-            : `BOND DE TRAQUE FOUDROYANT [K] ! ${hitHumans[0].name} fauché par surprise !`));
-        appendSensorLog(`[BOND PRÉDATEUR] Rupture brutale de posture. Projection cinétique sur ${hitHumans.map(h => h.name).join(', ')}.`, 'bio');
-      } else {
-        showToast(isRunner ? 'Bond quadrupède longue portée réussi [K].' : 'Bond de traque réussi [K].');
-      }
+      showToast('Bond engagé : réception physique et impact local, récupération 1,2 s.');
       return true;
     }
 
@@ -23272,6 +23516,9 @@
     }
 
     clearMesh() {
+      window.HiveAdvancedCombat?.cancelMotion?.(this);
+      this.releaseDraggedHost();
+      this.footstepDistance=0;
       if (this.mesh) {
         rendererEngine.removeObject(this.mesh);
         this.mesh = null;
@@ -23474,7 +23721,12 @@
     }
 
     setForm(form) {
+      window.HiveAdvancedCombat?.cancelMotion?.(this);
       this.form = form;
+      this.inDeathThroes=false;this.deathThroesTimer=0;
+      this.isInVent=false;this.currentVent=null;this.isProwling=false;
+      this.isCeilingProwling=false;this.isSubfloorProwling=false;this.isSubmerged=false;
+      this.isWallMimic=false;this.isHiveMelded=false;this.locomotionPhase=0;
       this.praetorianFrenzyTimer = 0;
       this.praetorianRoarCooldown = 0;
       this.acousticDecoyCooldown = 0;
@@ -23508,7 +23760,9 @@
     }
 
     takeDamage(amount, attacker = null, damageType = 'kinetic') {
-      if (this.isDefeated || this.form === 'egg' || !this.mesh?.visible) return;
+      const game=window.gameInstance;
+      if (this.isDefeated || this.form === 'egg' || !this.mesh?.visible || !Number.isFinite(amount) || amount<=0 ||
+        game?.isSystemPaused || game?.isRunning===false || game?.campaignActive===false) return false;
       if (this.isWallMimic) this.toggleResinWallMimicry(false);
       let actualDmg = Math.max(0, amount);
 
@@ -23589,6 +23843,7 @@
       }
 
       if (this.praetorianFrenzyTimer > 0) actualDmg *= .5;
+      if(actualDmg<=0)return false;
       this.health = Math.max(0, this.health - actualDmg);
 
       // Feedback d'impact viscéral
@@ -23601,10 +23856,7 @@
       window.HiveSystems?.vfx?.floatingText?.(this.x, 2.0, this.z, `-${Math.ceil(actualDmg)}`, '#ef4444', false);
 
       // Canon 1:1 Lore — Projection de sang acide pressurisé sur les assaillants proches
-      const nearbyHumans = (window.gameInstance?.humans || []).filter((h) => (
-        !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 4.0&&
-        (!window.HiveGameplayControls||window.HiveGameplayControls.clearSegment(stationMap,this,h,.02))
-      ));
+      const nearbyHumans = window.HiveAdvancedCombat?.targets(game,stationMap,this,4)||[];
       nearbyHumans.forEach((human) => {
         const acidDamage = Math.round(Math.max(12, actualDmg * 0.95));
         human.takeDamage(acidDamage, this);
@@ -23876,7 +24128,10 @@
     update(deltaSeconds = 1 / 60) {
       if (!this.mesh) return;
       this.isMoving=false;
-      const safeDelta = Math.max(0, deltaSeconds);
+      const game=window.gameInstance;
+      window.HiveAdvancedCombat?.validateMotion?.(this,game);
+      if(this.isDefeated||game?.isSystemPaused||game?.isRunning===false||game?.campaignActive===false)return;
+      const safeDelta = Math.max(0, Math.min(.1,Number(deltaSeconds)||0));
       if (!window.gameInstance?.isSystemPaused) {
         for (const key of ['praetorianFrenzyTimer', 'praetorianRoarCooldown', 'acousticDecoyCooldown', 'directInoculationCooldown']) {
           const remaining = (Number(this[key]) || 0) - safeDelta;
@@ -23902,16 +24157,16 @@
           window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0x84cc16, 9.5);
           for (let i = 0; i < 8; i++) {
             const ang = (i / 8) * Math.PI * 2;
-            stationMap.addAcidCorrosion?.(this.x + Math.cos(ang) * 4.5, this.z + Math.sin(ang) * 4.5);
-          }
-          const humans = window.gameInstance?.humans || [];
-          humans.forEach((h) => {
-            if (h.isIncapacitated || h.isCocooned) return;
-            const d = Math.hypot(h.x - this.x, h.z - this.z);
-            if (d <= 9.0) {
-              h.takeDamage?.(140, this);
-              window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-140 NOVA D\'ACIDE !', '#84cc16', true);
+            const acidX=this.x+Math.cos(ang)*4.5,acidZ=this.z+Math.sin(ang)*4.5;
+            if(stationMap.hasLineOfSight(this.x,this.z,acidX,acidZ,.02)&&
+              window.HiveGameplayControls?.canStand(stationMap,{x:acidX,z:acidZ},.2)){
+              stationMap.addAcidCorrosion?.(acidX,acidZ);
             }
+          }
+          const humans = window.HiveAdvancedCombat?.targets(window.gameInstance,stationMap,this,9)||[];
+          humans.forEach((h) => {
+            h.takeDamage?.(140, this);
+            window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, '-140 NOVA D\'ACIDE !', '#84cc16', true);
           });
           showToast('NOVA D\'ACIDE FINALE DÉCLENCHÉE ! Le spécimen a libéré toute son acidité vitale.');
           appendSensorLog('[DEATH THROES] Nova acide libérée à 360° (rayon 9m, 140 dégâts). Destruction cataclysmique.', 'bio');
@@ -23983,6 +24238,9 @@
           // Audit QA #99 : Micro-secousse réactive au franchissement d'obstacles et réception de saut
           rendererEngine.addScreenShake?.(0.16, 0.12);
           callback?.();
+          if(this.form==='drone'&&!this.isLeaping){
+            audioManager.playBodyContact?.('land',this.x,this.z,{type:this.adultCaste,surface:'metal',intensity:.65});
+          }
         }
         return;
       }
@@ -24042,7 +24300,8 @@
         const deathThroesBonus = this.inDeathThroes ? 1.5 : 1.0;
         const creepBonus = this.isOnHiveCreep ? 1.2 : 1.0;
         const rallyBonus = this.praetorianFrenzyTimer > 0 ? 1.4 : 1;
-        const currentSpeed = this.speed * (this.isInVent ? 1.45 : 1.0) * resinBonus * scentBonus * suppressionPenalty * deathThroesBonus * creepBonus * rallyBonus;
+        const dragPenalty=this.draggedHost ? .68 : 1;
+        const currentSpeed = this.speed * (this.isInVent ? 1.45 : 1.0) * resinBonus * scentBonus * suppressionPenalty * deathThroesBonus * creepBonus * rallyBonus * dragPenalty;
         const movementStep = Math.min(currentSpeed * frameScale, remainingDistance);
         const nextX = this.x + dx * movementStep;
         const nextZ = this.z + dy * movementStep;
@@ -24058,22 +24317,33 @@
           this.moveTarget = null;
           this.moveWaypoints = [];
         }
-        this.isMoving=Math.hypot(this.x-previousX,this.z-previousZ)>.0001;
+        const movedDistance=Math.hypot(this.x-previousX,this.z-previousZ);
+        this.isMoving=movedDistance>.0001;
 
         if (dx !== 0 || dy !== 0) {
           this.mesh.rotation.y = Math.atan2(dx, dy);
         }
 
-        // Suivi et traînée physique du corps de l'hôte capturé (Hadley's Hope 1:1)
-        if (this.draggedHost && this.draggedHost.mesh) {
-          const rotY = this.mesh.rotation.y;
-          const dragDist = 1.6;
-          const hostX = this.x - Math.sin(rotY) * dragDist;
-          const hostZ = this.z - Math.cos(rotY) * dragDist;
-          this.draggedHost.x = hostX;
-          this.draggedHost.z = hostZ;
-          this.draggedHost.mesh.position.set(hostX, 0.22, hostZ);
-          this.draggedHost.mesh.rotation.z = Math.PI / 2;
+        this.updateDraggedHost(safeDelta);
+        if(this.isMoving){
+          const type=this.form==='drone'?this.adultCaste:this.form;
+          if(this.locomotionStrideMesh!==this.mesh){
+            this.locomotionStrideMesh=this.mesh;
+            this.locomotionStride=window.HiveAlienMotion?.strideLength?.(this.mesh)||
+              (this.form==='drone'?1.15:this.form==='facehugger' ? .45 : .6);
+          }
+          const stride=this.locomotionStride;
+          this.locomotionPhase=(this.locomotionPhase||0)+movedDistance/stride*Math.PI*2;
+          this.footstepDistance=(this.footstepDistance||0)+movedDistance;
+          const cadence=Math.max(.2,stride*.5);
+          if(this.footstepDistance>=cadence){
+            this.footstepDistance%=cadence;
+            const surface=this.isInVent?'vent':this.isCeilingProwling?'ceiling':
+              stationMap.isInFloodedZone?.(this.x,this.z)?'water':resinBonus>1?'resin':'metal';
+            const heavy=['crusher','raven','queen','king','rhino_drone','gorilla_drone'].includes(type);
+            const intensity=this.isInVent||this.isCeilingProwling ? .15 : this.isProwling ? .25 : heavy ? .9 : .65;
+            audioManager.playFootstep?.(type,this.x,this.z,{surface,intensity,speed:currentSpeed/Math.max(.1,this.getAdultProfile().speed)});
+          }
         }
 
         if (this.isCeilingProwling) {
@@ -24117,7 +24387,8 @@
         }
 
         animateProceduralModel(this.mesh, {
-          phase: this.animationTime * (this.form === 'facehugger' ? 14 : 9),
+          phase: this.locomotionPhase||0,
+          idlePhase: this.animationTime * (this.form === 'facehugger' ? 14 : 9),
           movement: this.isMoving ? 1 : 0.08,
           attack: this.actionAnimation,
           action: this.actionType,
@@ -24176,6 +24447,8 @@
       this.maxHp = this.hp;
       this.reconLaserTimer = 0;
       this.medicHealCooldown = 3.0;
+      this.medicalTask = null;
+      this.medicalScanCooldown = 0;
       this.reconLaserCooldown = 3.5;
       this.isLaserTargeted = false;
       this.suppressionBurstTimer = 0;
@@ -24237,6 +24510,7 @@
       this.escapeReason = null;
       this.navigationProgress = null;
       this.stressQuoteCooldown = 0;
+      this.suppressionQuoteCooldown = 0;
       this.choosePatrolWaypoint();
       this.directInoculated = false;
       this.incidentalGestationKind = null;
@@ -24271,6 +24545,7 @@
       this.navigationProgress = null;
       this.escapeGoal = this.escapeThreat = null;
       this.escapeReason = null;
+      this.medicalTask = null;
       this.targetPos = this.findFreeWaypoint(20);
       this.aiState = 'PATROL';
       this.patrolWait = 0;
@@ -24383,6 +24658,7 @@
 
     destroy() {
       this.directInoculated = false;
+      this.medicalTask = null;
       this.incidentalGestationKind = null;
       this.directInoculationTimer = 0;
       this.directInoculationGame = null;
@@ -24570,6 +24846,7 @@
 
     incapacitate() {
       if (this.isIncapacitated) return;
+      this.medicalTask = null;
       this.isIncapacitated = true;
       if (this.skimmerDroneMesh) {
         window.HiveSystems?.vfx?.burst?.(this.skimmerDroneMesh.position.x, this.skimmerDroneMesh.position.z, 0x94a3b8, 20, 0.15, 1.5);
@@ -24619,6 +24896,7 @@
 
     cocoonInResin() {
       if (this.isCocooned) return false;
+      this.medicalTask = null;
       this.isCocooned = true;
       this.isIncapacitated = true;
       if (this.skimmerDroneMesh) {
@@ -24635,6 +24913,7 @@
     }
 
     lureTowards(tx, tz) {
+      this.medicalTask = null;
       this.isLured = true;
       this.aiState = 'LURED';
       this.planNavigation(tx, tz, true);
@@ -24697,6 +24976,67 @@
 
     canReach(x, z) {
       return this.canMoveTo(x,z) || stationMap.findPath(this.x,this.z,x,z).length > 0;
+    }
+
+    updateMedicalSupport(deltaSeconds, safeToAssist = true) {
+      if (!['uscm_combat_medic','combatmedic','medic','combat_medic'].includes(this.type)) return false;
+      const game = window.gameInstance;
+      if (game?.isSystemPaused) return false;
+      const validMedic = window.HiveTacticalAI?.isCombatant(this) && !this.isLured && !this.isRestrained &&
+        !this.directInoculated && game?.campaignActive !== false && game?.humans?.includes(this);
+      const clearTask = () => {
+        if (this.medicalTask && this.aiState === 'PATROL') this.choosePatrolWaypoint();
+        this.medicalTask = null;
+      };
+      if (!validMedic) { clearTask(); return false; }
+      const delta = Math.max(0,Math.min(.1,Number(deltaSeconds)||0));
+      // Role cooldowns advance in simulation time, not only when the pistol
+      // branch happens to fire. A medic can treat survivors outside combat.
+      this.medicHealCooldown = Math.max(0,this.medicHealCooldown-delta);
+      this.medicalScanCooldown = Math.max(0,this.medicalScanCooldown-delta);
+      if (!safeToAssist || this.medicHealCooldown > 0) { clearTask(); return false; }
+      const eligible = ally => ally && ally !== this && game.humans.includes(ally) && ally.hp > 0 &&
+        Number.isFinite(ally.maxHp) && !ally.isDestroyed && !ally.isEscaped && !ally.isConsumedByCycle &&
+        !ally.isIncapacitated && !ally.isCocooned && !ally.isInfected && !ally.isRestrained &&
+        !ally.isLured && !ally.isBursting && !ally.directInoculated &&
+        !ally.isDocileCatatonic && !['synthetic','android','weyland_steel_team_synth','steelteam',
+          'steelteamsynth','steelteamandroid','weyland_cyber_hound','cyberhound','cyber_hound',
+          'powerloader','exosuit'].includes(ally.type) &&
+        (ally.hp < ally.maxHp*.6 || ally.staggerTimer > 0) &&
+        Math.hypot(ally.x-this.x,ally.z-this.z) <= 6.5 &&
+        stationMap.hasLineOfSight(this.x,this.z,ally.x,ally.z);
+      if (this.medicalTask && (this.medicalTask.game !== game || this.medicalTask.stage !== game.currentStage)) {
+        clearTask();
+        this.medicalScanCooldown = .4;
+        return false;
+      }
+      if (this.medicalTask && !eligible(this.medicalTask.target)) clearTask();
+      if (!this.medicalTask && this.medicalScanCooldown === 0) {
+        this.medicalScanCooldown = .4;
+        const candidates = game.humans.filter(eligible).sort((a,b) =>
+          a.hp/a.maxHp-b.hp/b.maxHp || Math.hypot(a.x-this.x,a.z-this.z)-Math.hypot(b.x-this.x,b.z-this.z));
+        const target = candidates.slice(0,4).find(ally => this.canReach(ally.x,ally.z));
+        if (target) this.medicalTask = {target,game,stage:game.currentStage};
+      }
+      const target = this.medicalTask?.target;
+      if (!target) return false;
+      if (Math.hypot(target.x-this.x,target.z-this.z) > 2.2) {
+        this.targetPos = {x:target.x,z:target.z};
+        this.tacticalRetreat = true;
+        return true;
+      }
+      target.hp = Math.min(target.maxHp,target.hp+35);
+      target.staggerTimer = 0;
+      target.stress = Math.max(0,(target.stress||0)-40);
+      this.medicHealCooldown = 5;
+      this.shootCooldown = Math.max(this.shootCooldown,1.6);
+      this.attackAnimation = Math.max(this.attackAnimation,.65);
+      clearTask();
+      audioManager.playMedicStimInject?.(target.x,target.z);
+      window.HiveSystems?.vfx?.burst?.(target.x,target.z,0x22c55e,24,.2,1.8);
+      window.HiveSystems?.vfx?.floatingText?.(target.x,3.2,target.z,'+35 STIM MÉDICAL USCM !','#22c55e',true);
+      window.HiveSystems?.vfx?.floatingText?.(this.x,3.4,this.z,'Medic : stabilisation du blessé !','#22c55e',false);
+      return true;
     }
 
     canSenseHazard(hazard) {
@@ -24835,6 +25175,7 @@
       this.tacticalRetreat = false;
       this.escapeDecisionCooldown = Math.max(0,(this.escapeDecisionCooldown || 0)-safeDelta);
       this.stressQuoteCooldown = Math.max(0,(this.stressQuoteCooldown || 0)-safeDelta);
+      this.suppressionQuoteCooldown = Math.max(0,(this.suppressionQuoteCooldown || 0)-safeDelta);
       this.attackAnimation = Math.max(0, this.attackAnimation - safeDelta * 2.8);
       this.houndBiteCooldown = Math.max(0, (this.houndBiteCooldown || 0) - safeDelta);
 
@@ -25281,6 +25622,7 @@
         }
       }
 
+      const medicalSupportActive = this.updateMedicalSupport(safeDelta,!this.tacticalRetreat && (!visualContact || distToPlayer > 8));
       this.shootCooldown -= safeDelta;
       this.grenadeCooldown -= safeDelta;
       const meleeOnly = !this.bossId && ['powerloader','exosuit','weyland_security_taser','taser_guard'].includes(this.type);
@@ -25303,8 +25645,8 @@
           Math.hypot(h.x - this.x, h.z - this.z) <= 6.5
         ));
         if (nearbyMarines.length >= 1 && aimState.ready) {
-          if (!this.lastSuppressionQuote || Date.now() - this.lastSuppressionQuote > 8000) {
-            this.lastSuppressionQuote = Date.now();
+          if (this.suppressionQuoteCooldown <= 0) {
+            this.suppressionQuoteCooldown = 8;
             const squadQuotes = [
               'Rafales courtes contrôlées !',
               'Ligne de tir ! Couvrez le secteur !',
@@ -25751,37 +26093,14 @@
             targetReceiver.takeDamage(38, this);
             window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.2, combatTarget.z, '-38 TIR SILENCIEUX M42C !', '#06b6d4', true);
           } else if (['uscm_combat_medic', 'combatmedic', 'medic', 'combat_medic'].includes(this.type)) {
-            // Chantier 213 & Audit QA #59 : Médecin de Combat USCM & Pistolet de Service M4A3 / Hypospray
-            this.medicHealCooldown = (this.medicHealCooldown || 0) - safeDelta;
-            const humans = window.gameInstance?.humans || [];
-            const injuredAlly = (this.medicHealCooldown <= 0) && humans.find((h) => h !== this && !h.isIncapacitated && !h.isCocooned && (h.hp < h.maxHp * 0.6 || h.staggerTimer > 0) && Math.hypot(h.x - this.x, h.z - this.z) <= 6.5);
-            if (injuredAlly) {
-              this.medicHealCooldown = 5.0;
-              this.shootCooldown = 1.6;
-              audioManager.playMedicStimInject?.(injuredAlly.x, injuredAlly.z);
-              injuredAlly.hp = Math.min(injuredAlly.maxHp, injuredAlly.hp + 35);
-              injuredAlly.staggerTimer = 0;
-              injuredAlly.stress = Math.max(0, (injuredAlly.stress || 0) - 40);
-              window.HiveSystems?.vfx?.burst?.(injuredAlly.x, injuredAlly.z, 0x22c55e, 24, 0.2, 1.8);
-              window.HiveSystems?.vfx?.floatingText?.(injuredAlly.x, 3.2, injuredAlly.z, '+35 STIM MÉDICAL USCM !', '#22c55e', true);
-
-              // Audit QA #59 : Barks militaires authentiques Combat Medic USCM
-              const medicBarks = [
-                'Medic on scene, administering stim !',
-                'Don\'t die on me, marine !',
-                'Injecting coagulant, back on your feet !'
-              ];
-              const mb = medicBarks[Math.floor(Math.random() * medicBarks.length)];
-              window.HiveSystems?.vfx?.floatingText?.(this.x, 3.4, this.z, mb, '#22c55e', true);
-            } else {
-              this.shootCooldown = 1.35;
-              audioManager.playPistolShot?.(this.x, this.z);
-              window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.65, this.z, 0x38bdf8, 0.25);
-              window.HiveSystems?.vfx?.tracer?.(this.x, 2.65, this.z, combatTarget.x, 1.4, combatTarget.z, 0xe2e8f0);
-              const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
-              targetReceiver.takeDamage(24, this);
-              window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.0, combatTarget.z, '-24 PISTOLET M4A3 !', '#e2e8f0', true);
-            }
+            // Triage is a local support task, independent of this firing path.
+            this.shootCooldown = 1.35;
+            audioManager.playPistolShot?.(this.x, this.z);
+            window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.65, this.z, 0x38bdf8, 0.25);
+            window.HiveSystems?.vfx?.tracer?.(this.x, 2.65, this.z, combatTarget.x, 1.4, combatTarget.z, 0xe2e8f0);
+            const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
+            targetReceiver.takeDamage(24, this);
+            window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.0, combatTarget.z, '-24 PISTOLET M4A3 !', '#e2e8f0', true);
           } else if (['uscm_recon_sniper', 'reconsniper', 'recon_sniper', 'forward_observer'].includes(this.type)) {
             // Chantier 223 : Unité USCM Forward Observer / Recon Sniper (Dark Descent / Fireteam Elite)
             this.shootCooldown = 2.8;
@@ -25917,8 +26236,9 @@
         this.updateNavigation(0);
       }
       const dist = Math.hypot(this.targetPos.x - this.x, this.targetPos.z - this.z);
-      const shouldHoldAttackPosition = !this.isCyberHound && !this.tacticalRetreat && this.aiState === 'ATTACK' && hasLineOfSight &&
-        distToPlayer <= (this.tacticalProfile.role === 'marksman' ? shootDist : 12);
+      const shouldHoldAttackPosition = (medicalSupportActive && !this.medicalTask) ||
+        (!this.isCyberHound && !this.tacticalRetreat && this.aiState === 'ATTACK' && hasLineOfSight &&
+          distToPlayer <= (this.tacticalProfile.role === 'marksman' ? shootDist : 12));
       let movedThisFrame = false;
       if (dist > 0.5 && !shouldHoldAttackPosition) {
         const speed = this.isLured ? 0.12 : (this.type === 'powerloader' ? 0.06 : (this.isCyberHound ? 0.16 : (this.aiState==='FLEE' ? .105 : 0.08)));
@@ -26035,6 +26355,7 @@
       this.attackCooldown = 0;
       this.supportCooldown = 0;
       this.animationPhase = Math.random() * Math.PI * 2;
+      this.idleAnimationTime = 0;
       this.attackAnimation = 0;
       this.movementBlend = 0;
       this.isDestroyed = false;
@@ -26197,11 +26518,13 @@
     }
 
     moveDirect(dx, dy, deltaSeconds = 1 / 60, maxDistance = Infinity, speedMultiplier = 1) {
-      if (!this.mesh || (this.caste === 'queen' && this.attachedToOvipositor) || this.isDestroyed) return false;
+      if (!this.mesh || (this.caste === 'queen' && this.attachedToOvipositor) || this.isDestroyed ||
+        window.gameInstance?.isSystemPaused) return false;
       if (Math.hypot(dx, dy) <= 1e-4 || maxDistance <= 1e-4) {
         this.movementBlend = 0;
         animateProceduralModel(this.mesh, {
           phase: this.animationPhase,
+          idlePhase: this.idleAnimationTime,
           movement: 0.08,
           attack: this.attackAnimation
         });
@@ -26216,6 +26539,7 @@
       const movementStep = Math.min(this.speed * Math.max(0, speedMultiplier) * resinBonus * scentBonus * suppressionPenalty * frameScale * rallyBonus, maxDistance);
       const nextX = this.x + dx * movementStep;
       const nextZ = this.z + dy * movementStep;
+      const previousX = this.x, previousZ = this.z;
       let moved = false;
       const resolved = window.HiveGameplayControls?.moveWithSlide?.(stationMap, this, { x: nextX, z: nextZ }, 0.4);
       if (resolved?.moved) {
@@ -26244,10 +26568,13 @@
       }
       if (moved) {
         this.mesh.position.set(this.x, 0, this.z);
-        this.animationPhase += Math.max(0, deltaSeconds) * (this.caste === 'queen' ? 5.5 : (this.caste === 'runner' ? 13 : 8));
+        const stride = window.HiveAlienMotion?.strideLength?.(this.mesh, 'drone', this.caste) ||
+          (this.caste === 'queen' ? 7.2 : this.caste === 'runner' ? 4.2 : 4.5);
+        this.animationPhase += Math.hypot(this.x - previousX, this.z - previousZ) / stride * Math.PI * 2;
         this.movementBlend = 1;
         animateProceduralModel(this.mesh, {
           phase: this.animationPhase,
+          idlePhase: this.idleAnimationTime,
           movement: 1,
           attack: this.attackAnimation
         });
@@ -26305,7 +26632,9 @@
     }
 
     update(deltaSeconds = 1 / 60, humans = []) {
-      if (!this.mesh || this.isDestroyed) return;
+      if (!this.mesh || this.isDestroyed || window.gameInstance?.isSystemPaused ||
+        !Number.isFinite(deltaSeconds) || deltaSeconds < 0) return;
+      this.idleAnimationTime += deltaSeconds;
       this.updateRallyTimer(deltaSeconds);
       this.attackCooldown -= deltaSeconds;
       this.supportCooldown -= deltaSeconds;
@@ -26385,7 +26714,8 @@
         }
 
         animateProceduralModel(this.mesh, {
-          phase: this.animationPhase += Math.max(0, deltaSeconds) * (this.attachedToOvipositor ? 2.2 : 5.0),
+          phase: this.animationPhase,
+          idlePhase: this.idleAnimationTime,
           attack: this.attackAnimation,
           movement: this.attachedToOvipositor ? 0.08 : this.movementBlend,
           pulse: 0.45
@@ -26516,7 +26846,8 @@
         }
       }
       animateProceduralModel(this.mesh, {
-        phase: this.animationPhase += Math.max(0, deltaSeconds) * 2.5,
+        phase: this.animationPhase,
+        idlePhase: this.idleAnimationTime,
         movement: Math.max(0.08, this.movementBlend),
         attack: Math.max(this.attackAnimation, this.supportAnimation || 0),
         pulse: this.caste === 'praetorian' ? 0.25 : 0
@@ -29583,20 +29914,24 @@
     }
 
     executeDragOrWallCocoon() {
-      // Audit QA #79 : Cocon Aérien Suspendu aux Poutres de Plafond
-      if (playerCreature.isCeilingProwling) {
+      if (!window.HiveAdvancedCombat?.active(playerCreature, window.gameInstance, { allowCeiling: true }) ||
+        playerCreature.isLeaping) return false;
+      let captured = false;
+      if (playerCreature.isCeilingProwling && !playerCreature.draggedHost) {
         const humans = window.gameInstance?.humans || [];
-        const stunnedHost = humans.find((h) => !h.isCocooned && (h.isIncapacitated || h.staggerTimer > 0) && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.5);
-        if (stunnedHost) {
-          stationMap.suspendOverheadCocoon(stunnedHost);
-          this.capturedHosts++;
-          this.updateCooldownBadges();
-          this.updateRoyalButton();
-          return;
-        }
-      }
-      if (playerCreature.draggedHost) {
-        let nearWall = false;
+        const stunnedHost = humans.filter((h) => h?.mesh && Number.isFinite(h.hp) && h.hp > 0 &&
+          !h.isCocooned && !h.isDestroyed && !h.isConsumedByCycle && !h.isEscaped &&
+          (h.isIncapacitated || h.staggerTimer > 0) &&
+          (window.HiveFidelityRules?.canImplant(h) ||
+            (h.directInoculated && h.directInoculationGame === window.gameInstance && h.directInoculationStage === this) ||
+            (h.bloodbursterIncubating && h.bloodbursterGame === window.gameInstance && h.bloodbursterStage === this)) &&
+          window.HiveGameplayControls?.inReach(stationMap, playerCreature, h, 4.2))
+          .sort((a, b) => Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) -
+            Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z))[0];
+        if (!stunnedHost) return false;
+        captured = stationMap.suspendOverheadCocoon(stunnedHost) === true;
+      } else if (playerCreature.draggedHost) {
+        let nearWall = playerCreature.isCeilingProwling;
         for (const col of stationMap.colliders) {
           if (
             playerCreature.x >= col.minX - 3.2 && playerCreature.x <= col.maxX + 3.2 &&
@@ -29606,17 +29941,19 @@
           }
         }
         if (nearWall) {
-          playerCreature.wallCocoonDraggedHost();
-          this.capturedHosts++;
-          this.updateCooldownBadges();
-      this.updateRoyalButton();
+          captured = playerCreature.wallCocoonDraggedHost() === true;
         } else {
           showToast('Approchez le corps d\'un mur pour l\'emmurer dans la résine [V], ou pressez V pour relâcher.');
-          playerCreature.toggleDragHost();
+          return playerCreature.toggleDragHost() === true;
         }
       } else {
-        playerCreature.toggleDragHost();
+        return playerCreature.toggleDragHost() === true;
       }
+      if (!captured) return false;
+      this.capturedHosts++;
+      this.updateCooldownBadges();
+      this.updateRoyalButton();
+      return true;
     }
 
     toggleVentInfiltration() {

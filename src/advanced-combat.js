@@ -4,6 +4,7 @@
   'use strict';
   const stages = new WeakMap();
   const failures = new WeakMap();
+  const playerMotions = new WeakMap();
   const point = p => !!p && Number.isFinite(p.x) && Number.isFinite(p.z);
   const distance = (a,b) => Math.hypot(a.x-b.x,a.z-b.z);
   const alive = target => point(target) && Number.isFinite(target.hp) && target.hp>0 &&
@@ -99,20 +100,42 @@
     return true;
   }
   function stopMotion(state,motion) {
+    motion.cancelled=true;
     state.motions.delete(motion);
     const p=motion.player;
+    if(playerMotions.get(p)===motion)playerMotions.delete(p);
     // Do not erase a replacement animation after a form/mesh change.
     if(p.leapComplete!==motion.complete)return;
     p.isLeaping=false;p.leapHost=null;p.leapComplete=null;
     p.mesh?.position.set(p.x,0,p.z);if(p.mesh)p.mesh.rotation.x=0;
   }
+  function cancelMotion(player) {
+    const motion=playerMotions.get(player);
+    if(!motion)return false;
+    stopMotion(motion.state,motion);return true;
+  }
+  function validateMotion(player,game) {
+    const motion=playerMotions.get(player);
+    if(!motion)return true;
+    const controls=global.HiveGameplayControls;
+    if(game!==motion.game || game?.currentStage!==motion.stage || game?.campaignActive===false ||
+      game?.currentStageIndex!==4 || player.mesh!==motion.mesh ||
+      player.adultCaste!==motion.caste || !player.isLeaping || player.isDefeated || player.health<=0 ||
+      player.form!=='drone' || player.isChrysalis || player.attachedHost || player.isInVent ||
+      player.isSubfloorProwling || !controls?.canStand(motion.map,player,.88) ||
+      !controls.clearSegment(motion.map,player,motion.landing,.88)) {
+      stopMotion(motion.state,motion);return false;
+    }
+    return true;
+  }
   function beginMotion(player,game,map,key,spec,landing,onImpact,target=null) {
     const state=stageState(game),stage=game.currentStage,mesh=player.mesh,caste=player.adultCaste;
     const controls=global.HiveGameplayControls;
-    const motion={player,map,landing,stage,mesh,caste,complete:null};
+    const motion={player,game,state,map,landing,stage,mesh,caste,complete:null,cancelled:false};
     let finished=false;
     motion.complete=()=>{
-      if(finished)return;finished=true;state.motions.delete(motion);
+      if(finished||motion.cancelled)return;finished=true;state.motions.delete(motion);
+      if(playerMotions.get(player)===motion)playerMotions.delete(player);
       if(player.mesh===mesh && (!player.leapHost || player.leapHost===landing)) {
         player.isLeaping=false;player.mesh?.position.set(player.x,0,player.z);
         if(player.mesh)player.mesh.rotation.x=0;
@@ -125,14 +148,24 @@
     player.startLeapTo(landing,motion.complete,{duration:spec.duration||Math.min(.72,.24+distance(player,landing)/22),
       arcHeight:spec.arcHeight??1.7,useFaceAnchor:false});
     if(!player.isLeaping || player.leapComplete!==motion.complete)return false;
-    state.motions.add(motion);commit(player,game,key,spec.cooldown);
+    state.motions.add(motion);playerMotions.set(player,motion);commit(player,game,key,spec.cooldown);
     player.moveTarget=null;player.moveWaypoints=[];player.actionTarget=null;
+    player.releaseDraggedHost?.('Le corps est relâché avant le déplacement offensif.');
     if(spec.dropCeiling){
       player.isCeilingProwling=false;
       if(player.detailedModel){player.detailedModel.rotation.x=0;player.detailedModel.position.y=0;}
     }
     player.triggerAttack?.(spec.action||'leap');
     return true;
+  }
+  function travel(player,game,map,key,spec,destination,onImpact) {
+    if(!ready(player,game,key,spec))return false;
+    const landing=global.HiveGameplayControls?.sweptDestination(map,player,destination,
+      {range:spec.range,padding:.88});
+    if(!landing || distance(player,landing)<.1){
+      failures.set(player,'Trajectoire de bond bloquée ou arrivée trop proche.');return false;
+    }
+    return beginMotion(player,game,map,key,spec,landing,onImpact);
   }
   function leap(player,game,map,key,spec,preferred,onImpact) {
     if(!ready(player,game,key,spec))return false;
@@ -176,13 +209,8 @@
     if(!game?.campaignActive || !game.isRunning || game.isSystemPaused)return;
     const state=stageState(game);if(!state)return;
     state.time+=Math.max(0,Math.min(.1,Number(seconds)||0));
-    const controls=global.HiveGameplayControls;
     for(const motion of [...state.motions]) {
-      const p=motion.player;
-      if(game.currentStage!==motion.stage || p.mesh!==motion.mesh || p.adultCaste!==motion.caste ||
-        !p.isLeaping || p.isDefeated || p.health<=0 ||
-        !controls?.canStand(motion.map,p,.88) ||
-        !controls.clearSegment(motion.map,p,motion.landing,.88))stopMotion(state,motion);
+      validateMotion(motion.player,game);
     }
     for(const job of [...state.jobs]) {
       if(job.due>state.time+1e-7)continue;
@@ -193,6 +221,6 @@
     }
   }
   global.HiveAdvancedCombat=Object.freeze({active,ready,remaining,commit,alive,vulnerable,validTarget,
-    targets,effectPath,selectTarget,landingNear,push,leap,contact,charge,defer,schedule,advanceClock,
+    targets,effectPath,selectTarget,landingNear,push,leap,travel,cancelMotion,validateMotion,contact,charge,defer,schedule,advanceClock,
     pending:game=>stageState(game)?.jobs.size||0,failure:player=>failures.get(player)||''});
 })(typeof window==='undefined'?globalThis:window);

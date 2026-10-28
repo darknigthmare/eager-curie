@@ -341,7 +341,17 @@
       group.add(upper);upper.add(lower);bones.push(upper,lower);
       const hand=group.children.find(child=>child.isGroup&&/^(hand|foot)_/.test(child.name));
       if(hand){root.updateMatrixWorld(true);lower.attach(hand);hand.scale.multiply(new T.Vector3(limb.kind==='elbow'?.79:.84,.86,.88));}
-      bends.push({joint:lower,kind:limb.kind,side:limb.side,baseQuaternion:lower.quaternion.clone()});
+      const upperAngle=Math.atan2(lower.position.z,lower.position.y);
+      const lowerAngle=hand?Math.atan2(hand.position.z,hand.position.y):upperAngle;
+      const bendAngle=Math.atan2(Math.sin(lowerAngle-upperAngle),Math.cos(lowerAngle-upperAngle));
+      bends.push({joint:lower,kind:limb.kind,side:limb.side,baseQuaternion:lower.quaternion.clone(),
+        proximal:group,terminal:hand||null,terminalQuaternion:hand?.quaternion.clone(),
+        upperLength:Math.hypot(lower.position.y,lower.position.z),
+        lowerLength:hand?Math.hypot(hand.position.y,hand.position.z):0,
+        upperAngle,bindBend:bendAngle,bendDirection:Math.abs(bendAngle)>.02?Math.sign(bendAngle):(i<2?1:-1),
+        // Uprights alternate sides; quadrupeds support the opposite diagonal.
+        gaitOffset:quad?((i===0||i===3)?0:Math.PI):(limb.side<0?0:Math.PI),
+        bindTerminal:hand?group.position.clone().add(lower.position).add(hand.position):null});
     }
     headRefit(root,metadata,T);
     const geometry=template(T,spec);
@@ -362,16 +372,24 @@
     // Every animated proximal pivot must participate in the bind-pose reset.
     // The Queen's secondary arms are new groups, absent from the legacy list.
     joints.modernLimbs=groups.map(group=>group.name);
+    // Queen hands share legacy names. Object handles capture every individual
+    // wrist/ankle in resetPose instead of resolving the first matching name.
+    joints.modernTerminals=bends.map(entry=>entry.terminal).filter(Boolean);
     joints.bends=bends.map(entry=>entry.joint.name);metadata.animationJoints=joints;
     const roles=metadata.animationRoles||{};
     if(!roles.locomotion)roles.locomotion=[...groups.map(group=>group.name),...(root.getObjectByName('segmented_tail')?['segmented_tail']:[])];
+    // Runner's legacy locomotion lists only its four legs. The tail is a
+    // counterbalance and must keep the separate cosmetic idle clock as well.
+    if(Array.isArray(roles.locomotion)&&root.getObjectByName('segmented_tail')&&!roles.locomotion.includes('segmented_tail'))
+      roles.locomotion=[...roles.locomotion,'segmented_tail'];
     if(!roles.attack)roles.attack=[head.name,...groups.filter(group=>/arm/.test(group.name)).map(group=>group.name),
       ...(root.getObjectByName('articulated_jaw')?['articulated_jaw']:[]),...(root.getObjectByName('segmented_tail')?['segmented_tail']:[])];
     // Roles may also introduce a tail absent from an older caste's joint list.
     // Reset everything the production animation is allowed to move.
     joints.modernRoles=roles;
     metadata.animationRoles=roles;
-    root.userData.modernMotionRig={bends};
+    root.userData.modernMotionRig={bends,quadruped:quad,unit,
+      stride:unit*(family==='crusher'?.24:quad?.32:.26)};
     root.userData.modernAlien={version:1,family,caste:metadata.caste,skinned:true,
       continuousLimbSkin:true,skinTriangles:triangleCount(geometry),skinVertices:geometry.attributes.position.count,
       bones:bones.length,bendJoints:bends.map(entry=>entry.joint.name),...statistics};

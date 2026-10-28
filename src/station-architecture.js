@@ -84,21 +84,38 @@
     const group=new T.Group();group.name='MNEMOSYNE · authored room structure';
     group.userData.hiveGlobalDecorations=true;group.userData.stationArchitecture=true;parent.add(group);
     const geometries=new Set(),materials=new Set(),textures=new Set(),batches=new Map(),portals=[];
+    const qualityTier=profile=>/low|performance|mobile/i.test(typeof profile==='string'?profile:profile?.name||profile?.quality||'high')?0:1;
+    let tier=qualityTier(options.quality);
     const diagnostics={version:1,hullVertices:HULL.length,boundarySegments:HULL.length,
       partitions:PARTITIONS.length,voidColliders:VOID.length,sectors:SECTORS.length,
-      portals:0,instances:0,batches:0,triangles:0,dynamicLights:0,labels:0,roomBays:BAYS.length,observationModules:0};
+      portals:0,instances:0,batches:0,triangles:0,dynamicLights:0,labels:0,roomBays:BAYS.length,observationModules:0,
+      functionalModules:0,functionalSectors:0,functionalInstances:0,qualityTier:tier};
     const geo=g=>(geometries.add(g),g),mat=m=>(materials.add(m),m);
     const box=geo(new T.BoxGeometry(1,1,1));
     const steel=mat(new T.MeshStandardMaterial({color:0x43535c,roughness:.58,metalness:.76}));
     const dark=mat(new T.MeshStandardMaterial({color:0x1c282c,roughness:.83,metalness:.3}));
-    const resin=mat(new T.MeshStandardMaterial({color:0x263e31,roughness:.62,metalness:.25}));
+    const resin=mat(new T.MeshStandardMaterial({color:0x263a28,roughness:.54,metalness:.08}));
+    // Striated chitin under the same station lighting, not a smooth grey tube.
+    // A tiny shared normal field stays deterministic/offline and adds no draw.
+    const chitinData=new Uint8Array(64*64*4);
+    const ridge=(x,y)=>Math.sin(x*.6+Math.sin(y*.25)*1.7)*.34+Math.sin(x*.18+y*.12)*.12;
+    for(let y=0;y<64;y++)for(let x=0;x<64;x++) {
+      const nx=(ridge(x-1,y)-ridge(x+1,y))*.8,ny=(ridge(x,y-1)-ridge(x,y+1))*.8;
+      const normal=new T.Vector3(nx,ny,1).normalize(),i=(y*64+x)*4;
+      chitinData[i]=Math.round((normal.x*.5+.5)*255);chitinData[i+1]=Math.round((normal.y*.5+.5)*255);
+      chitinData[i+2]=Math.round((normal.z*.5+.5)*255);chitinData[i+3]=255;
+    }
+    const chitinNormal=new T.DataTexture(chitinData,64,64,T.RGBAFormat);chitinNormal.wrapS=chitinNormal.wrapT=T.RepeatWrapping;
+    chitinNormal.repeat.set(2,3);chitinNormal.needsUpdate=true;textures.add(chitinNormal);resin.normalMap=chitinNormal;resin.normalScale.set(.8,.8);
+    const resinBands=mat(resin.clone());resinBands.color.setHex(0x58694a);resinBands.roughness=.63;
     const colors=new Map(SECTORS.map(s=>[s.id,mat(new T.MeshStandardMaterial({color:s.accent,
       emissive:s.accent,emissiveIntensity:.24,roughness:.72,metalness:.18}))]));
     const dummy=new T.Object3D(),hiddenMatrix=new T.Matrix4().makeScale(0,0,0);
     function part(key,material,x,y,z,w,h,d,rotation=0,wall=null,geometry=box) {
       if(!batches.has(key))batches.set(key,{geometry,material,matrices:[]});
       dummy.position.set(x,y,z);dummy.rotation.set(0,rotation,0);dummy.scale.set(w,h,d);dummy.updateMatrix();
-      batches.get(key).matrices.push({matrix:dummy.matrix.clone(),wall,visible:true});diagnostics.instances++;
+      const row={matrix:dummy.matrix.clone(),wall,visible:true};
+      batches.get(key).matrices.push(row);diagnostics.instances++;return row;
     }
     for(const p of PARTITIONS) {
       const wall=options.addWall(p.x,p.z,p.width,p.height,p.depth);
@@ -126,6 +143,145 @@
       for(const y of[2,3.2])part('screen-shoulders',dark,face+facing*.012,y,z,.045,.045,1.3,0,owner);
       diagnostics.observationModules++;
     }
+    // Fixed installations give the rooms recognisable human-scale functions.
+    // Their solids stay in existing padded wall footprints: the observation
+    // floors, four egg origins and all approaches remain clear.
+    const roundedShape=new T.Shape(),r=.2;
+    roundedShape.moveTo(-.5+r,-.5);roundedShape.lineTo(.5-r,-.5);
+    roundedShape.quadraticCurveTo(.5,-.5,.5,-.5+r);roundedShape.lineTo(.5,.5-r);
+    roundedShape.quadraticCurveTo(.5,.5,.5-r,.5);roundedShape.lineTo(-.5+r,.5);
+    roundedShape.quadraticCurveTo(-.5,.5,-.5,.5-r);roundedShape.lineTo(-.5,-.5+r);
+    roundedShape.quadraticCurveTo(-.5,-.5,-.5+r,-.5);
+    const capsule=geo(new T.ExtrudeGeometry(roundedShape,{depth:1,bevelEnabled:false,curveSegments:3}).translate(0,0,-.5));
+    const nodule=geo(new T.SphereGeometry(.5,8,6));
+    const ribGeometry=geo(new T.TubeGeometry(new T.CatmullRomCurve3([
+      new T.Vector3(-.1,-.5,-.03),new T.Vector3(.12,-.18,.025),new T.Vector3(-.04,.22,.04),new T.Vector3(-.13,.5,-.02)
+    ]),8,.035,5,false));
+    ribGeometry.computeBoundingBox();const ribSize=new T.Vector3();ribGeometry.boundingBox.getSize(ribSize);ribGeometry.center();ribGeometry.scale(1/ribSize.x,1/ribSize.y,1/ribSize.z);
+    const porcelain=mat(new T.MeshStandardMaterial({color:0xc0d2cf,roughness:.48,metalness:.28}));
+    const signalPaint=mat(new T.MeshStandardMaterial({color:0xffffff,roughness:.72,metalness:.18}));
+    const programs=[
+      {id:'cryo-pod-west',kind:'cryo',wallId:'cryo-bay-west',u:0,face:1,w:3.4,h:4.8},
+      {id:'cryo-pod-east-a',kind:'cryo',wallId:'cryo-bay-east',u:-3.4,face:-1,w:3.4,h:4.8},
+      {id:'cryo-pod-east-b',kind:'cryo',wallId:'cryo-bay-east',u:3.4,face:-1,w:3.4,h:4.8},
+      {id:'security-screen',kind:'security',wallId:'security-bay-west',u:0,face:1,w:6.8,h:4.8},
+      {id:'security-console',kind:'security',wallId:'security-bay-head',u:0,face:1,w:5.2,h:4.8},
+      {id:'freight-dispatch',kind:'freight',wallId:'freight-decon',u:0,face:1,w:9.8,h:4.8},
+      {id:'habitat-berths',kind:'colony',wallId:'colony-transfer',u:0,face:-1,w:9.2,h:4.8},
+      {id:'refinery-exchanger',kind:'refinery',wallId:'refinery-bay-west',u:0,face:1,w:8.8,h:4.9},
+      {id:'refinery-intake',kind:'refinery',wallId:'refinery-bay-head',u:0,face:1,w:9.4,h:4.9},
+      {id:'brood-ribs-west',kind:'nursery',wallId:'hive-bay-west',u:0,face:1,w:8,h:5.1},
+      {id:'brood-ribs-east',kind:'nursery',wallId:'hive-bay-east',u:0,face:-1,w:9.4,h:5.1},
+      {id:'spine-services-west',kind:'transit',wallId:'spine-north-west',u:0,face:1,w:7.8,h:4.6},
+      {id:'spine-services-east',kind:'transit',wallId:'spine-north-east',u:0,face:-1,w:7.8,h:4.6}
+    ];
+    const installations=[];
+    for(const program of programs) {
+      const p=PARTITIONS.find(w=>w.id===program.wallId),wall=map.walls.find(w=>w.userData.architectureRoom===program.wallId);
+      if(!p||!wall)continue;
+      const alongX=p.width>=p.depth,thickness=alongX?p.depth:p.width,angle=alongX?0:Math.PI/2;
+      const accent=colors.get(program.kind),centreY=3.05;
+      const installation={...program,sector:p.sector,instances:0};installations.push(installation);
+      const fixed=(key,material,u,y,normal,w,h,d,geometry=box,tint=null)=>{
+        const at=program.u+u,v=program.face*(thickness/2+normal);
+        const secondary=key==='functional-resin-bands'||(geometry===box&&h<=.08);
+        const color=key.startsWith('functional-accent-')?sectorById(program.kind).accent:null;
+        if(color!==null){key='functional-signals';material=signalPaint;}
+        if(key==='functional-steel')key='portal-posts';
+        if(key==='functional-dark')key='screen-shoulders';
+        const row=part(key,material,p.x+(alongX?at:v),y,p.z+(alongX?v:at),w,h,d,angle,wall,geometry);
+        row.program=program.id;row.color=tint??color;row.minTier=secondary?1:0;
+        installation.instances++;diagnostics.functionalInstances++;
+      };
+      const plate=(key,material,u,y,w,h,normal=.28,d=.3,tint=null)=>fixed(key,material,u,y,normal,w,h,d,capsule,tint);
+      if(program.kind==='cryo') {
+        // Closed frost shutters and a shoulder collar read as full-height cryo
+        // capsules, while the separate sample banks stay visible beside them.
+        plate('functional-ceramic',porcelain,0,centreY,program.w,program.h);
+        plate('functional-dark-rounded',dark,0,centreY,program.w-.35,program.h-.4,.45,.12);
+        plate('functional-ceramic',porcelain,0,3.25,program.w-.95,3.65,.56,.04,0x8fc9d5);
+        plate('functional-dark-rounded',dark,0,4.5,program.w-1.55,.38,.578,.025);
+        fixed('functional-accent-cryo',accent,0,1.24,.55,program.w-1.15,.1,.055);
+        for(const side of[-1,1]) {
+          fixed('functional-steel',steel,side*(program.w/2-.22),centreY,.53,.11,program.h-.68,.08);
+          fixed('functional-accent-cryo',accent,side*(program.w/2-.48),3.6,.57,.055,1.7,.035);
+        }
+        for(let key=0;key<3;key++)fixed('functional-dark',dark,(key-1)*.35,1.48,.58,.13,.06,.025);
+      } else if(program.kind==='security') {
+        plate('functional-steel-rounded',steel,0,centreY,program.w,program.h);
+        plate('functional-dark-rounded',dark,0,centreY,program.w-.4,program.h-.38,.45,.12);
+        const count=program.id==='security-console'?2:3,span=(program.w-.8)/count;
+        for(let i=0;i<count;i++) {
+          const u=(i-(count-1)/2)*span;
+          fixed('functional-steel',steel,u,centreY,.5,span-.13,program.h-.9,.08);
+          fixed('screen-indicators-cryo',colors.get('cryo'),u,3.65,.56,span-.4,1.6,.035,box,0x9edab1);
+          for(let line=0;line<3;line++)fixed('functional-dark',dark,u-(line%2)*.12,3.12+line*.4,.586,span-.65-line*.13,.07,.02);
+          fixed('functional-accent-security',accent,u,4.8,.56,span-.35,.15,.045);
+          for(let slit=0;slit<4;slit++)fixed('functional-dark',dark,u,1.45+slit*.2,.56,span-.38,.07,.035);
+          fixed('functional-steel',steel,u,2.65,.57,span-.4,.13,.035);
+        }
+        fixed('functional-accent-security',accent,0,.85,.53,program.w-.65,.16,.07);
+      } else if(program.kind==='freight') {
+        plate('functional-steel-rounded',steel,0,centreY,program.w,program.h);
+        fixed('functional-dark',dark,0,3.05,.46,program.w-.45,program.h-.5,.1);
+        // A sealed loading shutter, not a fake traversable/interactable door.
+        for(const side of[-1,1]) {
+          fixed('functional-steel',steel,side*program.w*.235,3.08,.51,program.w*.435,program.h-.95,.08);
+          for(let rib=0;rib<6;rib++)fixed('functional-dark',dark,side*program.w*.235,1.45+rib*.57,.56,program.w*.39,.055,.025);
+        }
+        fixed('functional-dark',dark,0,3.05,.565,.48,program.h-.9,.045);
+        for(const side of[-1,1])fixed('functional-accent-freight',accent,side*(program.w/2-.35),3.05,.56,.12,program.h-.7,.035);
+        fixed('functional-accent-freight',accent,0,5.2,.54,2.6,.2,.07);
+      } else if(program.kind==='colony') {
+        plate('functional-steel-rounded',steel,0,centreY,program.w,program.h);
+        for(let berth=0;berth<3;berth++) {
+          const u=(berth-1)*2.95;
+          plate('functional-dark-rounded',dark,u,3.02,2.68,4.22,.45,.12);
+          plate('functional-ceramic',porcelain,u,2.75,2.33,3.25,.51,.08);
+          plate('functional-dark-rounded',dark,u,3.72,1.74,.74,.565,.03);
+          fixed('functional-accent-colony',accent,u,4.92,.55,1.65,.12,.055);
+          for(const side of[-1,1])fixed('functional-steel',steel,u+side*.79,1.65,.56,.12,.58,.04);
+          fixed('functional-dark',dark,u,2.32,.56,1.8,.045,.035);
+        }
+      } else if(program.kind==='refinery') {
+        plate('functional-steel-rounded',steel,0,centreY,program.w,program.h);
+        fixed('functional-dark',dark,0,centreY,.45,program.w-.4,program.h-.4,.12);
+        if(program.id==='refinery-exchanger') {
+          for(let tube=0;tube<7;tube++) {
+            const u=(tube-3)*1.1;
+            fixed('functional-exchanger-tubes',steel,u,3.05,.46,.125,3.65,.125,sampleTube);
+            for(const y of[1.45,4.65])fixed('functional-accent-refinery',accent,u,y,.49,.4,.22,.17);
+          }
+          for(const y of[1.08,5.01])fixed('functional-steel',steel,0,y,.48,program.w-.7,.25,.2);
+        } else {
+          for(let vane=0;vane<8;vane++)fixed('functional-steel',steel,0,1.35+vane*.48,.52,program.w-.8,.21,.12);
+          for(const side of[-1,1])fixed('functional-accent-refinery',accent,side*(program.w/2-.35),3.05,.55,.12,program.h-.65,.06);
+        }
+      } else if(program.kind==='nursery') {
+        // Compressed chitin lobes change the wall silhouette without putting
+        // spikes or a decorative shell collider across the egg/queen route.
+        for(let rib=0;rib<7;rib++) {
+          const u=(rib-3)*(program.w-1.2)/6,height=Math.min(program.h-(rib%3)*.75,4.8),base=1.05;
+          fixed('functional-resin-lobes',resin,u,base+height/2,.38,.88+(rib%2)*.12,height,.4,nodule);
+          fixed('functional-resin-bands',resinBands,u+(rib%2?-.16:.13),base+height/2,.54,.38,height-.25,.1,ribGeometry);
+          fixed('functional-resin-lobes',resin,u+(rib%2?-.18:.12),1.05,.38,1.08,.75,.4,nodule);
+        }
+        for(const y of[1.15,5.1])fixed('functional-resin-lobes',resin,0,y,.32,program.w,.48,.34,nodule);
+      } else {
+        plate('functional-steel-rounded',steel,0,centreY,program.w,program.h);
+        fixed('functional-dark',dark,0,centreY,.45,program.w-.4,program.h-.4,.12);
+        for(let panel=0;panel<3;panel++) {
+          const u=(panel-1)*2.35;
+          fixed('functional-steel',steel,u,2.95,.51,2.02,3.65,.08);
+          fixed('functional-dark',dark,u,3.55,.56,1.55,1.55,.035);
+          fixed('functional-accent-transit',accent,u,4.76,.56,1.58,.13,.035);
+          fixed('functional-steel',steel,u,2.47,.575,1.15,.13,.025);
+          fixed('functional-dark',dark,u,1.57,.56,1.55,.32,.035);
+        }
+      }
+      diagnostics.functionalModules++;
+    }
+    diagnostics.functionalSectors=new Set(installations.map(p=>p.sector)).size;
     map.colliders.push(...VOID.map((v,i)=>({...v,isHullVoid:true,architectureId:`hull-void-${i}`})));
     for(const sector of SECTORS) {
       const points=clip(HULL.map(p=>({...p})),sector.bounds);
@@ -169,23 +325,37 @@
     portal('cryo-treatment',-42.875,-47,15.25,'cryo');
     portal('security-inspection',44,-50,14,'security');
     portal('refinery-dispatch',-48,50,16,'refinery');
-    // Ribs stand on the new nursery screens, outside their walking footprint.
-    // The low-frequency arch silhouette is geometry, not a wall painted green.
-    const ribs=geo(new T.TubeGeometry(new T.CatmullRomCurve3([
-      new T.Vector3(-9,0,0),new T.Vector3(-8,4.8,0),new T.Vector3(0,8,0),
-      new T.Vector3(8,4.8,0),new T.Vector3(9,0,0)
-    ]),20,.24,7,false));
+    // Adherent, asymmetrical ribs stand on the screens outside the walking
+    // footprint. Vary existing cross-sections instead of adding surface meshes.
+    function organicArch(points,radius,phase) {
+      const path=new T.CatmullRomCurve3(points),geometry=geo(new T.TubeGeometry(path,20,radius,7,false));
+      const positions=geometry.getAttribute('position'),point=new T.Vector3();
+      for(let section=0;section<=20;section++) {
+        path.getPointAt(section/20,point);
+        const swell=1+Math.sin(section*1.85+phase)*.2+Math.sin(section*.55+phase)*.07;
+        for(let edge=0;edge<=7;edge++) {
+          const index=section*8+edge;
+          positions.setXYZ(index,point.x+(positions.getX(index)-point.x)*swell,
+            point.y+(positions.getY(index)-point.y)*swell,point.z+(positions.getZ(index)-point.z)*swell);
+        }
+      }
+      positions.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingSphere();return geometry;
+    }
+    const ribs=organicArch([
+      new T.Vector3(-9,0,0),new T.Vector3(-8,4.1,0),new T.Vector3(-1.1,7.7,0),
+      new T.Vector3(7.4,5.3,0),new T.Vector3(9,0,0)
+    ],.24,.3);
     for(const z of[34.5,35.5]) {
       const ribMaterial=mat(resin.clone());ribMaterial.transparent=true;
       const arch=new T.Mesh(ribs,ribMaterial);arch.position.set(39,0,z);arch.name='Nursery structural rib';
       arch.userData.architecturePortal=true;group.add(arch);map.walls.push(arch);portals.push(arch);
     }
-    const broodRib=geo(new T.TubeGeometry(new T.CatmullRomCurve3([
-      new T.Vector3(-8,0,0),new T.Vector3(-7.3,5.4,0),new T.Vector3(0,8.4,0),
-      new T.Vector3(7.3,5.4,0),new T.Vector3(8,0,0)
-    ]),20,.28,7,false));
+    const broodRib=organicArch([
+      new T.Vector3(-8,0,0),new T.Vector3(-7.1,4.6,0),new T.Vector3(-1.2,8.4,0),
+      new T.Vector3(7.6,5.8,0),new T.Vector3(8,0,0)
+    ],.28,1.4);
     for(const z of[46,51,54]) {
-      const material=mat(resin.clone());material.color.setHex(0x506958);material.transparent=true;
+      const material=mat(resin.clone());material.color.setHex(0x34432b);material.transparent=true;
       const arch=new T.Mesh(broodRib,material);arch.position.set(42,0,z);
       arch.name='Brood chamber · central resin rib';arch.userData.architecturePortal=true;
       group.add(arch);map.walls.push(arch);portals.push(arch);
@@ -230,19 +400,39 @@
     for(const [name,batch]of batches) {
       const mesh=new T.InstancedMesh(batch.geometry,batch.material,batch.matrices.length);
       mesh.name=`Station architecture · ${name}`;mesh.frustumCulled=false;mesh.receiveShadow=true;
-      batch.matrices.forEach((row,i)=>mesh.setMatrixAt(i,row.matrix));mesh.instanceMatrix.needsUpdate=true;
+      if(batch.matrices.some(row=>row.program))mesh.userData.architecturePrograms=batch.matrices.map(row=>row.program||null);
+      // r128 caches the instancing shader flag per shared material, but does
+      // not invalidate it when instanceColor presence changes between meshes.
+      // Every batch therefore owns a colour buffer; untinted instances stay
+      // white. This preserves material sharing and the original appearance.
+      batch.matrices.forEach((row,i)=>{
+        mesh.setMatrixAt(i,row.matrix);
+        mesh.setColorAt(i,new T.Color(row.color??0xffffff));
+      });mesh.instanceMatrix.needsUpdate=true;
       mesh.onBeforeRender=()=>{
         let changed=false;
         batch.matrices.forEach((row,i)=>{
           if(!row.wall)return;
-          const visible=row.wall.visible!==false&&(row.wall.material.opacity??1)>=.88;
+          const visible=tier>=(row.minTier||0)&&row.wall.visible!==false&&(row.wall.material.opacity??1)>=.88;
           if(visible===row.visible)return;
           row.visible=visible;mesh.setMatrixAt(i,visible?row.matrix:hiddenMatrix);changed=true;
         });
         if(changed)mesh.instanceMatrix.needsUpdate=true;
       };
       group.add(mesh);
+      batch.mesh=mesh;
     }
+    function setQuality(profile) {
+      tier=qualityTier(profile);diagnostics.qualityTier=tier;
+      for(const batch of batches.values()) {
+        batch.mesh.visible=batch.matrices.some(row=>tier>=(row.minTier||0));
+        batch.mesh.onBeforeRender();
+      }
+      diagnostics.activeFunctionalInstances=installations.reduce((total,program)=>total+program.instances,0);
+      for(const batch of batches.values())for(const row of batch.matrices)
+        if(row.program&&tier<(row.minTier||0))diagnostics.activeFunctionalInstances--;
+    }
+    setQuality(options.quality);
     diagnostics.batches=batches.size;
     diagnostics.overheadCutaways=portals.length;
     group.traverse(object=>{
@@ -251,7 +441,7 @@
       diagnostics.triangles+=count*(object.isInstancedMesh?object.count:1);
     });
     map.architectureDiagnostics=diagnostics;
-    map.architecture={group,diagnostics,portals};return map.architecture;
+    map.architecture={group,diagnostics,portals,installations,setQuality};return map.architecture;
   }
   function containsHull(x,z) {
     if(!Number.isFinite(x)||!Number.isFinite(z))return false;

@@ -197,7 +197,8 @@
   }
   function onDeck(actor) {
     return finitePoint(actor)&&!actor.isDefeated&&!actor.isInVent&&!actor.isCeilingProwling&&
-      !actor.isSubfloorProwling&&!actor.isLeaping&&!actor.isChrysalis;
+      !actor.isSubfloorProwling&&!actor.isLeaping&&!actor.isChrysalis&&!actor.attachedHost&&
+      (!actor.form||actor.form==='drone')&&!(Number.isFinite(actor.health)&&actor.health<=0);
   }
   function hasSight(map,from,prop,aim=prop) {
     if(!finitePoint(from)||!finitePoint(prop)||!finitePoint(aim))return false;
@@ -228,7 +229,7 @@
       hasRequiredSubject(rule,prop,options)&&hasSight(map,actor,prop);
   }
   function select(map,actor,options={}) {
-    if(!map||!onDeck(actor))return null;
+    if(!map||options.active===false||!onDeck(actor))return null;
     let best=null;
     const rules=options.collections?options.collections.map(key=>byCollection.get(key)).filter(Boolean):definitions;
     for(const rule of rules)for(const [index,prop]of (map[rule.collection]||[]).entries()) {
@@ -242,7 +243,7 @@
   function resolvePreferred(map,actor,preferred,options) {
     const prop=preferred?.prop||preferred;
     if(!prop)return select(map,actor,options);
-    if(!onDeck(actor))return null;
+    if(!map||options.active===false||!onDeck(actor))return null;
     const rules=options.collections?options.collections.map(key=>byCollection.get(key)).filter(Boolean):definitions;
     for(const rule of rules)if((map[rule.collection]||[]).includes(prop)&&eligible(map,actor,rule,prop,options))
       return {rule,prop,distance:distance(actor,prop),id:rule.collection+':'+(prop.id||(map[rule.collection]||[]).indexOf(prop)),
@@ -258,8 +259,12 @@
       reason:preferred?'Interaction indisponible : rapprochez-vous du dispositif et dégagez son accès.':'Aucun dispositif utilisable à portée.'};
     // Reserve before effects, including re-entrant input listeners.
     const {rule,prop}=candidate;
+    const previousRecovery=recovery.get(prop);
     recovery.set(prop,now(options)+(rule.collection==='underfloorGrates'||rule.collection==='dissectionTheaters'?1500:450));
     const result=map[rule.method](prop,...rule.args);
+    if(result===false){
+      if(previousRecovery===undefined)recovery.delete(prop);else recovery.set(prop,previousRecovery);
+    }
     return {handled:true,success:result!==false,candidate,
       reason:result===false?'Le dispositif ne peut pas être utilisé dans cet état.':''};
   }

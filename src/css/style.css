@@ -1754,6 +1754,26 @@ select, input[type='range'] { touch-action: manipulation; }
 .prologue-copy *,
 .instruction-box { user-select: text; }
 
+/* Keep the next decision and the core controls visible during a fight. */
+.instruction-box.compact-manual { padding: 0; border-left-width: 2px; }
+.field-manual summary { cursor: pointer; min-height: 42px; padding: 12px; color: #a8c4c7; }
+.field-manual summary:focus-visible { outline: 2px solid #b5e9df; outline-offset: -3px; }
+.field-manual-body { padding: 4px 12px 14px; line-height: 1.6; }
+#field-sector { grid-column: 1 / -1; color: #a6c2c1; font-size: 10px; letter-spacing: 1.3px; }
+#field-target { grid-column: 1 / -1; border-top: 1px solid #263b3b; padding-top: 7px; color: #d7e4d7 !important; }
+#field-target[hidden], #field-sector[hidden] { display: none; }
+#hud-interaction-prompt.contextual-interaction-prompt { max-width: min(520px, calc(100vw - 380px)); min-height: 44px;
+  font: 600 12px var(--font-hud); color: #f0d9a8; border: 1px solid #998563; border-radius: 5px;
+  background: rgba(14,17,18,.94); padding: 9px 16px; cursor: pointer; z-index: 39; }
+#hud-interaction-prompt.contextual-interaction-prompt:focus-visible { outline: 2px solid #b8e8d1; outline-offset: 3px; }
+.high-contrast #field-sector { color: #ecffff; }
+.high-contrast #field-target { color: white !important; }
+@media (max-width: 760px) {
+  #field-sector { font-size: 10px; }
+  #field-target { display: none; }
+  #hud-interaction-prompt.contextual-interaction-prompt { max-width: calc(100vw - 24px); font-size: 12px; bottom: 82px !important; }
+}
+
 .codex-entry.locked { color: #9aa9ba; }
 .stat-header { font-variant-numeric: tabular-nums; }
 .vis-btn.active { font-weight: 700; }
@@ -1816,4 +1836,183 @@ select, input[type='range'] { touch-action: manipulation; }
   .system-panel { margin-block: auto; }
   .front-meta { margin-top: 10px; }
   .codex-panel { min-height: 280px; }
+}
+
+/* Biological sequence captions remain outside the interactive HUD. Their
+   geometry is fixed so progress updates cannot shift a pointer/touch target. */
+.evolution-cinematic {
+  position: absolute;
+  left: max(24px, env(safe-area-inset-left));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  z-index: 32;
+  width: min(560px, calc(100vw - 440px));
+  display: grid;
+  gap: 7px;
+  padding: 14px 18px 16px;
+  border: 1px solid #44544f;
+  border-left: 3px solid #b2c29b;
+  border-radius: 4px;
+  background: linear-gradient(120deg, rgba(9, 16, 14, 0.96), rgba(7, 12, 13, 0.9));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.48);
+  pointer-events: none;
+}
+
+.evolution-cinematic[hidden],
+.evolution-transition[hidden],
+.egg-view-overlay[hidden],
+.evolution-cinematic-progress[hidden],
+.evolution-cinematic-percent[hidden] { display: none !important; }
+
+.evolution-cinematic-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 14px;
+  color: #bec9ae;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 2px;
+}
+
+.evolution-cinematic-percent { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.evolution-cinematic-title { color: #eef1e7; font: 700 15px/1.3 var(--font-hud); letter-spacing: 0.8px; }
+.evolution-cinematic-detail { color: #bdc6c5; font-size: 12px; line-height: 1.45; }
+.evolution-cinematic-progress { height: 3px; margin-top: 4px; background: #29342f; overflow: hidden; }
+.evolution-cinematic-fill { display: block; width: 0; height: 100%; background: #b1c799; }
+
+.has-evolution-cinematic #m314-tracker,
+.has-evolution-cinematic #narrative-banner { visibility: hidden; }
+.is-internal-view .evolution-cinematic { display: none; }
+.thoracic-controls .act-btn { pointer-events: auto; }
+
+.evolution-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  opacity: 0;
+  background: #020303;
+  pointer-events: none;
+}
+
+.evolution-transition-caption {
+  max-width: 580px;
+  color: #d4dcd5;
+  text-align: center;
+  font-size: clamp(13px, 2.5vw, 18px);
+  line-height: 1.7;
+  letter-spacing: 2px;
+  text-wrap: balance;
+}
+
+.evolution-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.egg-view-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 17;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(19, 20, 9, 0.15) 61%, rgba(1, 4, 3, 0.85) 100%);
+  color: #f0eccb;
+}
+
+.egg-view-label {
+  position: absolute;
+  top: calc(var(--hud-header-height) + 112px);
+  left: 50%;
+  width: min(460px, calc(100vw - 48px));
+  transform: translateX(-50%);
+  text-align: center;
+  color: #d4d0af;
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 5px #000;
+}
+
+.egg-view-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(224, 220, 177, 0.48);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.egg-view-reticle::before,
+.egg-view-reticle::after {
+  content: '';
+  position: absolute;
+  background: #dfd9b7;
+}
+.egg-view-reticle::before { top: 13px; left: -5px; width: 38px; height: 1px; }
+.egg-view-reticle::after { top: -5px; left: 13px; width: 1px; height: 38px; }
+.egg-view-reticle-center { position: absolute; inset: 11px; border-radius: 50%; background: #f6e9b2; }
+.egg-view-ready .egg-view-reticle { border-color: #d7ecc1; }
+.egg-view-ready .egg-view-reticle-center { background: #d7ecc1; }
+
+.egg-view-aim {
+  position: absolute;
+  bottom: max(154px, calc(20px + env(safe-area-inset-bottom)));
+  left: 50%;
+  width: min(530px, calc(100vw - 64px));
+  transform: translateX(-50%);
+  display: grid;
+  gap: 6px;
+  text-align: center;
+  text-shadow: 0 2px 5px #000, 0 1px 8px #000;
+}
+.egg-view-aim-title { font-size: 12px; line-height: 1.5; letter-spacing: 1.3px; }
+.egg-view-aim-hint { color: #d9ded5; font-size: 11px; line-height: 1.5; }
+.is-egg-view #m314-tracker { visibility: hidden; }
+
+.high-contrast .evolution-cinematic { background: #020403; border-color: #dce6dc; }
+.high-contrast .evolution-cinematic-detail,
+.high-contrast .evolution-cinematic-heading { color: #edf1e9; }
+.high-contrast .egg-view-aim { padding: 10px; background: #020403; border: 1px solid #dce6dc; }
+
+@media (min-width: 681px) and (max-width: 1050px) {
+  .evolution-cinematic { left: 16px; width: calc(100vw - 420px); padding: 12px 14px; }
+  .egg-view-label { top: calc(var(--hud-header-height) + 130px); width: calc(100vw - 430px); left: 16px; transform: none; }
+}
+
+@media (max-width: 680px) {
+  .evolution-cinematic {
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: auto;
+    gap: 5px;
+    padding: 10px 12px 12px;
+  }
+  .evolution-cinematic-heading { font-size: 9px; letter-spacing: 1.5px; }
+  .evolution-cinematic-title { font-size: 13px; }
+  .evolution-cinematic-detail { font-size: 11px; }
+  .egg-view-label { top: calc(var(--hud-header-height) + 110px); width: calc(100vw - 30px); font-size: 9px; }
+  .egg-view-aim { bottom: max(150px, calc(24px + env(safe-area-inset-bottom))); width: calc(100vw - 32px); }
+  .egg-view-aim-title { font-size: 11px; }
+  .egg-view-aim-hint { font-size: 10px; }
+}
+
+@media (max-height: 520px) {
+  .evolution-cinematic { padding: 8px 12px; gap: 3px; }
+  .evolution-cinematic-detail { font-size: 10px; }
+  .egg-view-label { display: none; }
+  .egg-view-aim { bottom: 116px; }
 }

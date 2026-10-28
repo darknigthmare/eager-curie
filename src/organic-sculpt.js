@@ -23,8 +23,10 @@
   const profiles = {
     chest: [[0,.24,.34],[.08,.55,.55],[.22,.62,.65],[.4,.76,.8],[.59,1,.97],[.76,1.13,1],[.88,.96,.79],[1,.38,.42]],
     pelvis: [[0,.18,.28],[.12,.62,.59],[.35,.91,.83],[.58,1,.94],[.8,.84,.75],[1,.54,.51]],
-    skull: [[0,.035,.055],[.06,.34,.32],[.18,.76,.7],[.37,.95,.95],[.6,1,1],[.8,.88,.83],[.94,.58,.59],[1,.22,.25]],
-    runnerSkull: [[0,.04,.07],[.08,.42,.45],[.25,.83,.84],[.56,1,.98],[.77,.82,.77],[.94,.55,.55],[1,.3,.3]],
+    // The posterior is a rounded occipital bulb, not the pointed end of a
+    // spindle. The anterior vault remains narrower above the facial tissues.
+    skull: [[0,.004,.004],[.12,.70,.65],[.29,.94,.89],[.49,1,.99],[.67,.97,.98],[.83,.85,.82],[.94,.55,.57],[1,.22,.25]],
+    runnerSkull: [[0,.004,.004],[.12,.62,.60],[.29,.93,.85],[.52,1,.98],[.73,.9,.84],[.88,.73,.67],[.94,.54,.54],[1,.3,.3]],
     egg: [[0,.23,.23],[.08,.6,.6],[.27,.92,.92],[.52,1,1],[.74,.88,.88],[.92,.62,.62],[1,.34,.34]],
     cocoon: [[0,.18,.18],[.12,.66,.65],[.35,1,.95],[.62,.94,.95],[.86,.68,.7],[1,.2,.2]],
     petal: [[0,.1,.16],[.15,.6,.65],[.36,.99,1],[.6,.92,.88],[.82,.63,.68],[1,.04,.07]],
@@ -81,6 +83,10 @@
     for (let ring = 0; ring <= axial; ring++) {
       const t = ring / axial, axis = t * 2 - 1;
       let rx = profile(rows, t, 1), ry = profile(rows, t, 2);
+      if(isSkull && t < .12) {
+        const u=(.12-t)/.12,rounding=Math.sqrt(Math.max(.000025,1-u*u));
+        rx=profile(rows,.12,1)*rounding;ry=profile(rows,.12,2)*rounding;
+      }
       if(isSkull && t > .9) {
         // A real hemispherical vault termination, not a circular closing puck.
         // The tiny final cap lies below pixel scale at inspection distance.
@@ -94,20 +100,26 @@
         if (isSkull) {
           // A low, swept cranial vault, squared at the temporal walls and tapered
           // into the occipital keel; front palate is integrated below the dome.
-          const exponent = .82 + smooth(.68,.96,t) * .22;
+          const exponent = .91 + smooth(.68,.96,t) * .12;
           x = Math.sign(c) * Math.pow(Math.abs(c), exponent) * rx;
           y = Math.sign(s) * Math.pow(Math.abs(s), .9) * ry;
-          y += .12 * (1 - t) - .16 * smooth(.74,1,t);
+          y += .10 * (1 - t) - .14 * smooth(.74,1,t);
+          // Broad temporal canals stop below the smooth cranial roof. Their
+          // paired sweeps are anatomical planes, not a row of decorative rings.
           const lateral = Math.pow(1 - Math.abs(s), 2);
-          const back = smooth(.05,.2,t) * (1 - smooth(.62,.86,t));
-          const flute = Math.pow(Math.max(0, Math.sin(t * 52 + Math.abs(s) * 3.4)), 8);
-          const groove = bump(Math.abs(s), .58 + Math.sin(t * 3) * .1, .045);
-          const armor = kind === 'warriorSkull' ? .14 * Math.pow(Math.max(0,Math.cos(t * TAU * 12 + Math.abs(c) * .65)),5) * (1-smooth(.76,.94,t)) : 0;
-          const ridge = .07 * flute * back * lateral - .055 * groove * back + armor;
+          const back = smooth(.045,.18,t) * (1 - smooth(.67,.91,t));
+          const lower = 1-smooth(.16,.56,s);
+          const flute = Math.pow(Math.max(0,Math.sin(t*32+Math.abs(s)*3.1+.23*Math.sin(t*9))),4);
+          const groove = bump(s,-.18+.13*Math.sin(t*3),.15);
+          const temporal = .080*flute*back*lateral*lower-.105*groove*back;
+          const armor = kind === 'warriorSkull' ? .15*Math.pow(Math.max(0,
+            Math.cos(t*TAU*9.5+Math.abs(c)*.52+.22*Math.sin(t*8))),4)*back : 0;
+          const ridge = temporal + armor;
           x *= 1 + ridge; y *= 1 + ridge * .5;
-          // Unequal temporal sinuses and a subtle axial crest avoid a lathed toy.
-          y += .075 * bump(c,0,.18) * Math.max(0,s) * Math.sin(t * Math.PI);
-          x += .018 * Math.sin(t * 11) * Math.pow(Math.max(0,-s),2) * (1-smooth(.8,1,t));
+          // A continuous arch and restrained sagittal keel catch a clean long
+          // highlight; the warrior alone carries raised transverse armour.
+          y += (.095*bump(t,.46,.32)+.045*bump(c,0,.22)*Math.sin(t*Math.PI))*Math.max(0,s)*ry;
+          x += .012*Math.sin(t*11)*Math.pow(Math.max(0,-s),2)*back;
           z = axis;
         } else if (kind === 'chest') {
           x = c * rx; y = axis;
@@ -165,7 +177,10 @@
         }
       }
     }
-    return finishLoft(T,positions,uv,index,axial,radial,alongZ);
+    const geometry=finishLoft(T,positions,uv,index,axial,radial,alongZ);
+    if(isSkull)geometry.userData.cranialAnatomy={version:2,shape:'rounded-occiput-swept-vault',
+      temporal:'paired-recessed-canals',roof:kind==='warriorSkull'?'integrated-armour':'continuous-smooth-arch'};
+    return geometry;
   }
 
   function limbFor(T, kind, ratio) {

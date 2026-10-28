@@ -10,9 +10,9 @@
   const HIVE_CONTENT = {
     metadata: {
       schema: "hive-content-v1",
-      version: "1.0.0",
+      version: "1.1.0",
       language: "fr-FR",
-      updatedAt: "2026-07-30",
+      updatedAt: "2026-10-23",
       projectTitle: "HIVE ASCENSION",
       campaignTitle: "Les Archives de MNEMOSYNE",
       location: {
@@ -31,7 +31,7 @@
       ],
       assetPolicy: {
         textures: "Textures procédurales, photographiées ou génératives entièrement originales.",
-        models: "Silhouettes et détails 3D originaux, sans reproduction exacte d'un modèle protégé.",
+        models: "Modélisation originale guidée par l'anatomie, les proportions et les matériaux de référence, sans extraction d'assets.",
         audio: "Synthèse, enregistrements originaux ou bibliothèques disposant d'une licence compatible.",
         writing: "Personnages, station, journaux, dialogues et événements créés pour cette campagne.",
         forbidden: [
@@ -43,12 +43,12 @@
       },
       canonPolicy: {
         purpose:
-          "Préserver les règles biologiques reconnaissables tout en gardant une histoire et des assets originaux.",
+          "Distinguer les observations filmiques, les variantes étendues et les adaptations jouables, dans une histoire originale.",
         levels: {
           filmCore: {
             id: "FILM_CORE",
             label: "Socle filmique",
-            rule: "Cycle biologique, comportement prédateur, sang acide et fonction reproductrice de la Reine."
+            rule: "Référence pour une anatomie ou un comportement montré à l'écran ; les statistiques et arbres de jeu ne sont pas automatiquement filmiques."
           },
           expandedCompatible: {
             id: "EXPANDED_COMPATIBLE",
@@ -77,7 +77,15 @@
           "Le Drone standard ne possède pas de projectile acide ; cette fonction appartient au Spitter.",
           "La Reine doit interrompre la ponte lorsqu'elle quitte son ovipositeur pour combattre.",
           "Les ordres de ruche sont décrits comme phéromonaux ou synaptiques, jamais comme une possession magique.",
-          "Les formes pathogènes et hybrides ne sont pas des castes naturelles de cette campagne."
+          "Les formes pathogènes et hybrides ne sont pas des castes naturelles de cette campagne.",
+          "La proximité et les stimuli biologiques de l'œuf ne permettent jamais un bond à travers une paroi.",
+          "L'armure portée par un hôte humain ne se transmet pas génétiquement à la créature."
+        ],
+        fidelityNotes: [
+          "Viser les proportions, articulations, surfaces, réactions et rythmes de la référence choisie, sans annoncer une fidélité 1:1 non vérifiée.",
+          "Les délais biologiques sont comprimés pour le jeu ; le déroulement reste implantation, mort du parasite, réveil de l'hôte puis émergence.",
+          "Les vues intérieures, jauges, spécialisations et coûts de biomasse sont des aides ou adaptations de jeu.",
+          "Une morphologie de film exceptionnel ne devient pas, par sa présence au catalogue, une caste reproductible ordinaire."
         ]
       }
     },
@@ -110,7 +118,8 @@
           playableForms: ["ovomorphe", "facehugger"],
           dramaticQuestion: "L'organisme peut-il attirer un hôte avant que le laboratoire ne le stérilise ?",
           summary:
-            "Le joueur réveille l'Ovomorphe, trompe les capteurs thermiques et libère le Facehugger au moment opportun.",
+            "L'Ovomorphe réagit à une présence proche. Le joueur observe ses stimuli puis ouvre les pétales, " +
+            "prépare le bond du Facehugger depuis l'œuf et choisit son moment.",
           missionIds: ["A1_M01", "A1_M02"]
         },
         {
@@ -131,8 +140,9 @@
           playableForms: ["chestburster"],
           dramaticQuestion: "Le juvénile atteindra-il un refuge avant la purge thermique ?",
           summary:
-            "Après l'émergence, le Chestburster fuit une équipe de confinement, accumule de la matière " +
-            "et mue dans un échangeur abandonné.",
+            "Après l'implantation, le parasite reste accroché puis se détache et meurt. L'hôte se réveille, " +
+            "découvre le corps et fuit ; une transition retrouve ce même hôte dans une autre pièce. " +
+            "Après l'émergence, le juvénile gagne un refuge et sort progressivement de sa membrane de mue.",
           missionIds: ["A3_M01", "A3_M02"]
         },
         {
@@ -660,7 +670,8 @@
             id: "sense_heat",
             name: "Lecture thermique",
             type: "sense",
-            description: "Révèle brièvement les organismes et machines chaudes à travers les parois proches."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Représente les gradients thermiques proches ; une machine chaude n'est pas pour autant un hôte viable."
           },
           {
             id: "sense_vibration",
@@ -679,10 +690,10 @@
             id: "open_petals",
             name: "Ouverture des pétales",
             type: "transform",
-            description: "Libère le Facehugger ; l'action est irréversible et doit être minutée."
+            description: "Écarte les quatre lobes sans téléporter le parasite : le bond est préparé dans l'œuf puis déclenché vers un accès dégagé."
           }
         ],
-        strengths: ["Dormance prolongée", "Détection sans ligne de vue", "Très difficile à remarquer avant l'ouverture"],
+        strengths: ["Dormance prolongée", "Perception de stimuli proches", "Très difficile à remarquer avant l'ouverture"],
         weaknesses: ["Immobile", "Vulnérable au feu et à la stérilisation", "Une ouverture prématurée condamne le cycle"],
         counters: ["Scanner thermique", "Purge thermique", "Bras robotisé"]
       },
@@ -718,7 +729,7 @@
             id: "final_embrace",
             name: "Étreinte finale",
             type: "channel",
-            description: "Maintient l'hôte avec les doigts et la queue jusqu'à implantation complète."
+            description: "Maintient l'hôte avec les huit doigts et la queue. Après l'implantation vient le détachement, puis la mort du parasite."
           }
         ],
         strengths: ["Extrêmement rapide", "Petite cible", "Ignore une grande partie de l'armure corporelle"],
@@ -739,7 +750,8 @@
             id: "choose_eruption_path",
             name: "Chemin d'émergence",
             type: "sense",
-            description: "Compare plusieurs points de sortie et révèle leur niveau de danger."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "La vue intérieure traduit pression et rythme de l'hôte ; elle sert à préparer l'émergence, pas à voir au travers de la station."
           },
           {
             id: "erupt",
@@ -757,7 +769,7 @@
             id: "weave_molt_cocoon",
             name: "Chrysalide de mue",
             type: "transform",
-            description: "Consomme la matière collectée et rend le juvénile immobile jusqu'à la forme adulte."
+            description: "Une membrane humide, tendue et nervurée enveloppe la mue. L'adulte la distend, la fend puis dégage son corps avant de reprendre le contrôle."
           }
         ],
         strengths: ["Très discret", "Accélération élevée", "Peut emprunter les plus petits conduits"],
@@ -1036,9 +1048,10 @@
           },
           {
             id: "detach_ovipositor",
-            name: "Rupture de l'ovipositeur",
+            name: "Détachement des ancrages",
             type: "transform",
-            description: "Rend la Reine mobile et redoutable, mais suspend toute ponte."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Rend la Reine mobile et suspend la ponte. Le détachement réversible des ancrages est une adaptation de jeu ; il ne représente pas un ovipositeur sectionné qui se reconnecte."
           },
           {
             id: "royal_rend",
@@ -1055,8 +1068,9 @@
         id: "royal_facehugger",
         name: "Superfacehugger Royal",
         priority: "P1",
-        loreStatus: "FILM_CORE",
-        role: "Parasite royal blindé transportant la lignée royale",
+        loreStatus: "EXPANDED_COMPATIBLE",
+        loreNote: "Variante royale de référence ; armure balistique, double implantation et infusion sont des adaptations, pas des propriétés universelles établies.",
+        role: "Parasite spécialisé transportant la lignée royale",
         evolutionFrom: ["queen_ovipositor_royal_cycle"],
         evolvesTo: ["queenburster", "praetorian"],
         evolutionCondition: "Ponte spécialisée d'une Reine mature ou infusion de Gelée Royale.",
@@ -1078,7 +1092,8 @@
             id: "royal_implantation",
             name: "Implantation royale double",
             type: "channel",
-            description: "Dépose un embryon de Reine et un embryon de garde prétorien."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Implante la lignée royale ; le second embryon de garde appartient à l'adaptation de cette campagne."
           }
         ],
         strengths: ["Résistance balistique accrue", "Implantation irréversible", "Fonde une nouvelle dynastie"],
@@ -1112,7 +1127,7 @@
             id: "shadow_veil",
             name: "Voile d'ombre",
             type: "defense",
-            description: "Reste indétectable aux détecteurs inertiels tant qu'il ne bouge pas."
+            description: "L'immobilité supprime le déplacement détectable ; elle ne neutralise ni caméra, ni éclairage, ni observation directe."
           }
         ],
         strengths: ["Dégâts de surprise dévastateurs", "Contrôle individuel absolu", "Furtivité maximale"],
@@ -1161,7 +1176,7 @@
         role: "Mastodonte quadrupède et bélier anti-blindage",
         evolutionFrom: ["runner_heavy_molt", "warrior_mutation"],
         evolvesTo: [],
-        evolutionCondition: "Hôte quadrupède lourd ou exo-armure assimilée avec mue de carapace frontale (75 Bio).",
+        evolutionCondition: "Spécialisation de jeu par mue lourde d'un Runner ou Warrior (75 Bio) ; une exo-armure n'est pas assimilée génétiquement.",
         profile: { mobility: 4, stealth: 0, resilience: 5, control: 5, support: 2, range: 0 },
         actions: [
           {
@@ -1202,7 +1217,8 @@
             id: "queens_aegis",
             name: "Égide de la Reine",
             type: "defense",
-            description: "Redirige vers lui 50% de tous les dégâts infligés à la Reine à proximité."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Bonus de protection de jeu : représente un garde qui s'interpose, et non un transfert magique de blessures."
           },
           {
             id: "palatine_execution",
@@ -1214,7 +1230,8 @@
             id: "royal_dominance",
             name: "Présence royale",
             type: "buff",
-            description: "Confère +40% de vitesse et de résistance à toutes les créatures alliées proches."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Bonus de coordination de jeu : stimule les alliés proches sans soigner ni transformer instantanément leur anatomie."
           }
         ],
         strengths: ["Résistance inégalée", "Garantie de survie pour la Reine", "Aura de combat suprême"],
@@ -1225,11 +1242,12 @@
         id: "offspring",
         name: "Offspring (Hybride Z-01)",
         priority: "P1",
-        loreStatus: "FILM_CORE",
-        role: "Hybride recombinant biomécanique issu du Mutagène Noir",
+        loreStatus: "INSPIRED_ORIGINAL",
+        loreNote: "La silhouette de l'hybride renvoie à une apparition filmique exceptionnelle ; Z-01, sa reproduction et ses statistiques sont propres à cette campagne.",
+        role: "Hybride expérimental Z-01, hors cycle naturel de la ruche",
         evolutionFrom: ["chemical_mutation_z01"],
         evolvesTo: [],
-        evolutionCondition: "Exposition d'un embryon ou cocon au Composé Z-01 / Mutagène Noir Prometheus (95 Bio).",
+        evolutionCondition: "Scénario expérimental de campagne : exposition au Composé Z-01 (95 Bio), hors arbre biologique naturel.",
         profile: { mobility: 4, stealth: 2, resilience: 5, control: 4, support: 1, range: 0 },
         actions: [
           {
@@ -1242,7 +1260,8 @@
             id: "acid_immunity",
             name: "Chair résistante à l'acide",
             type: "passive",
-            description: "Immunisé aux brûlures de son propre sang et des fluides corrosifs."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Résistance corrosive attribuée par les expériences Z-01 ; aucune immunité universelle à l'acide n'est déduite de son apparence."
           },
           {
             id: "grotesque_screech",
@@ -1251,7 +1270,7 @@
             description: "Émet un cri humanoïde-insectoïde glaçant qui terrorise l'équipage."
           }
         ],
-        strengths: ["Force brute colossale", "Immunité acide", "Effroi psychologique maximal"],
+        strengths: ["Force brute colossale", "Résistance corrosive adaptée au jeu", "Effroi psychologique maximal"],
         weaknesses: ["Morphologie non standard", "Ne communique pas par phéromones pures"],
         counters: ["Tirs perforants lourds", "Décompression spatiale", "Incinération totale"]
       }
@@ -1528,8 +1547,9 @@
           category: "biology",
           title: "Facehugger",
           body:
-            "Forme mobile spécialisée dans l'agrippement et l'implantation. Sa réussite dépend de la durée de la lutte, " +
-            "de l'accès au visage et de la viabilité de l'hôte.",
+            "Forme mobile à huit doigts, ventre souple et queue préhensile, spécialisée dans l'implantation. " +
+            "Le visage doit être accessible et l'hôte organique. Le parasite ne disparaît pas après la lutte : " +
+            "il reste accroché, se détache, meurt, puis l'hôte reprend conscience avant l'émergence ultérieure.",
           unlock: { type: "caste", targetId: "facehugger" }
         },
         {
@@ -1546,8 +1566,9 @@
           category: "biology",
           title: "Empreinte de l'hôte",
           body:
-            "La morphologie adulte conserve des propriétés utiles de l'organisme incubateur. " +
-            "Sur LV-X91, ce phénomène détermine surtout mobilité et robustesse.",
+            "La morphologie de l'hôte peut influencer la posture de l'adulte, notamment sa locomotion quadrupède. " +
+            "Un équipement porté n'est pas un caractère génétique : l'orientation Warrior d'un humain armuré " +
+            "et les statistiques associées sont une spécialisation de jeu, pas une règle filmique.",
           unlock: { type: "mission", targetId: "A2_M02" }
         },
         {
@@ -1564,8 +1585,9 @@
           category: "biology",
           title: "Pression corrosive",
           body:
-            "Une blessure grave projette un fluide extrêmement corrosif. Dans une station, tuer la créature " +
-            "peut être aussi dangereux que la laisser fuir.",
+            "Une blessure projette du sang extrêmement corrosif. Dans une station, tuer la créature peut " +
+            "menacer aussi ses alliés, ses hôtes et les ponts inférieurs. Ce danger de contact n'accorde pas " +
+            "un crachat offensif au Drone : le Spitter reste une spécialisation étendue.",
           unlock: { type: "event", targetId: "acid.first_environment_damage" }
         },
         {
@@ -1573,8 +1595,9 @@
           category: "biology",
           title: "Mue accélérée",
           body:
-            "La chrysalide concentre chaleur et matière autour du juvénile. La transformation est rapide, " +
-            "mais rend l'organisme immobile et vulnérable.",
+            "La membrane de mue se présente comme un sac organique humide, nervuré et sous tension, non comme " +
+            "un œuf rigide. L'adulte y imprime des mouvements, ouvre une fente puis dégage successivement " +
+            "tête, bras, corps et queue. La durée est comprimée pour le jeu ; l'immobilité reste une vulnérabilité.",
           unlock: { type: "mission", targetId: "A3_M02" }
         },
         {

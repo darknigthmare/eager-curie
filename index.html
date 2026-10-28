@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#040609">
   <link rel="icon" type="image/svg+xml" href="assets/hive-icon.svg">
   <link rel="stylesheet" href="assets/fonts/fonts.css">
-  <link rel="stylesheet" href="src/css/style.css?v=20261020-modern">
+  <link rel="stylesheet" href="src/css/style.css?v=20261023-cycle">
 
   <!-- Pinned, integrity-verified runtime served locally; no external CDN required. -->
   <script defer src="assets/vendor/three.r128.min.js"></script>
@@ -61,9 +61,10 @@
           <button type="button" id="btn-new-campaign" class="front-primary">NOUVELLE CAMPAGNE</button>
           <button type="button" id="btn-continue-campaign" class="front-secondary">CONTINUER</button>
           <button type="button" id="btn-open-codex-menu" class="front-tertiary">CODEX BIOLOGIQUE</button>
+          <button type="button" id="btn-open-settings-menu" class="front-tertiary">PARAMÈTRES ET ACCESSIBILITÉ</button>
         </div>
         <p id="boot-loading-status" class="front-meta" role="status" aria-live="polite">Préparation de la station…</p>
-        <p class="front-meta">Campagne solo tactique · 5 actes · sauvegarde automatique · 3 conclusions</p>
+        <p class="front-meta">4 départs aléatoires · 5 actes · sauvegarde automatique · 3 conclusions</p>
       </div>
     </section>
 
@@ -74,6 +75,7 @@
         <div class="prologue-layout">
           <div class="prologue-copy">
             <p>Le remorqueur civil ÉCHO-12 a livré à MNEMOSYNE un conteneur récupéré près d’une épave sans balise.</p>
+            <p>Les prélèvements se sont dispersés : champ d’œufs sous une brume bleue, ruche fossile, soute plongée dans l’ombre ou recoin de colonie. Le signal d’éclosion peut provenir de chacun de ces lieux.</p>
             <p>La directrice Elian Torv a ordonné l’incubation malgré les réserves de l’équipe de quarantaine. Le premier scan a provoqué une panne. Le second n’a jamais été transmis.</p>
             <blockquote>« IRISE exige un spécimen vivant. Aucun écart de protocole. »</blockquote>
           </div>
@@ -111,7 +113,7 @@
           <span class="alert-level level-0" id="alert-level-text" role="status" aria-live="polite">NIVEAU 0 — IGNORANCE</span>
         </div>
         <div class="utility-controls" role="group" aria-label="Menus du jeu">
-          <button type="button" id="btn-open-codex" class="utility-btn" title="Ouvrir le codex (C)">CODEX</button>
+          <button type="button" id="btn-open-codex" class="utility-btn" title="Ouvrir le codex (Maj+C)">CODEX</button>
           <button type="button" id="btn-audio-toggle" class="utility-btn" aria-pressed="false" title="Couper ou rétablir le son">SON</button>
           <button type="button" id="btn-pause-game" class="utility-btn" title="Pause (Échap)">PAUSE</button>
         </div>
@@ -315,6 +317,10 @@
           </label>
           <p id="camera-distance-help" class="settings-help">Rapprochez la caméra pour observer les détails. La molette ajuste aussi la distance pendant le jeu. La Ruche conserve sa vue d’ensemble.</p>
           <label>VOLUME PRINCIPAL <input type="range" id="setting-volume" min="0" max="100" value="70"></label>
+          <label for="setting-music-volume">MUSIQUE ADAPTATIVE <output id="music-volume-value">55 %</output>
+            <input type="range" id="setting-music-volume" min="0" max="100" value="55" aria-describedby="music-volume-help">
+          </label>
+          <p id="music-volume-help" class="settings-help">Réglez la musique indépendamment des bruitages et de l’ambiance. Le volume principal et le mode silencieux s’appliquent à tout le son.</p>
           <label>LUMINOSITÉ <input type="range" id="setting-brightness" min="70" max="140" value="100"></label>
           <label class="toggle-row"><input type="checkbox" id="setting-scanlines"><span>Effet de scan</span></label>
           <label class="toggle-row"><input type="checkbox" id="setting-reduced-motion"><span>Réduire les mouvements</span></label>
@@ -354,7 +360,7 @@
             <span id="tracker-contacts-val" class="tracker-val">0</span>
           </div>
           <button type="button" id="btn-toggle-blueprint" class="tracker-toggle-btn" title="Afficher le Schéma Holo-Blueprint des 3 Ponts (Touche L / P)">[L] PLAN</button>
-          <button type="button" id="btn-tracker-mode" class="tracker-toggle-btn" title="Basculer balayage Focalisé 35m / 360° (Touche T)">[T] 360°</button>
+          <button type="button" id="btn-tracker-mode" class="tracker-toggle-btn" title="Basculer balayage Focalisé 35m / 360° (Maj+T)">[MAJ+T] 360°</button>
           <button type="button" id="btn-toggle-tracker" class="tracker-toggle-btn" title="Afficher / Masquer (Touche M)">[M]</button>
         </div>
       </div>
@@ -366,15 +372,32 @@
   </div>
 
   <!-- Data, asset factories and systems are loaded before the standalone game. -->
-  <script defer src="src/content.js?v=20261020-modern"></script>
+  <script defer src="src/content.js?v=20261023-fidelity"></script>
+  <script defer src="src/fidelity-rules.js?v=20261023-fidelity"></script>
   <script defer src="src/organic-sculpt.js?v=20261020-modern"></script>
-  <script defer src="src/surface-detail.js?v=20261020-modern"></script>
-  <script defer src="src/model-detail.js?v=20261020-modern"></script>
-  <script defer src="src/asset-library.js?v=20261020-modern"></script>
-  <script defer src="src/models.js?v=20261020-modern"></script>
+  <script defer src="src/modern-alien.js?v=20261024-sculpture"></script>
+  <script defer src="src/modern-lifecycle.js?v=20261023-anatomy"></script>
+  <script defer src="src/alien-motion.js?v=20261023-anatomy"></script>
+  <script defer src="src/royal-anatomy.js?v=20261024-sculpture"></script>
+  <script defer src="src/alien-extremities.js?v=20261024-sculpture"></script>
+  <script defer src="src/surface-detail.js?v=20261023-anatomy"></script>
+  <script defer src="src/alien-surface.js?v=20261024-sculpture"></script>
+  <script defer src="src/model-detail.js?v=20261023-fidelity"></script>
+  <script defer src="src/creature-detail.js?v=20261023-fidelity"></script>
+  <script defer src="src/human-detail.js?v=20261023-fidelity"></script>
+  <script defer src="src/asset-library.js?v=20261023-cycle"></script>
+  <script defer src="src/models.js?v=20261024-sculpture"></script>
   <script defer src="src/render-quality.js?v=20261020-modern"></script>
-  <script defer src="src/station-detail.js?v=20261020-modern"></script>
-  <script defer src="src/game-systems.js?v=20261020-modern"></script>
-  <script defer src="src/game.js?v=20261020-modern"></script>
+  <script defer src="src/station-detail.js?v=20261023-fidelity"></script>
+  <script defer src="src/gameplay-controls.js?v=20261024-gameplay"></script>
+  <script defer src="src/advanced-combat.js?v=20261025-repair"></script>
+  <script defer src="src/contextual-interactions.js?v=20261025-repair"></script>
+  <script defer src="src/field-guide.js?v=20261025-repair"></script>
+  <script defer src="src/station-architecture.js?v=20261025-rooms"></script>
+  <script defer src="src/station-layout.js?v=20261024-gameplay"></script>
+  <script defer src="src/tactical-ai.js?v=20261024-gameplay"></script>
+  <script defer src="src/game-systems.js?v=20261024-gameplay"></script>
+  <script defer src="src/evolution-ui.js?v=20261023-cycle"></script>
+  <script defer src="src/game.js?v=20261024-gameplay"></script>
 </body>
 </html>

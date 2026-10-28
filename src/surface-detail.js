@@ -7,13 +7,13 @@
  */
 (function exposeSurfaceDetail(global) {
   'use strict';
-  const VERSION = 'hive-surface-v1';
+  const VERSION = 'hive-surface-v3-anatomical';
   const states = new WeakMap();
   const PROFILES = Object.freeze({
-    chitin: { kind: 1, scale: 1, bump: 0.0009, normal: 0.95 },
-    chitinWarm: { kind: 1, scale: 1, bump: 0.0009, normal: 0.95 },
-    resin: { kind: 2, scale: 1, bump: 0.002, normal: 0.85 },
-    skin: { kind: 3, scale: 1, bump: 0.00018, normal: 0.65 },
+    chitin: { kind: 1, scale: 1, bump: 0.0007, normal: 0.74 },
+    chitinWarm: { kind: 1, scale: 1, bump: 0.0007, normal: 0.74 },
+    resin: { kind: 2, scale: 1, bump: 0.0018, normal: 0.72 },
+    skin: { kind: 3, scale: 1, bump: 0.00015, normal: 0.58 },
     fabric: { kind: 4, scale: 1, bump: 0.00012, normal: 0.9 },
     industrial: { kind: 5, scale: 1, bump: 0.00008, normal: 0.7 },
     darkMetal: { kind: 5, scale: 1, bump: 0.00008, normal: 0.7 },
@@ -26,6 +26,7 @@
     uniform float hiveSurfaceKind;
     uniform float hiveSurfaceBump;
     uniform float hiveOpaqueTissue;
+    uniform float hiveRoughnessFloor;
     const float HIVE_TAU=6.28318530718;
     float hiveFilteredWave(float phase){
       float visible=1.0-smoothstep(0.55,2.4,fwidth(phase));
@@ -42,7 +43,7 @@
         float envelope=0.35+0.65*pow(0.5+0.5*sin(p.x*5.7+p.z*3.3),2.0);
         float overlap=pow(max(0.0,wave),3.0)*envelope;
         float seam=pow(max(0.0,-wave),8.0)*envelope;
-        return vec3(0.99+0.025*broad-0.02*seam,0.035*seam-0.02*overlap,
+        return vec3(0.97+0.035*broad-0.035*seam,0.045*seam-0.025*overlap,
           (overlap-0.25)*hiveSurfaceBump);
       }
       if(hiveSurfaceKind<2.5){
@@ -63,7 +64,10 @@
       }
       if(hiveSurfaceKind<5.5){
         float brushed=hiveFilteredWave(p.y*1800.0+sin(p.z*7.0)*0.2);
-        return vec3(0.99+0.018*brushed,0.028*brushed+0.025*broad,brushed*hiveSurfaceBump);
+        float residue=pow(max(0.0,sin(p.x*5.2+p.z*2.9)),8.0)*
+          (0.35+0.65*pow(0.5+0.5*sin(p.y*1.7),2.0));
+        return vec3(0.98+0.018*brushed-0.055*residue,
+          0.028*brushed+0.025*broad-0.045*residue,brushed*hiveSurfaceBump);
       }
       float grain=hiveFilteredWave(p.y*31.0+sin(p.x*7.0)*0.3);
       return vec3(0.985+0.025*broad,0.025*grain,grain*hiveSurfaceBump);
@@ -87,22 +91,25 @@
 
   function tintFor(material, kind) {
     const color = material.color.clone();
+    if (material.userData.hiveSurfaceStyle?.preservePigment) return color;
     if (kind === 'skin') {
       // The skin map already contains pigmentation. An orange material tint
       // multiplied over it produces doubled red/brown rather than natural skin.
-      color.lerp(new global.THREE.Color(0.9, 0.88, 0.85), 0.76);
+      color.lerp(new global.THREE.Color(0.84, 0.81, 0.75), 0.65);
     } else if (kind === 'chitin' || kind === 'chitinWarm') {
-      const value = Math.max(0.58, Math.min(0.94, Math.max(color.r, color.g, color.b)));
+      // A practical creature suit is a dark dielectric with wet reflections,
+      // not pale aluminium. Preserve the authored caste hue while avoiding
+      // the previous forced 0.58+ multiplier that washed every dome blue-grey.
+      const value = Math.max(0.14, Math.min(0.30, Math.max(color.r, color.g, color.b)));
       const neutral = kind === 'chitin'
-        ? new global.THREE.Color(value * 0.87, value, Math.min(1, value * 1.24))
-        : new global.THREE.Color(value, value * 0.985, value * 0.965);
-      color.lerp(neutral, 0.83);
+        ? new global.THREE.Color(value * 0.9, value * 0.97, value)
+        : new global.THREE.Color(value, value * 0.91, value * 0.76);
+      color.lerp(neutral, 0.68);
     } else if (isOpaqueTissue(material, kind)) {
-      // The shared resin albedo is blue-grey. Opaque biological membranes need
-      // a compensating multiplier to sit with the charcoal shell. Emissive
-      // acid reservoirs and translucent pods retain their authored palettes.
-      const value = Math.max(0.5, Math.min(0.65, Math.max(color.r, color.g, color.b) * 1.05));
-      color.lerp(new global.THREE.Color(value * 1.2, value * 0.9, value * 0.76), 0.9);
+      // Resin has its own umber/olive albedo. Keep explicitly authored acid,
+      // translucent membranes and signalling materials outside this remap.
+      const value = Math.max(0.19, Math.min(0.39, Math.max(color.r, color.g, color.b)));
+      color.lerp(new global.THREE.Color(value, value * 0.94, value * 0.79), 0.62);
     }
     return color;
   }
@@ -123,6 +130,25 @@
       }
     }
     if (material.normalMap) material.normalScale.setScalar(enabled ? state.profile.normal : state.original.normalScale.x);
+    const style = state.style;
+    state.roughnessFloor.value = enabled && Number.isFinite(style?.roughnessFloor) ? style.roughnessFloor : 0;
+    if (!style) return;
+    if (enabled) {
+      if (style.preservePigment) material.color.copy(state.original.color);
+      if (style.color !== undefined) material.color.set(style.color);
+      for (const key of ['roughness', 'metalness', 'clearcoat', 'clearcoatRoughness']) {
+        if (Number.isFinite(style[key]) && key in material) material[key] = style[key];
+      }
+      if (material.normalMap && Number.isFinite(style.normalScale)) {
+        material.normalScale.setScalar(style.normalScale);
+        if (material.clearcoatNormalMap) material.clearcoatNormalScale.setScalar(style.normalScale * 0.35);
+      }
+    } else {
+      if (Number.isFinite(style.roughness)) material.roughness = material.roughnessMap ? 1 : state.original.roughness;
+      for (const key of ['metalness', 'clearcoat', 'clearcoatRoughness']) {
+        if (Number.isFinite(style[key]) && Number.isFinite(state.original[key])) material[key] = state.original[key];
+      }
+    }
   }
 
   function apply(material, kind) {
@@ -138,7 +164,7 @@
       return material;
     }
     const original = {
-      color: material.color.clone(), normalScale: material.normalScale.clone(), metalness: material.metalness,
+      color: material.color.clone(), normalScale: material.normalScale.clone(), metalness: material.metalness, roughness: material.roughness,
       clearcoat: material.clearcoat, clearcoatRoughness: material.clearcoatRoughness,
       clearcoatNormalMap: material.clearcoatNormalMap,
       clearcoatNormalScale: material.clearcoatNormalScale?.clone(),
@@ -150,9 +176,12 @@
     state = {
       profile: surfaceProfile, original, kind, opaqueTissue, amount: { value: 1 }, color: tintFor(material, kind),
       metalness: Math.min(material.metalness, kind === 'skin' ? 0 : (kind === 'resin' ? 0.025 : 0.045)),
-      clearcoat: Math.min(material.clearcoat || 0, opaqueTissue ? 0.16 : (kind === 'skin' ? 0.12 : (kind === 'resin' ? 0.42 : 0.24))),
-      clearcoatRoughness: Math.max(material.clearcoatRoughness || 0, kind === 'skin' ? 0.62 : (opaqueTissue ? 0.5 : 0.38)),
-      compiled: false, derivativeSupported: true, lastNormalMap: material.normalMap
+      clearcoat: profile.kind === 1 ? Math.max(0.56, Math.min(0.76, material.clearcoat || 0))
+        : Math.min(material.clearcoat || 0, opaqueTissue ? 0.28 : (kind === 'skin' ? 0.13 : (kind === 'resin' ? 0.48 : 0.24))),
+      clearcoatRoughness: profile.kind === 1 ? 0.17
+        : Math.max(material.clearcoatRoughness || 0, kind === 'skin' ? 0.52 : (opaqueTissue ? 0.32 : 0.3)),
+      compiled: false, derivativeSupported: true, lastNormalMap: material.normalMap,
+      style: material.userData.hiveSurfaceStyle || null, roughnessFloor: { value: 0 }
     };
     states.set(material, state);
     material.extensions = Object.assign({}, material.extensions, { derivatives: true });
@@ -164,6 +193,7 @@
       shader.uniforms.hiveSurfaceKind = { value: state.profile.kind };
       shader.uniforms.hiveSurfaceBump = { value: state.profile.bump };
       shader.uniforms.hiveOpaqueTissue = { value: state.opaqueTissue ? 1 : 0 };
+      shader.uniforms.hiveRoughnessFloor = state.roughnessFloor;
       shader.vertexShader = shader.vertexShader.replace('#include <common>',
         '#include <common>\nvarying vec3 vHiveSurfacePosition;\nuniform float hiveSurfaceAmount;');
       shader.vertexShader = shader.vertexShader.replace('#include <project_vertex>', `
@@ -172,7 +202,13 @@
         #ifdef USE_INSTANCING
           hiveObjectScale*=vec3(length(instanceMatrix[0].xyz),length(instanceMatrix[1].xyz),length(instanceMatrix[2].xyz));
         #endif
-        vHiveSurfacePosition=transformed*hiveObjectScale;
+        #ifdef USE_SKINNING
+          // Anatomy is sampled in bind coordinates. Using the deformed point
+          // makes a pore/tendon pattern swim while a shoulder bends.
+          vHiveSurfacePosition=position*hiveObjectScale;
+        #else
+          vHiveSurfacePosition=transformed*hiveObjectScale;
+        #endif
       `);
       shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\n' + FRAGMENT);
       shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
@@ -182,8 +218,10 @@
       `);
       shader.fragmentShader = shader.fragmentShader.replace('#include <roughnessmap_fragment>', `
         #include <roughnessmap_fragment>
-        roughnessFactor=clamp(roughnessFactor+hiveSurface.y*hiveSurfaceAmount,0.16,1.0);
-        roughnessFactor=max(roughnessFactor,0.48*hiveOpaqueTissue*hiveSurfaceAmount);
+        float hiveMinimumRoughness=(hiveSurfaceKind<1.5?0.22:(hiveSurfaceKind<2.5?0.19:(hiveSurfaceKind<3.5?0.32:0.16)))*hiveSurfaceAmount;
+        roughnessFactor=clamp(roughnessFactor+hiveSurface.y*hiveSurfaceAmount,hiveMinimumRoughness,1.0);
+        roughnessFactor=max(roughnessFactor,0.36*hiveOpaqueTissue*hiveSurfaceAmount);
+        roughnessFactor=max(roughnessFactor,hiveRoughnessFloor*hiveSurfaceAmount);
       `);
       shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>', `
         #include <normal_fragment_maps>
@@ -202,6 +240,26 @@
 
   global.HiveSurfaceDetail = Object.freeze({
     apply,
+    // A small anatomical calibration layer, retained when maps arrive later.
+    // It changes no geometry, skinning flag, texture ownership or shader pass.
+    setStyle(material, style = {}) {
+      if (!material?.isMeshStandardMaterial) return material;
+      const next = {};
+      if (style.preservePigment === true) next.preservePigment = true;
+      if (typeof style.color === 'number' && Number.isFinite(style.color)) next.color = style.color;
+      for (const key of ['roughness', 'roughnessFloor', 'metalness', 'clearcoat', 'clearcoatRoughness', 'normalScale']) {
+        if (Number.isFinite(style[key])) next[key] = Math.max(0, Math.min(key === 'normalScale' ? 2 : 1, style[key]));
+      }
+      material.userData.hiveSurfaceStyle = next;
+      if (!states.has(material)) apply(material, material.userData.hiveMaterialKind);
+      const state = states.get(material);
+      if (state) { state.style = next; applyState(material, state); }
+      return material;
+    },
+    getAuthoredColor(material, target) {
+      const original = states.get(material)?.original.color || material?.color;
+      return original ? (target || original.clone()).copy(original) : null;
+    },
     setEnabled(material, enabled) {
       const state = states.get(material);
       if (!state) return;
@@ -221,7 +279,8 @@
         albedoEncoding: material.map?.encoding ?? null,
         normalEncoding: material.normalMap?.encoding ?? null,
         roughnessEncoding: material.roughnessMap?.encoding ?? null,
-        normalScale: material.normalScale.toArray(), color: material.color.toArray(), metalness: material.metalness
+        normalScale: material.normalScale.toArray(), color: material.color.toArray(), metalness: material.metalness,
+        style: state.style ? Object.assign({}, state.style) : null, roughnessFloor: state.roughnessFloor.value
       };
     }
   });

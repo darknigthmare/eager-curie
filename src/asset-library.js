@@ -244,8 +244,11 @@
         const inverse=bone.getWorldQuaternion(new T.Quaternion()).invert();
         runtime.bindPose.push({key,bone,quaternion:bone.quaternion.clone(),position:bone.position.clone(),
           x:new T.Vector3(1,0,0).applyQuaternion(rootQ).applyQuaternion(inverse).normalize(),
-          y:new T.Vector3(0,1,0).applyQuaternion(rootQ).applyQuaternion(inverse).normalize()});
+          y:new T.Vector3(0,1,0).applyQuaternion(rootQ).applyQuaternion(inverse).normalize(),
+          z:new T.Vector3(0,0,1).applyQuaternion(rootQ).applyQuaternion(inverse).normalize()});
       }
+      runtime.overlayPose=runtime.bindPose.map(pose=>({bone:pose.bone,quaternion:pose.bone.quaternion.clone()}));
+      runtime.overlayApplied=false;
     }
     handlesRoot(root) { return this.runtimeByRoot.has(root); }
     getRuntime(root) { return this.runtimeByRoot.get(root)||null; }
@@ -276,14 +279,98 @@
         if(angle)pose.bone.quaternion.multiply(new T.Quaternion().setFromAxisAngle(axis,angle));
       }
     }
+    _restoreOverlay(runtime) {
+      if(!runtime.overlayApplied)return;
+      for(const pose of runtime.overlayPose)pose.bone.quaternion.copy(pose.quaternion);
+      runtime.overlayApplied=false;
+    }
+    _overlayAnimation(runtime) {
+      const s=runtime.state,poseName=String(s.pose||'').toLowerCase();
+      const attack=clamp(Number(s.attack)||0,0,1),envelope=Math.sin(attack*Math.PI);
+      const crouch=clamp(Number(s.crouch)||0,0,1);
+      if(!poseName&&!envelope&&!crouch)return;
+      const T=this._three(),phase=Number.isFinite(s.phase)?s.phase:runtime.elapsed*6.4;
+      const progress=clamp(Number(s.poseProgress)||0,0,1);
+      for(const saved of runtime.overlayPose)saved.quaternion.copy(saved.bone.quaternion);
+      runtime.overlayApplied=true;
+      for(const pose of runtime.bindPose){
+        const key=pose.key,side=key.startsWith('left')?-1:1;
+        let x=0,y=0,z=0;
+        if(crouch){
+          if(key==='spine')x+=crouch*.16;
+          if(key.endsWith('Thigh'))x-=crouch*.24;
+          if(key.endsWith('Shin'))x+=crouch*.36;
+        }
+        if(envelope){
+          const ranged=/shot|fire|burst|rifle|gun|spit/i.test(String(s.action||''));
+          if(key.endsWith('UpperArm'))x-=envelope*(ranged ? .44 : .7);
+          if(key.endsWith('ForeArm'))x-=envelope*(ranged ? .48 : .32);
+          if(key==='spine')x-=envelope*.08;
+        }
+        if(poseName==='struggle'||poseName==='attached'){
+          if(key.endsWith('UpperArm')){x-=1.08+Math.sin(phase*1.3+side)*.16;z+=side*.24;}
+          if(key.endsWith('ForeArm'))x-=.78;
+          if(key==='head'){y+=Math.sin(phase*1.1)*.1;z+=Math.sin(phase*.8)*.07;}
+          if(key==='spine')x+=Math.sin(phase*.8)*.05;
+        }else if(poseName==='unconscious'||poseName==='waking'){
+          const weight=poseName==='waking'?1-progress:1;
+          if(key.endsWith('UpperArm'))z+=side*.22*weight;
+          if(key.endsWith('ForeArm'))x-=.12*weight;
+          if(key==='head'){z+=.22*weight;x+=.14*weight;}
+          if(key==='spine')x+=.12*weight;
+          if(poseName==='waking'&&key==='head')y+=Math.sin(phase*.7)*.1*progress;
+        }else if(poseName==='discovery'){
+          if(key==='head')x+=.4;
+          if(key==='spine')x+=.15;
+          if(key==='leftUpperArm'){x-=.76;z-=.22;}
+          if(key==='leftForeArm')x-=1.05;
+          if(key==='rightUpperArm'){x-=.4;z+=.38;}
+          if(key==='rightForeArm')x-=.65;
+        }else if(poseName==='panic'){
+          if(key.endsWith('UpperArm')){x-=.34;z+=side*.18;}
+          if(key==='head')y+=Math.sin(phase*.65)*.28;
+          if(key==='spine')x+=.16;
+        }else if(poseName==='gestation'){
+          const pain=progress*progress*(3-2*progress);
+          const contraction=Math.sin(phase*1.35)*.035*pain;
+          if(key==='spine')x+=pain*.22+contraction;
+          if(key==='head')x+=pain*.24+contraction;
+          if(key.endsWith('UpperArm')){x-=pain*(side<0 ? .58 : .42);z-=side*pain*.23;}
+          if(key.endsWith('ForeArm'))x-=pain*(side<0 ? 1.02 : .88);
+          if(key.endsWith('Hand'))y+=side*pain*.12;
+          if(key.endsWith('Thigh'))x-=pain*.07;
+          if(key.endsWith('Shin'))x+=pain*.12;
+        }else if(poseName==='emergence'){
+          const folded=1-progress*progress*(3-2*progress);
+          const push=Math.sin(Math.min(1,progress/.75)*Math.PI);
+          if(key==='spine')x+=folded*.34;
+          if(key==='head')x+=folded*.35-push*.18;
+          if(key.endsWith('UpperArm')){x-=folded*.98+push*.2;z+=side*(folded*.18+push*.5);}
+          if(key.endsWith('ForeArm'))x-=folded*.6;
+          if(key.endsWith('Thigh'))x-=folded*.62;
+          if(key.endsWith('Shin'))x+=folded*.95;
+        }else if(poseName==='chestburst'||poseName==='pain'){
+          if(key.endsWith('UpperArm')){x-=.95;z-=side*.32;}
+          if(key.endsWith('ForeArm'))x-=1.04;
+          if(key==='head')x-=.27+Math.sin(phase*3.2)*.08;
+          if(key==='spine')x-=.18+Math.sin(phase*2.6)*.04;
+        }
+        if(x)pose.bone.quaternion.multiply(new T.Quaternion().setFromAxisAngle(pose.x,x));
+        if(y)pose.bone.quaternion.multiply(new T.Quaternion().setFromAxisAngle(pose.y,y));
+        if(z)pose.bone.quaternion.multiply(new T.Quaternion().setFromAxisAngle(pose.z,z));
+      }
+    }
     updateModel(root,deltaSeconds=0,state) {
       const runtime=this.runtimeByRoot.get(root);if(!runtime||runtime.disposed)return false;
       if(state)this.setState(root,state);
       if(runtime.state.frozen){runtime.currentState='frozen';return true;}
+      // Remove last frame's additive pose before the authored clip evaluates.
+      // Bones absent from a clip must not accumulate our recovery offsets.
+      this._restoreOverlay(runtime);
       const delta=clamp(Number(deltaSeconds)||0,0,.1);runtime.elapsed+=delta;
       const s=runtime.state;
       const locomotion=(Number(s.movement)||0)>.85?'run':((Number(s.movement)||0)>.04?'walk':'idle');
-      const name=s.dead?'death':(s.folded?'folded':((Number(s.attack)||0)>.03?'attack':locomotion));
+      const name=s.dead?'death':(s.pose?String(s.pose):(s.folded?'folded':((Number(s.attack)||0)>.03?'attack':locomotion)));
       let action=this._action(runtime,name),actionState=name;
       if(!action&&name==='run'){action=this._action(runtime,'walk');actionState='walk';}
       // A pack with locomotion clips may not include attacks or coughing. Keep
@@ -308,6 +395,7 @@
         if(runtime.currentAction){runtime.mixer.stopAllAction();runtime.currentAction=null;}
         runtime.mode='bone-fallback';runtime.currentState=name;this._boneAnimation(runtime);
       }else{runtime.mode='static';runtime.currentState=name;}
+      this._overlayAnimation(runtime);
       return true;
     }
     update(deltaSeconds) {for(const runtime of this.instances)this.updateModel(runtime.root,deltaSeconds);}

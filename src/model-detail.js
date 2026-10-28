@@ -14,6 +14,104 @@
     return found;
   }
 
+  // The complete prop catalogue shares a single small, deterministic print/CRT
+  // atlas. A bitmap font also works in headless tests (no DOM/canvas dependency).
+  // Its last material owner releases it, so rebuilding maps cannot leak textures.
+  let industrialAtlas = null;
+  function acquireIndustrialAtlas(T) {
+    if (industrialAtlas) { industrialAtlas.references++; return industrialAtlas; }
+    const width = 512, height = 256, pixels = new Uint8Array(width * height * 4);
+    const font = {
+      A:[14,17,17,31,17,17,17],B:[30,17,17,30,17,17,30],C:[14,17,16,16,16,17,14],D:[30,17,17,17,17,17,30],
+      E:[31,16,16,30,16,16,31],F:[31,16,16,30,16,16,16],G:[14,17,16,23,17,17,15],H:[17,17,17,31,17,17,17],
+      I:[31,4,4,4,4,4,31],J:[7,2,2,2,18,18,12],K:[17,18,20,24,20,18,17],L:[16,16,16,16,16,16,31],
+      M:[17,27,21,21,17,17,17],N:[17,25,21,19,17,17,17],O:[14,17,17,17,17,17,14],P:[30,17,17,30,16,16,16],
+      Q:[14,17,17,17,21,18,13],R:[30,17,17,30,20,18,17],S:[15,16,16,14,1,1,30],T:[31,4,4,4,4,4,4],
+      U:[17,17,17,17,17,17,14],V:[17,17,17,17,17,10,4],W:[17,17,17,21,21,21,10],X:[17,17,10,4,10,17,17],
+      Y:[17,17,10,4,4,4,4],Z:[31,1,2,4,8,16,31],0:[14,17,19,21,25,17,14],1:[4,12,4,4,4,4,14],
+      2:[14,17,1,2,4,8,31],3:[30,1,1,14,1,1,30],4:[2,6,10,18,31,2,2],5:[31,16,16,30,1,1,30],
+      6:[14,16,16,30,17,17,14],7:[31,1,2,4,8,8,8],8:[14,17,17,14,17,17,14],9:[14,17,17,15,1,1,14],
+      '/':[1,2,2,4,8,8,16],'-':[0,0,0,31,0,0,0],'.':[0,0,0,0,0,12,12],':':[0,12,12,0,12,12,0],'>':[16,8,4,2,4,8,16],
+      '!':[4,4,4,4,4,0,4],'%':[17,2,4,4,8,16,17]
+    };
+    const ink = [30, 38, 32], paper = [194, 187, 151], amber = [181, 157, 78], phosphor = [139, 173, 116];
+    function rect(x, y, w, h, color) {
+      for (let row = Math.max(0, y); row < Math.min(height, y + h); row++) for (let col = Math.max(0, x); col < Math.min(width, x + w); col++) {
+        const p = (row * width + col) * 4; pixels[p] = color[0]; pixels[p + 1] = color[1]; pixels[p + 2] = color[2]; pixels[p + 3] = 255;
+      }
+    }
+    function text(cell, value, x, y, color = ink, scale = 1) {
+      const ox = cell % 4 * 128, oy = Math.floor(cell / 4) * 128;
+      for (const character of value) {
+        const glyph = font[character];
+        if (glyph) for (let row = 0; row < 7; row++) for (let col = 0; col < 5; col++) if (glyph[row] & (1 << (4 - col))) rect(ox + x + col * scale, oy + y + row * scale, scale, scale, color);
+        x += 6 * scale;
+      }
+    }
+    const background = (cell, color) => rect(cell % 4 * 128, Math.floor(cell / 4) * 128, 128, 128, color);
+    background(0, paper); text(0, 'W-Y SYSTEMS', 7, 8, ink, 1); text(0, 'MNEMOSYNE', 7, 24, ink, 2);
+    text(0, 'SERIAL 407-02', 7, 48); text(0, 'DECK B / REV C', 7, 62); text(0, 'MASS 124 KG', 7, 76);
+    for (let bar = 0; bar < 31; bar++) rect(7 + bar * 3, 93, 1 + bar % 2, 24 - bar % 5, ink);
+    background(1, amber); text(1, 'CAUTION', 21, 10, ink, 2); text(1, '!', 53, 34, ink, 4);
+    text(1, 'PRESSURISED', 13, 73); text(1, 'ISOLATE BEFORE', 7, 89); text(1, 'MAINTENANCE', 13, 106);
+    background(2, [12, 27, 19]); text(2, 'MNE ENV. CONTROL', 7, 8, phosphor); text(2, 'AIR 101.3 KPA', 7, 25, phosphor);
+    text(2, 'O2 20.9%   OK', 7, 39, phosphor); text(2, 'FILTER 07 ON', 7, 92, phosphor); text(2, 'AUTO / STANDBY', 7, 110, phosphor);
+    for (let x = 7; x < 121; x++) rect(256 + x, 65 + Math.round(Math.sin(x * .18) * 4) - (x % 37 < 4 ? 13 : 0), 1, 2, phosphor);
+    for (let y = 0; y < 128; y += 3) for (let x = 256; x < 384; x++) { const p = (y * width + x) * 4; pixels[p] *= .72; pixels[p + 1] *= .72; pixels[p + 2] *= .72; }
+    background(3, paper); text(3, 'SERVICE ACCESS', 7, 11); text(3, 'AIRFLOW', 15, 33, ink, 2); text(3, '>>>>>', 28, 57, ink, 2);
+    text(3, 'TYPE 7-C / 024', 7, 86); text(3, 'DO NOT OBSTRUCT', 7, 107);
+    background(4, [182, 174, 146]); text(4, 'BIOHAZARD', 10, 10, ink, 2); text(4, 'QUARANTINE', 7, 38); text(4, 'SEALED SPECIMEN', 7, 57);
+    text(4, 'AUTHORISED', 7, 84); text(4, 'PERSONNEL ONLY', 7, 104);
+    background(5, amber); text(5, 'HIGH VOLTAGE', 7, 11); text(5, '440V', 27, 33, ink, 3);
+    text(5, 'LOCK OUT / TAG OUT', 7, 73); text(5, 'EARTH BEFORE USE', 7, 94); text(5, 'MNE-E-07', 7, 113);
+    background(6, paper); text(6, 'INERT CONTENTS', 7, 12); text(6, 'FLUID TRANSFER', 7, 35); text(6, 'RETURN / 07', 7, 59);
+    text(6, 'MAX 8.5 BAR', 7, 83); text(6, 'FLOW >>>', 7, 107);
+    background(7, amber);
+    for (let y = 128; y < 256; y++) for (let x = 384; x < 512; x++) if ((x - y + 256) % 38 < 18) rect(x, y, 1, 1, ink);
+    // Printing is scuffed, never glowing neon or perfectly clean vinyl.
+    for (let n = 0; n < 270; n++) if (n % 4) rect((n * 137) % width, (n * 71) % height, 1 + n % 5, 1, [119, 116, 92]);
+    const texture = new T.DataTexture(pixels, width, height, T.RGBAFormat);
+    texture.flipY = true; texture.encoding = T.sRGBEncoding; texture.anisotropy = 4; texture.needsUpdate = true;
+    industrialAtlas = { texture, references: 1 };
+    return industrialAtlas;
+  }
+  function industrialPrintMaterial(T, reuse) {
+    const atlas = acquireIndustrialAtlas(T);
+    const material = reuse || new T.MeshStandardMaterial({ color: 0xffffff, roughness: .86, metalness: .02, polygonOffset: true, polygonOffsetFactor: -1 });
+    material.map = atlas.texture; material.color.setHex(0xffffff);
+    material.userData.hiveIndustrialPrint = true;
+    if (reuse) {
+      material.emissive.setHex(0x8fa480); material.emissiveMap = atlas.texture;
+      material.emissiveIntensity = .32; material.roughness = .34;
+    }
+    let released = false;
+    material.addEventListener('dispose', () => {
+      if (released) return; released = true;
+      if (--atlas.references === 0) { atlas.texture.dispose(); if (industrialAtlas === atlas) industrialAtlas = null; }
+    });
+    material.needsUpdate = true;
+    return material;
+  }
+  function atlasUV(geometry, cell) {
+    const uv = geometry.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (cell % 4 + .015 + uv.getX(i) * .97) / 4,
+      1 - (Math.floor(cell / 4) + .985 - uv.getY(i) * .97) / 2);
+    return geometry;
+  }
+  function displayUV(geometry, cell) {
+    // Bevelled factory boxes use extrusion UVs in world units. Project the front
+    // face explicitly so a 9-inch monitor never samples another atlas cell.
+    geometry.computeBoundingBox(); const bounds = geometry.boundingBox;
+    const width = Math.max(.001, bounds.max.x - bounds.min.x), height = Math.max(.001, bounds.max.y - bounds.min.y), depth = Math.max(.001, bounds.max.z - bounds.min.z);
+    const position = geometry.attributes.position, uv = geometry.attributes.uv;
+    for (let i = 0; i < uv.count; i++) {
+      if (height < Math.min(width, depth)) uv.setXY(i, (position.getX(i) - bounds.min.x) / width, 1 - (position.getZ(i) - bounds.min.z) / depth);
+      else if (width < Math.min(height, depth)) uv.setXY(i, 1 - (position.getZ(i) - bounds.min.z) / depth, (position.getY(i) - bounds.min.y) / height);
+      else uv.setXY(i, (position.getX(i) - bounds.min.x) / width, (position.getY(i) - bounds.min.y) / height);
+    }
+    return atlasUV(geometry, cell);
+  }
+
   // Merge small details by material and animation parent. This avoids a new draw
   // call for every screw, finger segment, button and seam.
   function batcher(T) {
@@ -45,6 +143,13 @@
       },
       box(parent, material, at, size, rotation) {
         add(parent, material, new T.BoxGeometry(1, 1, 1), at, size, rotation);
+      },
+      decal(parent, material, cell, at, size, rotation) {
+        add(parent, material, atlasUV(new T.PlaneGeometry(1, 1), cell), at, [size[0], size[1], 1], rotation);
+      },
+      transformed(parent, material, geometry, transform) {
+        geometry.applyMatrix4(transform);
+        add(parent, material, geometry, [0, 0, 0], [1, 1, 1]);
       },
       oval(parent, material, at, size, rotation, segments = 20) {
         add(parent, material, new T.SphereGeometry(1, segments, Math.max(10, Math.floor(segments * 0.7))), at, size, rotation);
@@ -666,13 +771,32 @@
 
   function propDetail(factory, root, type, T) {
     const batches = batcher(T);
-    const metal = materialOf(root, 'industrial') || materialOf(root, 'darkMetal');
+    const metal = materialOf(root, 'industrial') || materialOf(root, 'darkMetal') || materialOf(root, 'synthetic') || materialOf(root, 'rust') || materialOf(root, 'steel') || materialOf(root, 'stainless');
     const dark = materialOf(root, 'darkMetal') || metal;
     const accent = materialOf(root, 'emissiveGreen') || materialOf(root, 'emissiveAmber') || materialOf(root, 'emissiveRed');
     if (!metal || !dark) return null;
+    const basic = ['crate', 'console', 'generator', 'door', 'barrel', 'vent', 'pipe', 'lamp'].includes(type);
+    const diagnostic = { profile: basic ? 'bespoke' : 'catalogue', labels: 0, screens: 0, recessedFasteners: 0, sharedAtlas: false };
+    let printing = null;
+    const print = () => {
+      if (!printing) {
+        printing = industrialPrintMaterial(T, ['console', 'door'].includes(type) ? materialOf(root, 'emissiveGreen') : null);
+        diagnostic.sharedAtlas = true;
+      }
+      return printing;
+    };
+    const label = (cell, at, size, rotation) => { batches.decal(root, print(), cell, at, size, rotation); diagnostic.labels++; };
+    const wrapLabel = (radius, y, h, angle, cell) => {
+      const geometry = new T.CylinderGeometry(radius, radius, h, 14, 1, true, -angle / 2, angle);
+      const uv = geometry.attributes.uv;
+      for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i));
+      batches.transformed(root, print(), atlasUV(geometry, cell), new T.Matrix4().makeTranslation(0, y, 0)); diagnostic.labels++;
+    };
     const screw = (x, y, z, radius = 0.035) => {
-      batches.cylinder(root, metal, [x, y, z], radius, 0.025, [Math.PI / 2, 0, 0], 10);
+      batches.cylinder(root, dark, [x, y, z - .006], radius * 1.45, .018, [Math.PI / 2, 0, 0], 10);
+      batches.cylinder(root, metal, [x, y, z], radius, 0.025, [Math.PI / 2, 0, 0], 6);
       batches.box(root, dark, [x, y, z + 0.014], [radius * 1.1, 0.009, 0.009]);
+      diagnostic.recessedFasteners++;
     };
     if (type === 'crate') {
       batches.box(root, dark, [0, 0.97, 1.012], [1.18, 1.18, 0.035]);
@@ -684,14 +808,27 @@
       }
       for (let slot = 0; slot < 5; slot++) batches.box(root, dark, [-0.36 + slot * 0.18, 0.55, 1.052], [0.08, 0.2, 0.016]);
       for (const x of [-0.47, 0.47]) for (const y of [0.52, 1.42]) screw(x, y, 1.062);
+      for (const x of [-.75, .75]) {
+        batches.cylinder(root, metal, [x, 1.76, 1.055], .058, .27, [0, 0, Math.PI / 2], 12);
+        batches.box(root, dark, [x, 1.71, 1.05], [.13, .25, .04]);
+      }
+      label(0, [0, 1.17, 1.064], [.79, .45]);
     } else if (type === 'console') {
-      for (let column = 0; column < 11; column++) {
-        const h = 0.04 + ((column * 17) % 7) * 0.023;
-        batches.box(root, dark, [-0.57 + column * 0.105, 1.65, 0.402], [0.035, h, 0.012], [-0.35, 0, 0]);
+      // The original bars were floating in front of a blank emissive slab. The
+      // actual display now carries bounded phosphor text, scanlines and waveform.
+      const display = root.getObjectByName('console_display');
+      if (display) { display.material = print(); displayUV(display.geometry, 2); diagnostic.screens++; }
+      for (const child of root.children.slice()) if (/^display_telemetry_/.test(child.name)) { root.remove(child); child.geometry.dispose(); }
+      for (const side of [-1, 1]) {
+        batches.cylinder(root, metal, [side * .84, 1.64, .345], .052, .045, [Math.PI / 2, 0, 0], 12);
+        batches.box(root, dark, [side * .84, 1.66, .37], [.009, .036, .006]);
       }
+      // Keys sit on a tangible keyboard tray, not buried inside the chassis.
+      batches.box(root, metal, [0, 1.33, .55], [1.95, .12, .66]);
       for (let row = 0; row < 4; row++) for (let column = 0; column < 12; column++) {
-        batches.box(root, dark, [-0.77 + column * 0.139, 1.105, 0.5 + row * 0.06], [0.095, 0.025, 0.04], [0.12, 0, 0]);
+        batches.box(root, dark, [-0.77 + column * 0.139, 1.416, 0.32 + row * 0.076], [0.095, 0.035, 0.05], [0.12, 0, 0]);
       }
+      for (const child of root.children) if (/^console_button_/.test(child.name)) { child.position.y = 1.417; child.position.z = .71 + Math.floor(Number(child.name.split('_').pop()) / 4) * .1; }
       for (let fin = 0; fin < 12; fin++) batches.box(root, dark, [-0.7 + fin * 0.127, 0.5, 0.421], [0.055, 0.49, 0.025]);
       for (const x of [-0.94, 0.94]) for (const y of [0.2, 0.95]) screw(x, y, 0.427);
       batches.tube(root, dark, [[-0.8, 0.08, -0.3], [-1.1, 0.08, -0.45], [-1.22, 0.12, -0.8]], 0.04);
@@ -703,6 +840,15 @@
       batches.box(root, dark, [0, 1.16, 0.783], [0.36, 0.6, 0.035]);
       for (let bolt = 0; bolt < 5; bolt++) screw(-0.92 + bolt * 0.46, 0.18, 0.785, 0.045);
       batches.tube(root, dark, [[-1.2, 1.8, -0.35], [-1.5, 1.7, -0.6], [-1.5, 0.3, -0.6], [-1.2, 0.1, -0.6]], 0.055);
+      label(5, [0, 1.15, .805], [.31, .47]);
+      // An analog pressure gauge and visible pointer ground the electrical plant.
+      batches.cylinder(root, metal, [0, 1.92, .79], .19, .075, [Math.PI / 2, 0, 0], 20);
+      batches.cylinder(root, dark, [0, 1.92, .832], .157, .013, [Math.PI / 2, 0, 0], 20);
+      for (let tick = 0; tick < 7; tick++) {
+        const angle = -.7 * Math.PI + tick / 6 * 1.4 * Math.PI;
+        batches.box(root, metal, [Math.sin(angle) * .12, 1.92 + Math.cos(angle) * .12, .844], [.012, .028, .006], [0, 0, -angle]);
+      }
+      batches.box(root, metal, [.031, 1.948, .851], [.012, .113, .009], [0, 0, -.81]);
     } else if (type === 'door') {
       for (const side of [-1, 1]) {
         batches.box(root, dark, [side * 0.88, 2.42, 0.244], [1.42, 4.15, 0.024]);
@@ -712,6 +858,10 @@
         for (let bolt = 0; bolt < 7; bolt++) screw(side * 1.91, 0.4 + bolt * 0.64, 0.36, 0.045);
       }
       for (let key = 0; key < 9; key++) batches.box(root, dark, [1.36 + key % 3 * 0.07, 2.29 + Math.floor(key / 3) * 0.085, 0.355], [0.032, 0.035, 0.012]);
+      const display = root.getObjectByName('door_access_panel');
+      if (display) { display.material = print(); displayUV(display.geometry, 2); diagnostic.screens++; }
+      label(1, [-.88, 3.43, .289], [.73, .35]);
+      label(0, [.88, 1.5, .289], [.73, .29]);
     } else if (type === 'barrel') {
       for (let ridge = 0; ridge < 20; ridge++) {
         const angle = ridge * Math.PI / 10;
@@ -720,9 +870,11 @@
       batches.cylinder(root, dark, [0.24, 1.925, 0.12], 0.11, 0.025, null, 24);
       batches.cylinder(root, metal, [0.24, 1.944, 0.12], 0.068, 0.02, null, 6);
       batches.cylinder(root, dark, [-0.18, 1.925, -0.22], 0.062, 0.025, null, 24);
+      wrapLabel(.632, 1.1, .43, 1.3, 6);
     } else if (type === 'vent') {
       for (let fin = 0; fin < 13; fin++) batches.box(root, dark, [-0.88 + fin * 0.147, 1.2, 0.19], [0.025, 1.85, 0.025]);
       for (const x of [-1.08, 1.08]) for (const y of [0.13, 1.2, 2.28]) screw(x, y, 0.24, 0.05);
+      label(3, [0, 2.25, .36], [.94, .17]);
     } else if (type === 'pipe') {
       for (const y of [0.35, 2.28]) {
         for (let bolt = 0; bolt < 8; bolt++) {
@@ -733,12 +885,112 @@
       batches.cylinder(root, dark, [1.25, 2.75, 0], 0.43, 0.075, [0, 0, Math.PI / 2], 32);
       batches.cylinder(root, metal, [1.3, 2.75, 0], 0.31, 0.08, [0, 0, Math.PI / 2], 32);
       batches.box(root, dark, [0.35, 1.2, 0.04], [0.06, 0.22, 0.15]);
+      wrapLabel(.348, 1.52, .31, 1.3, 6);
     } else if (type === 'lamp') {
       for (let rib = 0; rib < 9; rib++) batches.box(root, dark, [-0.64 + rib * 0.16, 0.02, 0], [0.025, 0.055, 0.4]);
       for (const side of [-1, 1]) batches.box(root, dark, [side * 0.75, 0.14, 0], [0.08, 0.09, 0.4]);
+      label(0, [.33, .12, .269], [.31, .11]);
+    } else {
+      // Catalogue variants already have individual silhouettes. Detail their
+      // authored equipment surfaces, never a bounding-box shell that could hide
+      // moving mechanisms, transparent tanks, or the organic hive/derelict props.
+      root.updateMatrixWorld(true);
+      const inverse = new T.Matrix4().copy(root.matrixWorld).invert();
+      const surfaces = [], cylinders = [], screens = [], plates = [], replaced = new Set();
+      const structuralKinds = ['industrial', 'darkMetal', 'synthetic', 'rust', 'steel', 'stainless', 'hazard', 'copper', 'brass'];
+      const boxDimensions = geometry => {
+        if (!['BoxGeometry', 'ExtrudeGeometry'].includes(geometry.type)) return null;
+        geometry.computeBoundingBox(); const bounds = geometry.boundingBox;
+        return { width: bounds.max.x - bounds.min.x, height: bounds.max.y - bounds.min.y, depth: bounds.max.z - bounds.min.z,
+          x: (bounds.max.x + bounds.min.x) / 2, y: (bounds.max.y + bounds.min.y) / 2, z: (bounds.max.z + bounds.min.z) / 2 };
+      };
+      root.traverse(object => {
+        if (!object.isMesh || Array.isArray(object.material) || !object.geometry?.parameters) return;
+        const kind = object.material.userData?.hiveMaterialKind;
+        const dims = boxDimensions(object.geometry);
+        if (dims && dims.width > .15 && Math.max(dims.height, dims.depth) > .08 && /screen|display|monitor|readout|crt|gauge/i.test(object.name) && /^emissive/.test(kind || '')) screens.push(object);
+        else if (dims && dims.width > .08 && /label|plaque|placard|nameplate|manifest/i.test(object.name) && ['emissiveAmber', 'emissiveRed', 'emissiveGreen', 'hazard'].includes(kind)) plates.push(object);
+        const paintedTank = /^emissive/.test(kind || '') && /tank|extinguisher|canister|flare_body|grenade_body/i.test(object.name) && !/fluid|glass|glow|coil|core|frost|plasma/i.test(object.name);
+        if (paintedTank) { object.material.emissiveIntensity = Math.min(.06, object.material.emissiveIntensity); object.material.roughness = .58; }
+        if ((!structuralKinds.includes(kind) && !paintedTank) || /(?:^|_)(?:resin|hive|jockey|fossil|fluid|liquid|glass|silhouette|beam|grate|rail|bar|cable)(?:_|$)/i.test(object.name)) return;
+        if (dims) {
+          let face = 'front', w = dims.width, h = dims.height, depth = dims.depth;
+          if (dims.height < Math.min(dims.width, dims.depth)) { face = 'top'; h = dims.depth; depth = dims.height; }
+          else if (dims.width < Math.min(dims.height, dims.depth)) { face = 'side'; w = dims.depth; depth = dims.width; }
+          if (w > .12 && h > .1 && w * h > .03) surfaces.push({ object, dims, face, width: w, height: h, depth });
+        }
+        const p = object.geometry.parameters;
+        if (object.geometry.type === 'CylinderGeometry' && p.height > .16 && Math.min(p.radiusTop, p.radiusBottom) > .055) cylinders.push(object);
+      });
+      for (const screen of screens.slice(0, 4)) {
+        replaced.add(screen.material); screen.material = print();
+        if (!printing.emissiveMap) { printing.emissive.setHex(0x6c8362); printing.emissiveMap = printing.map; printing.emissiveIntensity = .24; }
+        displayUV(screen.geometry, 2); diagnostic.screens++;
+      }
+      const cell = /bio|specimen|stasis|cryo|mutagen|blackgoo|contain/i.test(type) ? 4
+        : /fuel|tank|pump|pipe|coolant|siphon|flume/i.test(type) ? 6
+          : /power|reactor|electric|generator|battery|capacitor|server/i.test(type) ? 5
+            : /vent|air|duct|blower|scrubber/i.test(type) ? 3 : 0;
+      for (const plate of plates.slice(0, 2)) {
+        replaced.add(plate.material); plate.material = print(); displayUV(plate.geometry, cell); diagnostic.labels++;
+      }
+      surfaces.sort((a, b) => b.width * b.height - a.width * a.height);
+      const surface = surfaces[0];
+      if (surface) {
+        const source = surface.dims, dims = { width: surface.width, height: surface.height, depth: surface.depth };
+        const frame = new T.Matrix4().makeTranslation(source.x, source.y, source.z);
+        if (surface.face === 'top') frame.multiply(new T.Matrix4().makeRotationX(-Math.PI / 2));
+        else if (surface.face === 'side') frame.multiply(new T.Matrix4().makeRotationY(Math.PI / 2));
+        const toRoot = new T.Matrix4().multiplyMatrices(inverse, surface.object.matrixWorld).multiply(frame);
+        const z = dims.depth / 2 + .008;
+        const width = Math.min(dims.width * .4, .85), h = Math.min(dims.height * .28, .46);
+        const labelGeometry = atlasUV(new T.PlaneGeometry(width, h), cell);
+        labelGeometry.translate(0, dims.height * .22, z);
+        batches.transformed(root, print(), labelGeometry, toRoot); diagnostic.labels++;
+        // Four counterbored, slotted hex heads are fitted to the actual face.
+        const radius = Math.min(.04, dims.width * .04, dims.height * .04);
+        for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+          const x = sx * dims.width * .42, y = sy * dims.height * .4;
+          const seat = new T.CylinderGeometry(radius * 1.5, radius * 1.5, .013, 10).rotateX(Math.PI / 2).translate(x, y, z);
+          const cap = new T.CylinderGeometry(radius, radius, .019, 6).rotateX(Math.PI / 2).translate(x, y, z + .009);
+          const slot = new T.BoxGeometry(radius * 1.12, radius * .19, .005).translate(x, y, z + .02);
+          batches.transformed(root, dark, seat, toRoot); batches.transformed(root, metal, cap, toRoot); batches.transformed(root, dark, slot, toRoot);
+          diagnostic.recessedFasteners++;
+        }
+      } else if (cylinders.length) {
+        cylinders.sort((a, b) => b.geometry.parameters.height * b.geometry.parameters.radiusTop - a.geometry.parameters.height * a.geometry.parameters.radiusTop);
+        const surface = cylinders[0], p = surface.geometry.parameters;
+        const toRoot = new T.Matrix4().multiplyMatrices(inverse, surface.matrixWorld);
+        if (p.height < p.radiusTop * .5) {
+          const labelGeometry = atlasUV(new T.PlaneGeometry(Math.min(p.radiusTop * .85, .85), Math.min(p.radiusTop * .35, .28)), cell)
+            .rotateX(-Math.PI / 2).translate(0, p.height / 2 + .008, p.radiusTop * .46);
+          batches.transformed(root, print(), labelGeometry, toRoot); diagnostic.labels++;
+          for (let n = 0; n < 8; n++) {
+            const angle = n / 8 * Math.PI * 2, radius = Math.min(.045, p.radiusTop * .055);
+            const bolt = new T.CylinderGeometry(radius, radius, .027, 6).translate(Math.sin(angle) * p.radiusTop * .84, p.height / 2 + .015, Math.cos(angle) * p.radiusTop * .84);
+            batches.transformed(root, metal, bolt, toRoot); diagnostic.recessedFasteners++;
+          }
+        } else {
+        const h = Math.min(p.height * .3, .49), center = p.height * .09, slope = (p.radiusTop - p.radiusBottom) / p.height;
+        const radius = (p.radiusTop + p.radiusBottom) / 2 + center * slope + .009;
+        const labelGeometry = new T.CylinderGeometry(radius + h / 2 * slope, radius - h / 2 * slope, h, 14, 1, true, -.6, 1.2);
+        for (let i = 0; i < labelGeometry.attributes.uv.count; i++) labelGeometry.attributes.uv.setX(i, 1 - labelGeometry.attributes.uv.getX(i));
+        atlasUV(labelGeometry, cell); labelGeometry.translate(0, center, 0);
+        batches.transformed(root, print(), labelGeometry, toRoot); diagnostic.labels++;
+        if (p.height > .8) for (const y of [-p.height * .4, p.height * .4]) {
+          const ring = new T.TorusGeometry((p.radiusTop + p.radiusBottom) / 2 + y * slope + .006, .012, 4, 24).rotateX(Math.PI / 2).translate(0, y, 0);
+          batches.transformed(root, dark, ring, toRoot);
+        }
+        }
+      }
+      const used = new Set(); root.traverse(object => { if (object.material) (Array.isArray(object.material) ? object.material : [object.material]).forEach(material => used.add(material)); });
+      for (const material of replaced) if (!used.has(material) && material !== metal && material !== dark) material.dispose();
     }
-    if (accent) accent.emissiveIntensity = Math.min(accent.emissiveIntensity, 0.5);
+    // Clamp only generic indicators. Authored warning beams and flashes retain
+    // their dedicated material response; the readouts carry their own map.
+    if (accent && !accent.userData.hiveIndustrialPrint) accent.emissiveIntensity = Math.min(accent.emissiveIntensity, 0.5);
     refineSmoothGeometry(T, root);
+    root.userData.industrialDetail = diagnostic;
     return batches.finish();
   }
 

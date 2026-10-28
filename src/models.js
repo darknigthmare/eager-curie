@@ -327,6 +327,12 @@
     _finalize(root, metadata) {
       root.userData = Object.assign(root.userData || {}, metadata || {});
       global.HiveModelDetail?.decorate?.(this, root, root.userData);
+      global.HiveModernAlien?.prepare?.(this, root, root.userData);
+      global.HiveModernLifecycle?.prepare?.(this, root, root.userData);
+      global.HiveCreatureDetail?.decorate?.(this, root, root.userData);
+      global.HiveRoyalAnatomy?.refine?.(this, root, root.userData);
+      global.HiveAlienExtremities?.refine?.(this, root, root.userData);
+      global.HiveAlienSurface?.finish?.(this, root, root.userData);
       this._buildAnimationRig(root);
       if (['adult', 'egg', 'facehugger', 'chestburster'].includes(metadata?.modelType)) {
         // Keep the egg's captured visibility handle and every declared rig joint.
@@ -451,10 +457,64 @@
       let hierarchyRoot = root;
       while (hierarchyRoot.parent) hierarchyRoot = hierarchyRoot.parent;
       hierarchyRoot.updateMatrixWorld(true);
-      if (global.HiveAssetLibrary?.handlesRoot?.(root)) {
-        return global.HiveAssetLibrary.getModelBounds(root, bounds);
-      }
-      return bounds.setFromObject(root);
+      const point = new T.Vector3(), part = new T.Box3();
+      const instance = new T.Matrix4(), worldInstance = new T.Matrix4();
+      // r128's Box3 neither deforms a skin nor expands instance transforms.
+      // Resolving callbacks only on the exact root also loses the correct
+      // parasite/import bounds as soon as the actor has a world container.
+      const expand = (object) => {
+        if (global.HiveAssetLibrary?.handlesRoot?.(object)) {
+          bounds.union(global.HiveAssetLibrary.getModelBounds(object, part));
+          return;
+        }
+        if (typeof object.userData?.getAnimatedBounds === 'function') {
+          bounds.union(object.userData.getAnimatedBounds(part));
+          return;
+        }
+        const geometry = object.geometry;
+        if (geometry?.attributes?.position) {
+          if (object.isSkinnedMesh) {
+            object.skeleton.update();
+            const position = geometry.attributes.position;
+            for (let index = 0; index < position.count; index++) {
+              point.fromBufferAttribute(position, index);
+              object.boneTransform(index, point);
+              bounds.expandByPoint(point.applyMatrix4(object.matrixWorld));
+            }
+          } else {
+            if (!geometry.boundingBox) geometry.computeBoundingBox();
+            if (object.isInstancedMesh) {
+              for (let index = 0; index < object.count; index++) {
+                object.getMatrixAt(index, instance);
+                worldInstance.multiplyMatrices(object.matrixWorld, instance);
+                bounds.union(part.copy(geometry.boundingBox).applyMatrix4(worldInstance));
+              }
+            } else bounds.union(part.copy(geometry.boundingBox).applyMatrix4(object.matrixWorld));
+          }
+        }
+        for (const child of object.children || []) expand(child);
+      };
+      expand(root);
+      return bounds;
+    }
+
+    // Calibration is on demand, in the same scene units as the imported human
+    // reference. It changes only the visual root, never a navigation collider.
+    // A second call measures the result rather than multiplying a fixed scale.
+    fitToHeight(root, targetHeight, options = {}) {
+      if (!root?.scale || !(Number.isFinite(targetHeight) && targetHeight > 0)) return root;
+      const bounds = this.getModelBounds(root);
+      const height = bounds.max.y - bounds.min.y;
+      if (bounds.isEmpty() || !(Number.isFinite(height) && height > 1e-8)) return root;
+      const groundY = Number.isFinite(options?.groundY) ? options.groundY : 0.025;
+      root.scale.multiplyScalar(targetHeight / height);
+      this.placeOnGround(root, groundY);
+      root.userData.visualCalibration = {
+        version: 1, reference: options?.reference || 'scene-height',
+        targetHeight, actualHeight: targetHeight, groundY,
+        units: 'scene units; not a metre conversion'
+      };
+      return root;
     }
 
     placeOnGround(root, targetY) {
@@ -506,7 +566,7 @@
       const sculpt = global.HiveOrganicSculpt;
       let kind = null;
       if (name === 'thorax') kind = 'chest';
-      else if (name === 'elongated_cranial_shell' || name === 'juvenile_head') kind = 'skull';
+      else if (name === 'cranial_dome' || name === 'elongated_cranial_shell' || name === 'juvenile_head') kind = 'skull';
       else if (name === 'warrior_cranial_shell') kind = 'warriorSkull';
       else if (name === 'runner_head') kind = 'runnerSkull';
       else if (name === 'shell_body') kind = 'egg';
@@ -800,19 +860,43 @@
       for (let index = 0; index < count; index++) {
         const side = index % 2 === 0 ? -1 : 1;
         const row = Math.floor(index / 2);
+        // Sweep the respiratory chimneys away from the skull. The previous
+        // forward-facing tips pierced the royal crest like hexagonal bolts.
+        // Each chimney remains one surface; its annuli grow out of that skin.
+        const radius = (0.082 + row * 0.010) * size;
         const tube = this._tube(
           material,
           [
             { x: side * (0.32 + row * 0.08) * size, y: baseY, z: -0.3 * size },
-            { x: side * (0.42 + row * 0.12) * size, y: baseY + (0.8 + row * 0.18) * size, z: -0.5 * size },
-            { x: side * (0.38 + row * 0.14) * size, y: baseY + (1.45 + row * 0.22) * size, z: -0.2 * size },
-            { x: side * (0.28 + row * 0.1) * size, y: baseY + (1.72 + row * 0.25) * size, z: 0.05 * size }
+            { x: side * (0.48 + row * 0.13) * size, y: baseY + (0.54 + row * 0.06) * size, z: -(0.65 + row * 0.07) * size },
+            { x: side * (0.66 + row * 0.15) * size, y: baseY + (1.06 + row * 0.10) * size, z: -(0.95 + row * 0.10) * size },
+            { x: side * (0.72 + row * 0.17) * size, y: baseY + (1.36 + row * 0.12) * size, z: -(1.13 + row * 0.13) * size }
           ],
-          (0.07 + row * 0.012) * size,
+          radius,
           `dorsal_tube_${index}`,
-          18,
-          6
+          36,
+          12
         );
+        const curve = tube.geometry.parameters.path;
+        const position = tube.geometry.attributes.position;
+        for (let ring = 0; ring <= 36; ring++) {
+          const t = ring / 36, center = curve.getPointAt(t);
+          const basal = 0.45 * Math.exp(-Math.pow(t / 0.22, 2));
+          const annulus = 0.075 * Math.pow(Math.max(0, Math.cos(t * Math.PI * 19 + row * 0.3)), 4)
+            * Math.sin(t * Math.PI);
+          const mouth = 0.18 * Math.pow(t, 9);
+          for (let column = 0; column <= 12; column++) {
+            const i = ring * 13 + column;
+            const flute = 0.035 * Math.cos(column / 12 * Math.PI * 6 + t * 1.3) * Math.sin(t * Math.PI);
+            const factor = 1 + basal + annulus + mouth + flute;
+            position.setXYZ(i, center.x + (position.getX(i) - center.x) * factor,
+              center.y + (position.getY(i) - center.y) * factor,
+              center.z + (position.getZ(i) - center.z) * factor);
+          }
+        }
+        tube.geometry.computeVertexNormals();
+        tube.geometry.computeBoundingBox(); tube.geometry.computeBoundingSphere();
+        tube.geometry.userData.dorsalAnatomy = {version: 2, shape: 'recurved-annulated-respiratory-chimney', radius};
         parent.add(tube);
       }
     }
@@ -913,7 +997,14 @@
       const T = this._three();
       const tailRoot = new T.Group(); tailRoot.name = 'segmented_tail';
       tailRoot.position.set(origin.x, origin.y, origin.z);
-      const points = [
+      const adult = origin.y > 1;
+      const points = adult ? [
+        { x: 0, y: 0, z: 0 },
+        { x: side * length * 0.12, y: lift * 0.28, z: -length * 0.18 },
+        { x: side * length * 0.34, y: lift * 0.66, z: -length * 0.41 },
+        { x: side * length * 0.46, y: lift * 0.32, z: -length * 0.68 },
+        { x: side * length * 0.31, y: lift * 1.3, z: -length * 0.94 }
+      ] : [
         { x: 0, y: 0, z: 0 },
         { x: side * length * 0.1, y: lift * 0.2, z: -length * 0.2 },
         { x: side * length * 0.23, y: lift * 0.34, z: -length * 0.43 },
@@ -923,13 +1014,27 @@
       tailRoot.add(this._sweptBody(material, points,
         [thickness * 1.45, thickness * 1.16, thickness * 0.83, thickness * 0.5, thickness * 0.24],
         'tail_skin', 128, 24));
-      const curve = new T.CatmullRomCurve3(points.map((p) => new T.Vector3(p.x, p.y, p.z)));
       // Vertebral scutes are relief in the tapered tail surface, not ring beads.
       const tip = points[points.length - 1];
-      const blade = this._ellipsoid(boneMaterial,
+      const blade = adult ? this._sweptBody(boneMaterial, [
+        {x: 0, y: 0, z: 0},
+        {x: side * thickness * 0.20, y: thickness * 0.08, z: -thickness * 1.5},
+        {x: side * thickness * 0.55, y: thickness * 0.22, z: -thickness * 3.4},
+        {x: side * thickness * 0.70, y: thickness * 0.90, z: -thickness * 6.4}
+      ], [thickness * 0.23, thickness * 1.35, thickness * 0.91, thickness * 0.008],
+      'tail_blade', 32, 16) : this._ellipsoid(boneMaterial,
         { x: thickness * 1.5, y: thickness * 0.2, z: thickness * 4.4 },
         { x: tip.x, y: tip.y, z: tip.z - thickness * 2.9 }, 'tail_blade', 24);
-      blade.rotation.y = -side * 0.35;
+      if (adult) {
+        // A keeled, curved lance replaces the flat oval end plate. Its closed
+        // root overlaps the tail tip and follows the terminal tangent.
+        const tangent = new T.Vector3(tip.x - points[3].x, 0, tip.z - points[3].z).normalize();
+        blade.position.set(tip.x, tip.y, tip.z);
+        blade.quaternion.setFromUnitVectors(new T.Vector3(0, 0, -1), tangent);
+        blade.geometry.scale(1, 0.32, 1);
+        blade.geometry.computeBoundingBox(); blade.geometry.computeBoundingSphere();
+        blade.geometry.userData.tailAnatomy = {version: 2, shape: 'closed-curved-lance'};
+      } else blade.rotation.y = -side * 0.35;
       tailRoot.add(blade);
       parent.add(tailRoot); return tailRoot;
     }
@@ -2593,6 +2698,7 @@
     // 7. PUBLIC MODEL: ORGANIC INCUBATOR
     // -------------------------------------------------------------------------
     createEgg(open) {
+      if (global.HiveModernLifecycle?.createEgg) return global.HiveModernLifecycle.createEgg(this, open);
       const T = this._three();
       const root = new T.Group();
       root.name = open ? 'organic_incubator_open' : 'organic_incubator_closed';
@@ -2911,26 +3017,66 @@
 
       const bindRotations = [...legJoints, ...kneeJoints, ...ankleJoints, tailJoint]
         .map((joint) => joint.rotation.clone());
-      facehugger.userData.setFoldedPose = (folded) => {
+      facehugger.userData.setPose = (pose = 'crawl', amount = 1) => {
+        const weight = Math.max(0, Math.min(1, Number(amount) || 0));
         [...legJoints, ...kneeJoints, ...ankleJoints, tailJoint].forEach((joint, index) => {
           joint.rotation.copy(bindRotations[index]);
         });
-        if (folded) {
+        if (pose === 'folded' || pose === 'ready') {
+          const curled = pose === 'ready' ? 0.54 : 1;
           legJoints.forEach((joint, index) => {
             const side = joint.userData.side;
             const row = joint.userData.row;
-            joint.rotation.z = side * 0.24;
-            joint.rotation.y = (row - 1.5) * 0.1;
-            kneeJoints[index].rotation.z = side * 2.2;
-            kneeJoints[index].rotation.y = (row - 1.5) * 0.16;
-            ankleJoints[index].rotation.z = side * 1.12;
+            joint.rotation.z = side * 0.24 * curled * weight;
+            joint.rotation.y = (row - 1.5) * 0.1 * weight;
+            kneeJoints[index].rotation.z = side * 2.2 * curled * weight;
+            kneeJoints[index].rotation.y = (row - 1.5) * 0.16 * weight;
+            ankleJoints[index].rotation.z = side * 1.12 * curled * weight;
           });
-          tailJoint.rotation.x = -0.2;
-          tailJoint.rotation.y = 0.72;
+          tailJoint.rotation.x = -0.2 * weight;
+          tailJoint.rotation.y = 0.72 * weight;
+        } else if (pose === 'dead') {
+          legJoints.forEach((joint, index) => {
+            const side = joint.userData.side;
+            const row = joint.userData.row;
+            joint.rotation.z = -side * (0.34 + row * 0.035) * weight;
+            joint.rotation.y = (row - 1.5) * 0.22 * weight;
+            kneeJoints[index].rotation.z = side * (1.65 + (row % 2) * 0.12) * weight;
+            ankleJoints[index].rotation.z = side * 0.9 * weight;
+          });
+          tailJoint.rotation.y = 1.18 * weight;
+          tailJoint.rotation.x = 0.28 * weight;
+        } else if (pose === 'leap') {
+          legJoints.forEach((joint, index) => {
+            const side = joint.userData.side;
+            const row = joint.userData.row;
+            joint.rotation.x = -0.2 * weight;
+            joint.rotation.y = -side * (row - 1.5) * 0.16 * weight;
+            joint.rotation.z = side * 0.1 * weight;
+            kneeJoints[index].rotation.z = side * 0.42 * weight;
+          });
+          tailJoint.rotation.y = -0.48 * weight;
+          tailJoint.rotation.x = -0.1 * weight;
         }
-        facehugger.userData.foldedPose = !!folded;
+        facehugger.userData.pose = pose;
+        facehugger.userData.foldedPose = pose === 'folded';
+        facehugger.userData.deadPose = pose === 'dead';
       };
-      facehugger.userData.setPose = (pose) => facehugger.userData.setFoldedPose(pose === 'folded');
+      facehugger.userData.setFoldedPose = (folded) => facehugger.userData.setPose(folded ? 'folded' : 'crawl');
+      facehugger.userData.animateEvolution = ({ phase = 0, pose, dead, amount = 1, movement = 0, action } = {}) => {
+        const selectedPose = dead ? 'dead' : (pose || action || facehugger.userData.pose || 'crawl');
+        facehugger.userData.setPose(selectedPose, amount);
+        if (selectedPose === 'dead') return;
+        legJoints.forEach((joint, index) => {
+          const side = joint.userData.side;
+          const gait = Math.sin(phase * 9 + (index % 4) * 1.7 + (side < 0 ? Math.PI : 0));
+          joint.rotation.x += gait * movement * 0.28;
+          joint.rotation.y += Math.cos(phase * 9 + index) * movement * 0.15;
+          kneeJoints[index].rotation.z += side * Math.max(0, gait) * movement * 0.35;
+          if (selectedPose === 'folded') kneeJoints[index].rotation.z += side * Math.sin(phase * 3.2) * 0.018;
+        });
+        tailJoint.rotation.y += Math.sin(phase * 2.4) * (selectedPose === 'folded' ? 0.035 : 0.12);
+      };
       facehugger.userData.attachmentPose = {
         name: 'folded',
         forwardAxis: '+Z',
@@ -2944,25 +3090,31 @@
       const husk = this.createFacehugger();
       husk.name = 'dead_facehugger_husk';
       husk.userData.modelType = 'deadFacehuggerHusk';
-      husk.userData.setFoldedPose?.(true);
+      husk.userData.setPose?.('dead');
 
       const deadMaterial = this._material('chitinWarm', {
         color: 0x8a7765,
         roughness: 0.94,
-        metalness: 0.04
+        metalness: 0.04,
+        skinning: true
       });
 
+      const replacedMaterials = new Set();
       husk.traverse((child) => {
         if (child.isMesh) {
+          for (const material of (Array.isArray(child.material) ? child.material : [child.material])) {
+            if (material) replacedMaterials.add(material);
+          }
           child.material = deadMaterial;
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
+      replacedMaterials.forEach((material) => material.dispose());
       // Posture inversée / recroquevillée comme un cadavre d'arachnide desséché (Alien 1979)
-      husk.rotation.x = Math.PI * 0.92;
+      husk.rotation.x = Math.PI;
       husk.rotation.z = 0.15;
-      husk.position.y = 0.08;
+      this.placeOnGround(husk, 0.025);
       return husk;
     }
 
@@ -2973,12 +3125,26 @@
       const royalArmorMat = this._material('chitin', {
         color: 0x3b1d11,
         roughness: 0.35,
-        metalness: 0.4
+        metalness: 0.4,
+        skinning: true
       });
+      const replacedMaterials = new Set();
       hugger.traverse((child) => {
         if (child.isMesh && child.name.includes('body')) {
+          for (const previous of Array.isArray(child.material) ? child.material : [child.material]) {
+            if (previous) replacedMaterials.add(previous);
+          }
           child.material = royalArmorMat;
         }
+      });
+      const retainedMaterials = new Set();
+      hugger.traverse(child => {
+        for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+          if (material) retainedMaterials.add(material);
+        }
+      });
+      replacedMaterials.forEach(material => {
+        if (!retainedMaterials.has(material)) material.dispose();
       });
       return hugger;
     }
@@ -3067,229 +3233,305 @@
     // -------------------------------------------------------------------------
     // 9. PUBLIC MODEL: JUVENILE / METAMORPHIC POD
     // -------------------------------------------------------------------------
+    createCocoon() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'romulus_metamorphic_chrysalis';
+      const shellMaterial = this._material('resin', {
+        color: 0x41302b, roughness: 0.3, metalness: 0.14,
+        transparent: true, opacity: 0.79, side: T.DoubleSide,
+        emissive: 0x30100b, emissiveIntensity: 0.16, depthWrite: false
+      });
+      const liningMaterial = this._material('skin', {
+        color: 0x835646, roughness: 0.26, metalness: 0.05,
+        transparent: true, opacity: 0.23, side: T.DoubleSide,
+        depthWrite: false
+      });
+      const ribsMaterial = this._material('chitin', {
+        color: 0x231e1c, roughness: 0.32, metalness: 0.35
+      });
+      const sutureMaterial = this._material('skin', {
+        color: 0x744333, roughness: 0.29, emissive: 0x37100c,
+        emissiveIntensity: 0.16
+      });
+      const fiberMaterial = this._material('bone', {
+        color: 0xba9a6d, roughness: 0.42, transparent: true, opacity: 0.82
+      });
+      const fluidMaterial = this._material('resin', {
+        color: 0x7a632d, roughness: 0.12, metalness: 0.12,
+        transparent: true, opacity: 0.44, depthWrite: false
+      });
+      const embryoMaterial = this._material('chitin', {
+        color: 0x151a1c, roughness: 0.24, metalness: 0.4,
+        transparent: true, opacity: 0.96
+      });
+      const membrane = new T.Group();
+      membrane.name = 'pod_membrane';
+      root.add(membrane);
+      const halves = [];
+      const ligaments = [];
+      const droplets = [];
+      const animatedNames = ['pod_membrane', 'amniotic_core', 'developing_adult_silhouette'];
+
+      // Two genuinely separate surfaces leave a longitudinal opening. Geometry
+      // lives around low rear pivots, so peeling opens the whole shell rather
+      // than merely translating decorative seam tubes on an intact sphere.
+      for (const side of [-1, 1]) {
+        const half = new T.Group();
+        half.name = side < 0 ? 'cocoon_shell_left' : 'cocoon_shell_right';
+        half.position.set(side * 0.66, 0.28, -0.48);
+        halves.push(half);
+        membrane.add(half);
+        animatedNames.push(half.name);
+        for (let layer = 0; layer < 2; layer++) {
+          const geometry = new T.SphereGeometry(1, 22, 22,
+            side < 0 ? -Math.PI / 2 : Math.PI / 2, Math.PI, 0.025, Math.PI - 0.05);
+          const positions = geometry.attributes.position;
+          for (let vertex = 0; vertex < positions.count; vertex++) {
+            const x = positions.getX(vertex), y = positions.getY(vertex), z = positions.getZ(vertex);
+            const taper = 0.9 + 0.12 * Math.sin((y + 1) * 1.7);
+            const corrugation = 1 + Math.sin(y * 27 + z * 3) * 0.018;
+            const inset = layer ? 0.96 : 1;
+            positions.setXYZ(vertex,
+              x * 1.23 * taper * corrugation * inset - half.position.x,
+              1.78 + y * 1.7 - half.position.y,
+              z * (1.03 + y * 0.08) * corrugation * inset - half.position.z);
+          }
+          geometry.computeVertexNormals();
+          geometry.setAttribute('uv2', geometry.attributes.uv.clone());
+          const mesh = new T.Mesh(geometry, layer ? liningMaterial : shellMaterial);
+          mesh.name = `${half.name}_${layer ? 'lining' : 'surface'}`;
+          mesh.castShadow = layer === 0;
+          mesh.receiveShadow = true;
+          half.add(mesh);
+        }
+        const local = (point) => ({
+          x: point.x - half.position.x, y: point.y - half.position.y, z: point.z - half.position.z
+        });
+        const lip = this._tube(sutureMaterial, [
+          { x: side * 0.025, y: 0.28, z: 0.29 },
+          { x: side * 0.065, y: 0.78, z: 0.88 },
+          { x: side * 0.055, y: 1.68, z: 1.055 },
+          { x: side * 0.03, y: 2.6, z: 0.83 },
+          { x: side * 0.012, y: 3.4, z: 0.12 }
+        ].map(local), 0.07, side < 0 ? 'suture_lip_left' : 'suture_lip_right', 30, 7);
+        half.add(lip);
+        animatedNames.push(lip.name);
+        for (let rib = 0; rib < 8; rib++) {
+          const height = 0.55 + rib * 0.34;
+          const width = Math.sqrt(Math.max(0.12, 1 - Math.pow((height - 1.78) / 1.75, 2)));
+          half.add(this._tube(ribsMaterial, [
+            { x: side * 0.035, y: height + 0.1, z: -0.91 * width },
+            { x: side * 0.88 * width, y: height + 0.09, z: -0.58 * width },
+            { x: side * 1.22 * width, y: height - 0.015, z: 0.18 },
+            { x: side * 0.72 * width, y: height - 0.12, z: 0.85 * width },
+            { x: side * 0.13, y: height - 0.14, z: 1.01 * width }
+          ].map(local), 0.045 + (rib % 2) * 0.014,
+          `romulus_rib_${side < 0 ? 'left' : 'right'}_${rib}`, 18, 6));
+        }
+        // Longitudinal veins and fine hanging folds add relief in grazing light.
+        for (let fold = 0; fold < 4; fold++) {
+          const angle = (fold + 0.6) * Math.PI / 5;
+          const x = side * Math.sin(angle) * 1.2;
+          const z = Math.cos(angle) * 1.03;
+          half.add(this._tube(fold % 2 ? sutureMaterial : liningMaterial, [
+            { x: x * 0.32, y: 0.32, z: z * 0.35 },
+            { x: x * 0.91, y: 1.07, z: z * 0.96 },
+            { x, y: 1.85, z },
+            { x: x * 0.8, y: 2.63, z: z * 0.83 },
+            { x: x * 0.17, y: 3.39, z: z * 0.18 }
+          ].map(local), 0.022 + fold * 0.004, `cocoon_vascular_fold_${side}_${fold}`, 24, 5));
+        }
+      }
+
+      const core = this._ellipsoid(fluidMaterial,
+        { x: 0.91, y: 1.36, z: 0.8 }, { x: 0, y: 1.69, z: 0.02 }, 'amniotic_core', 22);
+      root.add(core);
+      const embryo = new T.Group();
+      embryo.name = 'developing_adult_silhouette';
+      embryo.position.set(0, 0.28, -0.05);
+      embryo.add(this._ellipsoid(embryoMaterial,
+        { x: 0.4, y: 0.39, z: 0.89 }, { x: 0, y: 2.3, z: 0.02 }, 'developing_cranial_dome', 22));
+      embryo.add(this._ellipsoid(embryoMaterial,
+        { x: 0.46, y: 0.74, z: 0.32 }, { x: 0, y: 1.45, z: -0.08 }, 'developing_torso', 16));
+      for (let rib = 0; rib < 6; rib++) {
+        for (const side of [-1, 1]) {
+          embryo.add(this._tube(ribsMaterial, [
+            { x: side * 0.06, y: 1.97 - rib * 0.18, z: -0.31 },
+            { x: side * 0.5, y: 1.91 - rib * 0.18, z: -0.02 },
+            { x: side * 0.18, y: 1.86 - rib * 0.18, z: 0.31 }
+          ], 0.035, `developing_costal_arch_${side}_${rib}`, 10, 5));
+        }
+      }
+      const embryoLimbs = [];
+      for (const side of [-1, 1]) {
+        const arm = new T.Group();
+        arm.name = `developing_arm_${side}`;
+        arm.position.set(side * 0.43, 1.87, 0);
+        arm.add(this._tube(embryoMaterial, [
+          { x: 0, y: 0, z: 0 }, { x: side * 0.15, y: -0.55, z: 0.22 },
+          { x: -side * 0.16, y: -0.78, z: 0.52 }
+        ], 0.09, `developing_forelimb_${side}`, 14, 7));
+        for (let finger = 0; finger < 3; finger++) {
+          arm.add(this._tube(ribsMaterial, [
+            { x: -side * 0.16, y: -0.78, z: 0.52 },
+            { x: -side * (0.08 + finger * 0.05), y: -0.54, z: 0.71 + finger * 0.04 },
+            { x: -side * (0.04 + finger * 0.06), y: -0.38, z: 0.64 + finger * 0.04 }
+          ], 0.025, `developing_finger_${side}_${finger}`, 10, 5));
+        }
+        embryo.add(arm);
+        embryoLimbs.push(arm);
+        animatedNames.push(arm.name);
+        embryo.add(this._tube(embryoMaterial, [
+          { x: side * 0.25, y: 1.1, z: -0.08 }, { x: side * 0.57, y: 0.61, z: 0.46 },
+          { x: side * 0.3, y: 0.12, z: 0.1 }
+        ], 0.13, `developing_folded_leg_${side}`, 18, 8));
+      }
+      embryo.add(this._tube(embryoMaterial, [
+        { x: 0, y: 1.02, z: -0.28 }, { x: 0.58, y: 0.35, z: -0.37 },
+        { x: 0.76, y: 0.27, z: 0.47 }, { x: 0, y: 0.2, z: 0.76 },
+        { x: -0.7, y: 0.33, z: 0.28 }, { x: -0.48, y: 0.7, z: -0.5 }
+      ], 0.085, 'developing_coiled_tail', 32, 7));
+      root.add(embryo);
+
+      for (let index = 0; index < 9; index++) {
+        const y = 0.62 + index * 0.28;
+        const z = 1.045 * Math.sqrt(Math.max(0.1, 1 - Math.pow((y - 1.78) / 1.7, 2)));
+        const ligament = this._segment(fiberMaterial,
+          new T.Vector3(-0.09, y, z), new T.Vector3(0.09, y + 0.025, z + 0.018),
+          0.019, 0.012, `suture_ligament_${index}`, 5);
+        root.add(ligament);
+        ligaments.push(ligament);
+        animatedNames.push(ligament.name);
+      }
+      root.add(this._tube(ribsMaterial, [
+        { x: 0, y: 0.14, z: -0.5 }, { x: 0, y: 0.95, z: -1.04 },
+        { x: 0, y: 2.4, z: -0.96 }, { x: 0, y: 3.43, z: -0.13 }
+      ], 0.1, 'posterior_spine_column', 28, 7));
+      for (let index = 0; index < 10; index++) {
+        const angle = index / 10 * Math.PI * 2;
+        const reach = 1.5 + index % 3 * 0.22;
+        root.add(this._tube(ribsMaterial, [
+          { x: Math.cos(angle) * 0.69, y: 0.68, z: Math.sin(angle) * 0.6 },
+          { x: Math.cos(angle) * 1.3, y: 0.17, z: Math.sin(angle) * 1.22 },
+          { x: Math.cos(angle) * reach, y: 0.04, z: Math.sin(angle) * reach }
+        ], 0.055, `anchoring_root_${index}`, 14, 6));
+      }
+      // Rear cables support a wall-mounted reading without requiring a wall at
+      // the player's exact position. The attachment feet still sit on the deck.
+      for (const side of [-1, 1]) {
+        root.add(this._tube(ribsMaterial, [
+          { x: side * 0.65, y: 2.7, z: -0.62 },
+          { x: side * 1.28, y: 2.87, z: -1.02 },
+          { x: side * 1.52, y: 0.14, z: -1.23 }
+        ], 0.075, `suspensory_tendon_${side}`, 22, 7));
+      }
+      const pool = new T.Mesh(new T.CircleGeometry(1.45, 32), fluidMaterial);
+      pool.name = 'ground_resin_pool';
+      pool.rotation.x = -Math.PI / 2;
+      pool.position.y = 0.025;
+      root.add(pool);
+      animatedNames.push(pool.name);
+      for (let index = 0; index < 8; index++) {
+        const droplet = this._ellipsoid(fluidMaterial,
+          { x: 0.025 + index % 2 * 0.012, y: 0.1, z: 0.026 },
+          { x: (index % 2 ? 1 : -1) * (0.1 + index * 0.075), y: 1.2 + index * 0.23, z: 1.02 },
+          `amniotic_drip_${index}`, 7);
+        droplet.userData.evolutionBaseY = droplet.position.y;
+        root.add(droplet);
+        droplets.push(droplet);
+        animatedNames.push(droplet.name);
+      }
+      const cocoon = this._finalize(root, {
+        modelType: 'chestburster', chrysalis: true, height: 3.5,
+        evolutionModel: 'metamorphic-cocoon', forwardAxis: '+Z',
+        animationJoints: animatedNames,
+        animationRoles: { evolution: animatedNames }
+      });
+      const evolution = { progress: 0, opening: 0, emergence: 0, phase: 0, pulse: 1, externalAdult: false };
+      cocoon.userData.setEvolutionProgress = (values = {}) => {
+        for (const key of ['progress', 'opening', 'emergence', 'pulse']) {
+          if (Number.isFinite(values[key])) evolution[key] = Math.max(0, Math.min(1, values[key]));
+        }
+        if (Number.isFinite(values.phase)) evolution.phase = values.phase;
+        if (typeof values.externalAdult === 'boolean') evolution.externalAdult = values.externalAdult;
+        const { progress, opening, emergence, phase, pulse } = evolution;
+        const breath = Math.sin(phase * 2.8) * 0.018 * pulse * (1 - opening);
+        membrane.scale.set(1 + breath, 1 + breath * 0.25, 1 - breath * 0.6);
+        halves.forEach((half, index) => {
+          const side = index ? 1 : -1;
+          half.rotation.z = -side * opening * 0.88;
+          half.rotation.y = side * opening * 0.24;
+          half.position.x = side * (0.66 + opening * 0.23);
+        });
+        core.scale.set(0.91 * (0.86 + progress * 0.14) * (1 + breath),
+          1.36 * (0.89 + progress * 0.11), 0.8 * (1 - opening * 0.6));
+        core.visible = opening < 0.92;
+        const silhouetteFade = evolution.externalAdult ? 0.12 : 0.82;
+        embryo.visible = emergence < silhouetteFade;
+        embryo.scale.setScalar(0.72 + progress * 0.28);
+        embryo.position.set(0, 0.28 + opening * 0.14, -0.05 + opening * 0.22);
+        embryo.rotation.x = -0.13 * (1 - progress) - Math.sin(phase * 0.9) * 0.018 * (1 - opening);
+        embryoMaterial.opacity = 0.94 * Math.max(0, 1 - emergence / silhouetteFade);
+        embryoLimbs.forEach((limb, index) => {
+          limb.rotation.z = (index ? 1 : -1) * (-opening * 0.32 + Math.sin(phase * 1.2) * 0.025 * progress);
+          limb.rotation.x = opening * 0.36;
+        });
+        ligaments.forEach((ligament, index) => {
+          ligament.visible = opening < 0.12 + index / ligaments.length * 0.68;
+          ligament.scale.y = 1 + opening * 9;
+        });
+        pool.scale.set(0.82 + opening * 0.55, 0.77 + opening * 0.5, 1);
+        droplets.forEach((droplet, index) => {
+          droplet.visible = opening > 0.08;
+          const fall = ((phase * 0.65 + index * 0.173) % 1 + 1) % 1;
+          droplet.position.y = 0.04 + (1 - fall) * droplet.userData.evolutionBaseY;
+          droplet.position.z = 1.02 + opening * (0.1 + index * 0.06);
+        });
+        shellMaterial.opacity = 0.79 - opening * 0.16;
+        shellMaterial.emissiveIntensity = 0.1 + progress * 0.16 + (1 + Math.sin(phase * 2.8)) * 0.025;
+        cocoon.userData.evolutionProgress = progress;
+        cocoon.userData.evolutionOpening = opening;
+        cocoon.userData.evolutionEmergence = emergence;
+        cocoon.userData.evolutionState = { ...evolution };
+      };
+      cocoon.userData.setEvolutionProgress();
+      return cocoon;
+    }
+
+    createDiscardedCocoon() {
+      const cocoon = this.createCocoon();
+      cocoon.name = 'discarded_open_metamorphic_cocoon';
+      cocoon.userData.setEvolutionProgress({ progress: 1, opening: 1, emergence: 1, pulse: 0 });
+      cocoon.userData.modelType = 'discardedCocoon';
+      cocoon.userData.chrysalis = false;
+      return cocoon;
+    }
+
+    // Accept either a factory model or the game's containing world group. The
+    // function is allocation-free per frame except for the small state snapshot
+    // and never changes a world's position/rotation (important for attachments).
+    animateEvolutionModel(container, values = {}) {
+      if (!container || container.userData?.hiveFactoryDisposed) return false;
+      let model = null;
+      container.traverse((object) => {
+        if (!model && (object.userData?.setEvolutionProgress || object.userData?.animateEvolution)) model = object;
+      });
+      if (!model) return false;
+      if (model.userData.hiveFactoryDisposed) return false;
+      if (model.userData.setEvolutionProgress) model.userData.setEvolutionProgress(values);
+      else model.userData.animateEvolution(values);
+      return true;
+    }
+
     createChestburster(chrysalis) {
+      if (chrysalis) return this.createCocoon();
       const T = this._three();
       const root = new T.Group();
       root.name = chrysalis ? 'metamorphic_pod' : 'juvenile_serpent';
       const hide = chrysalis ? null : this._material('skin', { color: 0xc4a48d, roughness: 0.46, clearcoat: 0.45 });
       const chitin = chrysalis ? null : this._material('chitin', { color: 0x9a9694, roughness: 0.4, metalness: 0.08 });
       const bone = this._material('bone', { color: 0xd6c58b });
-
-      if (chrysalis) {
-        // --- COCON / CHRYSALIDE BIOMÉCANIQUE ALIEN: ROMULUS ---
-        const romulusResin = this._material('resin', {
-          color: 0x220c2a,
-          roughness: 0.18,
-          metalness: 0.38,
-          emissive: 0x4a1268,
-          emissiveIntensity: 0.55,
-          transparent: true,
-          opacity: 0.92
-        });
-        const romulusChitin = this._material('chitin', {
-          color: 0x120d18,
-          roughness: 0.22,
-          metalness: 0.72
-        });
-        const romulusFlesh = this._material('chitinWarm', {
-          color: 0x4c1424,
-          roughness: 0.38,
-          emissive: 0x831843,
-          emissiveIntensity: 0.52
-        });
-        const romulusAmniotic = this._material('resin', {
-          color: 0x1f0833,
-          roughness: 0.12,
-          emissive: 0x9333ea,
-          emissiveIntensity: 0.75,
-          transparent: true,
-          opacity: 0.58
-        });
-
-        // 1. Membrane externe du cocon (capsule asymétrique et charnue)
-        root.add(this._ellipsoid(
-          romulusResin,
-          { x: 1.24, y: 1.82, z: 1.08 },
-          { x: 0, y: 1.48, z: 0 },
-          'pod_membrane',
-          28
-        ));
-
-        // 2. Coeur amniotique interne pulsant
-        root.add(this._ellipsoid(
-          romulusAmniotic,
-          { x: 0.88, y: 1.42, z: 0.72 },
-          { x: 0, y: 1.5, z: 0.05 },
-          'amniotic_core',
-          20
-        ));
-
-        // 3. Silhouette en gestation de l'adulte (dôme crânien et colonne incurvée)
-        root.add(this._ellipsoid(
-          this._material('darkMetal', { color: 0x050810, roughness: 0.14, metalness: 0.95, emissive: 0x15803d, emissiveIntensity: 0.35 }),
-          { x: 0.42, y: 0.46, z: 0.98 },
-          { x: 0, y: 1.82, z: 0.1 },
-          'developing_cranial_dome',
-          20
-        ));
-        root.add(this._ellipsoid(
-          romulusChitin,
-          { x: 0.36, y: 0.72, z: 0.38 },
-          { x: 0, y: 1.25, z: -0.12 },
-          'developing_torso',
-          14
-        ));
-
-        // 4. Suture longitudinale d'émergence (fissure centrale emblématique de Romulus)
-        root.add(this._tube(
-          romulusFlesh,
-          [
-            { x: -0.06, y: 2.35, z: 0.94 },
-            { x: -0.1, y: 1.52, z: 1.08 },
-            { x: -0.05, y: 0.65, z: 0.9 }
-          ],
-          0.065,
-          'suture_lip_left',
-          18,
-          8
-        ));
-        root.add(this._tube(
-          romulusFlesh,
-          [
-            { x: 0.06, y: 2.35, z: 0.94 },
-            { x: 0.1, y: 1.52, z: 1.08 },
-            { x: 0.05, y: 0.65, z: 0.9 }
-          ],
-          0.065,
-          'suture_lip_right',
-          18,
-          8
-        ));
-
-        // Ligaments fibreux transversaux retenant la suture
-        for (let s = 0; s < 5; s++) {
-          const sy = 0.85 + s * 0.32;
-          const sz = 0.98 + Math.sin((s / 4) * Math.PI) * 0.09;
-          root.add(this._segment(
-            bone,
-            this._vector(-0.11, sy, sz),
-            this._vector(0.11, sy, sz),
-            0.024,
-            0.024,
-            `suture_ligament_${s}`,
-            6
-          ));
-        }
-
-        // 5. Arches costales biomécaniques enserrant le cocon (côtes squelettiques Romulus)
-        for (let rib = 0; rib < 6; rib++) {
-          const ribY = 0.62 + rib * 0.32;
-          const ribScale = 1.06 - Math.abs(2.8 - rib) * 0.07;
-          // Côte gauche
-          root.add(this._tube(
-            romulusChitin,
-            [
-              { x: 0, y: ribY, z: -0.95 * ribScale },
-              { x: -1.15 * ribScale, y: ribY + 0.08, z: -0.2 * ribScale },
-              { x: -0.92 * ribScale, y: ribY - 0.04, z: 0.72 * ribScale }
-            ],
-            0.055,
-            `romulus_rib_left_${rib}`,
-            14,
-            7
-          ));
-          // Côte droite
-          root.add(this._tube(
-            romulusChitin,
-            [
-              { x: 0, y: ribY, z: -0.95 * ribScale },
-              { x: 1.15 * ribScale, y: ribY + 0.08, z: -0.2 * ribScale },
-              { x: 0.92 * ribScale, y: ribY - 0.04, z: 0.72 * ribScale }
-            ],
-            0.055,
-            `romulus_rib_right_${rib}`,
-            14,
-            7
-          ));
-        }
-
-        // Colonne vertébrale postérieure consolidant les côtes
-        root.add(this._tube(
-          romulusChitin,
-          [
-            { x: 0, y: 0.45, z: -0.85 },
-            { x: 0, y: 1.5, z: -1.02 },
-            { x: 0, y: 2.5, z: -0.78 }
-          ],
-          0.095,
-          'posterior_spine_column',
-          18,
-          8
-        ));
-
-        // 6. Vrilles et racines d'ancrage aux parois et au sol
-        for (let rootIndex = 0; rootIndex < 8; rootIndex++) {
-          const angle = (rootIndex / 8) * Math.PI * 2;
-          const reach = 1.35 + (rootIndex % 3) * 0.28;
-          root.add(this._tube(
-            romulusResin,
-            [
-              { x: Math.cos(angle) * 0.52, y: 0.45, z: Math.sin(angle) * 0.52 },
-              { x: Math.cos(angle) * (reach * 0.65), y: 0.14, z: Math.sin(angle) * (reach * 0.65) },
-              { x: Math.cos(angle) * reach, y: 0.02, z: Math.sin(angle) * reach }
-            ],
-            0.065,
-            `anchoring_root_${rootIndex}`,
-            14,
-            7
-          ));
-        }
-
-        // Disque de résine visqueuse au sol
-        root.add(this._ring(
-          romulusResin,
-          1.15,
-          0.22,
-          { x: 0, y: 0.03, z: 0 },
-          { x: Math.PI / 2, y: 0, z: 0 },
-          'ground_resin_pool'
-        ));
-
-        // 7. Gouttes et stalactites de sécrétion visqueuse
-        const dripOffsets = [
-          [-0.45, 0.55, 0.4], [0.45, 0.55, 0.4],
-          [-0.3, 0.42, -0.4], [0.3, 0.42, -0.4]
-        ];
-        dripOffsets.forEach(([dx, dy, dz], idx) => {
-          root.add(this._coneAlong(
-            romulusResin,
-            { x: dx, y: dy, z: dz },
-            { x: 0, y: -1, z: 0 },
-            0.05,
-            0.28,
-            `resin_drip_${idx}`
-          ));
-        });
-
-        return this._finalize(root, {
-          modelType: 'chestburster',
-          chrysalis: true,
-          height: 3.25,
-          animationJoints: [
-            'pod_membrane',
-            'amniotic_core',
-            'developing_cranial_dome',
-            'suture_lip_left',
-            'suture_lip_right',
-            'romulus_rib_left_0',
-            'romulus_rib_right_0',
-            'romulus_rib_left_2',
-            'romulus_rib_right_2',
-            'romulus_rib_left_4',
-            'romulus_rib_right_4'
-          ]
-        });
-      }
 
       root.add(this._sweptBody(hide, [
         { x: 0, y: 0.58, z: -0.96 }, { x: 0.02, y: 0.7, z: -0.58 },
@@ -3326,12 +3568,15 @@
       }
       this._addTail(root, hide, chitin, { x: 0, y: 0.58, z: -0.72 }, 3.1, 0.3, -0.38, 0.11);
       this._addCarapaceSpines(root, chitin, 0.94, 7, 0.65, 0.52, -1);
-      return this._finalize(root, {
+      const juvenile = this._finalize(root, {
         modelType: 'chestburster',
         chrysalis: false,
         height: 1.42,
         animationJoints: ['juvenile_arm_-1', 'juvenile_arm_1', 'articulated_jaw']
       });
+      // The neonatal trunk's lowest surface was .347 scene units above its
+      // origin, leaving the crawling juvenile visibly suspended over the deck.
+      return this.placeOnGround(juvenile, 0.045);
     }
 
     // -------------------------------------------------------------------------
@@ -4637,18 +4882,20 @@
           grip.add(weapon); hand.add(grip);
           imported.userData.equipmentType = normalizedType;
         }
+        global.HiveHumanDetail?.decorate?.(this, imported, imported.userData);
         imported.userData.dispose = () => this.disposeModel(imported);
         return imported;
       }
 
       const root = this._createHumanFigure(normalizedType, false);
-      return this._finalize(root, {
+      const human = this._finalize(root, {
         modelType: 'human',
         subtype: normalizedType,
         requestedSubtype: requestedType,
         forwardAxis: '+Z',
         height: 4.25
       });
+      return this.fitToHeight(human, 4.25, {groundY: 0.025, reference: 'imported-human-height'});
     }
 
     // -------------------------------------------------------------------------
@@ -9161,7 +9408,6 @@
         roughness: 0.28,
         metalness: 0.5
       });
-      const eyeGlow = this._material('emissiveAmber', { color: 0xf97316, emissive: 0xc2410c, emissiveIntensity: 2.2 });
 
       // Torse ramassé et surbaissé très musclé
       root.add(this._ellipsoid(bullChitin, { x: 0.45 * scale, y: 0.4 * scale, z: 0.7 * scale }, { x: 0, y: 0.85 * scale, z: 0 }, 'bull_torso', 14));

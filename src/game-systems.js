@@ -32,6 +32,7 @@
         expandedLore: true,
         adultCaste: 'drone',
         hostProfile: null,
+        eggOrigin: null,
         campaignCharacters: {
           asterRho: {
             alive: true,
@@ -61,6 +62,7 @@
           ? parsed.adultCaste : 'drone',
         hostProfile: typeof parsed.hostProfile === 'string' && parsed.hostProfile.length < 100
           ? parsed.hostProfile : null,
+        eggOrigin: ['derelict', 'hive', 'ship', 'colony'].includes(parsed.eggOrigin) ? parsed.eggOrigin : null,
         unlockedCodex: stringList(parsed.unlockedCodex, ['ovomorphe']),
         completedEndings: stringList(parsed.completedEndings),
         campaignCharacters: {
@@ -157,6 +159,7 @@
       const prefersReducedMotion = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       this.defaults = {
         volume: 70,
+        musicVolume: 55,
         brightness: 100,
         scanlines: false,
         reducedMotion: prefersReducedMotion,
@@ -185,6 +188,7 @@
       }
       const values = { ...this.defaults };
       values.volume = boundedNumber(parsed.volume, this.defaults.volume, 0, 100);
+      values.musicVolume = boundedNumber(parsed.musicVolume, this.defaults.musicVolume, 0, 100);
       values.brightness = boundedNumber(parsed.brightness, this.defaults.brightness, 70, 140);
       values.cameraDistance = Math.round(boundedNumber(parsed.cameraDistance, 100, 50, 135));
       for (const key of ['scanlines', 'reducedMotion', 'highContrast', 'muted']) {
@@ -208,6 +212,7 @@
       this.game = game;
       const controls = {
         volume: document.getElementById('setting-volume'),
+        musicVolume: document.getElementById('setting-music-volume'),
         brightness: document.getElementById('setting-brightness'),
         scanlines: document.getElementById('setting-scanlines'),
         reducedMotion: document.getElementById('setting-reduced-motion'),
@@ -217,6 +222,7 @@
       };
 
       if (controls.volume) controls.volume.value = this.values.volume;
+      if (controls.musicVolume) controls.musicVolume.value = this.values.musicVolume;
       if (controls.brightness) controls.brightness.value = this.values.brightness;
       if (controls.scanlines) controls.scanlines.checked = this.values.scanlines;
       if (controls.reducedMotion) controls.reducedMotion.checked = this.values.reducedMotion;
@@ -227,6 +233,7 @@
       const sync = () => {
         this.values = {
           volume: Number(controls.volume?.value ?? this.values.volume),
+          musicVolume: Number(controls.musicVolume?.value ?? this.values.musicVolume),
           brightness: Number(controls.brightness?.value ?? this.values.brightness),
           scanlines: !!controls.scanlines?.checked,
           reducedMotion: !!controls.reducedMotion?.checked,
@@ -260,6 +267,11 @@
       audioButton?.setAttribute('aria-pressed', String(this.values.muted));
       if (audioButton) audioButton.textContent = this.values.muted ? 'SON COUPÉ' : 'SON';
       this.game?.setMasterVolume?.(this.values.volume / 100);
+      this.game?.setMusicVolume?.(this.values.musicVolume / 100);
+      const musicValue = document.getElementById('music-volume-value');
+      if (musicValue) musicValue.textContent = `${this.values.musicVolume} %`;
+      const musicControl = document.getElementById('setting-music-volume');
+      musicControl?.setAttribute('aria-valuetext', `${this.values.musicVolume} %`);
       this.game?.setReducedMotion?.(this.values.reducedMotion);
       this.game?.setGraphicsQuality?.(this.values.graphicsQuality);
       this.applyCameraDistance();
@@ -293,116 +305,215 @@
       this.removeObject = null;
       this.effects = [];
       this.reducedMotion = false;
-      // Audit QA #20 : Object Pooling pour particules réutilisables (zéro allocation par frame)
       this.particleMeshPool = [];
       this.sharedSphereGeo = null;
       this.sharedMatCache = new Map();
+      this.sharedGeometries = new Map();
+      this.sharedTextures = new Map();
+      this.maxVisualEffects = 96;
+      this.maxPooledParticles = 180;
+      this.maxActiveParticles = 320;
+      this.activeParticles = 0;
+      this.hasLineOfSight = null;
+      this.generation = 0;
     }
 
-    init(scene, removeObject) {
+    init(scene, removeObject, hasLineOfSight = null) {
+      if (this.scene && this.scene !== scene) this.clear(false);
       this.scene = scene;
       this.removeObject = removeObject;
+      this.hasLineOfSight = hasLineOfSight;
     }
 
     setReducedMotion(reduced) {
       this.reducedMotion = !!reduced;
-      if (!this.reducedMotion || this.effects.length === 0) return;
-      this.clear(true);
+      // Accessibility changes presentation, never the time at which a shot
+      // hits or whether a corrosive floor remains dangerous/readable.
+      if (!this.reducedMotion) return;
+      for (const effect of [...this.effects]) {
+        if (effect.projectile || effect.acidPool || effect.persistent) continue;
+        this.effects.splice(this.effects.indexOf(effect), 1);
+        this.releaseVisual(effect);
+      }
+      document.getElementById('app-container')?.classList.remove('transformation-flash');
     }
 
-    getMaterial(color) {
-      if (!this.sharedMatCache.has(color)) {
-        this.sharedMatCache.set(color, new THREE.MeshBasicMaterial({
-          color,
-          transparent: true,
-          opacity: 0.88,
-          depthWrite: false
-        }));
+    geometry(kind = 'droplet') {
+      if (!this.sharedGeometries.has(kind)) {
+        const geometry = kind === 'ring' ? new THREE.RingGeometry(.91, 1, 56)
+          : kind === 'disc' ? new THREE.CircleGeometry(1, 40)
+          : kind === 'streak' ? new THREE.CylinderGeometry(.6, 1, 1, 6)
+          : new THREE.IcosahedronGeometry(1, 1);
+        this.sharedGeometries.set(kind, geometry);
       }
-      return this.sharedMatCache.get(color);
+      return this.sharedGeometries.get(kind);
     }
 
-    getParticle(scale, color) {
-      if (typeof THREE === 'undefined') return null;
-      if (!this.sharedSphereGeo) {
-        this.sharedSphereGeo = new THREE.SphereGeometry(1, 5, 5);
+    texture(kind = 'mist') {
+      if (this.sharedTextures.has(kind)) return this.sharedTextures.get(kind);
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      if (!ctx?.createRadialGradient) return null;
+      const gradient = ctx.createRadialGradient(64, 64, 2, 64, 64, 63);
+      gradient.addColorStop(0, 'rgba(255,255,255,.85)');
+      gradient.addColorStop(kind === 'splat' ? .58 : .23, 'rgba(255,255,255,.5)');
+      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gradient; ctx.fillRect(0, 0, 128, 128);
+      // Deterministic lobes break the perfect disc without external textures.
+      if (kind === 'splat') {
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.beginPath();
+        for (let i = 0; i <= 72; i++) {
+          const a = i / 72 * Math.PI * 2;
+          const r = 48 + 8 * Math.sin(a * 7 + .4) + 5 * Math.sin(a * 11 - .7);
+          if (i) ctx.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r);
+          else ctx.moveTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r);
+        }
+        ctx.closePath(); ctx.fillStyle = '#fff'; ctx.fill();
       }
-      let particle = this.particleMeshPool.pop();
+      const texture = new THREE.CanvasTexture(canvas);
+      this.sharedTextures.set(kind, texture); return texture;
+    }
+
+    getMaterial(color, kind = 'droplet') {
+      const key = `${kind}:${color}`;
+      if (!this.sharedMatCache.has(key)) {
+        // Color categories are reused by callers; bound even unusual user data.
+        if (this.sharedMatCache.size >= 48) {
+          const first = this.sharedMatCache.keys().next().value;
+          this.sharedMatCache.get(first).dispose(); this.sharedMatCache.delete(first);
+        }
+        const common = {color, transparent:true, opacity:.82, depthWrite:false};
+        const material = kind === 'mist' ? new THREE.SpriteMaterial({...common, map:this.texture('mist')})
+          : kind === 'droplet' ? new THREE.MeshStandardMaterial({...common, roughness:.31, metalness:0})
+          : new THREE.MeshBasicMaterial({...common, side:THREE.DoubleSide});
+        this.sharedMatCache.set(key, material);
+      }
+      return this.sharedMatCache.get(key);
+    }
+
+    getParticle(scale, color, kind = 'droplet') {
+      if (typeof THREE === 'undefined' || this.activeParticles >= this.maxActiveParticles) return null;
+      const reusable = this.particleMeshPool.findIndex(p => p.userData.vfxKind === kind);
+      let particle = reusable < 0 ? null : this.particleMeshPool.splice(reusable, 1)[0];
       if (!particle) {
-        particle = new THREE.Mesh(this.sharedSphereGeo, this.getMaterial(color).clone());
+        particle = kind === 'mist' ? new THREE.Sprite(this.getMaterial(color, kind).clone())
+          : new THREE.Mesh(this.geometry(kind === 'spark' ? 'streak' : 'droplet'), this.getMaterial(color, kind).clone());
       } else {
         if (particle.material.color) particle.material.color.setHex(color);
-        particle.material.opacity = 0.88;
       }
-      const s = scale * (0.6 + Math.random());
-      particle.scale.set(s, s, s);
+      const s = Math.max(.001, Number(scale) || .01) * (.65 + Math.random() * .65);
+      particle.position.set(0,0,0); particle.quaternion.identity(); particle.visible = true;
+      particle.material.opacity = kind === 'mist' ? .18 : .82;
+      particle.scale.set(s * (kind === 'spark' ? .13 : .65), s * (kind === 'spark' ? 3.6 : 1.35), s * .65);
+      particle.userData = {vfxKind:kind, velocity:new THREE.Vector3(), origin:new THREE.Vector3(), baseScale:particle.scale.clone()};
+      this.activeParticles++;
       return particle;
     }
 
-    clear(resolveProjectiles = false) {
-      const effects = this.effects.splice(0, this.effects.length);
-      for (const effect of effects) {
-        if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
-          while (effect.group.children.length > 0) {
-            const p = effect.group.children.pop();
-            this.particleMeshPool.push(p);
-          }
-        }
-        if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
-          while (effect.group.children.length > 0) {
-            const p = effect.group.children.pop();
-            this.particleMeshPool.push(p);
-          }
-        }
-        if (effect.texture) effect.texture.dispose();
-        if (effect.group?.material?.dispose) effect.group.material.dispose();
-        if (this.removeObject) this.removeObject(effect.group);
-        else effect.group.parent?.remove(effect.group);
-        if (
-          resolveProjectiles &&
-          effect.projectile &&
-          typeof effect.onImpact === 'function'
-        ) {
-          effect.onImpact();
+    context() {
+      const game = window.gameInstance;
+      return game ? {game, stage:game.currentStage, index:game.currentStageIndex, generation:this.generation} : null;
+    }
+
+    isCurrent(effect) {
+      const context = effect.context;
+      return !context || context.generation === this.generation && window.gameInstance === context.game &&
+        context.game.currentStage === context.stage && context.game.currentStageIndex === context.index &&
+        context.game.campaignActive !== false;
+    }
+
+    addEffect(effect) {
+      effect.context = this.context();
+      if (!effect.projectile && !effect.acidPool && !effect.persistent &&
+          this.effects.filter(item => !item.projectile && !item.acidPool && !item.persistent).length >= this.maxVisualEffects) {
+        this.releaseVisual(effect); return false;
+      }
+      if (effect.group && this.scene) this.scene.add(effect.group);
+      this.effects.push(effect); return true;
+    }
+
+    releaseVisual(effect, recycle = true) {
+      if (!effect?.group) return;
+      const group = effect.group, geometries = new Set(), materials = new Set();
+      const cached = new Set(this.sharedGeometries.values());
+      for (const child of [...group.children]) {
+        if (recycle && child.userData?.vfxKind && this.particleMeshPool.length < this.maxPooledParticles) {
+          this.activeParticles = Math.max(0,this.activeParticles-1);
+          group.remove(child); this.particleMeshPool.push(child);
         }
       }
+      group.traverse(object => {
+        if(object.userData?.vfxKind)this.activeParticles=Math.max(0,this.activeParticles-1);
+        // Three's Sprite geometry is shared internally across every sprite.
+        if (object.geometry && !object.isSprite && !cached.has(object.geometry)) geometries.add(object.geometry);
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+          if (material) materials.add(material);
+        }
+      });
+      group.parent?.remove(group);
+      geometries.forEach(geometry => geometry.dispose()); materials.forEach(material => material.dispose());
+      effect.texture?.dispose(); effect.group = null;
+    }
+
+    clear(_resolveProjectiles = false) {
+      // Clearing a stage/menu cancels pending hits; it must never detonate them.
+      this.generation++;
+      this.effects.splice(0).forEach(effect => this.releaseVisual(effect, false));
+      this.particleMeshPool.splice(0).forEach(particle => particle.material.dispose());
+      this.sharedMatCache.forEach(material => material.dispose()); this.sharedMatCache.clear();
+      this.sharedGeometries.forEach(geometry => geometry.dispose()); this.sharedGeometries.clear();
+      this.sharedTextures.forEach(texture => texture.dispose()); this.sharedTextures.clear();
+      this.activeParticles=0;
+      if (this.transformationTimer) window.clearTimeout(this.transformationTimer);
+      this.transformationTimer = null;
+      document.getElementById('app-container')?.classList.remove('transformation-flash');
+    }
+
+    getDiagnostics() {
+      return {version:2, effects:this.effects.length, projectiles:this.effects.filter(e => e.projectile).length,
+        acidPools:this.effects.filter(e => e.acidPool).length, pooledParticles:this.particleMeshPool.length,
+        cachedGeometries:this.sharedGeometries.size, cachedMaterials:this.sharedMatCache.size,
+        cachedTextures:this.sharedTextures.size, activeParticles:this.activeParticles, dynamicLights:0};
     }
 
     burst(x, z, color = 0x39ff14, count = 18, scale = 0.15, height = 1.2) {
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const tint = new THREE.Color(color);
+      const kind = tint.r > .4 && tint.g > .15 && tint.r > tint.g * 1.2 && tint.g > tint.b * 1.3
+        ? 'spark' : 'droplet';
       const group = new THREE.Group();
-      for (let index = 0; index < count; index++) {
-        const particle = this.getParticle(scale, color);
+      for (let index = 0; index < Math.min(32, Math.max(0, count)); index++) {
+        const particle = this.getParticle(scale, color, kind);
         if (!particle) continue;
         particle.position.set(0, height, 0);
         particle.userData.velocity = new THREE.Vector3(
-          (Math.random() - 0.5) * 7,
-          1.5 + Math.random() * 5,
-          (Math.random() - 0.5) * 7
+          (Math.random() - 0.5) * (kind === 'spark' ? 9 : 5),
+          1.5 + Math.random() * (kind === 'spark' ? 5 : 3),
+          (Math.random() - 0.5) * (kind === 'spark' ? 9 : 5)
         );
+        particle.userData.origin.copy(particle.position);
         group.add(particle);
       }
       group.position.set(x, 0, z);
-      this.scene.add(group);
-      this.effects.push({ group, age: 0, lifetime: 0.72 + Math.random() * 0.35, burst: true });
+      this.addEffect({group, age:0, lifetime:kind === 'spark' ? .55 : .85, burst:true, gravity:kind === 'spark' ? 13 : 9});
     }
 
     ring(x, z, color = 0xa855f7, radius = 3) {
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
       const mesh = new THREE.Mesh(
-        new THREE.RingGeometry(radius * 0.6, radius, 32),
+        this.geometry('ring'),
         new THREE.MeshBasicMaterial({
           color,
           transparent: true,
-          opacity: 0.8,
+          opacity: 0.52,
           side: THREE.DoubleSide,
           depthWrite: false
         })
       );
       mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set(x, 0.1, z);
-      this.scene.add(mesh);
-      this.effects.push({ group: mesh, age: 0, lifetime: 0.9, ring: true });
+      mesh.position.set(x, 0.065, z); mesh.scale.setScalar(radius);
+      this.addEffect({group:mesh, age:0, lifetime:.85, ring:true, radius});
     }
 
     projectile({
@@ -418,50 +529,48 @@
       acid = false,
       onImpact = null
     }) {
-      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') {
-        if (typeof onImpact === 'function') onImpact();
-        return;
-      }
+      if (typeof THREE === 'undefined' || ![startX,startY,startZ,endX,endY,endZ].every(Number.isFinite)) return false;
       const start = new THREE.Vector3(startX, startY, startZ);
       const end = new THREE.Vector3(endX, endY, endZ);
       const distance = Math.max(0.01, start.distanceTo(end));
       const group = new THREE.Group();
       const projectile = acid
         ? new THREE.Mesh(
-          new THREE.SphereGeometry(scale * 1.8, 10, 10),
+            this.geometry('droplet'),
           new THREE.MeshStandardMaterial({
             color,
             emissive: color,
-            emissiveIntensity: 1.9,
+            emissiveIntensity: .18,
             transparent: true,
-            opacity: 0.92,
-            roughness: 0.18
+            opacity: 0.88,
+            roughness: 0.24,
+            metalness: 0,
+            depthWrite: false
           })
         )
         : new THREE.Mesh(
-          new THREE.CylinderGeometry(scale * 0.38, scale * 0.64, Math.max(0.78, scale * 8), 7),
+          this.geometry('streak'),
           new THREE.MeshBasicMaterial({
             color,
             transparent: true,
-            opacity: 0.96,
+            opacity: 0.85,
             depthWrite: false
           })
         );
-      if (!acid) {
-        const direction = end.clone().sub(start).normalize();
-        projectile.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-      }
+      const direction = end.clone().sub(start).normalize();
+      projectile.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+      projectile.scale.set(scale * (acid ? 1.3 : .4), acid ? scale * 2.9 : Math.max(.55,scale * 7), scale * (acid ? 1.3 : .4));
       group.add(projectile);
-      if (acid) {
-        const light = new THREE.PointLight(color, 2.1, 7);
-        group.add(light);
-      } else {
-        const tracerLight = new THREE.PointLight(color, 1.25, 4.5);
-        group.add(tracerLight);
+      if (acid && !this.reducedMotion) {
+        for (let i=0;i<3;i++) {
+          const vapour=this.getParticle(scale * (1.6+i*.5),0x91a85a,'mist');
+          if(!vapour)break;
+          vapour.position.copy(direction).multiplyScalar(-scale*(2+i*2));
+          vapour.material.opacity=.22-i*.045; group.add(vapour);
+        }
       }
       group.position.copy(start);
-      this.scene.add(group);
-      this.effects.push({
+      return this.addEffect({
         group,
         age: 0,
         lifetime: Math.max(0.08, distance / Math.max(1, speed)),
@@ -471,29 +580,33 @@
         scale,
         start,
         end,
-        onImpact
+        onImpact,
+        resolved: false
       });
     }
 
     muzzleFlash(x, y, z, color = 0xfbbf24, scale = 0.18) {
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
       const group = new THREE.Group();
-      const flash = new THREE.Mesh(
-        new THREE.SphereGeometry(scale, 7, 7),
-        new THREE.MeshBasicMaterial({
-          color,
-          transparent: true,
-          opacity: 1,
-          depthWrite: false
-        })
-      );
-      flash.scale.set(0.7, 0.7, 2.8);
+      const flash = this.getParticle(scale * 2.5,color,'mist');
+      if(!flash)return;
+      flash.scale.set(scale * 2.2,scale * 2.2,1);
+      flash.material.opacity=.64;
       group.add(flash);
-      const light = new THREE.PointLight(color, 3.4, 8);
-      group.add(light);
       group.position.set(x, y, z);
-      this.scene.add(group);
-      this.effects.push({ group, age: 0, lifetime: 0.13, flash: true });
+      this.addEffect({group,age:0,lifetime:.085,flash:true});
+    }
+
+    beam(startX, startY, startZ, endX, endY, endZ, color = 0xf59e0b) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined' ||
+          ![startX,startY,startZ,endX,endY,endZ].every(Number.isFinite)) return;
+      const start=new THREE.Vector3(startX,startY,startZ),end=new THREE.Vector3(endX,endY,endZ);
+      const direction=end.clone().sub(start),length=direction.length();if(length<.001)return;
+      const group=new THREE.Group(),streak=this.getParticle(.1,color,'spark');
+      if(!streak)return;
+      streak.scale.set(.025,length,.025);streak.position.copy(start).add(end).multiplyScalar(.5);
+      streak.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction.normalize());
+      group.add(streak);this.addEffect({group,age:0,lifetime:.095,flash:true});
     }
 
     flameJet(startX, startY, startZ, endX, endY, endZ) {
@@ -501,27 +614,20 @@
       const start = new THREE.Vector3(startX, startY, startZ);
       const end = new THREE.Vector3(endX, endY, endZ);
       const group = new THREE.Group();
-      for (let index = 0; index < 22; index++) {
-        const progress = index / 21;
-        const material = new THREE.MeshBasicMaterial({
-          color: progress < 0.35 ? 0xfff1a8 : (progress < 0.72 ? 0xff8a16 : 0xef2b16),
-          transparent: true,
-          opacity: 0.86 * (1 - progress * 0.45),
-          depthWrite: false
-        });
-        const particle = new THREE.Mesh(
-          new THREE.SphereGeometry(0.12 + progress * 0.24, 7, 7),
-          material
-        );
+      for (let index = 0; index < 12; index++) {
+        const progress = index / 11;
+        const particle=this.getParticle(.32+progress*.78,
+          progress<.25?0xffe2a1:(progress<.65?0xe98933:0x874936),'mist');
+        if(!particle)break;
         particle.position.lerpVectors(start, end, progress);
         particle.position.x += (Math.random() - 0.5) * (0.18 + progress * 0.7);
         particle.position.y += (Math.random() - 0.5) * (0.14 + progress * 0.5);
         particle.position.z += (Math.random() - 0.5) * (0.18 + progress * 0.7);
-        particle.userData.baseOpacity = material.opacity;
+        particle.userData.baseOpacity = .58*(1-progress*.5);
+        particle.userData.origin.copy(particle.position);
         group.add(particle);
       }
-      this.scene.add(group);
-      this.effects.push({ group, age: 0, lifetime: 0.42, flame: true });
+      this.addEffect({group,age:0,lifetime:.42,flame:true});
     }
 
     organicTrail(startX, startY, startZ, endX, endY, endZ, color = 0xd97706) {
@@ -529,23 +635,15 @@
       const start = new THREE.Vector3(startX, startY, startZ);
       const end = new THREE.Vector3(endX, endY, endZ);
       const group = new THREE.Group();
-      for (let index = 0; index < 12; index++) {
-        const progress = index / 11;
-        const particle = new THREE.Mesh(
-          new THREE.SphereGeometry(0.06 + progress * 0.045, 6, 6),
-          new THREE.MeshBasicMaterial({
-            color,
-            transparent: true,
-            opacity: 0.78 * (1 - progress * 0.5),
-            depthWrite: false
-          })
-        );
+      for (let index = 0; index < 7; index++) {
+        const progress = index / 6;
+        const particle=this.getParticle(.065+progress*.04,color,'droplet');
+        if(!particle)break;
         particle.position.lerpVectors(start, end, progress);
-        particle.userData.baseOpacity = particle.material.opacity;
+        particle.userData.baseOpacity = .65*(1-progress*.5);
         group.add(particle);
       }
-      this.scene.add(group);
-      this.effects.push({ group, age: 0, lifetime: 0.38, trail: true });
+      this.addEffect({group,age:0,lifetime:.38,trail:true});
     }
 
     floatingText(x, y, z, text, color = '#ef4444', isCrit = false) {
@@ -575,8 +673,7 @@
       const scale = isCrit ? 3.4 : 2.6;
       sprite.scale.set(scale, scale * 0.38, 1);
       sprite.position.set(x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4);
-      this.scene.add(sprite);
-      this.effects.push({
+      this.addEffect({
         group: sprite,
         sprite: true,
         texture,
@@ -588,103 +685,81 @@
 
     fleshImpact(x, z, color = 0xb91c1c, count = 16) {
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
-      const group = new THREE.Group();
-      for (let i = 0; i < count; i++) {
-        const geo = new THREE.SphereGeometry(0.12 * (0.6 + Math.random()), 5, 5);
-        const mat = new THREE.MeshBasicMaterial({
-          color,
-          transparent: true,
-          opacity: 0.95,
-          depthWrite: false
-        });
-        const p = new THREE.Mesh(geo, mat);
-        p.position.set(0, 1.6 + Math.random() * 0.6, 0);
-        p.userData.velocity = new THREE.Vector3(
-          (Math.random() - 0.5) * 9,
-          2.0 + Math.random() * 4,
-          (Math.random() - 0.5) * 9
-        );
-        group.add(p);
-      }
-      group.position.set(x, 0, z);
-      this.scene.add(group);
-      this.effects.push({ group, age: 0, lifetime: 0.65 });
+      this.burst(x,z,color,Math.min(24,count),.10,1.6);
+      const stain = new THREE.Mesh(this.geometry('disc'),new THREE.MeshBasicMaterial({
+        color:new THREE.Color(color).multiplyScalar(.38),map:this.texture('splat'),
+        transparent:true,opacity:.62,depthWrite:false,side:THREE.DoubleSide}));
+      stain.rotation.x=-Math.PI/2;stain.rotation.z=Math.random()*Math.PI;
+      stain.position.set(x,.028,z);stain.scale.set(.75,.48,1);
+      this.addEffect({group:stain,age:0,lifetime:4.5,stain:true});
     }
 
     salivaDrip(x, y, z, count = 2) {
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
       const group = new THREE.Group();
       for (let index = 0; index < count; index++) {
-        const dropGeo = new THREE.SphereGeometry(0.045, 6, 6);
-        const dropMat = new THREE.MeshBasicMaterial({
-          color: 0xf1f5f9,
-          transparent: true,
-          opacity: 0.82,
-          depthWrite: false
-        });
-        const drop = new THREE.Mesh(dropGeo, dropMat);
-        drop.scale.set(0.65, 2.2, 0.65);
+        const drop=this.getParticle(.045,0xaab7aa,'droplet');
+        if(!drop)break;
+        drop.scale.set(.03,.10,.03);
         drop.position.set(
           (Math.random() - 0.5) * 0.14,
           y - index * 0.12,
           (Math.random() - 0.5) * 0.14
         );
         drop.userData.vy = -3.4 - Math.random() * 1.6;
+        drop.userData.origin.copy(drop.position);
         group.add(drop);
       }
       group.position.set(x, 0, z);
-      this.scene.add(group);
-      this.effects.push({ group, age: 0, lifetime: 0.72, drip: true, startY: y });
+      this.addEffect({group,age:0,lifetime:.72,drip:true,startY:y});
     }
 
     spawnAcidPool(x, z, radius = 1.5, duration = 8.5) {
-      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      if (typeof THREE === 'undefined' || ![x,z,radius,duration].every(Number.isFinite) || radius <= 0 || duration <= 0) return;
       const group = new THREE.Group();
-      const poolGeo = new THREE.CircleGeometry(radius, 24);
+      const poolGeo = this.geometry('disc');
       const poolMat = new THREE.MeshBasicMaterial({
-        color: 0x39ff14,
+        color: 0x809b24,
+        map: this.texture('splat'),
         transparent: true,
-        opacity: 0.68,
+        opacity: 0.7,
+        side: THREE.DoubleSide,
         depthWrite: false
       });
       const poolMesh = new THREE.Mesh(poolGeo, poolMat);
       poolMesh.rotation.x = -Math.PI / 2;
       poolMesh.position.y = 0.032;
+      poolMesh.scale.set(radius,radius,1);
       group.add(poolMesh);
 
+      const scorch=new THREE.Mesh(poolGeo,new THREE.MeshBasicMaterial({color:0x292e12,
+        map:this.texture('splat'),transparent:true,opacity:.68,side:THREE.DoubleSide,depthWrite:false}));
+      scorch.rotation.x=-Math.PI/2;scorch.rotation.z=.32;scorch.position.y=.027;
+      scorch.scale.set(radius*1.15,radius*1.09,1);group.add(scorch);
+
       const bubbles = [];
-      for (let i = 0; i < 6; i++) {
-        const bGeo = new THREE.SphereGeometry(0.07 + Math.random() * 0.07, 6, 6);
-        const bMat = new THREE.MeshBasicMaterial({
-          color: 0xa3e635,
-          transparent: true,
-          opacity: 0.85
-        });
-        const b = new THREE.Mesh(bGeo, bMat);
+      for (let i = 0; i < (this.reducedMotion ? 0 : 5); i++) {
+        const b=this.getParticle(.07+Math.random()*.05,0x9eb24a,'droplet');
+        if(!b)break;
         const ang = Math.random() * Math.PI * 2;
-        const dist = Math.random() * (radius * 0.75);
+        const dist = Math.sqrt(Math.random()) * (radius * 0.72);
         b.position.set(Math.cos(ang) * dist, 0.04, Math.sin(ang) * dist);
         b.userData.phase = Math.random() * Math.PI * 2;
         bubbles.push(b);
         group.add(b);
       }
 
-      for (let i = 0; i < 3; i++) {
-        const sGeo = new THREE.SphereGeometry(0.12, 5, 5);
-        const sMat = new THREE.MeshBasicMaterial({
-          color: 0x84cc16,
-          transparent: true,
-          opacity: 0.42,
-          depthWrite: false
-        });
-        const s = new THREE.Mesh(sGeo, sMat);
+      for (let i = 0; i < (this.reducedMotion ? 0 : 3); i++) {
+        const s=this.getParticle(.52,0x91a85a,'mist');
+        if(!s)break;
+        s.material.opacity=.16;
         s.position.set((Math.random() - 0.5) * radius * 0.8, 0.2 + Math.random() * 0.25, (Math.random() - 0.5) * radius * 0.8);
+        s.userData.origin.copy(s.position);s.userData.phase=i*1.8;
         group.add(s);
       }
 
       group.position.set(x, 0, z);
-      this.scene.add(group);
-      this.effects.push({
+      this.addEffect({
         group,
         age: 0,
         lifetime: duration,
@@ -699,24 +774,18 @@
     spawnSteamCloud(x, y, z, duration = 3.6) {
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
       const group = new THREE.Group();
-      for (let i = 0; i < 9; i++) {
-        const sGeo = new THREE.SphereGeometry(0.35 + Math.random() * 0.4, 6, 6);
-        const sMat = new THREE.MeshBasicMaterial({
-          color: 0x94a3b8,
-          transparent: true,
-          opacity: 0.38,
-          depthWrite: false
-        });
-        const m = new THREE.Mesh(sGeo, sMat);
+      for (let i = 0; i < 7; i++) {
+        const m=this.getParticle(1.0+Math.random()*.6,0x9ca8a8,'mist');
+        if(!m)break;
         m.position.set((Math.random() - 0.5) * 1.8, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 1.8);
         m.userData.vy = 0.6 + Math.random() * 0.8;
         m.userData.vx = (Math.random() - 0.5) * 0.5;
         m.userData.vz = (Math.random() - 0.5) * 0.5;
+        m.userData.origin.copy(m.position);
         group.add(m);
       }
       group.position.set(x, y, z);
-      this.scene.add(group);
-      this.effects.push({
+      this.addEffect({
         group,
         age: 0,
         lifetime: duration,
@@ -731,25 +800,25 @@
       if (!this.scene || typeof THREE === 'undefined') return;
       const group = new THREE.Group();
       const resinMat = new THREE.MeshStandardMaterial({
-        color: 0x2e1065,
-        emissive: 0x581c87,
-        emissiveIntensity: 0.85,
-        roughness: 0.3,
-        metalness: 0.6
+        color: 0x30352a,
+        roughness: 0.38,
+        metalness: 0.015
       });
-      const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.48, 2.5, 8), resinMat);
+      const pod = new THREE.Mesh(new THREE.SphereGeometry(1,24,20), resinMat);
+      pod.scale.set(.64,1.30,.40);
       pod.position.set(0, 1.35, 0);
       group.add(pod);
 
       for (let i = 0; i < 6; i++) {
-        const tendon = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.4, 6), resinMat);
         const a = (i / 6) * Math.PI * 2;
-        tendon.position.set(Math.cos(a) * 0.72, 1.35, Math.sin(a) * 0.72);
-        tendon.rotation.z = Math.sin(a) * 0.38;
+        const points=[new THREE.Vector3(Math.cos(a)*.42,.20,Math.sin(a)*.28),
+          new THREE.Vector3(Math.cos(a)*.64,1.25,Math.sin(a)*.41),
+          new THREE.Vector3(Math.cos(a)*.20,2.55,Math.sin(a)*.15)];
+        const tendon=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),20,.035,6,false),resinMat);
         group.add(tendon);
       }
       group.position.set(x, y, z);
-      this.scene.add(group);
+      this.addEffect({group,age:0,lifetime:Infinity,persistent:true});
       return group;
     }
 
@@ -757,90 +826,105 @@
       if (this.reducedMotion) return;
       const app = document.getElementById('app-container');
       app?.classList.add('transformation-flash');
-      window.setTimeout(() => app?.classList.remove('transformation-flash'), 750);
+      if(this.transformationTimer)window.clearTimeout(this.transformationTimer);
+      this.transformationTimer=window.setTimeout(()=>{
+        app?.classList.remove('transformation-flash');this.transformationTimer=null;
+      },750);
     }
 
     update(deltaSeconds) {
+      const delta = Math.max(0, Number(deltaSeconds) || 0);
       for (let index = this.effects.length - 1; index >= 0; index--) {
         const effect = this.effects[index];
-        effect.age += deltaSeconds;
+        if (!this.isCurrent(effect)) {
+          this.effects.splice(index,1); this.releaseVisual(effect); continue;
+        }
+        const activeDelta = Math.max(0, Math.min(delta, effect.lifetime - effect.age));
+        effect.age += delta;
         const progress = Math.min(1, effect.age / effect.lifetime);
         if (effect.projectile) {
           const easedProgress = 1 - Math.pow(1 - progress, 2);
           effect.group.position.lerpVectors(effect.start, effect.end, easedProgress);
-          if (effect.acid) {
-            const pulse = 0.82 + Math.sin(effect.age * 34) * 0.18;
-            effect.group.scale.setScalar(pulse);
-          }
+          effect.group.children.forEach((child,i) => {
+            child.visible = !this.reducedMotion || i===0;
+            if(i===0&&child.material)child.material.opacity=this.reducedMotion ? .58 : .85;
+          });
         } else if (effect.sprite) {
-          effect.group.position.y += (effect.speedY || 2.2) * deltaSeconds;
+          effect.group.position.y += (effect.speedY || 2.2) * activeDelta;
           if (effect.group.material) {
             effect.group.material.opacity = Math.max(0, 1 - Math.pow(progress, 1.6));
           }
         } else if (effect.ring) {
-          effect.group.scale.setScalar(1 + progress * 1.8);
-          effect.group.material.opacity = 0.8 * (1 - progress);
+          effect.group.scale.setScalar(effect.radius * (1 + progress * .15));
+          effect.group.material.opacity = .52 * (1 - progress);
         } else if (effect.flash) {
-          effect.group.scale.setScalar(1 + progress * 1.8);
           effect.group.children.forEach((child) => {
-            if (child.material) child.material.opacity = 1 - progress;
-            if (child.isLight) child.intensity = 3.4 * (1 - progress);
+            if (child.material) child.material.opacity = .64 * Math.pow(1-progress,2);
           });
         } else if (effect.flame || effect.trail) {
           effect.group.children.forEach((particle) => {
             if (!particle.material) return;
             particle.material.opacity = (particle.userData.baseOpacity || 0.8) * (1 - progress);
             if (effect.flame) {
-              particle.position.y += deltaSeconds * (0.35 + progress);
-              particle.scale.setScalar(1 + progress * 0.7);
+              particle.position.y = particle.userData.origin.y + effect.age * .65;
+              particle.scale.copy(particle.userData.baseScale).multiplyScalar(1+progress*.45);
             }
           });
         } else if (effect.steamCloud) {
           effect.group.children.forEach((p) => {
-            p.position.y += p.userData.vy * deltaSeconds;
-            p.position.x += p.userData.vx * deltaSeconds;
-            p.position.z += p.userData.vz * deltaSeconds;
-            p.scale.addScalar(deltaSeconds * 0.55);
-            if (p.material) p.material.opacity = Math.max(0, 0.38 * (1 - progress));
+            p.position.set(p.userData.origin.x+p.userData.vx*effect.age,
+              p.userData.origin.y+p.userData.vy*effect.age,p.userData.origin.z+p.userData.vz*effect.age);
+            p.scale.copy(p.userData.baseScale).multiplyScalar(1+effect.age*.35);
+            if (p.material) p.material.opacity = .21 * Math.sin(progress*Math.PI) * (1-progress*.35);
           });
         } else if (effect.drip) {
           effect.group.children.forEach((drop) => {
-            drop.position.y += drop.userData.vy * deltaSeconds;
+            drop.position.y = drop.userData.origin.y + drop.userData.vy * effect.age;
             if (drop.position.y <= 0.04) {
               drop.position.y = 0.04;
-              drop.scale.set(1.6, 0.08, 1.6);
+              drop.scale.set(.072, .0036, .072);
             }
             if (drop.material) drop.material.opacity = 0.82 * (1 - progress);
           });
         } else if (effect.acidPool) {
           if (effect.bubbles) {
             effect.bubbles.forEach((b) => {
-              b.userData.phase += deltaSeconds * 6;
-              const scaleY = 0.8 + Math.sin(b.userData.phase) * 0.5;
-              b.scale.set(1, Math.max(0.2, scaleY), 1);
+              b.visible = !this.reducedMotion;
+              const scaleY = .8 + Math.sin(b.userData.phase+effect.age*3.2)*.3;
+              b.scale.copy(b.userData.baseScale);b.scale.y*=Math.max(.35,scaleY);
             });
           }
           if (effect.group.children[0]?.material) {
-            effect.group.children[0].material.opacity = Math.max(0, 0.68 * (1 - Math.pow(progress, 2)));
+            effect.group.children[0].material.opacity = Math.max(0,.7 * (1-Math.pow(progress,4)));
           }
-          effect.damageTimer = (effect.damageTimer || 0) + deltaSeconds;
-          if (effect.damageTimer >= 0.48 && window.gameInstance?.humans) {
-            effect.damageTimer = 0;
+          effect.group.children.forEach((child,i)=>{
+            if(i<2||!child.isSprite)return;
+            child.visible=!this.reducedMotion;
+            child.position.y=child.userData.origin.y+((effect.age*.22+child.userData.phase*.1)%1)*.55;
+            child.material.opacity=.13*(1-progress);
+          });
+          effect.damageTimer = (effect.damageTimer || 0) + activeDelta;
+          while (effect.damageTimer >= .48 && window.gameInstance?.humans) {
+            effect.damageTimer -= .48;
             for (const h of window.gameInstance.humans) {
-              if (h.isIncapacitated || h.isCocooned) continue;
+              if (h.isIncapacitated || h.isCocooned || h.hp<=0 || h.isDestroyed || h.isEscaped || h.isConsumedByCycle) continue;
               const d = Math.hypot(h.x - effect.x, h.z - effect.z);
-              if (d <= effect.radius) {
+              if (d <= effect.radius && (!this.hasLineOfSight || this.hasLineOfSight(effect.x,effect.z,h.x,h.z,.02))) {
                 h.takeDamage?.(12);
                 window.HiveSystems?.vfx?.floatingText?.(h.x, 2.2, h.z, '-12 ACIDE', '#39ff14');
-                window.audioManager?.playAcidSizzle?.();
+                window.audioManager?.playAcidSizzle?.(effect.x,effect.z);
               }
             }
           }
-        } else {
+        } else if (effect.stain) {
+          effect.group.material.opacity=.62*(1-Math.pow(progress,3));
+        } else if (effect.burst) {
           for (const particle of effect.group.children) {
-            particle.position.addScaledVector(particle.userData.velocity, deltaSeconds);
-            particle.userData.velocity.y -= 8 * deltaSeconds;
-            particle.material.opacity = 0.88 * (1 - progress);
+            const origin=particle.userData.origin,v=particle.userData.velocity,t=Math.min(effect.age,effect.lifetime);
+            particle.position.set(origin.x+v.x*t,origin.y+v.y*t-.5*(effect.gravity||9)*t*t,origin.z+v.z*t);
+            particle.scale.copy(particle.userData.baseScale);
+            if(particle.position.y<.035){particle.position.y=.035;particle.scale.y*=.18;particle.scale.x*=1.3;}
+            particle.material.opacity=.82*(1-Math.pow(progress,1.5));
           }
         }
         if (progress < 1) continue;
@@ -853,18 +937,10 @@
             acid: effect.acid
           }
           : null;
-        if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
-          while (effect.group.children.length > 0) {
-            const p = effect.group.children.pop();
-            this.particleMeshPool.push(p);
-          }
-        }
-        if (effect.texture) effect.texture.dispose();
-        if (effect.group?.material?.dispose) effect.group.material.dispose();
-        if (this.removeObject) this.removeObject(effect.group);
-        else effect.group.parent?.remove(effect.group);
         this.effects.splice(index, 1);
-        if (impact) {
+        this.releaseVisual(effect);
+        if (impact && !effect.resolved) {
+          effect.resolved=true;
           this.burst(
             impact.x,
             impact.z,
@@ -946,6 +1022,7 @@
       document.getElementById('btn-open-codex-menu')?.addEventListener('click', () => {
         this.openCodex(true);
       });
+      document.getElementById('btn-open-settings-menu')?.addEventListener('click', () => this.openSettings(true));
     }
 
     bindUtilityControls() {
@@ -984,6 +1061,10 @@
         }
 
         if (key === 'c') {
+          // C remains the vent command during physical creature control.
+          // Shift+C is always the codex; C still closes an already open codex.
+          if(!event.shiftKey&&!activeSystemLayer&&this.game?.campaignActive&&
+            this.game.currentStageIndex>=2&&this.game.currentStageIndex<=4)return;
           if (activeSystemLayer && activeSystemLayer.id !== 'codex-overlay') {
             event.preventDefault();
             return;
@@ -1231,17 +1312,26 @@
       else this.closePause();
     }
 
-    openSettings() {
+    openSettings(fromMenu = false) {
       const pause = document.getElementById('pause-overlay');
-      if (!this.isVisible(pause) || this.hasBlockingProgressModal()) return;
-      this.hideLayer(pause, false);
-      if (!this.showLayer(document.getElementById('settings-overlay'), true)) return;
+      const settings=document.getElementById('settings-overlay');
+      if (this.hasBlockingProgressModal() || !settings) return;
+      if(fromMenu) {
+        if(this.campaignActive||this.visibleSystemLayer())return;
+      } else {
+        if(!this.isVisible(pause))return;
+        this.hideLayer(pause,false);
+      }
+      settings.dataset.fromMenu=String(fromMenu);
+      if (!this.showLayer(settings, !fromMenu)) return;
       document.getElementById('btn-close-settings')?.focus({ preventScroll: true });
     }
 
     closeSettings() {
-      this.hideLayer(document.getElementById('settings-overlay'), false);
-      if (this.campaignActive) {
+      const settings=document.getElementById('settings-overlay');
+      const fromMenu=settings?.dataset.fromMenu==='true';
+      this.hideLayer(settings, false);
+      if (this.campaignActive&&!fromMenu) {
         if (this.showLayer(document.getElementById('pause-overlay'), true)) {
           document.getElementById('btn-resume-game')?.focus({ preventScroll: true });
         }
@@ -1515,7 +1605,7 @@
   window.HiveSystems = {
     init(game, services = {}) {
       ui.init(game);
-      vfx.init(services.scene, services.removeObject);
+      vfx.init(services.scene, services.removeObject, services.hasLineOfSight);
     },
     save: saveManager,
     settings: settingsManager,

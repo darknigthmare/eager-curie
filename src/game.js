@@ -7439,6 +7439,62 @@
     playReactorPlasmaConduitHumBurst(x = null, z = null) {
       this.playProceduralPropFx({ type: 'square', f0: 1820, f1: 180, dur: 0.85, cutoff: 3600, vol: 0.74, radius: 50 }, x, z);
     }
+    // Vague 60 : Effets Audio Procéduraux Synthétiseur Web Audio API (Cap Historique 300 Props !)
+    playBrineEvaporatorSteamHiss(x = null, z = null) {
+      if (this.isMuted) return;
+      const ctx = this.audioCtx;
+      if (!ctx) return;
+      const panNode = this._createPanner(x, z);
+      const now = ctx.currentTime;
+      // Souffle et sifflement d'évaporation thermique de saumure
+      const bufferSize = ctx.sampleRate * 1.2;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.6));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(1400, now);
+      bpf.frequency.exponentialRampToValueAtTime(320, now + 1.2);
+      bpf.Q.setValueAtTime(4.5, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+      noise.connect(bpf);
+      bpf.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      noise.start(now);
+    }
+
+    playGeothermalWellheadPressureRelief(x = null, z = null) {
+      if (this.isMuted) return;
+      const ctx = this.audioCtx;
+      if (!ctx) return;
+      const panNode = this._createPanner(x, z);
+      const now = ctx.currentTime;
+      // Décharge de surpression géothermique industrielle
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(85, now);
+      osc.frequency.exponentialRampToValueAtTime(35, now + 1.4);
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.setValueAtTime(650, now);
+      lpf.frequency.exponentialRampToValueAtTime(90, now + 1.4);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+      osc.connect(lpf);
+      lpf.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      osc.start(now);
+      osc.stop(now + 1.4);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -7863,8 +7919,8 @@
               const normDist = (pDist / maxRange) * radius;
               const px = cx + Math.sin(relAngle) * normDist;
               const py = cy - Math.cos(relAngle) * normDist;
-              const tag = wp.id.includes('nostromo_subdeck_coolant_pipe_junction') ? 'PIPE-JUNC' : (wp.id.includes('hadley_vehicle_washdown_spray_arch') ? 'WASH-ARCH' : (wp.id.includes('fiorina_foundry_mold_drying_kiln') ? 'KILN-DRY' : (wp.id.includes('auriga_xenobio_cryo_containment_decanter') ? 'CRYO-DEC' : (wp.id.includes('romulus_gravity_orientation_gyro_plinth') ? 'GYRO-PLINTH' : (wp.id.includes('sevastopol_seegson_security_lockbox_kiosk') ? 'LOCK-KIOSK' : (wp.id.includes('uscm_sulaco_dropship_maintenance_scaffold') ? 'DROP-SCAFF' : (wp.id.includes('hadley_sublevel_drainage_culvert_gate') ? 'SLUICE-CULV' : (wp.id.includes('sevastopol_reactor_plasma_conduit_shroud') ? 'PLASMA-SHRD' : (wp.id.includes('fiorina_foundry_scrap_metal_baler') ? 'SCRAP-BALER' : (wp.id.includes('nostromo_cryo_sleep_biomonitor_pod') ? 'CRYO-BIO' : (wp.id.includes('hadley_radio_telemetry_relay_mast') ? 'TELEM-MAST' : (wp.id.includes('fiorina_foundry_quench_chute_door') ? 'CHUTE-DOOR' : (wp.id.includes('auriga_centrifuge_specimen_rack') ? 'CENTRI-SPEC' : (wp.id.includes('romulus_hallway_blast_door_seal') ? 'BLAST-SEAL' : (wp.id.includes('sevastopol_apollo_fiber_coupler_box') ? 'APOLLO-FIB' : (wp.id.includes('uscm_sulaco_hangar_winch_drum') ? 'WINCH-DRUM' : (wp.id.includes('hadley_tractor_battery_charger') ? 'BATT-CHRG' : (wp.id.includes('sevastopol_seegson_diagnostics_cart') ? 'JOE-DIAG' : (wp.id.includes('fiorina_foundry_cooling_tower_damper') ? 'COOL-DAMP' : (wp.id.includes('hadley_water_filtration_skid') ? 'H2O-SKID' : (wp.id.includes('fiorina_ore_conveyor_hopper') ? 'HOPPER-ORE' : (wp.id.includes('nostromo_cryo_stasis_coolant_manifold') ? 'CRYO-MANIF' : (wp.id.includes('auriga_xenobio_autopsy_drain_basin') ? 'DRAIN-BIO' : (wp.id.includes('romulus_eva_airlock_umbilical_boom') ? 'EVA-BOOM' : (wp.id.includes('sevastopol_transit_power_inverter') ? 'INV-TRACTION' : (wp.id.includes('uscm_sulaco_hangar_deck_crane') ? 'DECK-CRANE' : (wp.id.includes('hadley_apc_hydraulic_lift_platform') ? 'LIFT-APC' : (wp.id.includes('sevastopol_seegson_synthetic_charging_station') ? 'JOE-CHARGE' : (wp.id.includes('fiorina_foundry_lead_slag_skimmer') ? 'SKIMMER-PB' : (wp.id.includes('airway_decompression_hatch') ? 'AIRWAY-SAS' : (wp.id.includes('blackwater_pumping_station') ? 'BLACK-PUMP' : (wp.id.includes('core_molding_pit') ? 'MOLD-CORE' : (wp.id.includes('incubation_vault') ? 'INCU-VAULT' : (wp.id.includes('stasis_exhaust_diffuser') ? 'STASIS-DIF' : (wp.id.includes('kinetic_security_grille') ? 'SECU-GRILL' : (wp.id.includes('tactical_holo_plinth') ? 'HOLO-PLINTH' : (wp.id.includes('missile_loading_davit') ? 'DAVIT-HOIST' : (wp.id.includes('turbopump_bearing_lubricator') ? 'TURBO-LUB' : (wp.id.includes('laundry_steam_ironer') ? 'LAUNDRY-STM' : (wp.id.includes('life_support_filter') ? 'O2-FILTER' : (wp.id.includes('dropship_tow_tractor') ? 'TUG-TRACTOR' : (wp.id.includes('quench_water_flume') ? 'QUENCH-FLUME' : (wp.id.includes('specimen_cryo_carousel') ? 'CRYO-CAROUSEL' : (wp.id.includes('docking_guide_laser') ? 'LASER-GUIDE' : (wp.id.includes('synthetic_testing_cradle') ? 'JOE-TESTER' : (wp.id.includes('colony_siren_tower') ? 'SIREN-TOWER' : (wp.id.includes('cargo_pallet_jack') ? 'PALLET-JACK' : (wp.id.includes('coolant_deaerator_tank') ? 'DEAERATOR-HE' : (wp.id.includes('lead_ingot_elevator') ? 'INGOT-LIFT' : (wp.id.includes('galley_oven') ? 'OVEN-MESS' : (wp.id.includes('seismic_stabilizer') ? 'SEISMIC-STAB' : (wp.id.includes('jaw_crusher') ? 'JAW-CRUSH' : (wp.id.includes('biopsy_rack') ? 'BIOPSY-LN2' : (wp.id.includes('centrifuge_bearing') ? 'CENTRI-BEAR' : (wp.id.includes('transit_relay') ? 'TRANSIT-RLY' : (wp.id.includes('creeper_stand') ? 'CREEPER-WHL' : (wp.id.includes('pod_bay_chute') ? 'POD-CHUTE' : (wp.id.includes('optical_bus') ? 'APOLLO-BUS' : (wp.id.includes('crucible_cradle') ? 'CRUCIBLE-50T' : (wp.id.includes('scaffold_hoist') ? 'SCAFF-HOIST' : (wp.id.includes('coolant_circulator') ? 'PUMP-COOL' : (wp.id.includes('dropship_tie_down') ? 'UD4L-TIE' : (wp.id.includes('hydro_aerator') ? 'AERO-PUMP' : (wp.id.includes('apolo_sub_rack') ? 'APOLLO-MAG' : (wp.id.includes('hallway_dock_seal') ? 'DOCK-SEAL' : (wp.id.includes('biomass_sluice') ? 'SLUICE-BIO' : (wp.id.includes('foundry_furnace_damper') ? 'FURNACE-DAMP' : (wp.id.includes('apc_tow_winch') ? 'APC-WINCH' : (wp.id.includes('n2o_tank') ? 'N2O-SURGE' : (wp.id.includes('thyristor') ? 'HV-THYR' : (wp.id.includes('flir_turret') ? 'UD4L-FLIR' : (wp.id.includes('gravity_tether') ? 'GRAV-ANCH' : (wp.id.includes('neural_mapping') ? 'NEURO-MAP' : (wp.id.includes('positron') ? 'POSITRON' : (wp.id.includes('helium_header') ? 'HE-APOLLO' : (wp.id.includes('turret_hoist') ? '20mm-HOIST' : (wp.id.includes('fault_monitor') ? 'FAULT-MON' : (wp.id.includes('clone_pod') ? 'CLONE-8' : (wp.id.includes('autodoc') ? 'AUTODOC' : (wp.id.includes('sulaco_transponder') ? 'SULACO-TX' : (wp.id.includes('black_goo_isolator') ? 'Z01-GLOVE' : (wp.id.includes('ovipositor_cradle') ? 'QUEEN-RIG' : (wp.id.includes('atp_fusion') ? 'ATP-FUSION' : (wp.id.includes('muthur_memory') ? 'MU-TH-UR' : (wp.id.includes('barometer_tower') ? 'BARO-WX' : (wp.id.includes('halon_manifold') ? 'HALON-CORE' : (wp.id.includes('landing_jack') ? 'UD4L-JACK' : (wp.id.includes('embryo_scanner') ? 'EMBRYO-SCAN' : (wp.id.includes('dt_injector') ? 'DT-INJECT' : (wp.id.includes('flux_damper') ? 'FLUX-TORUS' : (wp.id.includes('smoke_discharger') ? 'M257-SMOKE' : (wp.id.includes('marshal_armory') ? 'MARSHAL-LOCK' : (wp.id.includes('gene_splicer') ? 'GENE-SPIN' : (wp.id.includes('field_coil') ? 'HYPER-SHUNT' : (wp.id.includes('gau113_ammo') ? '25mm-GAU' : (wp.id.includes('perimeter_sensor') ? 'PERIM-PING' : (wp.id.includes('polymer_cocoon') ? 'XX121-VAT' : (wp.id.includes('apollo_busbar') ? 'BUSBAR-HV' : (wp.id.includes('condenser_bank') ? 'ATP-COND' : (wp.id.includes('m41a_crate') ? '10mm-M41A' : (wp.id.includes('shackle_arch') ? 'XENO-LOCK' : (wp.id.includes('slag_lance') ? 'O2-LANCE' : (wp.id.includes('pager_rack') ? 'PAGER-TX' : (wp.id.includes('carbon_bed') ? 'O2-SCRUB' : (wp.id.includes('ammo_feed') ? '20mm-FEED' : (wp.id.includes('borehole') ? 'SEISMIC' : (wp.id.includes('dross_ladle') ? 'DROSS-PB' : (wp.id.includes('nutrient') ? 'CLONE-VAT' : (wp.id.includes('autoclave') ? 'STEAM-15B' : (wp.id.includes('exchanger') ? 'CRYO-HEX' : (wp.id.includes('holotable') ? 'ORB-NAV' : (wp.id.includes('missile_pod') ? '70mm-POD' : (wp.id.includes('slag_pot') ? '1300°C' : (wp.id.includes('chrono') ? 'ARMORY' : (wp.id.includes('substation') ? '440V-CRYO' : (wp.id.includes('dewar') ? 'LN2-DEWAR' : (wp.id.includes('m40') ? '30mm-HEDP' : (wp.id.includes('siren') ? 'KLAXON' : (wp.id.includes('tape_archive') ? 'SEEGSON' : (wp.id.includes('diffuser') ? 'THRUST-NOZ' : (wp.id.includes('radome') ? 'WX-RADAR' : (wp.id.includes('sequencer') ? 'DNA-SEQ' : (wp.id.includes('ua571') ? '10x28mm' : (wp.id.includes('plasma_torch') ? 'PLASMA' : (wp.id.includes('evaporator') ? 'FREON' : (wp.id.includes('apollo') ? 'APOLLO-TX' : (wp.id.includes('quarantine') ? 'BIO-LOCK' : (wp.id.includes('satellite_dish') ? 'SAT-COM' : (wp.id.includes('rtg') ? 'RTG-238' : (wp.id.includes('thruster') ? 'THRUST' : (wp.id.includes('pantograph') ? 'PANTOGRAPH' : (wp.id.includes('smartgun') ? 'M56-MOUNT' : (wp.id.includes('decoy') ? 'M89-DECOY' : (wp.id.includes('nitrogen') ? 'N2-PURGE' : (wp.id.includes('hydrazine') ? 'N2H4' : (wp.id.includes('maglev') ? 'MAG-LEV' : (wp.id.includes('sentinel_relay') ? 'USCM-TX' : (wp.id.includes('power_commutator') ? '20kV' : (wp.id.includes('claymore') ? 'M20' : (wp.id.includes('tuyere') ? '1200°C' : 'CRYO'))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
-              const col = wp.id.includes('nostromo_subdeck_coolant_pipe_junction') ? '#22d3ee' : (wp.id.includes('hadley_vehicle_washdown_spray_arch') ? '#eab308' : (wp.id.includes('fiorina_foundry_mold_drying_kiln') ? '#f97316' : (wp.id.includes('auriga_xenobio_cryo_containment_decanter') ? '#38bdf8' : (wp.id.includes('romulus_gravity_orientation_gyro_plinth') ? '#38bdf8' : (wp.id.includes('sevastopol_seegson_security_lockbox_kiosk') ? '#eab308' : (wp.id.includes('uscm_sulaco_dropship_maintenance_scaffold') ? '#eab308' : (wp.id.includes('hadley_sublevel_drainage_culvert_gate') ? '#a855f7' : (wp.id.includes('sevastopol_reactor_plasma_conduit_shroud') ? '#38bdf8' : (wp.id.includes('fiorina_foundry_scrap_metal_baler') ? '#f97316' : (wp.id.includes('nostromo_cryo_sleep_biomonitor_pod') ? '#22d3ee' : (wp.id.includes('hadley_radio_telemetry_relay_mast') ? '#eab308' : (wp.id.includes('fiorina_foundry_quench_chute_door') ? '#f97316' : (wp.id.includes('auriga_centrifuge_specimen_rack') ? '#38bdf8' : (wp.id.includes('romulus_hallway_blast_door_seal') ? '#38bdf8' : (wp.id.includes('sevastopol_apollo_fiber_coupler_box') ? '#38bdf8' : (wp.id.includes('uscm_sulaco_hangar_winch_drum') ? '#eab308' : (wp.id.includes('hadley_tractor_battery_charger') ? '#eab308' : (wp.id.includes('sevastopol_seegson_diagnostics_cart') ? '#38bdf8' : (wp.id.includes('fiorina_foundry_cooling_tower_damper') ? '#f97316' : (wp.id.includes('hadley_water_filtration_skid') ? '#38bdf8' : (wp.id.includes('fiorina_ore_conveyor_hopper') ? '#f97316' : (wp.id.includes('nostromo_cryo_stasis_coolant_manifold') ? '#22d3ee' : (wp.id.includes('auriga_xenobio_autopsy_drain_basin') ? '#38bdf8' : (wp.id.includes('romulus_eva_airlock_umbilical_boom') ? '#eab308' : (wp.id.includes('sevastopol_transit_power_inverter') ? '#38bdf8' : (wp.id.includes('uscm_sulaco_hangar_deck_crane') ? '#eab308' : (wp.id.includes('hadley_apc_hydraulic_lift_platform') ? '#f59e0b' : (wp.id.includes('sevastopol_seegson_synthetic_charging_station') ? '#38bdf8' : (wp.id.includes('fiorina_foundry_lead_slag_skimmer') ? '#f97316' : (wp.id.includes('airway_decompression_hatch') ? '#38bdf8' : (wp.id.includes('blackwater_pumping_station') ? '#a855f7' : (wp.id.includes('core_molding_pit') ? '#f97316' : (wp.id.includes('incubation_vault') ? '#22d3ee' : (wp.id.includes('stasis_exhaust_diffuser') ? '#38bdf8' : (wp.id.includes('kinetic_security_grille') ? '#eab308' : (wp.id.includes('tactical_holo_plinth') ? '#38bdf8' : (wp.id.includes('missile_loading_davit') ? '#eab308' : (wp.id.includes('turbopump_bearing_lubricator') ? '#f59e0b' : (wp.id.includes('laundry_steam_ironer') ? '#94a3b8' : (wp.id.includes('life_support_filter') ? '#38bdf8' : (wp.id.includes('dropship_tow_tractor') ? '#eab308' : (wp.id.includes('quench_water_flume') ? '#f97316' : (wp.id.includes('specimen_cryo_carousel') ? '#22d3ee' : (wp.id.includes('docking_guide_laser') ? '#ef4444' : (wp.id.includes('synthetic_testing_cradle') ? '#38bdf8' : (wp.id.includes('colony_siren_tower') ? '#f59e0b' : (wp.id.includes('cargo_pallet_jack') ? '#eab308' : (wp.id.includes('coolant_deaerator_tank') ? '#38bdf8' : (wp.id.includes('lead_ingot_elevator') ? '#f97316' : (wp.id.includes('galley_oven') ? '#38bdf8' : (wp.id.includes('seismic_stabilizer') ? '#f59e0b' : (wp.id.includes('jaw_crusher') ? '#f97316' : (wp.id.includes('biopsy_rack') ? '#22d3ee' : (wp.id.includes('centrifuge_bearing') ? '#f59e0b' : (wp.id.includes('transit_relay') ? '#38bdf8' : (wp.id.includes('creeper_stand') ? '#eab308' : (wp.id.includes('pod_bay_chute') ? '#22c55e' : (wp.id.includes('optical_bus') ? '#38bdf8' : (wp.id.includes('crucible_cradle') ? '#f97316' : (wp.id.includes('scaffold_hoist') ? '#f59e0b' : (wp.id.includes('coolant_circulator') ? '#38bdf8' : (wp.id.includes('dropship_tie_down') ? '#eab308' : (wp.id.includes('hydro_aerator') ? '#22c55e' : (wp.id.includes('apolo_sub_rack') ? '#38bdf8' : (wp.id.includes('hallway_dock_seal') ? '#f59e0b' : (wp.id.includes('biomass_sluice') ? '#ef4444' : (wp.id.includes('foundry_furnace_damper') ? '#f97316' : (wp.id.includes('apc_tow_winch') ? '#eab308' : (wp.id.includes('n2o_tank') ? '#38bdf8' : (wp.id.includes('thyristor') ? '#38bdf8' : (wp.id.includes('flir_turret') ? '#22c55e' : (wp.id.includes('gravity_tether') ? '#f59e0b' : (wp.id.includes('neural_mapping') ? '#22d3ee' : (wp.id.includes('positron') ? '#a855f7' : (wp.id.includes('helium_header') ? '#67e8f9' : (wp.id.includes('turret_hoist') ? '#eab308' : (wp.id.includes('fault_monitor') ? '#ef4444' : (wp.id.includes('clone_pod') ? '#f59e0b' : (wp.id.includes('autodoc') ? '#22d3ee' : (wp.id.includes('sulaco_transponder') ? '#22c55e' : (wp.id.includes('black_goo_isolator') ? '#a855f7' : (wp.id.includes('ovipositor_cradle') ? '#f59e0b' : (wp.id.includes('atp_fusion') ? '#38bdf8' : (wp.id.includes('muthur_memory') ? '#facc15' : (wp.id.includes('barometer_tower') ? '#eab308' : (wp.id.includes('halon_manifold') ? '#ef4444' : (wp.id.includes('landing_jack') ? '#eab308' : (wp.id.includes('embryo_scanner') ? '#34d399' : (wp.id.includes('dt_injector') ? '#38bdf8' : (wp.id.includes('flux_damper') ? '#38bdf8' : (wp.id.includes('smoke_discharger') ? '#eab308' : (wp.id.includes('marshal_armory') ? '#22c55e' : (wp.id.includes('gene_splicer') ? '#34d399' : (wp.id.includes('field_coil') ? '#f59e0b' : (wp.id.includes('gau113_ammo') ? '#eab308' : (wp.id.includes('perimeter_sensor') ? '#22c55e' : (wp.id.includes('polymer_cocoon') ? '#f59e0b' : (wp.id.includes('apollo_busbar') ? '#38bdf8' : (wp.id.includes('condenser_bank') ? '#f59e0b' : (wp.id.includes('m41a_crate') ? '#4ade80' : (wp.id.includes('shackle_arch') ? '#ef4444' : (wp.id.includes('slag_lance') ? '#f97316' : (wp.id.includes('pager_rack') ? '#22c55e' : (wp.id.includes('carbon_bed') ? '#f59e0b' : (wp.id.includes('ammo_feed') ? '#eab308' : (wp.id.includes('borehole') ? '#ef4444' : (wp.id.includes('dross_ladle') ? '#f97316' : (wp.id.includes('nutrient') ? '#34d399' : (wp.id.includes('autoclave') ? '#f59e0b' : (wp.id.includes('exchanger') ? '#38bdf8' : (wp.id.includes('holotable') ? '#22d3ee' : (wp.id.includes('missile_pod') ? '#ef4444' : (wp.id.includes('slag_pot') ? '#f97316' : (wp.id.includes('chrono') ? '#22c55e' : (wp.id.includes('substation') ? '#f59e0b' : (wp.id.includes('dewar') ? '#38bdf8' : (wp.id.includes('m40') ? '#eab308' : (wp.id.includes('siren') ? '#ef4444' : (wp.id.includes('tape_archive') ? '#22c55e' : (wp.id.includes('diffuser') ? '#f97316' : (wp.id.includes('radome') ? '#f59e0b' : (wp.id.includes('sequencer') ? '#34d399' : (wp.id.includes('ua571') ? '#eab308' : (wp.id.includes('plasma_torch') ? '#38bdf8' : (wp.id.includes('evaporator') ? '#38bdf8' : (wp.id.includes('apollo') ? '#fbbf24' : (wp.id.includes('quarantine') ? '#ef4444' : (wp.id.includes('satellite_dish') ? '#22c55e' : (wp.id.includes('rtg') ? '#eab308' : (wp.id.includes('thruster') ? '#64748b' : (wp.id.includes('pantograph') ? '#f97316' : (wp.id.includes('smartgun') ? '#22c55e' : (wp.id.includes('decoy') ? '#22c55e' : (wp.id.includes('nitrogen') ? '#38bdf8' : (wp.id.includes('hydrazine') ? '#f97316' : (wp.id.includes('maglev') ? '#fbbf24' : (wp.id.includes('sentinel_relay') ? '#22c55e' : (wp.id.includes('power_commutator') ? '#60a5fa' : (wp.id.includes('claymore') ? '#f43f5e' : (wp.id.includes('tuyere') ? '#f97316' : '#38bdf8'))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+              const tag = wp.id.includes('nostromo_subdeck_brine_evaporator') ? 'BRINE-EVAP' : (wp.id.includes('hadley_geothermal_wellhead_valve_tree') ? 'GEO-TREE' : (wp.id.includes('fiorina_foundry_crane_cab') ? 'CRANE-CAB' : (wp.id.includes('auriga_transgenic_incubator') ? 'TRANS-INC' : (wp.id.includes('romulus_cryo_expansion_tank') ? 'CRYO-TANK' : (wp.id.includes('sevastopol_apollo_cooling_plenum') ? 'APOLLO-PLEN' : (wp.id.includes('uscm_sulaco_ordnance_dolly') ? 'ORD-DOLLY' : (wp.id.includes('hadley_scrubber_blower_fan') ? 'BLOW-FAN' : (wp.id.includes('sevastopol_joe_recond_bench') ? 'RECOND-BCH' : (wp.id.includes('fiorina_foundry_quench_weir') ? 'QUENCH-WEIR' : (wp.id.includes('nostromo_subdeck_coolant_pipe_junction') ? 'PIPE-JUNC' : (wp.id.includes('hadley_vehicle_washdown_spray_arch') ? 'WASH-ARCH' : (wp.id.includes('fiorina_foundry_mold_drying_kiln') ? 'KILN-DRY' : (wp.id.includes('auriga_xenobio_cryo_containment_decanter') ? 'CRYO-DEC' : (wp.id.includes('romulus_gravity_orientation_gyro_plinth') ? 'GYRO-PLINTH' : (wp.id.includes('sevastopol_seegson_security_lockbox_kiosk') ? 'LOCK-KIOSK' : (wp.id.includes('uscm_sulaco_dropship_maintenance_scaffold') ? 'DROP-SCAFF' : (wp.id.includes('hadley_sublevel_drainage_culvert_gate') ? 'SLUICE-CULV' : (wp.id.includes('sevastopol_reactor_plasma_conduit_shroud') ? 'PLASMA-SHRD' : (wp.id.includes('fiorina_foundry_scrap_metal_baler') ? 'SCRAP-BALER' : (wp.id.includes('nostromo_cryo_sleep_biomonitor_pod') ? 'CRYO-BIO' : (wp.id.includes('hadley_radio_telemetry_relay_mast') ? 'TELEM-MAST' : (wp.id.includes('fiorina_foundry_quench_chute_door') ? 'CHUTE-DOOR' : (wp.id.includes('auriga_centrifuge_specimen_rack') ? 'CENTRI-SPEC' : (wp.id.includes('romulus_hallway_blast_door_seal') ? 'BLAST-SEAL' : (wp.id.includes('sevastopol_apollo_fiber_coupler_box') ? 'APOLLO-FIB' : (wp.id.includes('uscm_sulaco_hangar_winch_drum') ? 'WINCH-DRUM' : (wp.id.includes('hadley_tractor_battery_charger') ? 'BATT-CHRG' : (wp.id.includes('sevastopol_seegson_diagnostics_cart') ? 'JOE-DIAG' : (wp.id.includes('fiorina_foundry_cooling_tower_damper') ? 'COOL-DAMP' : (wp.id.includes('hadley_water_filtration_skid') ? 'H2O-SKID' : (wp.id.includes('fiorina_ore_conveyor_hopper') ? 'HOPPER-ORE' : (wp.id.includes('nostromo_cryo_stasis_coolant_manifold') ? 'CRYO-MANIF' : (wp.id.includes('auriga_xenobio_autopsy_drain_basin') ? 'DRAIN-BIO' : (wp.id.includes('romulus_eva_airlock_umbilical_boom') ? 'EVA-BOOM' : (wp.id.includes('sevastopol_transit_power_inverter') ? 'INV-TRACTION' : (wp.id.includes('uscm_sulaco_hangar_deck_crane') ? 'DECK-CRANE' : (wp.id.includes('hadley_apc_hydraulic_lift_platform') ? 'LIFT-APC' : (wp.id.includes('sevastopol_seegson_synthetic_charging_station') ? 'JOE-CHARGE' : (wp.id.includes('fiorina_foundry_lead_slag_skimmer') ? 'SKIMMER-PB' : (wp.id.includes('airway_decompression_hatch') ? 'AIRWAY-SAS' : (wp.id.includes('blackwater_pumping_station') ? 'BLACK-PUMP' : (wp.id.includes('core_molding_pit') ? 'MOLD-CORE' : (wp.id.includes('incubation_vault') ? 'INCU-VAULT' : (wp.id.includes('stasis_exhaust_diffuser') ? 'STASIS-DIF' : (wp.id.includes('kinetic_security_grille') ? 'SECU-GRILL' : (wp.id.includes('tactical_holo_plinth') ? 'HOLO-PLINTH' : (wp.id.includes('missile_loading_davit') ? 'DAVIT-HOIST' : (wp.id.includes('turbopump_bearing_lubricator') ? 'TURBO-LUB' : (wp.id.includes('laundry_steam_ironer') ? 'LAUNDRY-STM' : (wp.id.includes('life_support_filter') ? 'O2-FILTER' : (wp.id.includes('dropship_tow_tractor') ? 'TUG-TRACTOR' : (wp.id.includes('quench_water_flume') ? 'QUENCH-FLUME' : (wp.id.includes('specimen_cryo_carousel') ? 'CRYO-CAROUSEL' : (wp.id.includes('docking_guide_laser') ? 'LASER-GUIDE' : (wp.id.includes('synthetic_testing_cradle') ? 'JOE-TESTER' : (wp.id.includes('colony_siren_tower') ? 'SIREN-TOWER' : (wp.id.includes('cargo_pallet_jack') ? 'PALLET-JACK' : (wp.id.includes('coolant_deaerator_tank') ? 'DEAERATOR-HE' : (wp.id.includes('lead_ingot_elevator') ? 'INGOT-LIFT' : (wp.id.includes('galley_oven') ? 'OVEN-MESS' : (wp.id.includes('seismic_stabilizer') ? 'SEISMIC-STAB' : (wp.id.includes('jaw_crusher') ? 'JAW-CRUSH' : (wp.id.includes('biopsy_rack') ? 'BIOPSY-LN2' : (wp.id.includes('centrifuge_bearing') ? 'CENTRI-BEAR' : (wp.id.includes('transit_relay') ? 'TRANSIT-RLY' : (wp.id.includes('creeper_stand') ? 'CREEPER-WHL' : (wp.id.includes('pod_bay_chute') ? 'POD-CHUTE' : (wp.id.includes('optical_bus') ? 'APOLLO-BUS' : (wp.id.includes('crucible_cradle') ? 'CRUCIBLE-50T' : (wp.id.includes('scaffold_hoist') ? 'SCAFF-HOIST' : (wp.id.includes('coolant_circulator') ? 'PUMP-COOL' : (wp.id.includes('dropship_tie_down') ? 'UD4L-TIE' : (wp.id.includes('hydro_aerator') ? 'AERO-PUMP' : (wp.id.includes('apolo_sub_rack') ? 'APOLLO-MAG' : (wp.id.includes('hallway_dock_seal') ? 'DOCK-SEAL' : (wp.id.includes('biomass_sluice') ? 'SLUICE-BIO' : (wp.id.includes('foundry_furnace_damper') ? 'FURNACE-DAMP' : (wp.id.includes('apc_tow_winch') ? 'APC-WINCH' : (wp.id.includes('n2o_tank') ? 'N2O-SURGE' : (wp.id.includes('thyristor') ? 'HV-THYR' : (wp.id.includes('flir_turret') ? 'UD4L-FLIR' : (wp.id.includes('gravity_tether') ? 'GRAV-ANCH' : (wp.id.includes('neural_mapping') ? 'NEURO-MAP' : (wp.id.includes('positron') ? 'POSITRON' : (wp.id.includes('helium_header') ? 'HE-APOLLO' : (wp.id.includes('turret_hoist') ? '20mm-HOIST' : (wp.id.includes('fault_monitor') ? 'FAULT-MON' : (wp.id.includes('clone_pod') ? 'CLONE-8' : (wp.id.includes('autodoc') ? 'AUTODOC' : (wp.id.includes('sulaco_transponder') ? 'SULACO-TX' : (wp.id.includes('black_goo_isolator') ? 'Z01-GLOVE' : (wp.id.includes('ovipositor_cradle') ? 'QUEEN-RIG' : (wp.id.includes('atp_fusion') ? 'ATP-FUSION' : (wp.id.includes('muthur_memory') ? 'MU-TH-UR' : (wp.id.includes('barometer_tower') ? 'BARO-WX' : (wp.id.includes('halon_manifold') ? 'HALON-CORE' : (wp.id.includes('landing_jack') ? 'UD4L-JACK' : (wp.id.includes('embryo_scanner') ? 'EMBRYO-SCAN' : (wp.id.includes('dt_injector') ? 'DT-INJECT' : (wp.id.includes('flux_damper') ? 'FLUX-TORUS' : (wp.id.includes('smoke_discharger') ? 'M257-SMOKE' : (wp.id.includes('marshal_armory') ? 'MARSHAL-LOCK' : (wp.id.includes('gene_splicer') ? 'GENE-SPIN' : (wp.id.includes('field_coil') ? 'HYPER-SHUNT' : (wp.id.includes('gau113_ammo') ? '25mm-GAU' : (wp.id.includes('perimeter_sensor') ? 'PERIM-PING' : (wp.id.includes('polymer_cocoon') ? 'XX121-VAT' : (wp.id.includes('apollo_busbar') ? 'BUSBAR-HV' : (wp.id.includes('condenser_bank') ? 'ATP-COND' : (wp.id.includes('m41a_crate') ? '10mm-M41A' : (wp.id.includes('shackle_arch') ? 'XENO-LOCK' : (wp.id.includes('slag_lance') ? 'O2-LANCE' : (wp.id.includes('pager_rack') ? 'PAGER-TX' : (wp.id.includes('carbon_bed') ? 'O2-SCRUB' : (wp.id.includes('ammo_feed') ? '20mm-FEED' : (wp.id.includes('borehole') ? 'SEISMIC' : (wp.id.includes('dross_ladle') ? 'DROSS-PB' : (wp.id.includes('nutrient') ? 'CLONE-VAT' : (wp.id.includes('autoclave') ? 'STEAM-15B' : (wp.id.includes('exchanger') ? 'CRYO-HEX' : (wp.id.includes('holotable') ? 'ORB-NAV' : (wp.id.includes('missile_pod') ? '70mm-POD' : (wp.id.includes('slag_pot') ? '1300°C' : (wp.id.includes('chrono') ? 'ARMORY' : (wp.id.includes('substation') ? '440V-CRYO' : (wp.id.includes('dewar') ? 'LN2-DEWAR' : (wp.id.includes('m40') ? '30mm-HEDP' : (wp.id.includes('siren') ? 'KLAXON' : (wp.id.includes('tape_archive') ? 'SEEGSON' : (wp.id.includes('diffuser') ? 'THRUST-NOZ' : (wp.id.includes('radome') ? 'WX-RADAR' : (wp.id.includes('sequencer') ? 'DNA-SEQ' : (wp.id.includes('ua571') ? '10x28mm' : (wp.id.includes('plasma_torch') ? 'PLASMA' : (wp.id.includes('evaporator') ? 'FREON' : (wp.id.includes('apollo') ? 'APOLLO-TX' : (wp.id.includes('quarantine') ? 'BIO-LOCK' : (wp.id.includes('satellite_dish') ? 'SAT-COM' : (wp.id.includes('rtg') ? 'RTG-238' : (wp.id.includes('thruster') ? 'THRUST' : (wp.id.includes('pantograph') ? 'PANTOGRAPH' : (wp.id.includes('smartgun') ? 'M56-MOUNT' : (wp.id.includes('decoy') ? 'M89-DECOY' : (wp.id.includes('nitrogen') ? 'N2-PURGE' : (wp.id.includes('hydrazine') ? 'N2H4' : (wp.id.includes('maglev') ? 'MAG-LEV' : (wp.id.includes('sentinel_relay') ? 'USCM-TX' : (wp.id.includes('power_commutator') ? '20kV' : (wp.id.includes('claymore') ? 'M20' : (wp.id.includes('tuyere') ? '1200°C' : 'CRYO'))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+              const col = wp.id.includes('nostromo_subdeck_brine_evaporator') ? '#22d3ee' : (wp.id.includes('hadley_geothermal_wellhead_valve_tree') ? '#eab308' : (wp.id.includes('fiorina_foundry_crane_cab') ? '#f97316' : (wp.id.includes('auriga_transgenic_incubator') ? '#38bdf8' : (wp.id.includes('romulus_cryo_expansion_tank') ? '#38bdf8' : (wp.id.includes('sevastopol_apollo_cooling_plenum') ? '#eab308' : (wp.id.includes('uscm_sulaco_ordnance_dolly') ? '#eab308' : (wp.id.includes('hadley_scrubber_blower_fan') ? '#a855f7' : (wp.id.includes('sevastopol_joe_recond_bench') ? '#eab308' : (wp.id.includes('fiorina_foundry_quench_weir') ? '#f97316' : (wp.id.includes('nostromo_subdeck_coolant_pipe_junction') ? '#22d3ee' : (wp.id.includes('hadley_vehicle_washdown_spray_arch') ? '#eab308' : (wp.id.includes('fiorina_foundry_mold_drying_kiln') ? '#f97316' : (wp.id.includes('auriga_xenobio_cryo_containment_decanter') ? '#38bdf8' : (wp.id.includes('romulus_gravity_orientation_gyro_plinth') ? '#38bdf8' : (wp.id.includes('sevastopol_seegson_security_lockbox_kiosk') ? '#eab308' : (wp.id.includes('uscm_sulaco_dropship_maintenance_scaffold') ? '#eab308' : (wp.id.includes('hadley_sublevel_drainage_culvert_gate') ? '#a855f7' : (wp.id.includes('sevastopol_reactor_plasma_conduit_shroud') ? '#38bdf8' : (wp.id.includes('fiorina_foundry_scrap_metal_baler') ? '#f97316' : (wp.id.includes('nostromo_cryo_sleep_biomonitor_pod') ? '#22d3ee' : (wp.id.includes('hadley_radio_telemetry_relay_mast') ? '#eab308' : (wp.id.includes('fiorina_foundry_quench_chute_door') ? '#f97316' : (wp.id.includes('auriga_centrifuge_specimen_rack') ? '#38bdf8' : (wp.id.includes('romulus_hallway_blast_door_seal') ? '#38bdf8' : (wp.id.includes('sevastopol_apollo_fiber_coupler_box') ? '#38bdf8' : (wp.id.includes('uscm_sulaco_hangar_winch_drum') ? '#eab308' : (wp.id.includes('hadley_tractor_battery_charger') ? '#eab308' : (wp.id.includes('sevastopol_seegson_diagnostics_cart') ? '#38bdf8' : (wp.id.includes('fiorina_foundry_cooling_tower_damper') ? '#f97316' : (wp.id.includes('hadley_water_filtration_skid') ? '#38bdf8' : (wp.id.includes('fiorina_ore_conveyor_hopper') ? '#f97316' : (wp.id.includes('nostromo_cryo_stasis_coolant_manifold') ? '#22d3ee' : (wp.id.includes('auriga_xenobio_autopsy_drain_basin') ? '#38bdf8' : (wp.id.includes('romulus_eva_airlock_umbilical_boom') ? '#eab308' : (wp.id.includes('sevastopol_transit_power_inverter') ? '#38bdf8' : (wp.id.includes('uscm_sulaco_hangar_deck_crane') ? '#eab308' : (wp.id.includes('hadley_apc_hydraulic_lift_platform') ? '#f59e0b' : (wp.id.includes('sevastopol_seegson_synthetic_charging_station') ? '#38bdf8' : (wp.id.includes('fiorina_foundry_lead_slag_skimmer') ? '#f97316' : (wp.id.includes('airway_decompression_hatch') ? '#38bdf8' : (wp.id.includes('blackwater_pumping_station') ? '#a855f7' : (wp.id.includes('core_molding_pit') ? '#f97316' : (wp.id.includes('incubation_vault') ? '#22d3ee' : (wp.id.includes('stasis_exhaust_diffuser') ? '#38bdf8' : (wp.id.includes('kinetic_security_grille') ? '#eab308' : (wp.id.includes('tactical_holo_plinth') ? '#38bdf8' : (wp.id.includes('missile_loading_davit') ? '#eab308' : (wp.id.includes('turbopump_bearing_lubricator') ? '#f59e0b' : (wp.id.includes('laundry_steam_ironer') ? '#94a3b8' : (wp.id.includes('life_support_filter') ? '#38bdf8' : (wp.id.includes('dropship_tow_tractor') ? '#eab308' : (wp.id.includes('quench_water_flume') ? '#f97316' : (wp.id.includes('specimen_cryo_carousel') ? '#22d3ee' : (wp.id.includes('docking_guide_laser') ? '#ef4444' : (wp.id.includes('synthetic_testing_cradle') ? '#38bdf8' : (wp.id.includes('colony_siren_tower') ? '#f59e0b' : (wp.id.includes('cargo_pallet_jack') ? '#eab308' : (wp.id.includes('coolant_deaerator_tank') ? '#38bdf8' : (wp.id.includes('lead_ingot_elevator') ? '#f97316' : (wp.id.includes('galley_oven') ? '#38bdf8' : (wp.id.includes('seismic_stabilizer') ? '#f59e0b' : (wp.id.includes('jaw_crusher') ? '#f97316' : (wp.id.includes('biopsy_rack') ? '#22d3ee' : (wp.id.includes('centrifuge_bearing') ? '#f59e0b' : (wp.id.includes('transit_relay') ? '#38bdf8' : (wp.id.includes('creeper_stand') ? '#eab308' : (wp.id.includes('pod_bay_chute') ? '#22c55e' : (wp.id.includes('optical_bus') ? '#38bdf8' : (wp.id.includes('crucible_cradle') ? '#f97316' : (wp.id.includes('scaffold_hoist') ? '#f59e0b' : (wp.id.includes('coolant_circulator') ? '#38bdf8' : (wp.id.includes('dropship_tie_down') ? '#eab308' : (wp.id.includes('hydro_aerator') ? '#22c55e' : (wp.id.includes('apolo_sub_rack') ? '#38bdf8' : (wp.id.includes('hallway_dock_seal') ? '#f59e0b' : (wp.id.includes('biomass_sluice') ? '#ef4444' : (wp.id.includes('foundry_furnace_damper') ? '#f97316' : (wp.id.includes('apc_tow_winch') ? '#eab308' : (wp.id.includes('n2o_tank') ? '#38bdf8' : (wp.id.includes('thyristor') ? '#38bdf8' : (wp.id.includes('flir_turret') ? '#22c55e' : (wp.id.includes('gravity_tether') ? '#f59e0b' : (wp.id.includes('neural_mapping') ? '#22d3ee' : (wp.id.includes('positron') ? '#a855f7' : (wp.id.includes('helium_header') ? '#67e8f9' : (wp.id.includes('turret_hoist') ? '#eab308' : (wp.id.includes('fault_monitor') ? '#ef4444' : (wp.id.includes('clone_pod') ? '#f59e0b' : (wp.id.includes('autodoc') ? '#22d3ee' : (wp.id.includes('sulaco_transponder') ? '#22c55e' : (wp.id.includes('black_goo_isolator') ? '#a855f7' : (wp.id.includes('ovipositor_cradle') ? '#f59e0b' : (wp.id.includes('atp_fusion') ? '#38bdf8' : (wp.id.includes('muthur_memory') ? '#facc15' : (wp.id.includes('barometer_tower') ? '#eab308' : (wp.id.includes('halon_manifold') ? '#ef4444' : (wp.id.includes('landing_jack') ? '#eab308' : (wp.id.includes('embryo_scanner') ? '#34d399' : (wp.id.includes('dt_injector') ? '#38bdf8' : (wp.id.includes('flux_damper') ? '#38bdf8' : (wp.id.includes('smoke_discharger') ? '#eab308' : (wp.id.includes('marshal_armory') ? '#22c55e' : (wp.id.includes('gene_splicer') ? '#34d399' : (wp.id.includes('field_coil') ? '#f59e0b' : (wp.id.includes('gau113_ammo') ? '#eab308' : (wp.id.includes('perimeter_sensor') ? '#22c55e' : (wp.id.includes('polymer_cocoon') ? '#f59e0b' : (wp.id.includes('apollo_busbar') ? '#38bdf8' : (wp.id.includes('condenser_bank') ? '#f59e0b' : (wp.id.includes('m41a_crate') ? '#4ade80' : (wp.id.includes('shackle_arch') ? '#ef4444' : (wp.id.includes('slag_lance') ? '#f97316' : (wp.id.includes('pager_rack') ? '#22c55e' : (wp.id.includes('carbon_bed') ? '#f59e0b' : (wp.id.includes('ammo_feed') ? '#eab308' : (wp.id.includes('borehole') ? '#ef4444' : (wp.id.includes('dross_ladle') ? '#f97316' : (wp.id.includes('nutrient') ? '#34d399' : (wp.id.includes('autoclave') ? '#f59e0b' : (wp.id.includes('exchanger') ? '#38bdf8' : (wp.id.includes('holotable') ? '#22d3ee' : (wp.id.includes('missile_pod') ? '#ef4444' : (wp.id.includes('slag_pot') ? '#f97316' : (wp.id.includes('chrono') ? '#22c55e' : (wp.id.includes('substation') ? '#f59e0b' : (wp.id.includes('dewar') ? '#38bdf8' : (wp.id.includes('m40') ? '#eab308' : (wp.id.includes('siren') ? '#ef4444' : (wp.id.includes('tape_archive') ? '#22c55e' : (wp.id.includes('diffuser') ? '#f97316' : (wp.id.includes('radome') ? '#f59e0b' : (wp.id.includes('sequencer') ? '#34d399' : (wp.id.includes('ua571') ? '#eab308' : (wp.id.includes('plasma_torch') ? '#38bdf8' : (wp.id.includes('evaporator') ? '#38bdf8' : (wp.id.includes('apollo') ? '#fbbf24' : (wp.id.includes('quarantine') ? '#ef4444' : (wp.id.includes('satellite_dish') ? '#22c55e' : (wp.id.includes('rtg') ? '#eab308' : (wp.id.includes('thruster') ? '#64748b' : (wp.id.includes('pantograph') ? '#f97316' : (wp.id.includes('smartgun') ? '#22c55e' : (wp.id.includes('decoy') ? '#22c55e' : (wp.id.includes('nitrogen') ? '#38bdf8' : (wp.id.includes('hydrazine') ? '#f97316' : (wp.id.includes('maglev') ? '#fbbf24' : (wp.id.includes('sentinel_relay') ? '#22c55e' : (wp.id.includes('power_commutator') ? '#60a5fa' : (wp.id.includes('claymore') ? '#f43f5e' : (wp.id.includes('tuyere') ? '#f97316' : '#38bdf8'))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
               ctx.fillStyle = col;
               ctx.beginPath();
               ctx.arc(px, py, 2.6, 0, Math.PI * 2);
@@ -13085,7 +13141,20 @@
         { id: 'sevastopol_reactor_plasma_conduit_shroud_1', factory: 'createSevastopolReactorPlasmaConduitShroud', name: 'Carénage Conduit Plasma Sevastopol', x: 74, z: 18, hx: 1.0, hz: 0.8, radius: 8.0, damage: 260, color: 0x38bdf8, label: 'PERCÉE CARÉNAGE PLASMA SEVASTOPOL', toast: 'CONFINEMENT MAGNÉTIQUE ROMPU : Arc plasma thermo-nucléaire à 50 000°C !', log: '[PLASMA SHROUD] Rupture de blindage du conduit plasma primaire.', fx: { type: 'square', f0: 1820, f1: 180, dur: 0.85, cutoff: 3600, vol: 0.74 }, anim: 'plasma_magnetic_core_glow', shock: true },
         { id: 'fiorina_foundry_scrap_metal_baler_1', factory: 'createFiorinaFoundryScrapMetalBaler', name: 'Presse à Ferraille Fiorina 161', x: -24, z: 84, hx: 1.1, hz: 0.9, radius: 8.5, damage: 240, color: 0xf97316, label: 'ÉCRASEMENT MATRICE PRESSE FIORINA', toast: 'PLATEAU DE COMPRESSION DÉFORMÉ : Rupture de conduite huile sous 400 bars !', log: '[SCRAP BALER] Surcharge de tonnage de la presse de fonderie Fiorina.', fx: { type: 'sawtooth', f0: 480, f1: 60, dur: 1.2, cutoff: 2000, vol: 0.75 }, anim: 'baler_vertical_hydraulic_ram', slag: true }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs, ...wave40Defs, ...wave41Defs, ...wave42Defs, ...wave43Defs, ...wave44Defs, ...wave45Defs, ...wave46Defs, ...wave47Defs, ...wave48Defs, ...wave49Defs, ...wave50Defs, ...wave51Defs, ...wave52Defs, ...wave53Defs, ...wave54Defs, ...wave55Defs, ...wave56Defs, ...wave57Defs, ...wave58Defs, ...wave59Defs].forEach((def) => {
+      // VAGUE 60 (Chantiers 591 à 600 - CAP HISTORIQUE 300 PROPS !) : Saumure Nostromo, Géothermie Hadley, Pont Fiorina & Cuve Trempe
+      const wave60Defs = [
+        { id: 'nostromo_subdeck_brine_evaporator_1', factory: 'createNostromoSubdeckBrineEvaporator', name: 'Unité d\'Évaporation de Saumure Nostromo', x: -36, z: -82, hx: 1.0, hz: 0.8, radius: 8.0, damage: 215, color: 0x22d3ee, label: 'ÉBULLITION SOUPAPE ÉVAPORATEUR NOSTROMO', toast: 'DESSALINISATEUR EN SURCHAUFFE : Jet de vapeur de saumure bouillante à 180°C !', log: '[BRINE EVAPORATOR] Surpression thermique du bouilleur d\'eau salée sous-pont.', fx: { type: 'sawtooth', f0: 1550, f1: 140, dur: 1.0, cutoff: 3600, vol: 0.72 }, anim: 'brine_vent_vapor_plume', chemical: true },
+        { id: 'hadley_geothermal_wellhead_valve_tree_1', factory: 'createHadleyGeothermalWellheadValveTree', name: 'Tête de Puits Géothermique Hadley', x: 68, z: -38, hx: 1.1, hz: 0.8, radius: 8.5, damage: 245, color: 0xeab308, label: 'DÉCHARGE SOUPAPE PUITS GÉOTHERMIQUE HADLEY', toast: 'PRESSION CRITIQUE TÊTE DE PUITS : Jet de vapeur supercritique 350 bars !', log: '[GEOTHERMAL WELLHEAD] Déclenchement de la soupape de sûreté du puits profond.', fx: { type: 'sawtooth', f0: 950, f1: 85, dur: 1.3, cutoff: 2400, vol: 0.78 }, anim: 'geothermal_relief_flare', shock: true },
+        { id: 'fiorina_foundry_crane_cab_1', factory: 'createFiorinaFoundryCraneCab', name: 'Cabine Suspendue Pont Roulant Fiorina 161', x: 28, z: 72, hx: 1.0, hz: 0.9, radius: 8.5, damage: 235, color: 0xf97316, label: 'RUPTURE CÂBLES SUSPENSION CABINE FIORINA', toast: 'TREUIL DE LEVAGE BRISÉ : Oscillation violente de la cabine suspendue 12 tonnes !', log: '[CRANE CAB] Rupture de câble porteur du pont de coulée Fiorina 161.', fx: { type: 'square', f0: 820, f1: 95, dur: 1.1, cutoff: 2300, vol: 0.74 }, anim: 'crane_operator_warning_beacon', slag: true },
+        { id: 'auriga_transgenic_incubator_1', factory: 'createAurigaTransgenicIncubator', name: 'Incubateur Transgénique Spécimens USM Auriga', x: -76, z: -42, hx: 0.9, hz: 0.7, radius: 7.5, damage: 220, color: 0x38bdf8, label: 'FISSURE CUVE TRANSGÉNIQUE AURIGA', toast: 'CHAMBRE D\'ISOLATION BRISÉE : Fuite de fluide amniotique ambré et chocs !', log: '[TRANSGENIC INCUBATOR] Rupture du cylindre de biostimulation Auriga.', fx: { type: 'sine', f0: 1750, f1: 140, dur: 1.0, cutoff: 4100, vol: 0.7 }, anim: 'transgenic_view_cylinder', chemical: true },
+        { id: 'romulus_cryo_expansion_tank_1', factory: 'createRomulusCryoExpansionTank', name: 'Vase d\'Expansion Cryogénique Romulus', x: 48, z: 82, hx: 1.0, hz: 0.8, radius: 8.0, damage: 215, color: 0x38bdf8, label: 'RUPTURE DILATATION CRYO ROMULUS', toast: 'BALLON TAMPON EN SURPRESSION : Éjection de liquide frigorigène sous vide !', log: '[CRYO EXPANSION TANK] Éclatement de la membrane de dilatation azote.', fx: { type: 'sawtooth', f0: 1650, f1: 130, dur: 0.95, cutoff: 3800, vol: 0.7 }, anim: 'cryo_liquid_frost_ring', chemical: true },
+        { id: 'sevastopol_apollo_cooling_plenum_1', factory: 'createSevastopolApolloCoolingPlenum', name: 'Plénum Refroidissement APOLLO Sevastopol', x: -16, z: -54, hx: 1.0, hz: 0.8, radius: 8.0, damage: 230, color: 0xeab308, label: 'SURCHAUFFE CAISSON VENTILATION APOLLO', toast: 'REGISTRE MOTORISÉ CALÉ : Flux thermique bloqué et alarme noyau optique !', log: '[APOLLO PLENUM] Blocage des volets de ventilation forcée de l\'IA APOLLO.', fx: { type: 'square', f0: 1450, f1: 190, dur: 0.88, cutoff: 3500, vol: 0.7 }, anim: 'apollo_plenum_sensor_bar', alarm: true },
+        { id: 'uscm_sulaco_ordnance_dolly_1', factory: 'createUscmSulacoOrdnanceDolly', name: 'Chariot de Transfert Torpilles USS Sulaco', x: -52, z: 48, hx: 1.1, hz: 0.7, radius: 7.5, damage: 225, color: 0xeab308, label: 'BASCULEMENT CHARIOT MUNITIONS SULACO', toast: 'BERCEAU TORPILLE DÉVERROUILLÉ : Torpille M-401 de 500 kg projetée au sol !', log: '[ORDNANCE DOLLY] Rupture des brides de retenue de torpille USS Sulaco.', fx: { type: 'square', f0: 920, f1: 110, dur: 0.95, cutoff: 2500, vol: 0.72 }, anim: 'm401_hazard_ring', shock: true },
+        { id: 'hadley_scrubber_blower_fan_1', factory: 'createHadleyScrubberBlowerFan', name: 'Ventilateur Centrifuge Tour Épuration Hadley', x: 52, z: -62, hx: 1.1, hz: 0.9, radius: 8.5, damage: 240, color: 0xa855f7, label: 'EMBALLEMENT TURBINE CENTRIFUGE HADLEY', toast: 'ROTOR ASYNCHRONE DÉSAXÉ : Vibration destructive et onde de souffle !', log: '[SCRUBBER BLOWER] Rupture des roulements de la volute d\'extraction Hadley.', fx: { type: 'sawtooth', f0: 750, f1: 80, dur: 1.15, cutoff: 2200, vol: 0.74 }, anim: 'centrifugal_scroll_housing', shock: true },
+        { id: 'sevastopol_joe_recond_bench_1', factory: 'createSevastopolJoeRecondBench', name: 'Banc Reconditionnement Accumulateurs Working Joe', x: 58, z: 22, hx: 1.0, hz: 0.7, radius: 7.5, damage: 210, color: 0xeab308, label: 'COURT-CIRCUIT BANC ACCUS SEEGSON', toast: 'ARCS 15kV SUR LES CONNECTEURS DE CHARGE : Emballement thermique des piles lithium !', log: '[BATTERY RECOND BENCH] Court-circuit d\'alimentation sur le banc Working Joe.', fx: { type: 'square', f0: 1520, f1: 160, dur: 0.85, cutoff: 3300, vol: 0.68 }, anim: 'recond_charging_leads', shock: true },
+        { id: 'fiorina_foundry_quench_weir_1', factory: 'createFiorinaFoundryQuenchWeir', name: 'Déversoir Trop-Plein Cuve Trempe Fiorina 161', x: -18, z: 92, hx: 1.1, hz: 0.8, radius: 8.5, damage: 250, color: 0xf97316, label: 'DÉBORDEMENT DÉVERSOIR CUVE FIORINA (CAP 300 PROPS)', toast: 'SEUIL DÉVERSANT OBSTRUÉ : Vague de boues de plomb et vapeur d\'eau brûlante !', log: '[QUENCH WEIR - CAP 300 PROPS] Rupture d\'évacuation du trop-plein de trempe Fiorina.', fx: { type: 'sawtooth', f0: 460, f1: 55, dur: 1.25, cutoff: 2100, vol: 0.76 }, anim: 'quench_effluent_steam_layer', slag: true }
+      ];
+      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs, ...wave40Defs, ...wave41Defs, ...wave42Defs, ...wave43Defs, ...wave44Defs, ...wave45Defs, ...wave46Defs, ...wave47Defs, ...wave48Defs, ...wave49Defs, ...wave50Defs, ...wave51Defs, ...wave52Defs, ...wave53Defs, ...wave54Defs, ...wave55Defs, ...wave56Defs, ...wave57Defs, ...wave58Defs, ...wave59Defs, ...wave60Defs].forEach((def) => {
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -22771,6 +22840,198 @@
       jawDamage: 205,
       tailDamage: 195
     }),
+    obsidian_mantle_goliath: Object.freeze({
+      key: 'obsidian_mantle_goliath',
+      label: 'GOLIATH D\'OBSIDIENNE & MANTEAU VOLCANIQUE (AVP EXTINCTION / ROGUE)',
+      maxHealth: 630,
+      speed: 0.42,
+      huntAction: 'PERCUSSION GOLIATH D\'OBSIDIENNE ET BROYAGE SISMIQUE DE TECTONIQUE',
+      huntCost: 45,
+      huntRange: 84,
+      huntDamage: 320,
+      jawDamage: 280,
+      tailDamage: 250
+    }),
+    spectral_chameleon_wraith: Object.freeze({
+      key: 'spectral_chameleon_wraith',
+      label: 'SPECTRE CAMÉLÉON PRÉDATEUR SILENCIEUX (ALIENS: LABYRINTH / DARK HORSE)',
+      maxHealth: 410,
+      speed: 0.56,
+      huntAction: 'PHASAGE SPECTRAL CAMÉLÉON ET ÉGORGEMENT SILENCIEUX FOUDROYANT',
+      huntCost: 34,
+      huntRange: 72,
+      huntDamage: 225,
+      jawDamage: 195,
+      tailDamage: 180
+    }),
+    spore_blister_matriarch: Object.freeze({
+      key: 'spore_blister_matriarch',
+      label: 'MATRIARCHE PORTEUSE DE VÉSICULES BIOLOGIQUES (ALIEN: EARTH / COVENANT)',
+      maxHealth: 750,
+      speed: 0.37,
+      huntAction: 'EXPLOSION DE VÉSICULES BIOLOGIQUES ET BRUMISATION ACIDE CORROSIVE',
+      huntCost: 52,
+      huntRange: 96,
+      huntDamage: 380,
+      jawDamage: 335,
+      tailDamage: 300
+    }),
+    chitin_plated_vanguard: Object.freeze({
+      key: 'chitin_plated_vanguard',
+      label: 'AVANT-GARDE À CARAPACE HYPER-DENSIFIÉE (ALIENS: FIRETEAM ELITE / DEFIANCE)',
+      maxHealth: 460,
+      speed: 0.50,
+      huntAction: 'CHARGE D\'AVANT-GARDE PERFORANTE ET BALAYAGE CAUDAL CYLINDRÉ',
+      huntCost: 38,
+      huntRange: 75,
+      huntDamage: 260,
+      jawDamage: 220,
+      tailDamage: 210
+    }),
+    magma_crust_behemoth: Object.freeze({
+      key: 'magma_crust_behemoth',
+      label: 'BÉHÉMOTH À CROÛTE DE MAGMA TECTONIQUE (AVP EXTINCTION / ERADICATION)',
+      maxHealth: 640,
+      speed: 0.41,
+      huntAction: 'BROYAGE MAGMATIQUE DU BÉHÉMOTH ET ONDE DE CHOC DE LAITIER',
+      huntCost: 46,
+      huntRange: 86,
+      huntDamage: 330,
+      jawDamage: 285,
+      tailDamage: 255
+    }),
+    stalker_shadow_lurker: Object.freeze({
+      key: 'stalker_shadow_lurker',
+      label: 'RÔDEUR DES OMBRES À AIGUILLON VENIMEUX (ALIENS: LABYRINTH / ROGUE)',
+      maxHealth: 405,
+      speed: 0.57,
+      huntAction: 'ATTAQUE DE L\'OMBRE FOUDROYANTE ET PIQÛRE NEUROTOXIQUE CAUDALE',
+      huntCost: 33,
+      huntRange: 70,
+      huntDamage: 220,
+      jawDamage: 190,
+      tailDamage: 180
+    }),
+    corrosive_bile_queen: Object.freeze({
+      key: 'corrosive_bile_queen',
+      label: 'REINE CAUSTIQUE À VÉSICULES D\'ACIDE (ALIEN: EARTH / GENOCIDE)',
+      maxHealth: 745,
+      speed: 0.38,
+      huntAction: 'GERBE OMNIDIRECTIONNELLE DE BILE CAUSTIQUE ET RUGISSEMENT D\'ACIDE',
+      huntCost: 51,
+      huntRange: 95,
+      huntDamage: 375,
+      jawDamage: 330,
+      tailDamage: 295
+    }),
+    armored_siege_strider: Object.freeze({
+      key: 'armored_siege_strider',
+      label: 'ARPENTEUR DE SIÈGE À CARAPACE RENFORCÉE (PROMETHEUS / FIRE AND STONE)',
+      maxHealth: 455,
+      speed: 0.51,
+      huntAction: 'PERCÉE DE SIÈGE ENJAMBANTE ET ÉPERONNAGE BLINDÉ FRONTAL',
+      huntCost: 37,
+      huntRange: 74,
+      huntDamage: 255,
+      jawDamage: 215,
+      tailDamage: 205
+    }),
+    obsidian_slag_titan: Object.freeze({
+      key: 'obsidian_slag_titan',
+      label: 'TITAN DE LAITIER D\'OBSIDIENNE & SCORIE (AVP EXTINCTION / ERADICATION)',
+      maxHealth: 650,
+      speed: 0.40,
+      huntAction: 'BROYAGE SISMIQUE DE LAITIER D\'OBSIDIENNE ET PERCUSSION D\'ÉPERONS',
+      huntCost: 47,
+      huntRange: 88,
+      huntDamage: 340,
+      jawDamage: 290,
+      tailDamage: 260
+    }),
+    stalker_phantom_infiltrator: Object.freeze({
+      key: 'stalker_phantom_infiltrator',
+      label: 'INFILTRATEUR FANTÔME FURTIF D\'OBSIDIENNE (ALIENS: LABYRINTH / DARK HORSE)',
+      maxHealth: 415,
+      speed: 0.58,
+      huntAction: 'CAMOUFLAGE FANTÔME ET DILACÉRATION SILENCIEUSE AUX SERRES',
+      huntCost: 33,
+      huntRange: 72,
+      huntDamage: 225,
+      jawDamage: 195,
+      tailDamage: 185
+    }),
+    acid_blister_broodmother: Object.freeze({
+      key: 'acid_blister_broodmother',
+      label: 'MÈRE DE COUVÉE À VÉSICULES D\'ACIDE (ALIEN: EARTH / COVENANT)',
+      maxHealth: 760,
+      speed: 0.37,
+      huntAction: 'PROJECTION DE GRAPPES D\'OEUFS CAUSTIQUES ET NUAGE D\'ACIDE',
+      huntCost: 53,
+      huntRange: 98,
+      huntDamage: 385,
+      jawDamage: 340,
+      tailDamage: 305
+    }),
+    chitin_armored_crusher: Object.freeze({
+      key: 'chitin_armored_crusher',
+      label: 'ÉCRASEUR LOURD À BLINDAGE DE CHITINE (ALIENS: FIRETEAM ELITE / DEFIANCE)',
+      maxHealth: 470,
+      speed: 0.50,
+      huntAction: 'IMPACT BLINDÉ FRONTAL ET DILACÉRATION PAR ÉPERONS CRÂNIENS',
+      huntCost: 39,
+      huntRange: 76,
+      huntDamage: 265,
+      jawDamage: 225,
+      tailDamage: 215
+    }),
+    magma_crusher_behemoth_prime: Object.freeze({
+      key: 'magma_crusher_behemoth_prime',
+      label: 'TITAN BÉHÉMOTH SUPRÊME DE MAGMA (AVP EXTINCTION / ERADICATION)',
+      maxHealth: 660,
+      speed: 0.44,
+      huntAction: 'CHARGE MAGMATIQUE FRONTAL ET PERCEMENT PAR ÉPERONS D\'OBSIDIENNE',
+      huntCost: 48,
+      huntRange: 82,
+      huntDamage: 330,
+      jawDamage: 285,
+      tailDamage: 260
+    }),
+    shadow_stalker_phantom_apex: Object.freeze({
+      key: 'shadow_stalker_phantom_apex',
+      label: 'RÔDEUR FANTÔME APEX D\'OMBRE (ALIENS: LABYRINTH / DARK HORSE)',
+      maxHealth: 425,
+      speed: 0.58,
+      huntAction: 'EMBUSCADE FURTIVE SPECTRALE ET LACÉRATION PAR SERRES MANTIFORMES',
+      huntCost: 36,
+      huntRange: 85,
+      huntDamage: 245,
+      jawDamage: 210,
+      tailDamage: 200
+    }),
+    acid_queen_matriarch_omega: Object.freeze({
+      key: 'acid_queen_matriarch_omega',
+      label: 'MATRIARCHE REINE OMÉGA D\'ACIDE (ALIEN: COVENANT / EARTH)',
+      maxHealth: 770,
+      speed: 0.36,
+      huntAction: 'ÉJECTION D\'ACIDE ROYAL HYPER-CONCENTRÉ ET PERFORATION CAUDALE DOUBLE',
+      huntCost: 55,
+      huntRange: 102,
+      huntDamage: 395,
+      jawDamage: 350,
+      tailDamage: 320
+    }),
+    chitin_shield_crusher_juggernaut: Object.freeze({
+      key: 'chitin_shield_crusher_juggernaut',
+      label: 'JUGGERNAUT ÉCRASEUR BOUCLIER CHITINE (ALIENS: FIRETEAM ELITE)',
+      maxHealth: 480,
+      speed: 0.49,
+      huntAction: 'PERCUSSION LOURDE TRIPLES BOUCLIERS ET BROYAGE PAR MASSUE CAUDALE',
+      huntCost: 40,
+      huntRange: 78,
+      huntDamage: 275,
+      jawDamage: 235,
+      tailDamage: 225
+    })
   });
 
   class PlayerCreature {
@@ -25635,7 +25896,7 @@
           ? 420
           : (['weyland_cryo_containment_mech_suit'].includes(type)
             ? 270
-          : (['weyland_commando_mk2', 'weyland_combat_android', 'weyland_praetorian_droid', 'weyland_sublevel_heavy_sentry_synth', 'weyland_elite_combat_synth_centurion', 'weyland_apex_synthetic_executioner', 'weyland_strike_synth_infiltrator', 'weyland_sublevel_hunter_synth'].includes(type)
+          : (['weyland_commando_mk2', 'weyland_combat_android', 'weyland_praetorian_droid', 'weyland_sublevel_heavy_sentry_synth', 'weyland_elite_combat_synth_centurion', 'uscm_heavy_anti_air_gunner', 'uscm_combat_cyber_medic', 'weyland_sublevel_riot_infiltrator', 'weyland_apex_synthetic_executioner', 'uscm_forward_spotter_sniper', 'uscm_combat_flamethrower_sapper', 'weyland_sublevel_heavy_warden', 'weyland_strike_synth_infiltrator', 'uscm_recon_pathfinder_commando', 'uscm_heavy_siege_engineer', 'weyland_containment_assault_enforcer', 'weyland_sublevel_hunter_synth', 'uscm_heavy_anti_armor_specialist', 'uscm_combat_support_medic', 'weyland_sublevel_breach_warden', 'weyland_elite_infiltrator_centurion', 'weyland_apex_synthetic_executioner', 'weyland_strike_synth_infiltrator', 'weyland_sublevel_hunter_synth', 'weyland_elite_infiltrator_centurion'].includes(type)
             ? 260
             : (['weyland_exec_security_synth'].includes(type)
               ? 255
@@ -25647,7 +25908,7 @@
                     ? 240
                     : (['seegson_hazmat_joe', 'uscm_synthetic_bishop'].includes(type)
                       ? 230
-                      : (['weyland_apex_containment_specialist', 'weyland_sublevel_riot_infiltrator', 'weyland_sublevel_heavy_warden', 'weyland_containment_assault_enforcer'].includes(type)
+                      : (['weyland_apex_containment_specialist', 'weyland_sublevel_riot_infiltrator', 'weyland_sublevel_heavy_warden', 'weyland_containment_assault_enforcer', 'weyland_sublevel_breach_warden'].includes(type)
                         ? 225
                         : (['uscm_phalanx_shield', 'weyland_strike_synth', 'weyland_containment_commando', 'uscm_exo_rig_loader', 'weyland_royal_jelly_harvester', 'weyland_sublevel_containment_marshal'].includes(type)
                         ? 220
@@ -25659,11 +25920,11 @@
                               ? 205
                               : (['weyland_black_goo_specialist', 'uscm_orbital_defense_gunner'].includes(type)
                                 ? 200
-                                : (['uscm_heavy_flamer', 'uscm_veteran_smartgunner', 'weyland_hazmat_incinerator', 'weyland_apex_handler', 'uscm_heavy_grenadier', 'uscm_pulse_lance_gunner', 'weyland_mutagen_flamer_specialist', 'weyland_cryo_containment_ward', 'uscm_command_apc_gunner', 'uscm_breach_torch_sapper', 'uscm_heavy_anti_armor_gunner', 'uscm_heavy_anti_air_gunner', 'uscm_combat_flamethrower_sapper', 'uscm_heavy_siege_engineer'].includes(type)
+                                : (['uscm_heavy_flamer', 'uscm_veteran_smartgunner', 'weyland_hazmat_incinerator', 'weyland_apex_handler', 'uscm_heavy_grenadier', 'uscm_pulse_lance_gunner', 'weyland_mutagen_flamer_specialist', 'weyland_cryo_containment_ward', 'uscm_command_apc_gunner', 'uscm_breach_torch_sapper', 'uscm_heavy_anti_armor_gunner', 'uscm_heavy_anti_air_gunner', 'uscm_combat_flamethrower_sapper', 'uscm_heavy_siege_engineer', 'uscm_heavy_anti_armor_specialist'].includes(type)
                                   ? 195
                                   : (['uscm_smartgun_flamer', 'uscm_riot_suppressor', 'uscm_cn20_nerve_gas_specialist', 'uscm_cryo_sweeper', 'uscm_cbrn_decon_sweeper', 'uscm_railgun_marksman', 'uscm_combat_cyberneticist', 'uscm_heavy_mortar_spotter'].includes(type)
                                     ? 185
-                                    : (['uscm_demolitionist', 'weyland_director_officer', 'uscm_smart_missile_spotter', 'uscm_orbital_drop_medic', 'uscm_combat_synapse_operator', 'uscm_combat_cyber_medic'].includes(type)
+                                    : (['uscm_demolitionist', 'weyland_director_officer', 'uscm_smart_missile_spotter', 'uscm_orbital_drop_medic', 'uscm_combat_synapse_operator', 'uscm_combat_cyber_medic', 'uscm_combat_support_medic'].includes(type)
                                       ? 180
                                       : (['uscm_hazmat_tech', 'uscm_field_commander', 'uscm_mortar_trooper', 'weyland_xenoborg_handler', 'uscm_colonial_marshal', 'uscm_chemical_recon_scout', 'uscm_recon_drone_handler', 'uscm_point_defense_technician', 'uscm_forward_sensor_operator', 'uscm_recon_pathfinder_commando'].includes(type)
                                         ? 175
@@ -25714,9 +25975,9 @@
       this.cryoNetCooldown = 5.0;
       this.whitePhosphorusCooldown = 7.0 + Math.random() * 4.0;
       this.sadarRocketCooldown = 6.0 + Math.random() * 4.0;
-      this.hostEligibility = ['android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_heavy_mech', 'weyland_combat_android', 'seegson_industrial_joe', 'uscm_synthetic_bishop', 'weyland_corporate_synth_guard', 'weyland_bio_containment_synth', 'weyland_cyborg_enforcer', 'weyland_heavy_incinerator_synth', 'weyland_synth_overseer', 'weyland_android_infiltrator', 'weyland_praetorian_droid', 'weyland_combat_medic_synth', 'weyland_exec_security_synth', 'weyland_nano_repair_synth', 'weyland_sublevel_heavy_sentry_synth', 'weyland_cryo_containment_mech_suit', 'weyland_elite_combat_synth_centurion', 'weyland_apex_synthetic_executioner', 'weyland_strike_synth_infiltrator', 'weyland_sublevel_hunter_synth'].includes(type)
+      this.hostEligibility = ['android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_heavy_mech', 'weyland_combat_android', 'seegson_industrial_joe', 'uscm_synthetic_bishop', 'weyland_corporate_synth_guard', 'weyland_bio_containment_synth', 'weyland_cyborg_enforcer', 'weyland_heavy_incinerator_synth', 'weyland_synth_overseer', 'weyland_android_infiltrator', 'weyland_praetorian_droid', 'weyland_combat_medic_synth', 'weyland_exec_security_synth', 'weyland_nano_repair_synth', 'weyland_sublevel_heavy_sentry_synth', 'weyland_cryo_containment_mech_suit', 'weyland_elite_combat_synth_centurion', 'weyland_apex_synthetic_executioner', 'weyland_strike_synth_infiltrator', 'weyland_sublevel_hunter_synth', 'weyland_elite_infiltrator_centurion'].includes(type)
         ? 'none'
-        : (['commando', 'uscm_hazmat_tech', 'weyland_containment_squad', 'uscm_exosuit_commando', 'uscm_phalanx_shield', 'weyland_specimen_trapper', 'weyland_containment_commando', 'weyland_ape_suit_specialist', 'uscm_riot_suppressor', 'weyland_black_ops_assassin', 'uscm_cn20_nerve_gas_specialist', 'weyland_hazmat_incinerator', 'uscm_cryo_sweeper', 'weyland_apex_handler', 'uscm_cbrn_decon_sweeper', 'weyland_shock_enforcer', 'weyland_neomorph_researcher', 'weyland_mutagen_flamer_specialist', 'uscm_exo_rig_loader', 'weyland_cryo_containment_ward', 'uscm_command_apc_gunner', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'uscm_breach_torch_sapper', 'weyland_xeno_tamer_commando', 'uscm_heavy_plasma_gunner', 'weyland_black_goo_specialist', 'weyland_subzero_cryo_trooper', 'weyland_apex_containment_specialist', 'weyland_genetic_security_enforcer', 'weyland_sublevel_containment_marshal', 'weyland_sublevel_riot_infiltrator', 'weyland_sublevel_heavy_warden', 'weyland_containment_assault_enforcer'].includes(type) ? 'protected' : 'viable');
+        : (['commando', 'uscm_hazmat_tech', 'weyland_containment_squad', 'uscm_exosuit_commando', 'uscm_phalanx_shield', 'weyland_specimen_trapper', 'weyland_containment_commando', 'weyland_ape_suit_specialist', 'uscm_riot_suppressor', 'weyland_black_ops_assassin', 'uscm_cn20_nerve_gas_specialist', 'weyland_hazmat_incinerator', 'uscm_cryo_sweeper', 'weyland_apex_handler', 'uscm_cbrn_decon_sweeper', 'weyland_shock_enforcer', 'weyland_neomorph_researcher', 'weyland_mutagen_flamer_specialist', 'uscm_exo_rig_loader', 'weyland_cryo_containment_ward', 'uscm_command_apc_gunner', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'uscm_breach_torch_sapper', 'weyland_xeno_tamer_commando', 'uscm_heavy_plasma_gunner', 'weyland_black_goo_specialist', 'weyland_subzero_cryo_trooper', 'weyland_apex_containment_specialist', 'weyland_genetic_security_enforcer', 'weyland_sublevel_containment_marshal', 'weyland_sublevel_riot_infiltrator', 'weyland_sublevel_heavy_warden', 'weyland_containment_assault_enforcer', 'weyland_sublevel_breach_warden'].includes(type) ? 'protected' : 'viable');
       this.usedAsHost = false;
       this.isConsumedByCycle = false;
       this.characterKey = null;
@@ -25951,7 +26212,7 @@
       }
 
       // Chantier 53 : Armure céramique et visière blindée anti-acide du Commando Weyland-Yutani MK-II & APE Suit & Bio-Synth
-      if (['weyland_commando_mk2', 'weyland_ape_suit_specialist', 'weyland_bio_containment_synth', 'weyland_hazmat_incinerator', 'uscm_cn20_nerve_gas_specialist', 'weyland_heavy_incinerator_synth', 'uscm_cryo_sweeper', 'uscm_cbrn_decon_sweeper', 'weyland_neomorph_researcher', 'weyland_mutagen_flamer_specialist', 'weyland_cryo_containment_ward', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'weyland_praetorian_droid', 'weyland_combat_medic_synth', 'weyland_black_goo_specialist', 'weyland_exec_security_synth', 'weyland_subzero_cryo_trooper', 'weyland_nano_repair_synth', 'weyland_apex_containment_specialist', 'weyland_sublevel_heavy_sentry_synth', 'weyland_genetic_security_enforcer', 'weyland_cryo_containment_mech_suit', 'weyland_sublevel_containment_marshal', 'weyland_elite_combat_synth_centurion', 'uscm_heavy_anti_air_gunner', 'uscm_combat_cyber_medic', 'weyland_sublevel_riot_infiltrator', 'weyland_apex_synthetic_executioner', 'uscm_forward_spotter_sniper', 'uscm_combat_flamethrower_sapper', 'weyland_sublevel_heavy_warden', 'weyland_strike_synth_infiltrator', 'uscm_recon_pathfinder_commando', 'uscm_heavy_siege_engineer', 'weyland_containment_assault_enforcer', 'weyland_sublevel_hunter_synth', 'weyland_sublevel_riot_infiltrator', 'weyland_apex_synthetic_executioner', 'uscm_forward_spotter_sniper', 'uscm_combat_flamethrower_sapper', 'weyland_sublevel_heavy_warden', 'weyland_strike_synth_infiltrator', 'uscm_recon_pathfinder_commando', 'uscm_heavy_siege_engineer', 'weyland_containment_assault_enforcer', 'weyland_sublevel_hunter_synth', 'weyland_sublevel_heavy_warden', 'weyland_strike_synth_infiltrator', 'uscm_recon_pathfinder_commando', 'uscm_heavy_siege_engineer', 'weyland_containment_assault_enforcer', 'weyland_sublevel_hunter_synth', 'weyland_containment_assault_enforcer', 'weyland_sublevel_hunter_synth'].includes(this.type) && (attacker === 'acid' || (attacker && attacker.isAcidSpit))) {
+      if (['weyland_commando_mk2', 'weyland_ape_suit_specialist', 'weyland_bio_containment_synth', 'weyland_hazmat_incinerator', 'uscm_cn20_nerve_gas_specialist', 'weyland_heavy_incinerator_synth', 'uscm_cryo_sweeper', 'uscm_cbrn_decon_sweeper', 'weyland_neomorph_researcher', 'weyland_mutagen_flamer_specialist', 'weyland_cryo_containment_ward', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'weyland_praetorian_droid', 'weyland_combat_medic_synth', 'weyland_black_goo_specialist', 'weyland_exec_security_synth', 'weyland_subzero_cryo_trooper', 'weyland_nano_repair_synth', 'weyland_apex_containment_specialist', 'weyland_sublevel_heavy_sentry_synth', 'weyland_genetic_security_enforcer', 'weyland_cryo_containment_mech_suit', 'weyland_sublevel_containment_marshal', 'weyland_elite_combat_synth_centurion', 'uscm_heavy_anti_air_gunner', 'uscm_combat_cyber_medic', 'weyland_sublevel_riot_infiltrator', 'weyland_apex_synthetic_executioner', 'uscm_forward_spotter_sniper', 'uscm_combat_flamethrower_sapper', 'weyland_sublevel_heavy_warden', 'weyland_strike_synth_infiltrator', 'uscm_recon_pathfinder_commando', 'uscm_heavy_siege_engineer', 'weyland_containment_assault_enforcer', 'weyland_sublevel_hunter_synth', 'weyland_sublevel_riot_infiltrator', 'weyland_apex_synthetic_executioner', 'uscm_forward_spotter_sniper', 'uscm_combat_flamethrower_sapper', 'weyland_sublevel_heavy_warden', 'weyland_strike_synth_infiltrator', 'uscm_recon_pathfinder_commando', 'uscm_heavy_siege_engineer', 'weyland_containment_assault_enforcer', 'weyland_sublevel_hunter_synth', 'weyland_sublevel_heavy_warden', 'weyland_strike_synth_infiltrator', 'uscm_recon_pathfinder_commando', 'uscm_heavy_siege_engineer', 'weyland_containment_assault_enforcer', 'weyland_sublevel_hunter_synth', 'weyland_containment_assault_enforcer', 'weyland_sublevel_hunter_synth', 'weyland_sublevel_breach_warden', 'weyland_elite_infiltrator_centurion'].includes(this.type) && (attacker === 'acid' || (attacker && attacker.isAcidSpit))) {
         window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf59e0b, 10, 0.08, 0.8);
         window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'BLINDAGE ÉTANCHE ANTI-ACIDE WEYLAND !', '#f59e0b', true);
         return false;
@@ -27862,55 +28123,7 @@
           roughness: 0.32,
           transparent: true,
           opacity: 0.9
-    }),
-    obsidian_mantle_goliath: Object.freeze({
-      key: 'obsidian_mantle_goliath',
-      label: 'GOLIATH D\'OBSIDIENNE & MANTEAU VOLCANIQUE (AVP EXTINCTION / ROGUE)',
-      maxHealth: 630,
-      speed: 0.42,
-      huntAction: 'PERCUSSION GOLIATH D\'OBSIDIENNE ET BROYAGE SISMIQUE DE TECTONIQUE',
-      huntCost: 45,
-      huntRange: 84,
-      huntDamage: 320,
-      jawDamage: 280,
-      tailDamage: 250
-    }),
-    spectral_chameleon_wraith: Object.freeze({
-      key: 'spectral_chameleon_wraith',
-      label: 'SPECTRE CAMÉLÉON PRÉDATEUR SILENCIEUX (ALIENS: LABYRINTH / DARK HORSE)',
-      maxHealth: 410,
-      speed: 0.56,
-      huntAction: 'PHASAGE SPECTRAL CAMÉLÉON ET ÉGORGEMENT SILENCIEUX FOUDROYANT',
-      huntCost: 34,
-      huntRange: 72,
-      huntDamage: 225,
-      jawDamage: 195,
-      tailDamage: 180
-    }),
-    spore_blister_matriarch: Object.freeze({
-      key: 'spore_blister_matriarch',
-      label: 'MATRIARCHE PORTEUSE DE VÉSICULES BIOLOGIQUES (ALIEN: EARTH / COVENANT)',
-      maxHealth: 750,
-      speed: 0.37,
-      huntAction: 'EXPLOSION DE VÉSICULES BIOLOGIQUES ET BRUMISATION ACIDE CORROSIVE',
-      huntCost: 52,
-      huntRange: 96,
-      huntDamage: 380,
-      jawDamage: 335,
-      tailDamage: 300
-    }),
-    chitin_plated_vanguard: Object.freeze({
-      key: 'chitin_plated_vanguard',
-      label: 'AVANT-GARDE À CARAPACE HYPER-DENSIFIÉE (ALIENS: FIRETEAM ELITE / DEFIANCE)',
-      maxHealth: 460,
-      speed: 0.50,
-      huntAction: 'CHARGE D\'AVANT-GARDE PERFORANTE ET BALAYAGE CAUDAL CYLINDRÉ',
-      huntCost: 38,
-      huntRange: 75,
-      huntDamage: 260,
-      jawDamage: 220,
-      tailDamage: 210
-    }),
+        })
       );
       core.name = 'biological-cycle-core';
       core.scale.set(1, this.caste === 'queen' ? 1.8 : 1.35, 1);
@@ -28165,55 +28378,7 @@
             color: particleIndex % 3 === 0 ? 0xff8b77 : 0xb91c36,
             transparent: true,
             opacity: 0.52
-    }),
-    magma_crust_behemoth: Object.freeze({
-      key: 'magma_crust_behemoth',
-      label: 'BÉHÉMOTH À CROÛTE DE MAGMA TECTONIQUE (AVP EXTINCTION / ERADICATION)',
-      maxHealth: 640,
-      speed: 0.41,
-      huntAction: 'BROYAGE MAGMATIQUE DU BÉHÉMOTH ET ONDE DE CHOC DE LAITIER',
-      huntCost: 46,
-      huntRange: 86,
-      huntDamage: 330,
-      jawDamage: 285,
-      tailDamage: 255
-    }),
-    stalker_shadow_lurker: Object.freeze({
-      key: 'stalker_shadow_lurker',
-      label: 'RÔDEUR DES OMBRES À AIGUILLON VENIMEUX (ALIENS: LABYRINTH / ROGUE)',
-      maxHealth: 405,
-      speed: 0.57,
-      huntAction: 'ATTAQUE DE L\'OMBRE FOUDROYANTE ET PIQÛRE NEUROTOXIQUE CAUDALE',
-      huntCost: 33,
-      huntRange: 70,
-      huntDamage: 220,
-      jawDamage: 190,
-      tailDamage: 180
-    }),
-    corrosive_bile_queen: Object.freeze({
-      key: 'corrosive_bile_queen',
-      label: 'REINE CAUSTIQUE À VÉSICULES D\'ACIDE (ALIEN: EARTH / GENOCIDE)',
-      maxHealth: 745,
-      speed: 0.38,
-      huntAction: 'GERBE OMNIDIRECTIONNELLE DE BILE CAUSTIQUE ET RUGISSEMENT D\'ACIDE',
-      huntCost: 51,
-      huntRange: 95,
-      huntDamage: 375,
-      jawDamage: 330,
-      tailDamage: 295
-    }),
-    armored_siege_strider: Object.freeze({
-      key: 'armored_siege_strider',
-      label: 'ARPENTEUR DE SIÈGE À CARAPACE RENFORCÉE (PROMETHEUS / FIRE AND STONE)',
-      maxHealth: 455,
-      speed: 0.51,
-      huntAction: 'PERCÉE DE SIÈGE ENJAMBANTE ET ÉPERONNAGE BLINDÉ FRONTAL',
-      huntCost: 37,
-      huntRange: 74,
-      huntDamage: 255,
-      jawDamage: 215,
-      tailDamage: 205
-    }),
+          })
         );
         particle.position.set(
           (Math.random() - 0.5) * 4.5,
@@ -32268,55 +32433,7 @@
           emissive: 0x581c87,
           emissiveIntensity: 0.75,
           roughness: 0.5
-    }),
-    obsidian_slag_titan: Object.freeze({
-      key: 'obsidian_slag_titan',
-      label: 'TITAN DE LAITIER D\'OBSIDIENNE & SCORIE (AVP EXTINCTION / ERADICATION)',
-      maxHealth: 650,
-      speed: 0.40,
-      huntAction: 'BROYAGE SISMIQUE DE LAITIER D\'OBSIDIENNE ET PERCUSSION D\'ÉPERONS',
-      huntCost: 47,
-      huntRange: 88,
-      huntDamage: 340,
-      jawDamage: 290,
-      tailDamage: 260
-    }),
-    stalker_phantom_infiltrator: Object.freeze({
-      key: 'stalker_phantom_infiltrator',
-      label: 'INFILTRATEUR FANTÔME FURTIF D\'OBSIDIENNE (ALIENS: LABYRINTH / DARK HORSE)',
-      maxHealth: 415,
-      speed: 0.58,
-      huntAction: 'CAMOUFLAGE FANTÔME ET DILACÉRATION SILENCIEUSE AUX SERRES',
-      huntCost: 33,
-      huntRange: 72,
-      huntDamage: 225,
-      jawDamage: 195,
-      tailDamage: 185
-    }),
-    acid_blister_broodmother: Object.freeze({
-      key: 'acid_blister_broodmother',
-      label: 'MÈRE DE COUVÉE À VÉSICULES D\'ACIDE (ALIEN: EARTH / COVENANT)',
-      maxHealth: 760,
-      speed: 0.37,
-      huntAction: 'PROJECTION DE GRAPPES D\'OEUFS CAUSTIQUES ET NUAGE D\'ACIDE',
-      huntCost: 53,
-      huntRange: 98,
-      huntDamage: 385,
-      jawDamage: 340,
-      tailDamage: 305
-    }),
-    chitin_armored_crusher: Object.freeze({
-      key: 'chitin_armored_crusher',
-      label: 'ÉCRASEUR LOURD À BLINDAGE DE CHITINE (ALIENS: FIRETEAM ELITE / DEFIANCE)',
-      maxHealth: 470,
-      speed: 0.50,
-      huntAction: 'IMPACT BLINDÉ FRONTAL ET DILACÉRATION PAR ÉPERONS CRÂNIENS',
-      huntCost: 39,
-      huntRange: 76,
-      huntDamage: 265,
-      jawDamage: 225,
-      tailDamage: 215
-    }),
+        })
       );
       sac.scale.set(1.35, 0.8, 2.2);
       sac.position.set(0, 1.45, -4.2);

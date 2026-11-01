@@ -20,5 +20,9 @@ jobs:
         run: node --check src/alien-base-library.js
       - name: Validation cohérence jeu et snapshots v1/v2
         run: node tools/qa-alien-base.cjs
+      - name: Cohérence biologique et variantes de campagne
+        run: node tools/qa-alien-base-lore.cjs
+      - name: Exactitude de l'export public local
+        run: node tools/sync-alien-base.mjs --source data/alien-base.snapshot.v2.json --check
       - name: Comportement de l'interface archives (DOM simulé)
         run: node tools/qa-alien-base-ui.cjs

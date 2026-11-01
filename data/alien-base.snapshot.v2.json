@@ -8,8 +8,8 @@
   "sourceContent": {
     "repository": "darknigthmare/eager-curie",
     "path": "src/content.js",
-    "commit": "352d7610661b8ece376bc2a2056a02c293b35750",
-    "blobSha": "d29a17c69850fbb4655f537424b56ca5be488eda"
+    "commit": "dd3d417b103a56a2c9f3b6510040106df6693926",
+    "blobSha": "21a4b3a88b8183ef54b3370b4c994265030ffc09"
   },
   "records": [
     {
@@ -1853,6 +1853,570 @@
       "classification": "project-source"
     },
     {
+      "id": "profile.whw.equipment.alien1979-compression-helmet",
+      "kind": "source-equipment-profile",
+      "name": "Compression Helmet",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.alien1979-compression-suit",
+      "kind": "source-equipment-profile",
+      "name": "Compression Suit",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.alien1979-flamethrower",
+      "kind": "source-equipment-profile",
+      "name": "Flamethrower — Nostromo",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.alien1979-flashlight",
+      "kind": "source-equipment-profile",
+      "name": "Flashlight — Dallas",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.alien1979-harpoon-gun",
+      "kind": "source-equipment-profile",
+      "name": "Harpoon Gun — Nostromo",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.alien1979-pistol",
+      "kind": "source-equipment-profile",
+      "name": "Pistol — Dallas",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-ammo-bag",
+      "kind": "source-equipment-profile",
+      "name": "Ammo Bag",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-flamethrower",
+      "kind": "source-equipment-profile",
+      "name": "Flame Thrower",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-flashlight",
+      "kind": "source-equipment-profile",
+      "name": "Flashlight",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-headset",
+      "kind": "source-equipment-profile",
+      "name": "Headset",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-helmet",
+      "kind": "source-equipment-profile",
+      "name": "Helmet",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-knife",
+      "kind": "source-equipment-profile",
+      "name": "Knife",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-laptop",
+      "kind": "source-equipment-profile",
+      "name": "Sentry Laptop",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-motion-detector",
+      "kind": "source-equipment-profile",
+      "name": "Motion Detector",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-pistol",
+      "kind": "source-equipment-profile",
+      "name": "Pistol",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-pulse-rifle",
+      "kind": "source-equipment-profile",
+      "name": "Pulse Rifle",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-sentry-gun",
+      "kind": "source-equipment-profile",
+      "name": "Sentry Gun",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-shotgun",
+      "kind": "source-equipment-profile",
+      "name": "Shotgun",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-shoulder-lamp",
+      "kind": "source-equipment-profile",
+      "name": "Shoulder Lamp",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-smartgun",
+      "kind": "source-equipment-profile",
+      "name": "Smartgun — Vasquez",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-smartgun-harness",
+      "kind": "source-equipment-profile",
+      "name": "Smartgun Harness",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-vasquez-pistol",
+      "kind": "source-equipment-profile",
+      "name": "Pistol — Vasquez",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.aliens1986-welding-torch",
+      "kind": "source-equipment-profile",
+      "name": "Welding Torch",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.dd-black-camo-armor-set",
+      "kind": "source-equipment-profile",
+      "name": "Black Camo Armor Set",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.dd-cryopod",
+      "kind": "source-equipment-profile",
+      "name": "Cryopod — opening cinematics",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.dd-motion-tracker",
+      "kind": "source-equipment-profile",
+      "name": "Motion Tracker",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.dd-pulse-rifle",
+      "kind": "source-equipment-profile",
+      "name": "Pulse Rifle — cinematic prop",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.dd-rpg",
+      "kind": "source-equipment-profile",
+      "name": "RPG",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.dd-service-pistol",
+      "kind": "source-equipment-profile",
+      "name": "Service Pistol",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.dd-sniper-rifle",
+      "kind": "source-equipment-profile",
+      "name": "Sniper Rifle",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.dd-sniper-silencer",
+      "kind": "source-equipment-profile",
+      "name": "Sniper Silencer",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.dd-synthetic-stun-baton",
+      "kind": "source-equipment-profile",
+      "name": "Stun Baton — synthetics",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.earth-transition-table",
+      "kind": "source-equipment-profile",
+      "name": "Transition Table",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-backpack",
+      "kind": "source-equipment-profile",
+      "name": "Backpack · accessoire Amanda",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-bolt-gun",
+      "kind": "source-equipment-profile",
+      "name": "Bolt Gun",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-emp-mine",
+      "kind": "source-equipment-profile",
+      "name": "EMP Mine",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-flamethrower",
+      "kind": "source-equipment-profile",
+      "name": "Flamethrower",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-flare",
+      "kind": "source-equipment-profile",
+      "name": "Flare",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-flashbang",
+      "kind": "source-equipment-profile",
+      "name": "Flashbang",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-flashlight",
+      "kind": "source-equipment-profile",
+      "name": "Flashlight",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-gas-torch",
+      "kind": "source-equipment-profile",
+      "name": "Gas Torch",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-ion-torch",
+      "kind": "source-equipment-profile",
+      "name": "Ion Torch",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-maintenance-jack",
+      "kind": "source-equipment-profile",
+      "name": "Maintenance Jack",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-medikit",
+      "kind": "source-equipment-profile",
+      "name": "Medikit",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-molotov",
+      "kind": "source-equipment-profile",
+      "name": "Molotov",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-motion-tracker",
+      "kind": "source-equipment-profile",
+      "name": "Motion Tracker",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-noisemaker",
+      "kind": "source-equipment-profile",
+      "name": "Noisemaker",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-pipe-bomb",
+      "kind": "source-equipment-profile",
+      "name": "Pipe Bomb",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-plasma-torch",
+      "kind": "source-equipment-profile",
+      "name": "Plasma Torch",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-revolver",
+      "kind": "source-equipment-profile",
+      "name": "Revolver",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-security-access-tuner",
+      "kind": "source-equipment-profile",
+      "name": "Security Access Tuner",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-shotgun",
+      "kind": "source-equipment-profile",
+      "name": "Shotgun",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-smoke-bomb",
+      "kind": "source-equipment-profile",
+      "name": "Smokebomb",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.isolation-stun-baton",
+      "kind": "source-equipment-profile",
+      "name": "Stun Baton",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.prometheus-david8-helmet",
+      "kind": "source-equipment-profile",
+      "name": "David8 Helmet",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.resurrection-draco-double-burner",
+      "kind": "source-equipment-profile",
+      "name": "Draco Double Burner",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.resurrection-lacrima99-shockrifle",
+      "kind": "source-equipment-profile",
+      "name": "Lacrima 99 Shockrifle",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-airlock-door-opener",
+      "kind": "source-equipment-profile",
+      "name": "Airlock Door Opener",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-body-heat-temp-meter",
+      "kind": "source-equipment-profile",
+      "name": "Body Heat Temp Meter",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-cryoframe",
+      "kind": "source-equipment-profile",
+      "name": "Cryo Frame",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-door-opener",
+      "kind": "source-equipment-profile",
+      "name": "Door Opener",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-f44aa",
+      "kind": "source-equipment-profile",
+      "name": "F44AA Pulse Rifle",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-laser",
+      "kind": "source-equipment-profile",
+      "name": "Laser",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-meteor-holder",
+      "kind": "source-equipment-profile",
+      "name": "Meteor Holder",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-microphone",
+      "kind": "source-equipment-profile",
+      "name": "Microphone",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-taser",
+      "kind": "source-equipment-profile",
+      "name": "Taser",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-temperature-scanner",
+      "kind": "source-equipment-profile",
+      "name": "Temperature Scanner",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.equipment.romulus-xray-torch",
+      "kind": "source-equipment-profile",
+      "name": "X Ray Torch",
+      "classification": "source-work-documentary-not-automatically-usable"
+    },
+    {
+      "id": "profile.whw.extended.acm-boiler",
+      "kind": "source-profile",
+      "name": "Boiler — Colonial Marines",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.acm-crusher",
+      "kind": "source-profile",
+      "name": "Crusher — Colonial Marines",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.acm-lurker",
+      "kind": "source-profile",
+      "name": "Lurker — Colonial Marines",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.acm-queen",
+      "kind": "source-profile",
+      "name": "Reine — Colonial Marines",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.acm-raven",
+      "kind": "source-profile",
+      "name": "Raven — Colonial Marines",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.acm-spitter",
+      "kind": "source-profile",
+      "name": "Spitter — Colonial Marines",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.ari-facehugger",
+      "kind": "source-profile",
+      "name": "Facehugger — Rogue Incursion",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.burster",
+      "kind": "source-profile",
+      "name": "Burster — Fireteam Elite",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.covenant-xenomorph",
+      "kind": "source-profile",
+      "name": "Xénomorphe — Alien: Covenant",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.crusher",
+      "kind": "source-profile",
+      "name": "Crusher — Fireteam Elite",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.dark-descent-praetorian",
+      "kind": "source-profile",
+      "name": "Prétorien — Dark Descent",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.deacon",
+      "kind": "source-profile",
+      "name": "Deacon — Prometheus",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.fireteam-queen",
+      "kind": "source-profile",
+      "name": "Reine — Fireteam Elite",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.fireteam-runner",
+      "kind": "source-profile",
+      "name": "Runner — Fireteam Elite",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.kenner-scorpion",
+      "kind": "source-profile",
+      "name": "Scorpion Alien — Kenner / NECA",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.kenner-snake",
+      "kind": "source-profile",
+      "name": "Snake Alien — Kenner / NECA",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.neomorph",
+      "kind": "source-profile",
+      "name": "Neomorph — Alien: Covenant",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.newborn",
+      "kind": "source-profile",
+      "name": "Newborn — Alien Resurrection",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.pathogen-brute",
+      "kind": "source-profile",
+      "name": "Pathogen Brute",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.pathogen-runner",
+      "kind": "source-profile",
+      "name": "Pathogen Runner",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.praetorian",
+      "kind": "source-profile",
+      "name": "Prétorien — Fireteam Elite",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.predalien",
+      "kind": "source-profile",
+      "name": "Predalien — AVP: Requiem",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.prowler",
+      "kind": "source-profile",
+      "name": "Prowler — Fireteam Elite",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.queen-aliens",
+      "kind": "source-profile",
+      "name": "Reine — Aliens",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.runner",
+      "kind": "source-profile",
+      "name": "Runner — Alien 3",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
+      "id": "profile.whw.extended.spitter",
+      "kind": "source-profile",
+      "name": "Spitter — Fireteam Elite",
+      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+    },
+    {
       "id": "vehicle.ad-19d-bearcat-vtol-strikeship",
       "kind": "vehicle",
       "name": "AD-19D Bearcat VTOL Strikeship",
@@ -2469,568 +3033,124 @@
       "originGame": "hive-ascension"
     },
     {
-      "id": "profile.whw.equipment.alien1979-compression-helmet",
-      "kind": "source-equipment-profile",
-      "name": "Compression Helmet",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.elder_lost_tribe_1990",
+      "kind": "character",
+      "name": "Ancien du Lost Tribe",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.alien1979-compression-suit",
-      "kind": "source-equipment-profile",
-      "name": "Compression Suit",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.scar_avp_2004",
+      "kind": "character",
+      "name": "Scar Predator",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.alien1979-flamethrower",
-      "kind": "source-equipment-profile",
-      "name": "Flamethrower — Nostromo",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.celtic_avp_2004",
+      "kind": "character",
+      "name": "Celtic Predator",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.alien1979-flashlight",
-      "kind": "source-equipment-profile",
-      "name": "Flashlight — Dallas",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.chopper_avp_2004",
+      "kind": "character",
+      "name": "Chopper Predator",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.alien1979-harpoon-gun",
-      "kind": "source-equipment-profile",
-      "name": "Harpoon Gun — Nostromo",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.berserker_2010",
+      "kind": "character",
+      "name": "Berserker Predator",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.alien1979-pistol",
-      "kind": "source-equipment-profile",
-      "name": "Pistol — Dallas",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.falconer_2010",
+      "kind": "character",
+      "name": "Falconer Predator",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-ammo-bag",
-      "kind": "source-equipment-profile",
-      "name": "Ammo Bag",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.tracker_2010",
+      "kind": "character",
+      "name": "Tracker Predator",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-flamethrower",
-      "kind": "source-equipment-profile",
-      "name": "Flame Thrower",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.fugitive_2018",
+      "kind": "character",
+      "name": "Fugitive Predator",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-flashlight",
-      "kind": "source-equipment-profile",
-      "name": "Flashlight",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.kok_viking_hunter_2025",
+      "kind": "character",
+      "name": "Chasseur de l’ère viking",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-headset",
-      "kind": "source-equipment-profile",
-      "name": "Headset",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.kok_feudal_hunter_2025",
+      "kind": "character",
+      "name": "Chasseur du Japon féodal",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-helmet",
-      "kind": "source-equipment-profile",
-      "name": "Helmet",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.kok_wartime_hunter_2025",
+      "kind": "character",
+      "name": "Chasseur de l’ère aérienne",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-knife",
-      "kind": "source-equipment-profile",
-      "name": "Knife",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.dek_badlands_2025",
+      "kind": "character",
+      "name": "Dek",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-laptop",
-      "kind": "source-equipment-profile",
-      "name": "Sentry Laptop",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "character.yautja.kwei_badlands_2025",
+      "kind": "character",
+      "name": "Kwei",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-motion-detector",
-      "kind": "source-equipment-profile",
-      "name": "Motion Detector",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "item.yautja.wrist_computer",
+      "kind": "equipment",
+      "name": "Ordinateur de poignet",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-pistol",
-      "kind": "source-equipment-profile",
-      "name": "Pistol",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "item.yautja.self_destruct",
+      "kind": "equipment",
+      "name": "Autodestruction du brassard",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-pulse-rifle",
-      "kind": "source-equipment-profile",
-      "name": "Pulse Rifle",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "item.yautja.tri_laser_targeting",
+      "kind": "equipment",
+      "name": "Viseur à trois points",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-sentry-gun",
-      "kind": "source-equipment-profile",
-      "name": "Sentry Gun",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "item.yautja.feral_bolt_launcher_2022",
+      "kind": "equipment",
+      "name": "Lance-traits du Feral",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-shotgun",
-      "kind": "source-equipment-profile",
-      "name": "Shotgun",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "item.yautja.wolf_dual_plasma_2007",
+      "kind": "equipment",
+      "name": "Double canon à plasma de Wolf",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-shoulder-lamp",
-      "kind": "source-equipment-profile",
-      "name": "Shoulder Lamp",
-      "classification": "source-work-documentary-not-automatically-usable"
+      "id": "vehicle.yautja.jungle_dropcraft_1987",
+      "kind": "vehicle",
+      "name": "Appareil d’insertion de la jungle",
+      "classification": "apex-declared-media-reference-review-required"
     },
     {
-      "id": "profile.whw.equipment.aliens1986-smartgun",
-      "kind": "source-equipment-profile",
-      "name": "Smartgun — Vasquez",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.aliens1986-smartgun-harness",
-      "kind": "source-equipment-profile",
-      "name": "Smartgun Harness",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.aliens1986-vasquez-pistol",
-      "kind": "source-equipment-profile",
-      "name": "Pistol — Vasquez",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.aliens1986-welding-torch",
-      "kind": "source-equipment-profile",
-      "name": "Welding Torch",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.dd-black-camo-armor-set",
-      "kind": "source-equipment-profile",
-      "name": "Black Camo Armor Set",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.dd-cryopod",
-      "kind": "source-equipment-profile",
-      "name": "Cryopod — opening cinematics",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.dd-motion-tracker",
-      "kind": "source-equipment-profile",
-      "name": "Motion Tracker",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.dd-pulse-rifle",
-      "kind": "source-equipment-profile",
-      "name": "Pulse Rifle — cinematic prop",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.dd-rpg",
-      "kind": "source-equipment-profile",
-      "name": "RPG",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.dd-service-pistol",
-      "kind": "source-equipment-profile",
-      "name": "Service Pistol",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.dd-sniper-rifle",
-      "kind": "source-equipment-profile",
-      "name": "Sniper Rifle",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.dd-sniper-silencer",
-      "kind": "source-equipment-profile",
-      "name": "Sniper Silencer",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.dd-synthetic-stun-baton",
-      "kind": "source-equipment-profile",
-      "name": "Stun Baton — synthetics",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.earth-transition-table",
-      "kind": "source-equipment-profile",
-      "name": "Transition Table",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-backpack",
-      "kind": "source-equipment-profile",
-      "name": "Backpack · accessoire Amanda",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-bolt-gun",
-      "kind": "source-equipment-profile",
-      "name": "Bolt Gun",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-emp-mine",
-      "kind": "source-equipment-profile",
-      "name": "EMP Mine",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-flamethrower",
-      "kind": "source-equipment-profile",
-      "name": "Flamethrower",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-flare",
-      "kind": "source-equipment-profile",
-      "name": "Flare",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-flashbang",
-      "kind": "source-equipment-profile",
-      "name": "Flashbang",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-flashlight",
-      "kind": "source-equipment-profile",
-      "name": "Flashlight",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-gas-torch",
-      "kind": "source-equipment-profile",
-      "name": "Gas Torch",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-ion-torch",
-      "kind": "source-equipment-profile",
-      "name": "Ion Torch",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-maintenance-jack",
-      "kind": "source-equipment-profile",
-      "name": "Maintenance Jack",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-medikit",
-      "kind": "source-equipment-profile",
-      "name": "Medikit",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-molotov",
-      "kind": "source-equipment-profile",
-      "name": "Molotov",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-motion-tracker",
-      "kind": "source-equipment-profile",
-      "name": "Motion Tracker",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-noisemaker",
-      "kind": "source-equipment-profile",
-      "name": "Noisemaker",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-pipe-bomb",
-      "kind": "source-equipment-profile",
-      "name": "Pipe Bomb",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-plasma-torch",
-      "kind": "source-equipment-profile",
-      "name": "Plasma Torch",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-revolver",
-      "kind": "source-equipment-profile",
-      "name": "Revolver",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-security-access-tuner",
-      "kind": "source-equipment-profile",
-      "name": "Security Access Tuner",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-shotgun",
-      "kind": "source-equipment-profile",
-      "name": "Shotgun",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-smoke-bomb",
-      "kind": "source-equipment-profile",
-      "name": "Smokebomb",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.isolation-stun-baton",
-      "kind": "source-equipment-profile",
-      "name": "Stun Baton",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.prometheus-david8-helmet",
-      "kind": "source-equipment-profile",
-      "name": "David8 Helmet",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.resurrection-draco-double-burner",
-      "kind": "source-equipment-profile",
-      "name": "Draco Double Burner",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.resurrection-lacrima99-shockrifle",
-      "kind": "source-equipment-profile",
-      "name": "Lacrima 99 Shockrifle",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-airlock-door-opener",
-      "kind": "source-equipment-profile",
-      "name": "Airlock Door Opener",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-body-heat-temp-meter",
-      "kind": "source-equipment-profile",
-      "name": "Body Heat Temp Meter",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-cryoframe",
-      "kind": "source-equipment-profile",
-      "name": "Cryo Frame",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-door-opener",
-      "kind": "source-equipment-profile",
-      "name": "Door Opener",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-f44aa",
-      "kind": "source-equipment-profile",
-      "name": "F44AA Pulse Rifle",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-laser",
-      "kind": "source-equipment-profile",
-      "name": "Laser",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-meteor-holder",
-      "kind": "source-equipment-profile",
-      "name": "Meteor Holder",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-microphone",
-      "kind": "source-equipment-profile",
-      "name": "Microphone",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-taser",
-      "kind": "source-equipment-profile",
-      "name": "Taser",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-temperature-scanner",
-      "kind": "source-equipment-profile",
-      "name": "Temperature Scanner",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.equipment.romulus-xray-torch",
-      "kind": "source-equipment-profile",
-      "name": "X Ray Torch",
-      "classification": "source-work-documentary-not-automatically-usable"
-    },
-    {
-      "id": "profile.whw.extended.acm-boiler",
-      "kind": "source-profile",
-      "name": "Boiler — Colonial Marines",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.acm-crusher",
-      "kind": "source-profile",
-      "name": "Crusher — Colonial Marines",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.acm-lurker",
-      "kind": "source-profile",
-      "name": "Lurker — Colonial Marines",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.acm-queen",
-      "kind": "source-profile",
-      "name": "Reine — Colonial Marines",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.acm-raven",
-      "kind": "source-profile",
-      "name": "Raven — Colonial Marines",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.acm-spitter",
-      "kind": "source-profile",
-      "name": "Spitter — Colonial Marines",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.ari-facehugger",
-      "kind": "source-profile",
-      "name": "Facehugger — Rogue Incursion",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.burster",
-      "kind": "source-profile",
-      "name": "Burster — Fireteam Elite",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.covenant-xenomorph",
-      "kind": "source-profile",
-      "name": "Xénomorphe — Alien: Covenant",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.crusher",
-      "kind": "source-profile",
-      "name": "Crusher — Fireteam Elite",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.dark-descent-praetorian",
-      "kind": "source-profile",
-      "name": "Prétorien — Dark Descent",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.deacon",
-      "kind": "source-profile",
-      "name": "Deacon — Prometheus",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.fireteam-queen",
-      "kind": "source-profile",
-      "name": "Reine — Fireteam Elite",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.fireteam-runner",
-      "kind": "source-profile",
-      "name": "Runner — Fireteam Elite",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.kenner-scorpion",
-      "kind": "source-profile",
-      "name": "Scorpion Alien — Kenner / NECA",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.kenner-snake",
-      "kind": "source-profile",
-      "name": "Snake Alien — Kenner / NECA",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.neomorph",
-      "kind": "source-profile",
-      "name": "Neomorph — Alien: Covenant",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.newborn",
-      "kind": "source-profile",
-      "name": "Newborn — Alien Resurrection",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.pathogen-brute",
-      "kind": "source-profile",
-      "name": "Pathogen Brute",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.pathogen-runner",
-      "kind": "source-profile",
-      "name": "Pathogen Runner",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.praetorian",
-      "kind": "source-profile",
-      "name": "Prétorien — Fireteam Elite",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.predalien",
-      "kind": "source-profile",
-      "name": "Predalien — AVP: Requiem",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.prowler",
-      "kind": "source-profile",
-      "name": "Prowler — Fireteam Elite",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.queen-aliens",
-      "kind": "source-profile",
-      "name": "Reine — Aliens",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.runner",
-      "kind": "source-profile",
-      "name": "Runner — Alien 3",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
-    },
-    {
-      "id": "profile.whw.extended.spitter",
-      "kind": "source-profile",
-      "name": "Spitter — Fireteam Elite",
-      "classification": "licensed-or-project-work-scoped-profile-not-universal-caste"
+      "id": "vehicle.yautja.city_clan_vessel_1990",
+      "kind": "vehicle",
+      "name": "Vaisseau du clan de Los Angeles",
+      "classification": "apex-declared-media-reference-review-required"
     }
   ],
   "bindings": {
@@ -3419,8 +3539,8 @@
         "id": "royal_facehugger",
         "entityId": "ha.bio.royal-facehugger",
         "name": "Superfacehugger Royal",
-        "role": "Parasite royal blindé transportant la lignée royale",
-        "sourceLoreStatus": "FILM_CORE",
+        "role": "Parasite spécialisé transportant la lignée royale",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
         "canonExact": false,
         "visualFidelity": "not-reviewed"
       },
@@ -3464,8 +3584,8 @@
         "id": "offspring",
         "entityId": "ha.bio.offspring",
         "name": "Offspring (Hybride Z-01)",
-        "role": "Hybride recombinant biomécanique issu du Mutagène Noir",
-        "sourceLoreStatus": "FILM_CORE",
+        "role": "Hybride expérimental Z-01, hors cycle naturel de la ruche",
+        "sourceLoreStatus": "INSPIRED_ORIGINAL",
         "canonExact": false,
         "visualFidelity": "not-reviewed"
       }

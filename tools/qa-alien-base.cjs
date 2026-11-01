@@ -53,7 +53,7 @@ assert.equal(v2.scope, "public-metadata-only");
 assert.equal(v2.status, "reference-only-not-playable");
 assert.equal(v2.sourceContent.blobSha, gitBlobSha);
 assert.equal(v2.sourceContent.commit, snapshot.sourceContent.commit);
-assert.equal(v2.records.length, 474);
+assert.equal(v2.records.length, 494);
 assert.equal(v2.records.filter(x => x.kind === "source-profile").length, 26);
 assert.equal(v2.records.filter(x => x.kind === "source-equipment-profile").length, 68);
 assert.ok(v2.records.every(e => e.kind !== "game-card"));
@@ -82,4 +82,28 @@ for (const row of v2.compatibility) {
 }
 for (const forbidden of ["sourceRefs","gameOnlyProfile","gameOnlyThreat","gameActions"])
   assert.equal(JSON.stringify(v2).includes('"' + forbidden + '"'), false);
-console.log("Alien Base v2 : 474 références minimales, 68 bindings Hive, 52 identités MNEMOSYNE, 94 archives WHW, aucun changement des sauvegardes");
+console.log("Alien Base v2 : 494 références minimales, 68 bindings Hive, 52 identités MNEMOSYNE, 94 archives WHW, aucun changement des sauvegardes");
+
+
+// Reconciliation v2: source classifications and new 20 Yautja documentary references.
+assert.equal(content.metadata.version, "1.1.0");
+assert.equal(snapshot.sourceContent.commit, "dd3d417b103a56a2c9f3b6510040106df6693926");
+assert.equal(v2.sourceContent.commit, "dd3d417b103a56a2c9f3b6510040106df6693926");
+assert.equal(v2.sourceContent.blobSha, "21a4b3a88b8183ef54b3370b4c994265030ffc09");
+for (const [id, loreStatus] of [["royal_facehugger","EXPANDED_COMPATIBLE"],["offspring","INSPIRED_ORIGINAL"]]) {
+  assert.equal(content.castes[id].loreStatus, loreStatus, id);
+  assert.equal(v1.projectIntake.castes.find(x=>x.id===id)?.sourceLoreStatus,loreStatus);
+  assert.equal(v2.projectIntake.castes.find(x=>x.id===id)?.sourceLoreStatus,loreStatus);
+}
+assert.doesNotMatch(content.castes.crusher.evolutionCondition, /exo-armure assimilée/);
+for (const id of [
+  "character.yautja.dek_badlands_2025",
+  "character.yautja.elder_lost_tribe_1990",
+  "item.yautja.wrist_computer",
+  "item.yautja.self_destruct",
+  "vehicle.yautja.jungle_dropcraft_1987"
+]) assert.ok(v2.records.some(x=>x.id===id), "Missing new documentary identity "+id);
+assert.equal(v2.records.filter(x=>x.kind==="character").length,54);
+assert.equal(v2.records.filter(x=>x.kind==="equipment").length,154);
+assert.equal(v2.records.filter(x=>x.kind==="vehicle").length,40);
+console.log("V2 494 fiches, 20 références additionnelles, origine et classification biologiques cohérentes.");

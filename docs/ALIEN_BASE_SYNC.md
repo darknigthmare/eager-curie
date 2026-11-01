@@ -1,7 +1,7 @@
 # Alien Base ↔ HIVE ASCENSION (eager-curie) — intégration v2
 
 ## En service sur cette PR
-Les Archives unifiées dans le menu et le HUD chargent **localement**, sans jeton ni connexion à GitHub privé, `data/alien-base.snapshot.v2.json`. Le catalogue v2 comporte **474 fiches minimales** : organismes, personnages, factions, équipements et armes, lieux, véhicules, vaisseaux, opposition et boss. Il exclut les **158 cartes TCG** et toute statistique de combat. Les 16 castes, 10 ennemis, 4 boss, 5 factions et 21 équipements du jeu sont conservés dans une catégorie distincte. Chaque fiche expose son ID du registre et son type de référence lorsque disponible.
+Les Archives unifiées dans le menu et le HUD chargent **localement**, sans jeton ni connexion à GitHub privé, `data/alien-base.snapshot.v2.json`. Le catalogue v2 comporte **494 fiches minimales** : organismes, personnages, factions, équipements et armes, lieux, véhicules, vaisseaux, opposition et boss. Il exclut les **158 cartes TCG** et toute statistique de combat. Les 16 castes, 10 ennemis, 4 boss, 5 factions et 21 équipements du jeu sont conservés dans une catégorie distincte. Chaque fiche expose son ID du registre et son type de référence lorsque disponible.
 
 Le menu fonctionne toujours si le nouveau fichier est manquant : il retombe alors sur `data/alien-base.snapshot.v1.json` (**58 anciennes références**), sans interrompre la partie.
 
@@ -19,8 +19,9 @@ Le menu fonctionne toujours si le nouveau fichier est manquant : il retombe alor
 Le registre cible n'est plus la PR #3 (désormais archive d'ingestion) :
 1. [Alien_base #4](https://github.com/darknigthmare/alien_base/pull/4) — registre unifié.
 2. [Alien_base #8](https://github.com/darknigthmare/alien_base/pull/8) — compatibilité et dossiers de recherche.
-3. [Alien_base #15](https://github.com/darknigthmare/alien_base/pull/15) — ajout Hive Ascension et export v2.
-4. [Eager-curie #2](https://github.com/darknigthmare/eager-curie/pull/2) — consommation du snapshot v2.
+3. [Alien_base #21](https://github.com/darknigthmare/alien_base/pull/21) — ajout Hive Ascension et export v2.
+4. [Alien_base #23](https://github.com/darknigthmare/alien_base/pull/23) — correctifs biologiques source-vérifiés et réexport du snapshot consolidé.
+5. [Eager-curie #2](https://github.com/darknigthmare/eager-curie/pull/2) — consommation du snapshot v2.
 
 Le fichier est produit par :
 ```sh
@@ -42,3 +43,20 @@ La PR #4 du registre a reçu **68 équipements et 26 profils biologiques documen
 ## Passage direct entre le Codex et le registre
 
 Une entrée **de caste déjà déverrouillée** dans le Codex narratif affiche désormais « CONSULTER LA RÉFÉRENCE ALIEN BASE ». Cette commande ouvre la forme exacte par ID local dans les Archives unifiées, puis son bouton « CONSULTER LA RÉFÉRENCE COMMUNE » rejoint l'identité correspondante. Les entrées verrouillées ne donnent aucun accès indirect aux descriptions et le statut `ha.*` d'une variante originale reste visible. Retour au Codex avec Échap. Les sauvegardes et la logique d'évolution ne sont pas modifiées.
+
+
+## Synchronisation du 1er novembre 2026
+L'export local contient désormais **494 identités**, dont les 20 dernières références documentaires Yautja (13 personnages, 5 équipements, 2 véhicules) issues du registre consolidé. Aucune de ces références n'est débloquée en gameplay par cette mise à jour.
+
+Le nouveau `src/content.js` est basé sur un correctif de contenu épinglé au commit `dd3d417b103a56a2c9f3b6510040106df6693926` (blob `21a4b3a88b8183ef54b3370b4c994265030ffc09`) et comporte neuf clarifications de biologie/lore : Facehugger royal, Offspring Z-01, Crusher, Reine, Palatine, Ovomorphe, Facehugger, Chestburster, Prowler. Les **IDs et sauvegardes sont inchangés**.
+
+Pour comparer votre checkout du jeu et le catalogue central sur disque, sans service réseau :
+```sh
+node tools/sync-alien-base.mjs --source ../alien_base/exports/hive-ascension.v2.json --check
+node tools/sync-alien-base.mjs --source ../alien_base/exports/hive-ascension.v2.json
+# Après revue des changements du catalogue :
+node tools/sync-alien-base.mjs --source ../alien_base/exports/hive-ascension.v2.json --write
+```
+La commande refuse un blob de contenu non correspondant, les cartes TCG de gameplay, les doublons et les champs de dossier non publics.
+
+**Chaîne de PR** : Alien Base #21 → Alien Base #23 → Eager-curie #2. Les anciens exports #6/#15 restent des jalons historiques : ne pas tenter des fusions parallèles vers main. Les essais graphiques et la fidélité 1:1 des modèles restent distincts des tests documentaires.

@@ -385,14 +385,14 @@
     {
       "repository": "darknigthmare/eager-curie",
       "path": "src/content.js",
-      "commit": "352d7610661b8ece376bc2a2056a02c293b35750"
+      "commit": "dd3d417b103a56a2c9f3b6510040106df6693926"
     }
   ],
   "consumer": "darknigthmare/eager-curie",
   "sourceContent": {
-    "commit": "352d7610661b8ece376bc2a2056a02c293b35750",
-    "blobSha": "d29a17c69850fbb4655f537424b56ca5be488eda",
-    "version": "1.0.0"
+    "commit": "dd3d417b103a56a2c9f3b6510040106df6693926",
+    "blobSha": "21a4b3a88b8183ef54b3370b4c994265030ffc09",
+    "version": "1.1.0"
   },
   "projectIntake": {
     "castes": [
@@ -489,8 +489,8 @@
       {
         "id": "royal_facehugger",
         "name": "Superfacehugger Royal",
-        "role": "Parasite royal blindé transportant la lignée royale",
-        "sourceLoreStatus": "FILM_CORE",
+        "role": "Parasite spécialisé transportant la lignée royale",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
         "sharedId": null,
         "researchOnly": true,
         "canonExact": false
@@ -534,8 +534,8 @@
       {
         "id": "offspring",
         "name": "Offspring (Hybride Z-01)",
-        "role": "Hybride recombinant biomécanique issu du Mutagène Noir",
-        "sourceLoreStatus": "FILM_CORE",
+        "role": "Hybride expérimental Z-01, hors cycle naturel de la ruche",
+        "sourceLoreStatus": "INSPIRED_ORIGINAL",
         "sharedId": null,
         "researchOnly": true,
         "canonExact": false

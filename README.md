@@ -16,6 +16,8 @@ Jeu de survie et de stratégie biologique en cinq actes, jouable dans un navigat
 
 Le catalogue narratif et les règles biologiques sont centralisés dans `src/content.js`. L’audit de contenu et de cohérence se trouve dans `GAME_AUDIT.md`.
 
+**Nouveau :** le menu et le HUD proposent **Archives unifiées**, alimenté par une copie locale publique minimale du référentiel [alien_base](https://github.com/darknigthmare/alien_base) : 6 identités partagées, formes biologiques, opposition et équipements de MNEMOSYNE. Voir [ALIEN_BASE_SYNC.md](docs/ALIEN_BASE_SYNC.md). Le jeu ne requiert aucun accès GitHub privé pendant la partie.
+
 ## Cycle biologique jouable
 
 - L’Ovomorphe commence fermé, puis son ouverture est animée après l’arrivée réelle de l’hôte.
@@ -59,6 +61,7 @@ Avec Python Playwright et Chromium installés, démarrer `python3 tools/serve.py
 python3 tools/qa-browser.py --url http://127.0.0.1:8082/
 python3 tools/qa-persistence.py --url http://127.0.0.1:8082/
 python3 tools/qa-gameplay.py --url http://127.0.0.1:8082/
+node tools/qa-alien-base.cjs
 node tools/qa-models.cjs
 ```
 

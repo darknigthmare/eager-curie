@@ -38,3 +38,7 @@ La branche `codex/remainder-20261101@be04f892` diverge de main. Elle corrige la 
 ## Archives documentaires de World Hive Wars (rattrapage PR #4)
 
 La PR #4 du registre a reçu **68 équipements et 26 profils biologiques documentaires** après la création initiale de #8. Ces 94 fiches sont incluses dans le snapshot v2 du jeu avec leurs identifiants centraux inchangés et leurs catégories `source-profile` / `source-equipment-profile`. Elles n'activent aucun spawn, boutique, IA, arme utilisable ou capacité, et n'impliquent pas une fidélité visuelle 1:1. Le répertoire de sauvegarde de HIVE ASCENSION reste inchangé.
+
+## Passage direct entre le Codex et le registre
+
+Une entrée **de caste déjà déverrouillée** dans le Codex narratif affiche désormais « CONSULTER LA RÉFÉRENCE ALIEN BASE ». Cette commande ouvre la forme exacte par ID local dans les Archives unifiées, puis son bouton « CONSULTER LA RÉFÉRENCE COMMUNE » rejoint l'identité correspondante. Les entrées verrouillées ne donnent aucun accès indirect aux descriptions et le statut `ha.*` d'une variante originale reste visible. Retour au Codex avec Échap. Les sauvegardes et la logique d'évolution ne sont pas modifiées.

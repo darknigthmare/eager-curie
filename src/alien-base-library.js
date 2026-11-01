@@ -91,6 +91,18 @@
     overlay.appendChild(panel);
     document.getElementById("app-container").appendChild(overlay);
     overlay.addEventListener("click", (e) => { if (e.target === overlay) shut(); });
+    window.AlienBaseOpenCaste = async (id) => {
+      await open();
+      if (!snapshot) return false;
+      const target = entries.find(e => e.group === "castes" && e.id === String(id));
+      if (!target) return false;
+      typeFilter.value = "castes";
+      queryInput.value = "";
+      selected = target.key;
+      renderList();
+      detail.focus();
+      return true;
+    };
     document.addEventListener("keydown", (e) => {
       if (overlay.hidden) return;
       if (e.key === "Escape") {
@@ -173,6 +185,18 @@
     }
     if (e.group === "equipment") table.appendChild(row("Utilisé par", (e.usedBy || []).join(", ")));
     detail.appendChild(table);
+    if (e.entityId && e.group !== "shared" && snapshot?.records?.some(x => x.id === e.entityId)) {
+      const jump = node("button", "ab-record-jump", "CONSULTER LA RÉFÉRENCE COMMUNE");
+      jump.type = "button";
+      jump.addEventListener("click", () => {
+        typeFilter.value = "all";
+        queryInput.value = "";
+        selected = "shared:" + e.entityId;
+        renderList();
+        detail.focus();
+      });
+      detail.appendChild(jump);
+    }
     detail.appendChild(node("p", "ab-warning", e.group === "shared" ?
       "Référence commune : identité seulement, pas d'asset ni de valeurs de combat." :
       "Entrée provenant du jeu : aucune certification canonique 1:1. Les variantes originales ne sont pas des castes universelles."));

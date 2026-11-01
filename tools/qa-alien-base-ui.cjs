@@ -83,6 +83,11 @@ async function runCase(fallback) {
     filter.value="all"; query.value="offspring"; await query.send("input");
     assert.ok(overlay.querySelectorAll("button.ab-record").length >=2);
     query.value="";await query.send("input");
+    assert.equal(typeof win.AlienBaseOpenCaste, "function");
+    assert.equal(await win.AlienBaseOpenCaste("queen"), true);
+    assert.equal(overlay.querySelectorAll("button.ab-record").length, 16);
+    assert.equal(overlay.hidden, false);
+    assert.equal(await win.AlienBaseOpenCaste("nonexistent-caste"), false);
     const first = overlay.querySelectorAll("button.ab-record")[0];
     await first.send("click");
     assert.equal(first.getAttribute("aria-pressed"),"true");

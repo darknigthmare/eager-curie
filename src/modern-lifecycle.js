@@ -5,6 +5,7 @@
   'use strict';
   const templates = new Map(), TAU = Math.PI * 2;
   const profileCurves = new WeakMap();
+  const facehuggerGrips = new WeakMap();
   const profiles = {
     egg:[[0,.54],[.12,1.00],[.34,1.27],[.58,1.31],[.82,1.20],[1,1.08]],
     parasite:[[0,.12],[.12,.61],[.34,.97],[.6,.96],[.82,.69],[1,.10]],
@@ -364,6 +365,156 @@
         geo.computeVertexNormals();geo.setAttribute('uv2',geo.attributes.uv.clone());geo.computeBoundingBox();geo.computeBoundingSphere();return geo;
       }));region(tail,'parasite-skin');
     }
+    // Face contact is fitted from the carpus, not the spread digits or tail.
+    const carpus=new T.Box3(),p=new T.Vector3(),weights=skinGeometry.attributes.skinWeight,indices=skinGeometry.attributes.skinIndex;
+    for(let i=0;i<skinGeometry.attributes.position.count;i++) {
+      let weight=0;for(let c=0;c<4;c++)if(indices.array[i*4+c]===0)weight+=weights.array[i*4+c];
+      if(weight>.65){p.fromBufferAttribute(skinGeometry.attributes.position,i).multiply(assembly.scale);carpus.expandByPoint(p);}
+    }
+    root.userData.attachmentAnatomy={carpusMin:carpus.min.toArray(),carpusMax:carpus.max.toArray()};
+    // The frontmost point of a head's box is normally the nose, not its lips
+    // or cheeks. Fit the soft ventral membrane to the real facial triangles;
+    // leave the dorsal shell and all eight rigid digit chains untouched.
+    const ventralRest=skinGeometry.attributes.position.array.slice(),ventralNormal=skinGeometry.attributes.normal.array.slice();
+    let ventralTarget=null,ventralTargetNormal=null,ventralAffected=null,ventralAmount=-1;
+    root.userData.configureAttachmentVentral=({triangles,fitScale,offset,canonical,front})=>{
+      if(!triangles?.length)return false;
+      const ray=new T.Ray(),direction=new T.Vector3(0,0,-1),a=new T.Vector3(),b=new T.Vector3(),c=new T.Vector3(),hit=new T.Vector3(),sample=new T.Vector3();
+      const target=ventralRest.slice(),affected=new Uint8Array(skinGeometry.attributes.position.count),gaps=[],deformations=[];let count=0;
+      const projectedBounds=new Float64Array(triangles.length/9*4);
+      for(let j=0,k=0;j<triangles.length;j+=9,k+=4){
+        projectedBounds[k]=Math.min(triangles[j],triangles[j+3],triangles[j+6]);projectedBounds[k+1]=Math.max(triangles[j],triangles[j+3],triangles[j+6]);
+        projectedBounds[k+2]=Math.min(triangles[j+1],triangles[j+4],triangles[j+7]);projectedBounds[k+3]=Math.max(triangles[j+1],triangles[j+4],triangles[j+7]);
+      }
+      for(let i=0;i<skinGeometry.attributes.position.count;i++) {
+        let bodyWeight=0;for(let j=0;j<4;j++)if(indices.array[i*4+j]===0)bodyWeight+=weights.array[i*4+j];
+        // Keep the compliant pad inside the carpus. Skin weights alone have
+        // eight periodic valleys near the digit roots and made a webbed comb.
+        const transverse=ease((.45-Math.abs(ventralRest[i*3]))/.17);
+        const longitudinal=ease((.79-Math.abs(ventralRest[i*3+2]+.04))/.23);
+        const mask=ease((bodyWeight-.92)/.07)*ease((-ventralNormal[i*3+1]-.15)/.65)*transverse*longitudinal;
+        if(mask<.001)continue;
+        sample.fromArray(ventralRest,i*3).multiply(assembly.scale).multiplyScalar(fitScale).applyQuaternion(canonical).add(offset);
+        ray.set(new T.Vector3(sample.x,sample.y,front+.2),direction);let surface=-Infinity;
+        for(let j=0,k=0;j<triangles.length;j+=9,k+=4) {
+          if(sample.x<projectedBounds[k]||sample.x>projectedBounds[k+1]||sample.y<projectedBounds[k+2]||sample.y>projectedBounds[k+3])continue;
+          a.fromArray(triangles,j);b.fromArray(triangles,j+3);c.fromArray(triangles,j+6);
+          if(ray.intersectTriangle(a,b,c,false,hit)&&hit.z>surface)surface=hit.z;
+        }
+        if(!Number.isFinite(surface))continue;
+        const delta=Math.max(-.72,Math.min(.35,(surface+.008-sample.z)/(fitScale*assembly.scale.y)))*mask;
+        target[i*3+1]+=delta;affected[i]=Math.abs(delta)>1e-8?1:0;count++;deformations.push(Math.abs(delta)*fitScale*assembly.scale.y);
+        if(mask>.98)gaps.push(sample.z+delta*fitScale*assembly.scale.y-surface);
+      }
+      if(!count)return false;
+      const position=skinGeometry.attributes.position;position.array.set(target);skinGeometry.computeVertexNormals();
+      const fittedNormal=skinGeometry.attributes.normal.array;
+      ventralTarget=target;ventralTargetNormal=ventralNormal.slice();ventralAffected=affected;
+      for(let i=0;i<affected.length;i++)if(affected[i]){
+        const amount=ease(Math.abs(target[i*3+1]-ventralRest[i*3+1])/.04);
+        sample.fromArray(ventralNormal,i*3).lerp(a.fromArray(fittedNormal,i*3),amount).normalize().toArray(ventralTargetNormal,i*3);
+      }
+      position.array.set(ventralRest);skinGeometry.attributes.normal.array.set(ventralNormal);ventralAmount=-1;
+      gaps.sort((x,y)=>x-y);
+      root.userData.attachmentVentralProfile={samples:count,contactSamples:gaps.length,
+        minimumGap:gaps[0]??null,medianGap:gaps[Math.floor(gaps.length/2)]??null,maximumGap:gaps[gaps.length-1]??null,
+        maximumDeformation:Math.max(...deformations)};
+      return true;
+    };
+    root.userData.updateAttachmentVentral=(amount=0)=>{
+      const value=clamp(Number(amount)||0);if(value===ventralAmount)return;ventralAmount=value;
+      const position=skinGeometry.attributes.position,normal=skinGeometry.attributes.normal;
+      for(let i=0;i<position.array.length;i++)position.array[i]=ventralTarget?parasiteMix(ventralRest[i],ventralTarget[i],value):ventralRest[i];
+      for(let i=0;i<normal.array.length;i+=3) {
+        if(!value||!ventralAffected?.[i/3]){normal.array[i]=ventralNormal[i];normal.array[i+1]=ventralNormal[i+1];normal.array[i+2]=ventralNormal[i+2];continue;}
+        const x=ventralTargetNormal?parasiteMix(ventralNormal[i],ventralTargetNormal[i],value):ventralNormal[i];
+        const y=ventralTargetNormal?parasiteMix(ventralNormal[i+1],ventralTargetNormal[i+1],value):ventralNormal[i+1];
+        const z=ventralTargetNormal?parasiteMix(ventralNormal[i+2],ventralTargetNormal[i+2],value):ventralNormal[i+2],length=Math.hypot(x,y,z)||1;
+        normal.array[i]=x/length;normal.array[i+1]=y/length;normal.array[i+2]=z/length;
+      }
+      position.needsUpdate=true;normal.needsUpdate=true;skinGeometry.computeBoundingBox();skinGeometry.computeBoundingSphere();
+    };
+    const digits=Array.from({length:8},(_,i)=>{
+      const side=i<4?-1:1,row=i%4,hip=root.getObjectByName(`crawler_leg_${i}`),knee=root.getObjectByName(`crawler_knee_${i}`),ankle=root.getObjectByName(`crawler_ankle_${i}`);
+      const links=[knee.position.clone(),ankle.position.clone(),new T.Vector3(side*.28,-.065,(row-1.5)*.06)];
+      return {hip,knee,ankle,links,lengths:links.map(v=>v.length()),side,row,
+        points:Array.from({length:4},()=>new T.Vector3()),target:new T.Vector3(),guide1:new T.Vector3(),guide2:new T.Vector3(),normal:new T.Vector3(),configured:false,
+        direction:new T.Vector3(),end:new T.Vector3(),q0:new T.Quaternion(),q1:new T.Quaternion(),q2:new T.Quaternion(),parent:new T.Quaternion(),inverse:new T.Quaternion()};
+    });
+    root.userData.attachmentDigitMetrics=digits.map(d=>({side:d.side,row:d.row,base:d.hip.position.toArray(),lengths:d.lengths.slice(),terminalVector:d.links[2].toArray()}));
+    root.userData.configureAttachmentDigits=profiles=>{
+      if(!Array.isArray(profiles)||profiles.length!==8)return false;
+      for(let i=0;i<8;i++) {
+        const profile=profiles[i];if(![...profile.target,...profile.guide1,...profile.guide2,...profile.normal].every(Number.isFinite))return false;
+        const digit=digits[i];digit.target.fromArray(profile.target);digit.guide1.fromArray(profile.guide1);digit.guide2.fromArray(profile.guide2);digit.normal.fromArray(profile.normal).normalize();digit.configured=true;
+      }return true;
+    };
+    root.userData.solveAttachmentDigits=({strength=.6}={})=>{
+      const errors=[];
+      for(const d of digits) {
+        if(!d.configured)continue;
+        const p=d.points;p[0].copy(d.hip.position);p[1].copy(d.guide1);p[2].copy(d.guide2);
+        d.end.copy(d.target).addScaledVector(d.normal,-Math.max(0,Math.min(1,Number(strength)||0))*.006);p[3].copy(d.end);
+        const length=d.lengths.reduce((a,b)=>a+b,0),distance=p[0].distanceTo(d.end);
+        if(distance>length*.995)d.end.copy(d.direction.copy(d.end).sub(p[0]).setLength(length*.995)).add(p[0]);
+        for(let iteration=0;iteration<22;iteration++) {
+          p[3].copy(d.end);
+          for(let i=2;i>=0;i--){d.direction.subVectors(p[i],p[i+1]);if(d.direction.lengthSq()<1e-12)d.direction.set(0,1,0);d.direction.setLength(d.lengths[i]);p[i].copy(p[i+1]).add(d.direction);}
+          p[0].copy(d.hip.position);
+          for(let i=1;i<4;i++){d.direction.subVectors(p[i],p[i-1]);if(d.direction.lengthSq()<1e-12)d.direction.set(0,-1,0);d.direction.setLength(d.lengths[i-1]);p[i].copy(p[i-1]).add(d.direction);}
+          if(p[3].distanceToSquared(d.end)<1e-10)break;
+        }
+        d.q0.setFromUnitVectors(d.links[0].clone().normalize(),d.direction.subVectors(p[1],p[0]).normalize());
+        d.inverse.copy(d.q0).invert();d.q1.setFromUnitVectors(d.links[1].clone().normalize(),d.direction.subVectors(p[2],p[1]).applyQuaternion(d.inverse).normalize());
+        d.parent.copy(d.q0).multiply(d.q1);d.inverse.copy(d.parent).invert();d.q2.setFromUnitVectors(d.links[2].clone().normalize(),d.direction.subVectors(p[3],p[2]).applyQuaternion(d.inverse).normalize());
+        d.hip.quaternion.copy(d.q0);d.knee.quaternion.copy(d.q1);d.ankle.quaternion.copy(d.q2);
+        errors.push(p[3].distanceTo(d.target));
+      }
+      root.userData.attachmentContactErrors=errors;
+    };
+    if(tail) {
+      const geometry=tail.geometry,positions=geometry.attributes.position,normals=geometry.attributes.normal;
+      const restPosition=positions.array.slice(),restNormal=normals.array.slice();
+      let attachedPosition=null,attachedNormal=null,lastAmount=-1,profileKey='';
+      root.userData.configureAttachmentNeck=({center,radiusX,radiusY})=>{
+        if(!center||!center.every(Number.isFinite)||!(radiusX>0&&radiusY>0))return false;
+        const rounded=center.map(n=>Math.round(n*30)/30),key=[...rounded,radiusX,radiusY].map(n=>n.toFixed(3)).join('/');
+        if(key===profileKey)return true;
+        profileKey=key;const neck=new T.Vector3().fromArray(rounded),base=tail.parent.position.clone(),points=[new T.Vector3()];
+        const front=new T.Vector3(neck.x,neck.y+radiusY,neck.z+.06);
+        points.push(new T.Vector3().lerpVectors(base,front,.52).sub(base));
+        const circumference=TAU*Math.sqrt((radiusX*radiusX+radiusY*radiusY)/2);
+        const available=Math.max(.2,curve.getLength()*1.08-base.distanceTo(front));
+        const turns=Math.min(.82,Math.max(.20,available/circumference));
+        for(let i=0;i<=18;i++) {
+          const t=i/18,a=Math.PI/2+t*TAU*turns;
+          points.push(new T.Vector3(neck.x+Math.cos(a)*radiusX,neck.y+Math.sin(a)*radiusY,neck.z+.06-t*.13).sub(base));
+        }
+        const coiledCurve=new T.CatmullRomCurve3(points),next=new T.TubeGeometry(coiledCurve,80,1,12,false),np=next.attributes.position;
+        for(let row=0;row<=80;row++) {
+          const t=row/80,center=coiledCurve.getPointAt(t),radius=(.112*Math.pow(1-t,.58)+.012)*(1+.065*Math.cos(t*TAU*27));
+          for(let col=0;col<=12;col++) {
+            const i=row*13+col;np.setXYZ(i,center.x+(np.getX(i)-center.x)*radius,center.y+(np.getY(i)-center.y)*radius,center.z+(np.getZ(i)-center.z)*radius);
+          }
+        }
+        next.computeVertexNormals();attachedPosition=np.array.slice();attachedNormal=next.attributes.normal.array.slice();next.dispose();lastAmount=-1;
+        root.userData.attachmentNeckProfile={center:rounded,radiusX,radiusY,turns,tailLength:coiledCurve.getLength(),naturalTailLength:curve.getLength()};
+        return true;
+      };
+      root.userData.updateAttachmentTail=(amount=0)=>{
+        const a=clamp(Number(amount)||0);bodyBone.scale.set(1,1,1);
+        if(a===lastAmount)return;lastAmount=a;
+        for(let i=0;i<positions.array.length;i++)positions.array[i]=attachedPosition?parasiteMix(restPosition[i],attachedPosition[i],a):restPosition[i];
+        for(let i=0;i<normals.array.length;i+=3) {
+          const x=attachedNormal?parasiteMix(restNormal[i],attachedNormal[i],a):restNormal[i];
+          const y=attachedNormal?parasiteMix(restNormal[i+1],attachedNormal[i+1],a):restNormal[i+1];
+          const z=attachedNormal?parasiteMix(restNormal[i+2],attachedNormal[i+2],a):restNormal[i+2],length=Math.hypot(x,y,z)||1;
+          normals.array[i]=x/length;normals.array[i+1]=y/length;normals.array[i+2]=z/length;
+        }
+        positions.needsUpdate=true;normals.needsUpdate=true;geometry.computeBoundingBox();geometry.computeBoundingSphere();
+      };
+      root.userData.pulseAttachment=phase=>{bodyBone.scale.y=1+Math.sin((Number(phase)||0)*1.7)*.007;};
+    }
   }
   function prepareJuvenile(factory,root,T) {
     removeMatching(root,object=>/^carapace_spine_|^dorsal_spine_/.test(object.name));
@@ -462,6 +613,166 @@
     }
     return root;
   }
+  function facehuggerModel(container) {
+    let model=null;container?.traverse?.(object=>{if(!model&&object.userData?.modelType==='facehugger')model=object;});return model;
+  }
+  function facehuggerHeadFrame(host) {
+    const T=global.THREE,anchor=host?.faceAnchor;if(!T||!anchor?.isObject3D)return null;
+    anchor.updateWorldMatrix(true,false);
+    if(!Number.isFinite(anchor.matrixWorld.determinant())||Math.abs(anchor.matrixWorld.determinant())<1e-9)return null;
+    const origin=anchor.getWorldPosition(new T.Vector3()),rotation=anchor.getWorldQuaternion(new T.Quaternion()),inverse=rotation.clone().invert();
+    const bounds=new T.Box3(),point=new T.Vector3(),surfacePoints=[],surfaceTriangles=[];let vertices=0,neck=null,head=null;
+    const sampleMesh=(object,relevant=null)=>{
+      if(object.isSkinnedMesh)object.skeleton.update();
+      const position=object.geometry.attributes.position,indices=object.geometry.attributes.skinIndex,weights=object.geometry.attributes.skinWeight;
+      const points=new Float64Array(position.count*3),valid=new Uint8Array(position.count);
+      for(let i=0;i<position.count;i++) {
+        if(relevant){let influence=0;for(let j=0;j<4;j++)if(relevant.has(object.skeleton.bones[indices.array[i*4+j]]))influence+=weights.array[i*4+j];if(influence<.6)continue;}
+        point.fromBufferAttribute(position,i);if(object.isSkinnedMesh)object.boneTransform(i,point);
+        point.applyMatrix4(object.matrixWorld).sub(origin).applyQuaternion(inverse);
+        bounds.expandByPoint(point);surfacePoints.push(point.x,point.y,point.z);point.toArray(points,i*3);valid[i]=1;vertices++;
+      }
+      const index=object.geometry.index,triangleCount=index?index.count:position.count;
+      for(let i=0;i<triangleCount;i+=3){const a=index?index.getX(i):i,b=index?index.getX(i+1):i+1,c=index?index.getX(i+2):i+2;
+        if(valid[a]&&valid[b]&&valid[c])surfaceTriangles.push(...points.subarray(a*3,a*3+3),...points.subarray(b*3,b*3+3),...points.subarray(c*3,c*3+3));}
+    };
+    const assets=global.HiveAssetLibrary;
+    host.mesh?.traverse?.(root=>{
+      if(!assets?.handlesRoot?.(root))return;
+      const runtime=assets.getRuntime(root);if(!runtime?.bindings?.head)return;
+      head=runtime.bindings.head;neck=runtime.bindings.neck||neck;
+      const relevant=new Set([head,neck].filter(Boolean));
+      root.updateMatrixWorld(true);
+      root.traverse(object=>{
+        if(object.isSkinnedMesh)sampleMesh(object,relevant);
+      });
+    });
+    if(bounds.isEmpty()) {
+      const node=host.mesh?.getObjectByName?.('helmet_and_comms')||host.mesh?.getObjectByName?.('labhound_head')||
+        host.mesh?.getObjectByName?.('rodent_head')||host.headAnchor;
+      if(node) {
+        const nodes=node.name==='labhound_head'?[node,host.mesh.getObjectByName('labhound_muzzle'),host.mesh.getObjectByName('labhound_nose')].filter(Boolean):[node];
+        if(node.name==='labhound_head')neck=host.mesh.getObjectByName('labhound_neck')||null;
+        for(const part of nodes){part.updateWorldMatrix(true,true);part.traverse(object=>{
+          if(!object.isMesh||!object.geometry?.attributes.position)return;
+          for(let ancestor=object;ancestor;ancestor=ancestor.parent)if(!ancestor.visible||ancestor.userData?.modelType==='facehugger')return;
+          sampleMesh(object);
+        });}
+      }
+    }
+    if(bounds.isEmpty())bounds.set(new T.Vector3(-.27,-.23,-.55),new T.Vector3(.27,.38,-.04));
+    const size=bounds.getSize(new T.Vector3());if(size.x<.08||size.y<.1||size.x>4||size.y>4)return null;
+    const neckPoint=neck?neck.getWorldPosition(new T.Vector3()).sub(origin).applyQuaternion(inverse):new T.Vector3(
+      bounds.getCenter(new T.Vector3()).x,bounds.min.y-.12,(bounds.min.z+bounds.max.z)/2);
+    return {bounds,size,vertices,neck,neckPoint,surfacePoints,surfaceTriangles};
+  }
+  function fitFacehuggerDigits(model,frame,fitScale,offset,canonical) {
+    const T=global.THREE,assembly=model.getObjectByName('crawler_scaled_assembly'),metrics=model.userData.attachmentDigitMetrics;
+    if(!assembly||!metrics)return;
+    const center=frame.bounds.getCenter(new T.Vector3()),half=frame.size.clone().multiplyScalar(.5),inverse=canonical.clone().invert();
+    const local=p=>p.clone().sub(offset).applyQuaternion(inverse).multiplyScalar(1/fitScale).divide(assembly.scale);
+    const profiles=metrics.map(metric=>{
+      const side=-metric.side,row=metric.row,latitude=[-.62,-.22,.25,.62][row],cross=Math.sqrt(1-latitude*latitude);
+      const ideal=new T.Vector3(center.x+side*half.x*cross,center.y+half.y*latitude,center.z+half.z*.05*cross);
+      const origin=new T.Vector3().fromArray(metric.base).multiply(assembly.scale).multiplyScalar(fitScale).applyQuaternion(canonical).add(offset);
+      const reach=metric.lengths.reduce((a,b)=>a+b,0)*fitScale*assembly.scale.x*.97;
+      let best=null,bestCost=Infinity;
+      for(let i=0;i<frame.surfacePoints.length;i+=3) {
+        const p=new T.Vector3(frame.surfacePoints[i],frame.surfacePoints[i+1],frame.surfacePoints[i+2]);
+        if((p.x-center.x)*side<half.x*.25||p.z>frame.bounds.max.z-frame.size.z*.30||p.distanceTo(origin)>reach)continue;
+        const cost=((p.x-ideal.x)/half.x)**2+((p.y-ideal.y)/half.y)**2*3+((p.z-ideal.z)/half.z)**2;
+        if(cost<bestCost){bestCost=cost;best=p;}
+      }
+      best ||= ideal;
+      const normal=best.clone().sub(center).divide(half.clone().multiply(half)).normalize();
+      const target=best.clone().addScaledVector(normal,.018);
+      const y=row===0?frame.bounds.min.y-.005:row===3?frame.bounds.max.y+.005:center.y+half.y*latitude;
+      const guide1=new T.Vector3(center.x+side*(half.x+.045),y,frame.bounds.max.z-frame.size.z*.09),guide2=target.clone().lerp(guide1,.45);
+      return {target:local(target).toArray(),guide1:local(guide1).toArray(),guide2:local(guide2).toArray(),normal:normal.applyQuaternion(inverse).toArray()};
+    });
+    model.userData.configureAttachmentDigits?.(profiles);
+  }
+  function assignFacehuggerWorld(container,anchor,world) {
+    const T=global.THREE;anchor.updateWorldMatrix(true,false);
+    container.matrix.copy(new T.Matrix4().copy(anchor.matrixWorld).invert()).multiply(world);
+    container.matrix.decompose(container.position,container.quaternion,container.scale);container.matrixAutoUpdate=false;
+    container.updateMatrixWorld(true);
+  }
+  function attachFacehugger(container,host,{duration=.18,phase=0}={}) {
+    const T=global.THREE,model=facehuggerModel(container),anchor=host?.faceAnchor;
+    if(!T||!container?.isObject3D||!model||!anchor?.isObject3D||model.userData.hiveFactoryDisposed)return false;
+    const previous=facehuggerGrips.get(container);
+    if(previous&&previous.host===host&&container.parent===anchor)return updateFacehuggerGrip(container,{phase});
+    const frame=facehuggerHeadFrame(host),anatomy=model.userData.attachmentAnatomy;if(!frame||!anatomy)return false;
+    container.updateWorldMatrix(true,true);
+    const start=model.matrixWorld.clone(),startPosition=new T.Vector3(),startRotation=new T.Quaternion(),startScale=new T.Vector3();
+    start.decompose(startPosition,startRotation,startScale);
+    const carpus=new T.Box3(new T.Vector3().fromArray(anatomy.carpusMin),new T.Vector3().fromArray(anatomy.carpusMax)),size=carpus.getSize(new T.Vector3()),center=carpus.getCenter(new T.Vector3());
+    const fitScale=Math.min(frame.size.x*1.13/size.x,frame.size.y*1.16/size.z);
+    if(!Number.isFinite(fitScale)||fitScale<=0)return false;
+    const faceCenter=frame.bounds.getCenter(new T.Vector3()),surface=frame.bounds.max.z;
+    const offset=new T.Vector3(faceCenter.x+center.x*fitScale,faceCenter.y-center.z*fitScale,surface-carpus.min.y*fitScale+.018);
+    const canonical=new T.Quaternion().setFromEuler(new T.Euler(-Math.PI/2,0,Math.PI));
+    fitFacehuggerDigits(model,frame,fitScale,offset,canonical);
+    model.userData.configureAttachmentVentral?.({triangles:frame.surfaceTriangles,fitScale,offset,canonical,front:frame.bounds.max.z});
+    const initialJoints=(model.userData.animationRig?.bindPose||[]).map(entry=>({joint:entry.joint,quaternion:entry.joint.quaternion.clone()}));
+    if(container!==model) {
+      model.position.set(0,0,0);model.quaternion.identity();model.scale.set(1,1,1);
+      model.userData.runtimeBasePose={position:model.position.clone(),quaternion:model.quaternion.clone(),scale:model.scale.clone()};
+    }
+    anchor.add(container);
+    const record={host,anchor,model,frame,fitScale,offset,startPosition,startRotation,startScale,initialJoints,
+      elapsed:0,duration:Math.max(0,Math.min(.5,Number(duration)||0)),phase:Number(phase)||0,
+      canonical};
+    facehuggerGrips.set(container,record);
+    return updateFacehuggerGrip(container,{phase});
+  }
+  function updateFacehuggerGrip(container,{deltaSeconds=0,phase=0,strength=1}={}) {
+    const T=global.THREE,record=facehuggerGrips.get(container);
+    if(!T||!record||container.parent!==record.anchor||record.host?.isDestroyed||record.model.userData.hiveFactoryDisposed)return false;
+    const {anchor,model}=record;record.elapsed+=Math.max(0,Math.min(.1,Number(deltaSeconds)||0));record.phase=Number(phase)||0;
+    const weight=record.duration>0?ease(record.elapsed/record.duration):1;
+    anchor.updateWorldMatrix(true,false);
+    const facePosition=anchor.getWorldPosition(new T.Vector3()),faceRotation=anchor.getWorldQuaternion(new T.Quaternion());
+    const targetPosition=record.offset.clone().applyQuaternion(faceRotation).add(facePosition),targetRotation=faceRotation.clone().multiply(record.canonical);
+    const target=new T.Matrix4().compose(targetPosition,targetRotation,new T.Vector3().setScalar(record.fitScale));
+    const assembly=model.getObjectByName('crawler_scaled_assembly');
+    if(assembly) {
+      assembly.updateMatrix();const targetAssembly=target.clone().multiply(assembly.matrix),inverse=new T.Matrix4().copy(targetAssembly).invert();
+      const neck=record.frame.neck?record.frame.neck.getWorldPosition(new T.Vector3()):record.frame.neckPoint.clone().applyQuaternion(faceRotation).add(facePosition);
+      const radiusX=record.frame.size.x*.39+.03,radiusY=record.frame.size.z*.30+.04;
+      model.userData.configureAttachmentNeck?.({center:neck.applyMatrix4(inverse).toArray(),radiusX:radiusX/(record.fitScale*assembly.scale.x),radiusY:radiusY/(record.fitScale*assembly.scale.y)});
+    }
+    model.userData.animateEvolution?.({phase:record.phase,pose:'attached',amount:1,movement:0,strength:clamp(Number(strength)||0)});
+    model.userData.updateAttachmentTail?.(weight);
+    model.userData.updateAttachmentVentral?.(weight);
+    model.userData.pulseAttachment?.(record.phase);
+    if(weight<1)for(const entry of record.initialJoints)entry.joint.quaternion.slerpQuaternions(entry.quaternion,entry.joint.quaternion.clone(),weight);
+    const position=record.startPosition.clone().lerp(targetPosition,weight),rotation=record.startRotation.clone().slerp(targetRotation,weight);
+    const scale=record.startScale.clone().lerp(new T.Vector3().setScalar(record.fitScale),weight);
+    assignFacehuggerWorld(container,anchor,new T.Matrix4().compose(position,rotation,scale));
+    record.diagnostics={headVertices:record.frame.vertices,headSize:record.frame.size.toArray(),carpusSize:new T.Vector3().fromArray(record.model.userData.attachmentAnatomy.carpusMax)
+      .sub(new T.Vector3().fromArray(record.model.userData.attachmentAnatomy.carpusMin)).multiplyScalar(record.fitScale).toArray(),
+      fitScale:record.fitScale,progress:weight,ventralBoxMargin:.018,
+      ventralGap:model.userData.attachmentVentralProfile?.medianGap??null,ventralContact:model.userData.attachmentVentralProfile||null,pose:model.userData.pose};
+    record.diagnostics.fingerContacts=model.userData.attachmentContactErrors?.length||0;
+    record.diagnostics.contactSolveError=Math.max(0,...(model.userData.attachmentContactErrors||[]))*record.fitScale*(assembly?.scale.x||1);
+    return true;
+  }
+  function detachFacehugger(container,{parent=null}={}) {
+    const T=global.THREE,record=facehuggerGrips.get(container);if(!T||!record||!container?.parent)return false;
+    container.updateWorldMatrix(true,true);const world=container.matrixWorld.clone(),destination=parent||container.parent;
+    destination.updateWorldMatrix(true,false);destination.add(container);
+    const local=new T.Matrix4().copy(destination.matrixWorld).invert().multiply(world);container.matrix.copy(local);
+    local.decompose(container.position,container.quaternion,container.scale);
+    const rebuilt=new T.Matrix4().compose(container.position,container.quaternion,container.scale);
+    container.matrixAutoUpdate=rebuilt.elements.every((v,i)=>Math.abs(v-local.elements[i])<1e-7);
+    container.updateMatrixWorld(true);facehuggerGrips.delete(container);
+    return true;
+  }
+  function getFacehuggerGripDiagnostics(container) {
+    const record=facehuggerGrips.get(container);return record?.diagnostics?{...record.diagnostics}:null;
+  }
   function fitSuspendedHost(factory,cocoon,host,{ceilingHeight=6.12}={}) {
     const T=global.THREE,body=cocoon?.getObjectByName?.('cocoon_main_body'),human=host?.mesh||host;
     if(!T||!body?.isMesh||!human?.isObject3D||body.parent!==cocoon)return null;
@@ -558,5 +869,6 @@
       maximumNormalizedSquared,vertices:points.length/3,hiddenEquipment:equipmentVisibility.length,frozenImportedRoots:importedRuntimes.length,ceilingHeight};
     cocoon.userData.suspendedHostFit={pose,host:human,previousHostPose,previousTransforms,equipmentVisibility,importedRuntimes};return pose;
   }
-  global.HiveModernLifecycle={createEgg,prepare,fitSuspendedHost,getDiagnostics:()=>({version:1,cachedTemplates:templates.size})};
+  global.HiveModernLifecycle={createEgg,prepare,fitSuspendedHost,attachFacehugger,updateFacehuggerGrip,detachFacehugger,getFacehuggerGripDiagnostics,
+    getDiagnostics:()=>({version:1,cachedTemplates:templates.size})};
 })(typeof window==='undefined'?globalThis:window);

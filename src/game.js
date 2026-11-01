@@ -336,10 +336,11 @@
         case 'grip': this.playFacehuggerGrip(x, z); break;
         case 'detach':
           this.playLayers([
-            { noise: 'brown', duration: 0.3, cutoff: 620, cutoffEnd: 240, level: 0.18 },
-            { f0: 95, f1: 33, duration: 0.17, delay: 0.25, level: 0.18 },
-            ...[0.27, 0.31, 0.38].map((delay) => ({ noise: 'white', filter: 'bandpass', cutoff: 1900, duration: 0.035, delay, level: 0.06 }))
-          ], x, z, 28);
+            // Release is tissue/fabric friction only. The small floor impact
+            // belongs to the actual parasite landing, not to detachment.
+            { noise: 'brown', filter: 'bandpass', duration: 0.3, cutoff: 620, cutoffEnd: 240, level: 0.1 },
+            { noise: 'white', filter: 'bandpass', cutoff: 1400, cutoffEnd: 500, duration: 0.1, delay: 0.06, level: 0.035 }
+          ], x, z, 18);
           break;
         case 'wake': this.playHostBreath(x, z, false); this.playHostCough(x, z); break;
         case 'panic': this.playHostBreath(x, z, true); break;
@@ -366,6 +367,106 @@
         { noise: 'brown', filter: 'bandpass', cutoff: panic ? 740 : 490, cutoffEnd: 920, duration: panic ? 0.23 : 0.52, attack: 0.06, level: panic ? 0.2 : 0.11, sustain: true },
         { noise: 'brown', filter: 'bandpass', cutoff: 620, cutoffEnd: 310, duration: panic ? 0.28 : 0.66, delay: panic ? 0.3 : 0.62, attack: 0.04, level: panic ? 0.18 : 0.1 }
       ], x, z, panic ? 28 : 16);
+    }
+
+    _playEncounterFoley(layers, x, z, radius, intensity = 0.5) {
+      // The encounter owns contact times and repetition. This helper adds no
+      // wall-clock job, music transition, permanent voice or hidden scheduler.
+      if (!this.initialized || !this.ctx || this.isMuted || this.isPaused || !(this.volume > 0) ||
+        !Number.isFinite(x) || !Number.isFinite(z) || !layers?.length) return false;
+      const amount = Number.isFinite(intensity) ? Math.max(0, Math.min(1, intensity)) : 0.5;
+      if (!amount) return false;
+      this.playLayers(layers.map(layer => ({ ...layer, level: layer.level * amount })), x, z, radius);
+      return true;
+    }
+
+    playHostFoley(action, x = null, z = null, options = {}) {
+      const soft = options?.surface === 'resin' || options?.surface === 'water';
+      let layers, radius = 15;
+      switch (action) {
+        case 'cloth':
+          layers = [
+            { noise: 'brown', filter: 'bandpass', cutoff: 1050, cutoffEnd: 430, duration: 0.24, attack: 0.025, level: 0.075 },
+            { noise: 'white', filter: 'bandpass', cutoff: 2050, cutoffEnd: 1100, duration: 0.1, delay: 0.045, level: 0.022 }
+          ]; radius = 11; break;
+        case 'recoil':
+          layers = [
+            { noise: 'brown', filter: 'bandpass', cutoff: 650, cutoffEnd: 1050, duration: 0.23, attack: 0.025, level: 0.14 },
+            { noise: 'white', filter: 'bandpass', cutoff: 1900, cutoffEnd: 850, duration: 0.105, level: 0.045 },
+            { noise: 'brown', filter: 'bandpass', cutoff: 980, cutoffEnd: 440, duration: 0.2, delay: 0.08, level: 0.055 }
+          ]; break;
+        case 'struggle':
+          // Filtered exhalation and sleeves, not a synthesized spoken voice.
+          layers = [
+            { noise: 'brown', filter: 'bandpass', cutoff: 380, cutoffEnd: 720, duration: 0.29, attack: 0.055, level: 0.11 },
+            { noise: 'brown', filter: 'bandpass', cutoff: 1200, cutoffEnd: 490, duration: 0.2, delay: 0.11, level: 0.075 },
+            { noise: 'white', filter: 'bandpass', cutoff: 1900, cutoffEnd: 700, duration: 0.12, delay: 0.08, level: 0.026 }
+          ]; radius = 14; break;
+        case 'collapse':
+          layers = [
+            { noise: 'brown', cutoff: soft ? 420 : 740, cutoffEnd: 180, duration: 0.28, attack: 0.009, level: 0.24 },
+            { f0: 76, f1: 34, cutoff: 300, duration: 0.22, level: 0.085 },
+            { noise: 'white', filter: 'bandpass', cutoff: soft ? 940 : 1750, cutoffEnd: 510, duration: 0.1, delay: 0.025, level: 0.043 }
+          ]; radius = 22; break;
+        case 'brace':
+          layers = [
+            { noise: 'brown', cutoff: soft ? 620 : 1150, cutoffEnd: 390, duration: 0.1, attack: 0.006, level: 0.105 },
+            { noise: 'white', filter: 'bandpass', cutoff: soft ? 1000 : 2300, cutoffEnd: 950, duration: 0.065, delay: 0.025, level: 0.028 }
+          ]; radius = 13; break;
+        case 'rise':
+          layers = [
+            { noise: 'brown', filter: 'bandpass', cutoff: 1050, cutoffEnd: 340, duration: 0.37, attack: 0.05, level: 0.09 },
+            { noise: 'white', filter: 'bandpass', cutoff: 1700, cutoffEnd: 700, duration: 0.11, delay: 0.15, level: 0.025 },
+            { noise: 'brown', filter: 'bandpass', cutoff: 410, cutoffEnd: 690, duration: 0.24, delay: 0.17, attack: 0.04, level: 0.06 }
+          ]; radius = 13; break;
+        case 'parasite-drop':
+          layers = [
+            { noise: 'brown', cutoff: soft ? 720 : 1300, cutoffEnd: 320, duration: 0.1, attack: 0.004, level: 0.085 },
+            { noise: 'white', filter: 'bandpass', cutoff: 2200, cutoffEnd: 800, duration: 0.035, delay: 0.035, level: 0.025 },
+            { noise: 'brown', filter: 'bandpass', cutoff: 1400, cutoffEnd: 620, duration: 0.06, delay: 0.06, level: 0.026 }
+          ]; radius = 12; break;
+        default: return false;
+      }
+      return this._playEncounterFoley(layers, x, z, radius,
+        Number.isFinite(options?.intensity) ? options.intensity : 0.5);
+    }
+
+    playEggSense(kind, x = null, z = null) {
+      let layers;
+      switch (kind) {
+        case 'heat':
+          layers = [
+            { noise: 'brown', cutoff: 180, cutoffEnd: 110, duration: 0.42, attack: 0.08, level: 0.09 },
+            { f0: 48, f1: 39, cutoff: 140, duration: 0.23, delay: 0.08, attack: 0.04, level: 0.04 }
+          ]; break;
+        case 'breath':
+          layers = [
+            { noise: 'brown', filter: 'bandpass', cutoff: 390, cutoffEnd: 730, duration: 0.44, attack: 0.08, level: 0.1 },
+            { noise: 'white', filter: 'bandpass', cutoff: 920, cutoffEnd: 360, duration: 0.3, delay: 0.08, attack: 0.05, level: 0.014 }
+          ]; break;
+        case 'vibration':
+          layers = [
+            ...[0, 0.11, 0.25].map((delay, i) => ({ noise: 'brown', cutoff: 340 - i * 45, cutoffEnd: 100, duration: 0.13, delay, level: 0.1 - i * 0.018 })),
+            { f0: 63, f1: 33, cutoff: 210, duration: 0.18, attack: 0.012, level: 0.045 }
+          ]; break;
+        default: return false;
+      }
+      return this._playEncounterFoley(layers, x, z, 8, 0.7);
+    }
+
+    playEggRustle(x = null, z = null, options = {}) {
+      return this._playEncounterFoley([
+        { noise: 'brown', cutoff: 920, cutoffEnd: 250, duration: 0.38, attack: 0.055, level: 0.16 },
+        { noise: 'white', filter: 'bandpass', cutoff: 1800, cutoffEnd: 690, duration: 0.15, delay: 0.06, attack: 0.025, level: 0.06 },
+        { noise: 'brown', cutoff: 1700, cutoffEnd: 820, duration: 0.045, delay: 0.04, level: 0.05 }
+      ], x, z, 16, Number.isFinite(options?.intensity) ? options.intensity : 0.45);
+    }
+
+    playSecurityCameraServo(x = null, z = null, options = {}) {
+      return this._playEncounterFoley([
+        { noise: 'brown', filter: 'bandpass', cutoff: 430, cutoffEnd: 620, duration: 0.24, attack: 0.04, level: 0.11 },
+        { type: 'triangle', f0: 108, f1: 131, cutoff: 900, duration: 0.22, attack: 0.04, level: 0.035 }
+      ], x, z, 14, Number.isFinite(options?.intensity) ? options.intensity : 0.08);
     }
 
     setVolume(value) {
@@ -8337,8 +8438,10 @@
       this.shakeDuration = Math.max(this.shakeDuration || 0, duration);
     }
 
-    setCinematicCamera({ position, target, fov = 72, near = 0.025, exposure = 1.18 }, deltaSeconds = 1 / 60) {
+    setCinematicCamera({ position, target, fov = 72, near = 0.025, exposure = 1.18,
+      avoidSolidGeometry = false, collisionBounds = null }, deltaSeconds = 1 / 60) {
       if (!position || !target) return;
+      if (![position.x, position.y, position.z, target.x, target.y, target.z].every(Number.isFinite)) return;
       this.updateCameraComposition(true);
       let projectionChanged = false;
       if (this.camera.fov !== fov) {
@@ -8353,9 +8456,37 @@
       if (this.scene?.fog) this.scene.fog.density = 0;
       if (this.renderer) this.renderer.toneMappingExposure = exposure;
       const smoothing = 1 - Math.pow(0.78, Math.max(0, deltaSeconds) * 60);
-      this.camera.position.x += (position.x - this.camera.position.x) * smoothing;
-      this.camera.position.y += (position.y - this.camera.position.y) * smoothing;
-      this.camera.position.z += (position.z - this.camera.position.z) * smoothing;
+      const candidate = new THREE.Vector3().copy(this.camera.position).lerp(position, smoothing);
+      let safety = 'smooth';
+      if (avoidSolidGeometry && Array.isArray(collisionBounds)) {
+        // A raycast starting inside a FrontSide wall can miss the exit face.
+        // The camera itself needs a volume/segment test, independent of mesh winding.
+        const crosses = (from, to, box) => {
+          if (!box?.min || !box?.max) return false;
+          let low = 0, high = 1;
+          for (const axis of ['x', 'y', 'z']) {
+            const min = box.min[axis] - .12, max = box.max[axis] + .12;
+            const direction = to[axis] - from[axis];
+            if (Math.abs(direction) < 1e-9) {
+              if (from[axis] < min || from[axis] > max) return false;
+            } else {
+              const a = (min - from[axis]) / direction, b = (max - from[axis]) / direction;
+              low = Math.max(low, Math.min(a, b)); high = Math.min(high, Math.max(a, b));
+              if (low > high) return false;
+            }
+          }
+          return true;
+        };
+        if (collisionBounds.some(box => crosses(position, position, box))) {
+          candidate.copy(this.camera.position);
+          safety = 'held-invalid-endpoint';
+        } else if (collisionBounds.some(box => crosses(this.camera.position, candidate, box))) {
+          candidate.copy(position);
+          safety = 'cut-to-clear-endpoint';
+        }
+      }
+      this.lastCinematicSafety = safety;
+      this.camera.position.copy(candidate);
       this.camera.lookAt(target.x, target.y, target.z);
     }
 
@@ -9026,6 +9157,21 @@
         });
       };
 
+      // These irregular machines are not the width/depth boxes used by the
+      // original placeholders. Measure their actual world footprint before
+      // the circulation pass moves both the visual root and this collider.
+      const measuredPropFootprint = (mesh, x, z, fallback) => {
+        const bounds = mesh && window.HiveModelFactory?.getModelBounds?.(mesh);
+        const values = bounds && [bounds.min?.x, bounds.max?.x, bounds.min?.z, bounds.max?.z];
+        if (values?.every(Number.isFinite) && values[1] > values[0] && values[3] > values[2]) {
+          return { minX: values[0] - .05, maxX: values[1] + .05,
+            minZ: values[2] - .05, maxZ: values[3] + .05 };
+        }
+        // A failed model load still keeps the authored complete footprint.
+        return { minX: x + fallback[0], maxX: x + fallback[1],
+          minZ: z + fallback[2], maxZ: z + fallback[3] };
+      };
+
       // =========================================================================
       // ARCHITECTURE AVANCÉE MNEMOSYNE — 6 SECTEURS INTERCONNECTÉS + EXTÉRIEUR EVA
       // =========================================================================
@@ -9366,18 +9512,67 @@
 
       // Chantier 33 : Caméras de Sécurité Motorisées CRT Seegson / Weyland-Yutani (Alien: Isolation)
       this.securityCameras = [
-        { id: 'cam_nord', name: 'Caméra Couloir Nord', x: 0, z: -22, baseAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
-        { id: 'cam_airlock', name: 'Caméra Sas Est EVA', x: 52, z: 0, baseAngle: 0, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
-        { id: 'cam_armory', name: 'Caméra Armurerie', x: 28, z: -45, baseAngle: Math.PI, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false }
+        { id: 'cam_nord', name: 'Caméra Couloir Nord', x: -14, z: -27, wallX: -15, wallZ: -48, wallFace: 'east', height: 5.5, range: 18, baseAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_airlock', name: 'Caméra Sas Est EVA', x: 52, z: 17, wallX: 56, wallZ: 18, wallFace: 'north', height: 5.5, range: 18, baseAngle: Math.PI, sweep: 1.2, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_armory', name: 'Caméra Armurerie', x: 16, z: -45, wallX: 15, wallZ: -48, wallFace: 'east', height: 5.5, range: 18, baseAngle: Math.PI / 2, sweep: 2.4, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false }
       ];
-      this.securityCameras.forEach((cam) => {
+      this.securityCameras.forEach(cam => {
+        cam.mountTarget = Object.freeze({ x: cam.x, z: cam.z });
+        cam.initialSweep = cam.sweep; cam.servoCooldown = 1.6;
+      });
+      const mountSecurityCamera = (cam) => {
+        const support = this.walls.find(wall => Math.abs(wall.position.x - cam.wallX) < 0.001 && Math.abs(wall.position.z - cam.wallZ) < 0.001);
+        if (!support) { cam.mesh = null; cam.support = null; cam.isDestroyed = true; return; } // Never a floating camera.
         const mesh = window.HiveModelFactory?.createSecurityCamera?.();
         if (mesh) {
-          mesh.position.set(cam.x, 3.8, cam.z);
-          rendererEngine.propsGroup.add(mesh);
+          // Existing mounted children must not enlarge their owner's physical
+          // face when a later campaign rebuilds one destroyed mechanism.
+          support.updateWorldMatrix(true, false); support.geometry.computeBoundingBox();
+          const bounds = support.geometry.boundingBox.clone().applyMatrix4(support.matrixWorld);
+          const point = new THREE.Vector3(cam.mountTarget.x, cam.height, cam.mountTarget.z);
+          if (cam.wallFace === 'east') point.x = bounds.max.x + 0.005;
+          else point.z = bounds.min.z - 0.005;
+          point.y = Math.max(bounds.min.y + 0.4, Math.min(bounds.max.y - 0.6, point.y));
+          support.add(mesh); support.worldToLocal(point); mesh.position.copy(point); mesh.rotation.set(0, cam.baseAngle, 0);
+          cam.support = support; cam.mountPosition = mesh.getWorldPosition(new THREE.Vector3());
+          cam.mountPose = { position: mesh.position.clone(), quaternion: mesh.quaternion.clone(), scale: mesh.scale.clone() };
+          mesh.userData.securityCameraId = cam.id; mesh.userData.securityCameraSupport = support;
+          // A wall cutaway must not leave its opaque equipment floating in air.
+          mesh.traverse(object => {
+            if (!object.isMesh) return;
+            for (const material of Array.isArray(object.material) ? object.material : [object.material]) if (material) material.transparent = true;
+            const previous = object.onBeforeRender;
+            object.onBeforeRender = function(...args) {
+              previous?.apply(this, args);
+              const opacity = Math.max(0, Math.min(1, support.material?.opacity ?? 1));
+              for (const material of Array.isArray(this.material) ? this.material : [this.material]) if (material) {
+                material.opacity = opacity; material.depthWrite = opacity >= 0.99;
+              }
+            };
+          });
           cam.mesh = mesh;
+          mesh.userData.cameraRig?.setAngles(Math.sin(cam.sweep) * 0.62, 0.3);
+          const optics = mesh.userData.cameraRig?.getOptics();
+          if (optics) { cam.x = optics.position.x; cam.z = optics.position.z; }
+        } else { cam.mesh = null; cam.support = null; cam.isDestroyed = true; }
+      };
+      this.securityCameras.forEach(mountSecurityCamera);
+      this.resetSecurityCameras = () => {
+        for (const cam of this.securityCameras) {
+          cam.sweep = cam.initialSweep; cam.state = 'idle'; cam.alertTimer = 0;
+          cam.alertCooldown = 0; cam.servoCooldown = 1.6; cam.isDestroyed = false;
+          if (!cam.mesh?.parent || cam.mesh.userData?.hiveFactoryDisposed) {
+            if (cam.mesh && !cam.mesh.userData?.hiveFactoryDisposed) rendererEngine.removeObject(cam.mesh);
+            cam.mesh = null; mountSecurityCamera(cam);
+          } else if (cam.mountPose) {
+            cam.mesh.position.copy(cam.mountPose.position); cam.mesh.quaternion.copy(cam.mountPose.quaternion); cam.mesh.scale.copy(cam.mountPose.scale);
+          }
+          const rig = cam.mesh?.userData?.cameraRig;
+          rig?.setAngles(Math.sin(cam.sweep) * 0.62, 0.3); rig?.setAlert(false);
+          const optics = rig?.getOptics();
+          if (optics) { cam.x = optics.position.x; cam.z = optics.position.z; }
         }
-      });
+      };
 
       // Chantier 33 & 40 : Terminaux Muraux Seegson Interactifs (Alien: Isolation)
       this.seegsonTerminals = [
@@ -10155,7 +10350,8 @@
       // Chantier 128 : Tourelle Portative Mortier M40 USCM à Shrapnel (Aliens: Fireteam Elite)
       this.portableMortars = [
         { id: 'mortar_1', name: 'Tourelle Mortier M40 USCM Poste Alpha', x: 10, z: -5, isDestroyed: false, hp: 80, shootCooldown: 4.0, mesh: null },
-        { id: 'mortar_2', name: 'Tourelle Mortier M40 USCM Poste Bravo', x: -16, z: 25, isDestroyed: false, hp: 80, shootCooldown: 5.5, mesh: null }
+        // Keep Bravo beside the reactor approach, not inside its fixed pylon.
+        { id: 'mortar_2', name: 'Tourelle Mortier M40 USCM Poste Bravo', x: -12, z: 25, isDestroyed: false, hp: 80, shootCooldown: 5.5, mesh: null }
       ];
       this.portableMortars.forEach((pm) => {
         const mesh = window.HiveModelFactory?.createPortableMortarTurret?.();
@@ -10197,8 +10393,7 @@
           apc.mesh = mesh;
         }
         this.colliders.push({
-          minX: apc.x - 3.2, maxX: apc.x + 3.2,
-          minZ: apc.z - 2.0, maxZ: apc.z + 2.0,
+          ...measuredPropFootprint(apc.mesh, apc.x, apc.z, [-2.02, 2.02, -3.26, 3.78]),
           isM577APC: true,
           apcRef: apc
         });
@@ -11487,7 +11682,7 @@
           rendererEngine.propsGroup.add(mesh);
           f.mesh = mesh;
         }
-        this.colliders.push({ minX: f.x - 1.7, maxX: f.x + 1.7, minZ: f.z - 0.9, maxZ: f.z + 0.9, isShaftFan: true, fanRef: f });
+        this.colliders.push({ ...measuredPropFootprint(f.mesh, f.x, f.z, [-1.99, 1.99, -.34, .34]), isShaftFan: true, fanRef: f });
       });
 
       // Chantier 244 : Hadley's Hope Atmospheric Scrubber Column & Freon Evaporator (Aliens 1986)
@@ -11515,7 +11710,7 @@
           rendererEngine.propsGroup.add(mesh);
           gc.mesh = mesh;
         }
-        this.colliders.push({ minX: gc.x - 2.3, maxX: gc.x + 2.3, minZ: gc.z - 2.3, maxZ: gc.z + 2.3, isGravityChamber: true, chamberRef: gc });
+        this.colliders.push({ ...measuredPropFootprint(gc.mesh, gc.x, gc.z, [-2.51, 2.51, -2.51, 2.51]), isGravityChamber: true, chamberRef: gc });
       });
 
       // Chantier 246 : USCM Sentry Gun Barricade Chokepoint (Aliens: Dark Descent)
@@ -11725,7 +11920,7 @@
           rendererEngine.propsGroup.add(mesh);
           dc.mesh = mesh;
         }
-        this.colliders.push({ minX: dc.x - 1.8, maxX: dc.x + 1.8, minZ: dc.z - 0.6, maxZ: dc.z + 0.6, isDockingClamp: true, clampRef: dc });
+        this.colliders.push({ ...measuredPropFootprint(dc.mesh, dc.x, dc.z, [-3.81, 3.81, -3.81, 3.81]), isDockingClamp: true, clampRef: dc });
       });
 
       // -----------------------------------------------------------------------
@@ -13540,41 +13735,49 @@
 
     // Chantier 33 : Caméras de Sécurité Motorisées CRT Seegson / Weyland-Yutani (Alien: Isolation)
     updateSecurityCameras(safeDelta) {
-      if (!this.securityCameras) return;
+      const game = window.gameInstance;
+      if (!this.securityCameras || game?.isSystemPaused || game?.isRunning === false || game?.campaignActive === false ||
+        !Number.isFinite(safeDelta) || safeDelta <= 0) return;
+      const delta = Math.min(0.1, safeDelta);
       this.securityCameras.forEach((cam) => {
-        if (cam.isDestroyed || !cam.mesh) return;
-        cam.sweep += safeDelta * 0.65;
-        const currentAngle = cam.baseAngle + Math.sin(cam.sweep) * 0.75;
-        cam.mesh.rotation.y = currentAngle;
-
-        // Cône de vision de 11 mètres, ouverture 45 degrés
-        const dx = playerCreature.x - cam.x;
-        const dz = playerCreature.z - cam.z;
-        const dist = Math.hypot(dx, dz);
-        if (dist <= 11 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
-          const angleToPlayer = Math.atan2(dx, dz);
-          const angleDiff = Math.abs((((angleToPlayer - currentAngle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
-          if (angleDiff <= 0.45) {
-            cam.alertTimer = (cam.alertTimer || 0) + safeDelta;
-            if (cam.alertTimer >= 0.8 && cam.state !== 'alert') {
-              cam.state = 'alert';
-              audioManager.playSecurityAlarmBeep?.(cam.x, cam.z);
-              window.HiveSystems?.vfx?.ring?.(cam.x, cam.z, 0xef4444, 9.0);
-              showToast(`ALERTE CAMÉRA : ${cam.name} a détecté l'organisme !`);
-              window.alarmSystem?.setLevel(Math.max((window.alarmSystem.level || 0), 3));
-
-              // Alerte les patrouilles les plus proches vers la caméra
-              (window.gameInstance?.humans || []).forEach((h) => {
-                if (['guard', 'marine', 'synthetic'].includes(h.type) && !h.isIncapacitated) {
-                  h.aiState = 'CHASE';
-                  h.targetPos = { x: cam.x, z: cam.z };
-                }
-              });
-            }
-          } else {
-            cam.alertTimer = Math.max(0, (cam.alertTimer || 0) - safeDelta * 0.5);
-            if (cam.alertTimer <= 0) cam.state = 'idle';
-          }
+        const rig = cam.mesh?.userData?.cameraRig;
+        if (cam.isDestroyed || !cam.mesh || !rig) return;
+        cam.sweep = ((cam.sweep || 0) + delta * 0.45) % (Math.PI * 2);
+        const moved = rig.setAngles(Math.sin(cam.sweep) * 0.62, 0.3 + Math.sin(cam.sweep * 0.5) * 0.035);
+        const optics = rig.getOptics();
+        cam.x = optics.position.x; cam.z = optics.position.z;
+        cam.servoCooldown = Math.max(0, (cam.servoCooldown || 0) - delta);
+        if (moved && cam.servoCooldown <= 0 && Math.hypot(playerCreature.x - cam.x, playerCreature.z - cam.z) <= 14) {
+          audioManager.playSecurityCameraServo?.(cam.x, cam.z, { intensity: 0.065 }); cam.servoCooldown = 1.6;
+        }
+        const target = playerCreature.mesh?.getWorldPosition?.(new THREE.Vector3());
+        let visible = !!target && playerCreature.mesh.visible !== false && !playerCreature.isDefeated &&
+          !(Number.isFinite(playerCreature.health) && playerCreature.health <= 0) &&
+          playerCreature.form !== 'egg' && !playerCreature.isChrysalis && !playerCreature.isInVent &&
+          !playerCreature.isCeilingProwling && !game?.currentStage?.inEgg;
+        if (target) target.y += playerCreature.form === 'facehugger' ? 0.18 : playerCreature.form === 'chestburster' ? 0.45 : 1.8;
+        if (visible) {
+          for (let parent = playerCreature.mesh.parent; parent; parent = parent.parent) if (parent.visible === false) visible = false;
+          const local = target.clone().sub(optics.position).applyQuaternion(optics.quaternion.clone().invert());
+          visible = visible && local.length() <= (cam.range || 18) && local.z > 0 &&
+            Math.abs(Math.atan2(local.x, local.z)) <= 0.52 &&
+            Math.abs(Math.atan2(local.y, Math.hypot(local.x, local.z))) <= 0.60 &&
+            this.hasLineOfSight(optics.position.x, optics.position.z, target.x, target.z, 0.03);
+        }
+        const wasAlert = cam.state === 'alert';
+        cam.alertCooldown = Math.max(0, (cam.alertCooldown || 0) - delta);
+        cam.alertTimer = visible ? Math.min(1.4, (cam.alertTimer || 0) + delta) : Math.max(0, (cam.alertTimer || 0) - delta * 0.9);
+        cam.state = cam.alertTimer >= 0.8 ? 'alert' : cam.alertTimer <= 0 ? 'idle' : cam.state;
+        rig.setAlert(cam.state === 'alert');
+        if (!wasAlert && cam.state === 'alert' && cam.alertCooldown <= 0) {
+          cam.alertCooldown = 8;
+          audioManager.playSecurityAlarmBeep?.(cam.x, cam.z);
+          showToast(`ALERTE CAMÉRA : ${cam.name} a détecté l'organisme !`);
+          window.alarmSystem?.setLevel(Math.max((window.alarmSystem.level || 0), 3));
+          // A camera reports a seen location; nearby responders investigate a
+          // snapshot instead of every patrol chasing an unseen live position.
+          const recipients = window.HiveTacticalAI?.squadRecipients?.(cam, game?.humans || [], 28, 4) || [];
+          recipients.forEach(human => human.receiveContact?.({ x: target.x, z: target.z }, 'radio'));
         }
       });
     }
@@ -15675,17 +15878,30 @@
 
     // Chantier 120 : Sas d'Amarrage de Module Orbital de Secours (Alien: Romulus 2024)
     ejectOrbitalDockingClamp(clamp) {
-      if (!clamp || clamp.isEjected) return false;
+      const game = window.gameInstance, actor = playerCreature, helper = window.HiveContextualInteractions;
+      if (!clamp || clamp.isEjected || clamp.isDestroyed || !this.orbitalDockingClamps?.includes(clamp) ||
+        !Number.isFinite(clamp.x + clamp.z) || !game?.campaignActive || game.currentStageIndex !== 4 ||
+        game.isSystemPaused || game.isRunning === false || actor.form !== 'drone' || !(actor.health > 0) ||
+        actor.isDefeated || actor.isInVent || actor.isCeilingProwling || actor.isSubfloorProwling ||
+        actor.isLeaping || actor.isChrysalis || actor.attachedHost ||
+        Math.hypot(actor.x - clamp.x, actor.z - clamp.z) > 5.5 ||
+        !(helper ? helper.hasSight(this, actor, clamp) : this.hasLineOfSight(actor.x, actor.z, clamp.x, clamp.z, .08))) return false;
       clamp.isEjected = true;
       audioManager.playOrbitalDockingClampEject?.(clamp.x, clamp.z);
       rendererEngine.addScreenShake?.(0.72, 0.5);
       window.HiveSystems?.vfx?.burst?.(clamp.x, clamp.z, 0x38bdf8, 55, 0.4, 3.8);
       window.HiveSystems?.vfx?.ring?.(clamp.x, clamp.z, 0x0284c7, 24.0);
 
-      // Éjecte dans l'espace tous les humains à moins de 15m du sas
-      const humans = window.gameInstance?.humans || [];
+      // Pressure propagates through exposed space, not through a sealed wall.
+      // Ignore only this fitting's own casing, as for its interaction approach.
+      const stage = game.currentStage;
+      const humans = [...game.humans];
       humans.forEach((h) => {
-        if (Math.hypot(h.x - clamp.x, h.z - clamp.z) <= 15.0) {
+        if (window.gameInstance !== game || game.currentStage !== stage || game.isSystemPaused ||
+          game.isRunning === false || !game.humans.includes(h) || !(h.hp > 0) || !Number.isFinite(h.x + h.z) ||
+          h.isDestroyed || h.isEscaped || h.isConsumedByCycle || h.isIncapacitated || h.isCocooned) return;
+        if (Math.hypot(h.x - clamp.x, h.z - clamp.z) <= 15.0 &&
+          (helper ? helper.hasSight(this, h, clamp) : this.hasLineOfSight(clamp.x, clamp.z, h.x, h.z, .08))) {
           h.takeDamage(350, null);
           h.hp = 0;
           h.isIncapacitated = true;
@@ -15830,28 +16046,85 @@
     }
 
     updatePortableMortars(safeDelta) {
-      (this.portableMortars || []).forEach((pm) => {
-        if (pm.isDestroyed) return;
-        pm.shootCooldown -= safeDelta;
-        if (pm.shootCooldown <= 0) {
-          pm.shootCooldown = 4.8;
-          const distToPlayer = Math.hypot(playerCreature.x - pm.x, playerCreature.z - pm.z);
-          if (distToPlayer >= 7.0 && distToPlayer <= 26.0 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
-            audioManager.playMortarLaunchAndShrapnel?.(pm.x, pm.z);
-            rendererEngine.addScreenShake?.(0.35, 0.3);
-            const targetX = playerCreature.x;
-            const targetZ = playerCreature.z;
-            setTimeout(() => {
-              window.HiveSystems?.vfx?.burst?.(targetX, targetZ, 0xef4444, 32, 0.35, 2.8);
-              window.HiveSystems?.vfx?.ring?.(targetX, targetZ, 0xf97316, 12.0);
-              if (Math.hypot(playerCreature.x - targetX, playerCreature.z - targetZ) <= 5.5) {
-                playerCreature.takeDamage(48, null);
-                window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 3.2, playerCreature.z, '-48 OBUS DE MORTIER M40 !', '#ef4444', true);
-              }
-            }, 650);
+      const game = window.gameInstance, actor = playerCreature;
+      const active = game?.campaignActive === true && game.isRunning === true && !!game.currentStage;
+      const delta = Math.max(0, Math.min(.1, Number(safeDelta) || 0));
+      const available = () => game.currentStageIndex >= 2 && game.currentStageIndex <= 4 &&
+        !game.currentStage?.inEgg && actor?.form !== 'egg' && actor?.mesh && actor.mesh.visible !== false &&
+        !actor.inHost && !actor.isInHost && actor.health > 0 && !actor.isDefeated &&
+        !actor.isInVent && !actor.isSubfloorProwling && !actor.isCeilingProwling &&
+        !actor.isChrysalis && !actor.attachedHost;
+      for (const mortar of this.portableMortars || []) {
+        // Ignore only this fitting's own shell, never a wall containing it.
+        const clear = (from, to, source = mortar) => {
+          if (![from.x, from.z, to.x, to.z].every(Number.isFinite)) return false;
+          if (Array.isArray(this.colliders) && typeof this.segmentIntersectsCollider === 'function') {
+            return !this.colliders.some(collider => {
+              if (Object.values(collider).some(value => value === source || value === source.mesh)) return false;
+              return this.segmentIntersectsCollider(from.x, from.z, to.x, to.z, collider, .08);
+            });
           }
+          return this.hasLineOfSight?.(from.x, from.z, to.x, to.z, .08) === true;
+        };
+        const current = shot => mortar.pendingShot === shot && !shot.cancelled && !shot.resolved && active &&
+          game.campaignActive === true && game.isRunning === true &&
+          window.gameInstance === shot.game && game.currentStage === shot.stage &&
+          game.currentStageIndex === shot.stageIndex && playerCreature === shot.actor &&
+          actor.mesh === shot.actorMesh && actor.form === shot.form && available() &&
+          (this.portableMortars || []).includes(mortar) && !mortar.isDestroyed && !(mortar.hp <= 0) &&
+          mortar.mesh === shot.sourceMesh && !!mortar.mesh?.parent &&
+          mortar.x === shot.origin.x && mortar.z === shot.origin.z &&
+          (!shot.visual || (window.HiveSystems?.vfx === shot.fx && shot.fx.generation === shot.generation));
+        const pending = mortar.pendingShot;
+        if (pending && !current(pending)) {
+          pending.cancelled = true; mortar.pendingShot = null;
         }
-      });
+        if (!active || game.isSystemPaused) continue;
+        mortar.shootCooldown = Math.max(0, (Number(mortar.shootCooldown) || 0) - delta);
+        if (mortar.pendingShot) {
+          const shot = mortar.pendingShot;
+          shot.remaining -= delta;
+          if (shot.remaining > 1e-8) continue;
+          // The shared VFX clock normally arrives first in the frame. A cleared
+          // renderer cancels a shot instead of producing an invisible explosion.
+          if (shot.visual && !shot.arrived) {
+            if (shot.remaining < -.2) { shot.cancelled = true; mortar.pendingShot = null; }
+            continue;
+          }
+          const valid = current(shot) && clear(shot.origin, shot.impact);
+          shot.resolved = true; mortar.pendingShot = null;
+          if (!valid) continue;
+          const fx = window.HiveSystems?.vfx;
+          audioManager.playGrenadeExplode?.(shot.impact.x, shot.impact.z);
+          fx?.burst?.(shot.impact.x, shot.impact.z, 0xef4444, 32, .35, 2.8);
+          fx?.ring?.(shot.impact.x, shot.impact.z, 0xf97316, 5.5);
+          if (Math.hypot(actor.x - shot.impact.x, actor.z - shot.impact.z) <= 5.5 && clear(shot.impact, actor)) {
+            actor.takeDamage?.(48, mortar);
+            fx?.floatingText?.(actor.x, 3.2, actor.z, '-48 OBUS DE MORTIER M40 !', '#ef4444', true);
+          }
+          continue;
+        }
+        if (mortar.isDestroyed || mortar.hp <= 0 || !mortar.mesh?.parent || !available() || mortar.shootCooldown > 0) continue;
+        const distance = Math.hypot(actor.x - mortar.x, actor.z - mortar.z);
+        if (distance < 7 || distance > 26 || !clear(mortar, actor)) continue;
+        const shot = { game, stage: game.currentStage, stageIndex: game.currentStageIndex,
+          actor, actorMesh: actor.mesh, form: actor.form, sourceMesh: mortar.mesh,
+          origin: { x: mortar.x, z: mortar.z }, impact: { x: actor.x, z: actor.z },
+          remaining: .65, arrived: false, visual: false, resolved: false, cancelled: false };
+        mortar.pendingShot = shot; mortar.shootCooldown = 4.8;
+        audioManager.playMortarLaunchAndShrapnel?.(mortar.x, mortar.z);
+        const fx = window.HiveSystems?.vfx;
+        if (fx?.scene && typeof fx.projectile === 'function') {
+          shot.fx = fx; shot.generation = fx.generation;
+          shot.visual = fx.projectile({ startX: mortar.x, startY: 1.2, startZ: mortar.z,
+            endX: shot.impact.x, endY: .06, endZ: shot.impact.z, color: 0xf59e0b,
+            scale: .14, speed: Math.hypot(distance, 1.14) / .65,
+            arcHeight: Math.min(4, distance * .16), targetRadius: 5.5,
+            isValid: () => current(shot) && clear(shot.origin, shot.impact),
+            onImpact: () => { if (current(shot)) shot.arrived = true; }
+          }) === true;
+        }
+      }
     }
 
     // Chantier 130 : Sas d'Amarrage Navette de Sauvetage Narcissus (Alien 1979)
@@ -16370,19 +16643,35 @@
 
     // Chantier 153 : Réseau de Canalisations d'Huile Hydraulique & Nappe Inflammable (Alien 1979 / Isolation)
     ruptureHydraulicOilPipe(pipe) {
-      if (!pipe || pipe.isRuptured) return false;
+      const game = window.gameInstance, actor = playerCreature, helper = window.HiveContextualInteractions;
+      if (!pipe || pipe.isRuptured || pipe.isDestroyed || !this.hydraulicOilPipes?.includes(pipe) ||
+        !Number.isFinite(pipe.x + pipe.z) || !game?.campaignActive || game.currentStageIndex !== 4 ||
+        game.isSystemPaused || game.isRunning === false || actor.form !== 'drone' || !(actor.health > 0) ||
+        actor.isDefeated || actor.isInVent || actor.isCeilingProwling || actor.isSubfloorProwling ||
+        actor.isLeaping || actor.isChrysalis || actor.attachedHost ||
+        Math.hypot(actor.x - pipe.x, actor.z - pipe.z) > 4.5 ||
+        !(helper ? helper.hasSight(this, actor, pipe) : this.hasLineOfSight(actor.x, actor.z, pipe.x, pipe.z, .08))) return false;
       pipe.isRuptured = true;
       pipe.isBurning = true;
       pipe.burnTimer = 15.0;
+      pipe.burnRadius = 3.4;
+      pipe.burnGame = game;
+      pipe.burnStage = game.currentStage;
+      pipe.burnExposure = new Map();
+      pipe.burnSource = { x: pipe.x, z: pipe.z, isEnvironmentalHazard: true, damageType: 'fire' };
       audioManager.playHydraulicOilRupture?.(pipe.x, pipe.z);
       rendererEngine.addScreenShake?.(0.55, 0.35);
-      window.HiveSystems?.vfx?.ring?.(pipe.x, pipe.z, 0xdc2626, 10.0);
+      window.HiveSystems?.vfx?.ring?.(pipe.x, pipe.z, 0xdc2626, pipe.burnRadius * 2);
       window.HiveSystems?.vfx?.burst?.(pipe.x, pipe.z, 0xf97316, 50, 0.35, 3.0);
 
-      const humans = window.gameInstance?.humans || [];
+      const humans = [...game.humans];
       humans.forEach((h) => {
-        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - pipe.x, h.z - pipe.z) <= 9.0) {
-          h.takeDamage?.(65, playerCreature);
+        if (window.gameInstance !== game || game.currentStage !== pipe.burnStage || game.isSystemPaused ||
+          game.isRunning === false || !game.humans.includes(h) || !(h.hp > 0) || !Number.isFinite(h.x + h.z) ||
+          h.isDestroyed || h.isEscaped || h.isConsumedByCycle || h.isIncapacitated || h.isCocooned) return;
+        if (Math.hypot(h.x - pipe.x, h.z - pipe.z) <= 9.0 &&
+          (helper ? helper.hasSight(this, h, pipe) : this.hasLineOfSight(pipe.x, pipe.z, h.x, h.z, .08))) {
+          h.takeDamage?.(65, pipe.burnSource);
           h.stress = 100;
           h.staggerTimer = 3.0;
           window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, '-65 BRÛLURES HUILE EN FEU !', '#ef4444', true);
@@ -16394,15 +16683,54 @@
     }
 
     updateHydraulicOilPipes(safeDelta) {
+      const game = window.gameInstance, helper = window.HiveContextualInteractions;
       (this.hydraulicOilPipes || []).forEach((hop) => {
         if (!hop.isBurning) return;
-        hop.burnTimer -= safeDelta;
-        if (hop.burnTimer > 0) {
+        const stop = () => {
+          hop.isBurning = false; hop.burnTimer = 0;
+          hop.burnExposure?.clear(); hop.burnExposure = null;
+          hop.burnGame = hop.burnStage = hop.burnSource = null;
+        };
+        if (!game || game !== hop.burnGame || game.currentStage !== hop.burnStage ||
+          game.currentStageIndex !== 4 || hop.isDestroyed || !game.campaignActive) { stop(); return; }
+        if (game.isSystemPaused || game.isRunning === false) return;
+        const delta = Math.min(Math.max(0, Math.min(.1, Number(safeDelta) || 0)), Math.max(0, hop.burnTimer));
+        if (!delta) { if (!(hop.burnTimer > 0)) stop(); return; }
+        hop.burnTimer = Math.max(0, hop.burnTimer - delta);
+        const finishing = hop.burnTimer <= 1e-7, active = new Set();
+        const exposed = (entity) => {
+          const player = entity === playerCreature;
+          return entity && Number.isFinite(entity.x + entity.z) && entity.mesh &&
+            (player ? entity.health > 0 && !entity.isDefeated : game.humans.includes(entity) && entity.hp > 0) &&
+            !entity.isDestroyed && !entity.isEscaped && !entity.isConsumedByCycle && !entity.isIncapacitated &&
+            !entity.isCocooned && !entity.isInVent && !entity.isCeilingProwling && !entity.isSubfloorProwling &&
+            !entity.isLeaping && !entity.isChrysalis && !entity.attachedHost &&
+            entity.mesh.position.y <= .65 && Math.hypot(entity.x - hop.x, entity.z - hop.z) <= hop.burnRadius &&
+            (helper ? helper.hasSight(this, entity, hop) : this.hasLineOfSight(hop.x, hop.z, entity.x, entity.z, .08));
+        };
+        for (const entity of [playerCreature, ...game.humans]) {
+          if (window.gameInstance !== game || game.currentStage !== hop.burnStage || !game.campaignActive ||
+            game.isSystemPaused || game.isRunning === false) break;
+          if (!exposed(entity)) continue;
+          active.add(entity);
+          const elapsed = (hop.burnExposure.get(entity) || 0) + delta;
+          if (elapsed >= .5 - 1e-7 || finishing) {
+            const applied = finishing ? elapsed : Math.floor((elapsed + 1e-7) / .5) * .5;
+            const stagger = Number(entity.staggerTimer) || 0;
+            // Ground fire is not a directional bullet. Keep the player's fire
+            // resistance path without inventing a shooter for its head armour.
+            entity.takeDamage?.(12 * applied, entity === playerCreature ? null : hop.burnSource, 'fire');
+            if (entity !== playerCreature) entity.staggerTimer = Math.max(stagger, entity.staggerTimer || 0);
+            hop.burnExposure.set(entity, Math.max(0, elapsed - applied));
+          } else hop.burnExposure.set(entity, elapsed);
+        }
+        for (const entity of hop.burnExposure.keys()) if (!active.has(entity)) hop.burnExposure.delete(entity);
+        if (!finishing) {
           if (Math.random() < 0.12) {
             window.HiveSystems?.vfx?.burst?.(hop.x, hop.z, 0xf97316, 8, 0.15, 1.4);
           }
         } else {
-          hop.isBurning = false;
+          stop();
         }
       });
     }
@@ -20855,6 +21183,161 @@
     return model;
   }
 
+  function prepareNativeHostPerformance(model) {
+    if (model?.userData?.hostPerformanceRig) return model.userData.hostPerformanceRig;
+    if (!model || model.userData?.modelType !== 'human' ||
+      /hound|rodent|loader|exosuit|cat|dog/i.test(String(model.userData.subtype || '')) ||
+      !window.HiveAssetLibrary?._capturePose) return null;
+    const T = THREE, originalRig = model.userData.animationRig;
+    const leftArm = model.getObjectByName('arm_left'), rightArm = model.getObjectByName('arm_right');
+    const leftLeg = model.getObjectByName('leg_left'), rightLeg = model.getObjectByName('leg_right');
+    const head = model.getObjectByName('helmet_and_comms');
+    if (!leftArm || !rightArm || !leftLeg || !rightLeg || !head || !originalRig?.bindPose) return null;
+    originalRig.resetPose?.(); model.updateMatrixWorld(true);
+    const bindings = {}, skeletons = [], replacedMaterials = new Set(), skinMaterials = new Map();
+    const cloneSkinMaterial = material => {
+      if (!skinMaterials.has(material)) {
+        const copy = material.clone(); copy.skinning = true; copy.userData.hiveHostPerformanceSkin = true;
+        const release = copy.dispose.bind(copy); let disposed = false;
+        copy.dispose = () => { if (!disposed) { disposed = true; release(); } };
+        const managed = window.HiveModelFactory?._managedMaterials;
+        if (managed) { managed.add(copy); copy.addEventListener('dispose', () => managed.delete(copy)); }
+        skinMaterials.set(material, copy); replacedMaterials.add(material);
+      }
+      return skinMaterials.get(material);
+    };
+    const weightPoint = new T.Vector3(), modelInverse = model.matrixWorld.clone().invert(), disposalSkeletons = new Set();
+    let neckBaseY = 3.28;
+    const skinMeshes = (meshes, skeleton, cut, upward = false, terminalY = null, junction = '') => {
+      let firstGeometry = null;
+      for (const mesh of meshes) {
+        if (!mesh.isMesh || mesh.isSkinnedMesh || !mesh.geometry?.attributes?.position) continue;
+        const geometry = mesh.geometry, positions = geometry.attributes.position;
+        const indices = new Uint16Array(positions.count * 4), weights = new Float32Array(positions.count * 4);
+        mesh.updateMatrix();
+        for (let i = 0; i < positions.count; i++) {
+          weightPoint.fromBufferAttribute(positions, i).applyMatrix4(mesh.matrix);
+          const raw = T.MathUtils.clamp((weightPoint.y - cut + .13) / .26, 0, 1);
+          const blend = raw * raw * (3 - 2 * raw), lower = upward ? blend : 1 - blend;
+          const terminalRaw = terminalY === null ? 0 : T.MathUtils.clamp((terminalY + .18 - weightPoint.y) / .22, 0, 1);
+          const terminal = terminalRaw * terminalRaw * (3 - 2 * terminalRaw);
+          indices[i * 4] = 0; indices[i * 4 + 1] = 1; indices[i * 4 + 2] = terminalY === null ? 0 : 2;
+          weights[i * 4] = (1 - lower) * (1 - terminal); weights[i * 4 + 1] = lower * (1 - terminal); weights[i * 4 + 2] = terminal;
+          if (junction === 'hip') {
+            const hipRaw = T.MathUtils.clamp((weightPoint.y + .28) / .28, 0, 1), hip = hipRaw * hipRaw * (3 - 2 * hipRaw);
+            weights[i * 4] *= 1 - hip; weights[i * 4 + 1] *= 1 - hip; weights[i * 4 + 2] *= 1 - hip;
+            indices[i * 4 + 3] = 3; weights[i * 4 + 3] = hip;
+          } else if (junction === 'neck') {
+            weightPoint.fromBufferAttribute(positions, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(modelInverse);
+            const headRaw = T.MathUtils.clamp((weightPoint.y - neckBaseY) / .32, 0, 1), head = headRaw * headRaw * (3 - 2 * headRaw);
+            indices[i * 4] = 1; indices[i * 4 + 1] = 2; indices[i * 4 + 2] = 0;
+            weights[i * 4] = 1 - head; weights[i * 4 + 1] = head; weights[i * 4 + 2] = 0;
+          }
+        }
+        geometry.setAttribute('skinIndex', new T.Uint16BufferAttribute(indices, 4));
+        geometry.setAttribute('skinWeight', new T.Float32BufferAttribute(weights, 4));
+        const material = Array.isArray(mesh.material) ? mesh.material.map(cloneSkinMaterial) : cloneSkinMaterial(mesh.material);
+        const skin = new T.SkinnedMesh(geometry, material);
+        skin.name = mesh.name; skin.position.copy(mesh.position); skin.quaternion.copy(mesh.quaternion); skin.scale.copy(mesh.scale);
+        skin.visible = mesh.visible; skin.castShadow = mesh.castShadow; skin.receiveShadow = mesh.receiveShadow;
+        skin.frustumCulled = false; skin.renderOrder = mesh.renderOrder; skin.layers.mask = mesh.layers.mask;
+        skin.userData = mesh.userData; skin.onBeforeRender = mesh.onBeforeRender; skin.onAfterRender = mesh.onAfterRender;
+        const parent = mesh.parent; parent.remove(mesh); parent.add(skin);
+        model.updateMatrixWorld(true); skin.bind(skeleton); firstGeometry ||= geometry;
+      }
+      if (firstGeometry && !disposalSkeletons.has(skeleton)) {
+        disposalSkeletons.add(skeleton);
+        let disposed = false;
+        firstGeometry.addEventListener('dispose', () => { if (!disposed) { disposed = true; skeleton.dispose(); } });
+      }
+      return firstGeometry;
+    };
+    const hips = new T.Bone(); hips.name = 'host_pelvis'; hips.position.set(0, 1.82, 0); model.add(hips);
+    const spine = new T.Bone(); spine.name = 'host_spine'; spine.position.set(0, .38, 0); hips.add(spine);
+    bindings.hips = hips; bindings.spine = spine; bindings.head = head;
+    // Reparent the existing head and shoulder/hip groups, preserving bind-world
+    // geometry. The fallback now has real joints, not disconnected painted seams.
+    model.updateMatrixWorld(true);
+    for (const part of [head, leftArm, rightArm]) spine.attach(part);
+    for (const part of [leftLeg, rightLeg]) hips.attach(part);
+    model.updateMatrixWorld(true);
+    // Pivot at the basal throat ring, not the centre of the skull. Preserve
+    // every existing child in bind-world space; no hiding seam or extra mesh.
+    const headMesh = head.getObjectByName('head');
+    if (headMesh?.geometry?.attributes.position) {
+      const positions = headMesh.geometry.attributes.position, neckBase = new T.Vector3();
+      neckBaseY = Infinity;
+      for (let i = 0; i < positions.count; i++) {
+        weightPoint.fromBufferAttribute(positions, i).applyMatrix4(headMesh.matrixWorld).applyMatrix4(modelInverse);
+        neckBaseY = Math.min(neckBaseY, weightPoint.y);
+      }
+      let count = 0;
+      for (let i = 0; i < positions.count; i++) {
+        weightPoint.fromBufferAttribute(positions, i).applyMatrix4(headMesh.matrixWorld).applyMatrix4(modelInverse);
+        if (weightPoint.y <= neckBaseY + .006) { neckBase.add(weightPoint); count++; }
+      }
+      if (count) {
+        neckBase.multiplyScalar(1 / count); const children = head.children.slice();
+        for (const child of children) spine.attach(child);
+        model.localToWorld(neckBase); spine.worldToLocal(neckBase); head.position.copy(neckBase);
+        model.updateMatrixWorld(true); for (const child of children) head.attach(child);
+      }
+    }
+    model.updateMatrixWorld(true);
+    const torsoSkeleton = new T.Skeleton([hips, spine, head]); skeletons.push(torsoSkeleton);
+    const firstGeometry = skinMeshes(model.children.filter(object => object.isMesh), torsoSkeleton, 2.18, true);
+    if (headMesh) skinMeshes([headMesh], torsoSkeleton, 0, false, null, 'neck');
+    for (const [side, arm, leg] of [['left', leftArm, leftLeg], ['right', rightArm, rightLeg]]) {
+      const physicalSide = Math.sign(arm.position.x) || (side === 'left' ? -1 : 1);
+      for (const [kind, limb, bendAt, terminalAt, terminalObject] of [
+        ['Arm', arm, [physicalSide * .20, -.64, .10], arm.userData.restWrist || [physicalSide * .10, -1.3, .3], model.getObjectByName(physicalSide < 0 ? 'hand_-1' : 'hand_1')],
+        ['Leg', leg, [physicalSide * .06, -.80, physicalSide * .08], [physicalSide * .02, -1.54, .04], model.getObjectByName(physicalSide < 0 ? 'boot_-1' : 'boot_1')]
+      ]) {
+        const upper = new T.Bone(), lower = new T.Bone(), terminal = new T.Bone();
+        upper.name = `host_${side}_${kind === 'Arm' ? 'upper_arm' : 'thigh'}`;
+        lower.name = `host_${side}_${kind === 'Arm' ? 'forearm' : 'shin'}`;
+        terminal.name = `host_${side}_${kind === 'Arm' ? 'hand' : 'foot'}`;
+        limb.add(upper); lower.position.fromArray(bendAt); upper.add(lower);
+        terminal.position.fromArray(terminalAt).sub(lower.position); lower.add(terminal);
+        model.updateMatrixWorld(true);
+        if (terminalObject) terminal.attach(terminalObject);
+        const skeleton = new T.Skeleton(kind === 'Leg' ? [upper, lower, terminal, hips] : [upper, lower, terminal]); skeletons.push(skeleton);
+        const meshes = limb.children.filter(object => object.isMesh);
+        skinMeshes(meshes, skeleton, bendAt[1], false, terminalAt[1], kind === 'Leg' ? 'hip' : '');
+        if (kind === 'Arm') {
+          bindings[side + 'UpperArm'] = upper; bindings[side + 'ForeArm'] = lower; bindings[side + 'Hand'] = terminal;
+          const equipment = limb.children.find(object => /_equipment$/.test(object.name || '') && object.userData?.equipmentType);
+          if (equipment) terminal.attach(equipment);
+        } else {
+          bindings[side + 'Thigh'] = upper; bindings[side + 'Shin'] = lower; bindings[side + 'Foot'] = terminal;
+        }
+      }
+    }
+    model.updateMatrixWorld(true);
+    // Old rig references remain stable, but their local binds changed when the
+    // parent became a pelvis/spine joint. Capture those new neutral coordinates.
+    for (const bind of originalRig.bindPose) {
+      bind.position.copy(bind.joint.position); bind.quaternion.copy(bind.joint.quaternion); bind.scale.copy(bind.joint.scale);
+    }
+    const known = new Set(originalRig.bindPose.map(bind => bind.joint));
+    for (const joint of Object.values(bindings)) if (!known.has(joint)) {
+      originalRig.bindPose.push({ joint, position: joint.position.clone(), quaternion: joint.quaternion.clone(), scale: joint.scale.clone() }); known.add(joint);
+    }
+    const runtime = { root: model, bindings, skeletons, state: {}, bindPose: [],
+      faceAnchor: model.getObjectByName('face_attachment_anchor'), joints: bindings, native: true };
+    window.HiveAssetLibrary._capturePose(runtime);
+    const used = new Set(); model.traverse(object => {
+      if (object.material) for (const material of Array.isArray(object.material) ? object.material : [object.material]) used.add(material);
+    });
+    const orphanMaterials = [...replacedMaterials].filter(material => !used.has(material));
+    if (firstGeometry && orphanMaterials.length) {
+      let disposed = false;
+      firstGeometry.addEventListener('dispose', () => { if (!disposed) { disposed = true; orphanMaterials.forEach(material => material.dispose()); } });
+    }
+    model.userData.hostPerformanceRig = runtime;
+    return runtime;
+  }
+
   function animateProceduralModel(container, {
     phase = 0,
     idlePhase = phase,
@@ -20864,9 +21347,12 @@
     pulse = 0,
     action = 'melee',
     pose = '',
-    poseProgress = 0
+    poseProgress = 0,
+    groundSpeed = undefined
   } = {}) {
     const model = getAnimationModel(container);
+    const hostPerformance = model && window.HiveHostPerformance?.sample?.(pose, poseProgress, phase,
+      model.userData.hostPerformanceDescriptor ||= {});
     if (window.HiveAssetLibrary?.handlesRoot?.(model)) {
       const lock = model.userData.suspendedHostLock;
       const owner = lock?.owner;
@@ -20876,8 +21362,8 @@
       // imported root must retain the exact skinned pose used for shell fitting.
       window.HiveAssetLibrary.setState(model, captured
         ? { phase, movement: 0, attack: 0, crouch: 0, pulse: 0, action, pose: '', poseProgress: 0, folded: false, frozen: true }
-        : { phase, movement, attack, crouch, pulse, action, pose, poseProgress, frozen: false });
-      return;
+        : { phase, movement, attack, crouch, pulse, action, pose, poseProgress, groundSpeed, frozen: false });
+      return captured ? null : hostPerformance;
     }
     const rig = model?.userData?.animationRig;
     if (!rig) return;
@@ -20893,6 +21379,17 @@
     model.quaternion.copy(basePose.quaternion);
     model.scale.copy(basePose.scale);
     rig.resetPose?.();
+
+    if (hostPerformance && model.userData.modelType === 'human') {
+      const nativeHost = prepareNativeHostPerformance(model);
+      if (nativeHost) {
+        nativeHost.state.phase = phase; nativeHost.state.movement = movement; nativeHost.state.attack = attack;
+        nativeHost.elapsed = Number.isFinite(phase) ? phase / 6.4 : 0;
+        if (!hostPerformance.procedural) window.HiveAssetLibrary._boneAnimation(nativeHost);
+        window.HiveAssetLibrary._applyHostPerformance(nativeHost, hostPerformance);
+        return hostPerformance;
+      }
+    }
 
     // The cocoon owns its shell pivots and tearing tendons. Resetting or scaling
     // individual pieces here would fight its continuous maturation animation.
@@ -21054,6 +21551,7 @@
     }
     window.HiveAlienMotion?.apply?.(model, {phase, idlePhase, movement, attack, crouch, action, pose, poseProgress,
       reducedMotion: rendererEngine.reduceMotion});
+    return hostPerformance;
   }
 
   function setHudBar(kind, label, value, displayValue = null) {
@@ -21548,6 +22046,39 @@
       this.praetorianRoarCooldown = 0;
       this.acousticDecoyCooldown = 0;
       this.directInoculationCooldown = 0;
+    }
+
+    updateCamouflageMaterials(forceRestore = false) {
+      const root = this.detailedModel || this.mesh;
+      const active = !forceRestore && !this.isDefeated && !!root &&
+        (this.isHiveMelded || this.isWallMimic || this.isInVent);
+      const restore = () => {
+        for (const [material, state] of this.camouflageMaterials?.states || []) {
+          const changed = material.transparent !== state.transparent;
+          material.opacity = state.opacity;
+          material.transparent = state.transparent;
+          material.depthWrite = state.depthWrite;
+          if (changed) material.needsUpdate = true;
+        }
+        this.camouflageMaterials = null;
+      };
+      if (this.camouflageMaterials && (this.camouflageMaterials.root !== root || !active)) restore();
+      if (!active) return;
+      const snapshot = this.camouflageMaterials ||= { root, states: new Map() };
+      root.traverse?.((child) => {
+        if (!child.isMesh) return;
+        for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+          if (!material) continue;
+          if (!snapshot.states.has(material)) snapshot.states.set(material, {
+            opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite
+          });
+          const changed = !material.transparent;
+          material.transparent = true;
+          material.opacity = Math.min(snapshot.states.get(material).opacity, .22);
+          material.depthWrite = false;
+          if (changed) material.needsUpdate = true;
+        }
+      });
     }
 
     toggleCeilingProwl() {
@@ -22422,14 +22953,7 @@
         audioManager.playWallBlendMuffledBreath?.(this.x, this.z);
         window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x3b0712, 12, 0.08, 0.9);
 
-        if (this.detailedModel) {
-          this.detailedModel.traverse((child) => {
-            if (child.isMesh && child.material) {
-              child.material.transparent = true;
-              child.material.opacity = 0.22;
-            }
-          });
-        }
+        this.updateCamouflageMaterials();
         showToast('MIMÉTISME MURAL DE RÉSINE ACTIF [MAJ+Z] : Invisibilité optique 98% ! Prochaine frappe critique +200% !');
         appendSensorLog(`[MIMÉTISME] Rétraction des membres contre la bio-résine. Embuscade furtive prête.`, 'stealth');
         return true;
@@ -22437,14 +22961,7 @@
         this.isWallMimic = false;
         const profile = this.getAdultProfile();
         this.speed = profile.speed;
-        if (this.detailedModel) {
-          this.detailedModel.traverse((child) => {
-            if (child.isMesh && child.material) {
-              child.material.transparent = false;
-              child.material.opacity = 1.0;
-            }
-          });
-        }
+        this.updateCamouflageMaterials();
         showToast('MIMÉTISME DÉSACTIVÉ : Posture de mouvement rétablie.');
         return true;
       }
@@ -23359,25 +23876,11 @@
       audioManager.playResinMeldingSquish?.(this.x, this.z);
 
       if (this.isHiveMelded) {
-        if (this.detailedModel) {
-          this.detailedModel.traverse?.((c) => {
-            if (c.isMesh && c.material) {
-              c.material.transparent = true;
-              c.material.opacity = 0.22;
-            }
-          });
-        }
+        this.updateCamouflageMaterials();
         showToast('CAMOUFLAGE RÉSINE ACTIF [MAJ+Z] : Silhouette fondue dans la bio-résine, invisibilité aux détecteurs !');
         appendSensorLog('[MIMÉTISME DE RUCHE] Sécrétion de résine de camouflage. Signature optique et thermique masquée.', 'stealth');
       } else {
-        if (this.detailedModel) {
-          this.detailedModel.traverse?.((c) => {
-            if (c.isMesh && c.material) {
-              c.material.transparent = false;
-              c.material.opacity = 1.0;
-            }
-          });
-        }
+        this.updateCamouflageMaterials();
         showToast('CAMOUFLAGE RÉSINE DÉSACTIVÉ : Posture de chasse normale.');
       }
       return true;
@@ -23519,6 +24022,7 @@
       window.HiveAdvancedCombat?.cancelMotion?.(this);
       this.releaseDraggedHost();
       this.footstepDistance=0;
+      this.updateCamouflageMaterials(true);
       if (this.mesh) {
         rendererEngine.removeObject(this.mesh);
         this.mesh = null;
@@ -23613,6 +24117,7 @@
         group.position.set(this.x, 0, this.z);
         rendererEngine.scene.add(group);
         this.mesh = group;
+        this.updateCamouflageMaterials();
         return;
       }
 
@@ -23718,6 +24223,7 @@
       group.position.set(this.x, 0, this.z);
       rendererEngine.scene.add(group);
       this.mesh = group;
+      this.updateCamouflageMaterials();
     }
 
     setForm(form) {
@@ -23888,6 +24394,8 @@
         }
         if (this.inDeathThroes) return;
         this.isDefeated = true;
+        this.isHiveMelded = this.isWallMimic = false;
+        this.updateCamouflageMaterials(true);
         if (window.gameInstance) {
           window.gameInstance.showEndModal(
             `${formLabel} NEUTRALISÉ`,
@@ -23963,16 +24471,7 @@
       this.currentVent = vent;
       audioManager.playVentEnter?.();
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x64748b, 12, 0.1, 1.2);
-      if (this.mesh) {
-        this.mesh.traverse((c) => {
-          if (c.isMesh && c.material) {
-            c.userData.origOpacity = c.material.opacity !== undefined ? c.material.opacity : 1.0;
-            c.userData.origTrans = Boolean(c.material.transparent);
-            c.material.transparent = true;
-            c.material.opacity = 0.22;
-          }
-        });
-      }
+      this.updateCamouflageMaterials();
       showToast(`INFILTRATION DANS LE CONDUIT [${vent.name}] : Furtivité totale active ! Déplacez-vous à travers la station [C pour émerger].`);
       appendSensorLog(`[CONDUIT] Le xénomorphe a disparu dans le réseau de ventilation via ${vent.name}. Furtivité absolue.`, 'stealth');
       window.HiveSystems?.vfx?.floatingText?.(this.x, 2.5, this.z, 'FURTIVITÉ CONDUIT [C]', '#38bdf8', true);
@@ -24018,14 +24517,7 @@
       this.x = targetX;
       this.z = targetZ;
       this.mesh?.position.set(this.x, 0, this.z);
-      if (this.mesh) {
-        this.mesh.traverse((c) => {
-          if (c.isMesh && c.material) {
-            c.material.opacity = c.userData.origOpacity !== undefined ? c.userData.origOpacity : 1.0;
-            c.material.transparent = c.userData.origTrans !== undefined ? c.userData.origTrans : false;
-          }
-        });
-      }
+      this.updateCamouflageMaterials();
       audioManager.playVentExit?.();
       rendererEngine.addScreenShake?.(0.35, 0.22);
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x94a3b8, 16, 0.14, 1.4);
@@ -24090,30 +24582,25 @@
 
     attachToFace(host) {
       if (!host?.faceAnchor || !this.mesh) return false;
+      if (!window.HiveModernLifecycle?.attachFacehugger?.(this.mesh, host, { duration: .18, phase: this.animationTime || 0 })) return false;
       this.isLeaping = false;
       this.x = host.x;
       this.z = host.z;
-      this.mesh.parent?.remove(this.mesh);
-      host.faceAnchor.add(this.mesh);
-      this.mesh.position.set(0, 0, 0);
-      this.mesh.rotation.set(Math.PI / 2, 0, Math.PI);
-      this.detailedModel?.userData?.setFoldedPose?.(true);
       this.attachedHost = host;
       host.isRestrained = true;
-      animateProceduralModel(this.mesh, { phase: 0, attack: 0.75, crouch: 0.5 });
       return true;
     }
 
     detachFromHost({ releaseHost = true, hide = false } = {}) {
       if (!this.mesh) return;
       const host = this.attachedHost;
-      const worldPosition = new THREE.Vector3();
-      this.mesh.getWorldPosition(worldPosition);
-      this.mesh.parent?.remove(this.mesh);
-      rendererEngine.scene.add(this.mesh);
-      this.mesh.position.copy(worldPosition);
-      this.mesh.rotation.set(0, 0, 0);
-      this.detailedModel?.userData?.setFoldedPose?.(false);
+      if (!window.HiveModernLifecycle?.detachFacehugger?.(this.mesh, { parent: rendererEngine.scene })) {
+        this.mesh.updateWorldMatrix(true, true);
+        const world = this.mesh.matrixWorld.clone();
+        rendererEngine.scene.add(this.mesh);
+        world.decompose(this.mesh.position, this.mesh.quaternion, this.mesh.scale);
+        this.mesh.matrixAutoUpdate = true;
+      }
       if (releaseHost && host) host.isRestrained = false;
       this.attachedHost = null;
       this.mesh.visible = !hide;
@@ -24248,17 +24735,9 @@
       if (this.attachedHost) {
         this.x = this.attachedHost.x;
         this.z = this.attachedHost.z;
-        animateProceduralModel(this.mesh, {
-          phase: this.animationTime * 10,
-          attack: 0.72 + Math.sin(this.animationTime * 12) * 0.16,
-          crouch: 0.45,
-          action: 'grip'
-        });
-        this.detailedModel?.userData?.setFoldedPose?.(true);
-        const gripPulse = 1 + Math.sin(this.animationTime * 14) * 0.018;
-        const attachmentScale = 0.92 * gripPulse;
-        this.detailedModel?.scale.setScalar(attachmentScale);
-        if (this.mesh) this.mesh.rotation.y = Math.sin(this.animationTime * 10) * 0.018;
+        if (!window.HiveModernLifecycle?.updateFacehuggerGrip?.(this.mesh, {
+          deltaSeconds: safeDelta, phase: this.animationTime, strength: .6 + this.actionAnimation * .4
+        })) this.detachFromHost({ releaseHost: true, hide: true });
         return;
       }
 
@@ -24657,6 +25136,7 @@
     }
 
     destroy() {
+      this.clearDamageFlash(false);
       this.directInoculated = false;
       this.medicalTask = null;
       this.incidentalGestationKind = null;
@@ -24687,8 +25167,51 @@
       return primary;
     }
 
+    clearDamageFlash(restore = true) {
+      const flash = this.damageFlash;
+      this.damageFlash = null;
+      if (!flash) return;
+      const current = new Set();
+      if (restore && flash.mesh === this.mesh) this.mesh?.traverse((child) => {
+        for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+          if (material) current.add(material);
+        }
+      });
+      for (const [material, entry] of flash.materials) {
+        material.removeEventListener?.('dispose', entry.onDispose);
+        if (!current.has(material) || material.emissive !== entry.emissive) continue;
+        if (entry.color?.isColor && material.emissive.copy) material.emissive.copy(entry.color);
+        else material.emissive.setHex(entry.color);
+        if (entry.hasIntensity) material.emissiveIntensity = entry.intensity;
+        else delete material.emissiveIntensity;
+      }
+      flash.materials.clear();
+    }
+
+    updateDamageFlash(deltaSeconds = 1 / 60) {
+      const flash = this.damageFlash;
+      if (!flash) return;
+      const game = window.gameInstance;
+      if (flash.mesh !== this.mesh || this.isDestroyed) {
+        this.clearDamageFlash(false);
+        return;
+      }
+      if (game !== flash.game || game?.currentStage !== flash.stage) {
+        // A host can legitimately carry the same mesh into the next act. Only
+        // restore it if it is still an actor of this very game, never a stale mesh.
+        this.clearDamageFlash(game === flash.game && game?.humans?.includes(this));
+        return;
+      }
+      if (game?.isSystemPaused || game?.isRunning === false || game?.campaignActive === false) return;
+      flash.remaining -= Math.max(0, Math.min(.1, Number(deltaSeconds) || 0));
+      if (flash.remaining <= 1e-7) this.clearDamageFlash();
+    }
+
     takeDamage(dmg, attacker = null) {
-      if (this.isCocooned || this.isIncapacitated) return false;
+      const damageGame = window.gameInstance;
+      if (!Number.isFinite(dmg) || dmg <= 0 || !this.mesh || this.isDestroyed || this.isEscaped || this.isConsumedByCycle ||
+        !(this.hp > 0) || this.isCocooned || this.isIncapacitated || damageGame?.isSystemPaused ||
+        damageGame?.isRunning === false || damageGame?.campaignActive === false) return false;
       let appliedDamage = Math.max(0, dmg);
 
       // Chantier 80 : Bonus de dégâts critiques +200% à l'embuscade depuis le mimétisme de résine
@@ -24784,32 +25307,42 @@
       const isSteel = ['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type);
       const isSynth = this.type === 'synthetic' || this.type === 'android' || isSteel || this.isCyberHound;
       const flashColor = isSynth ? 0xffffff : 0xef233c;
-      const trackedMaterials = [];
+      if (this.damageFlash && (this.damageFlash.mesh !== this.mesh ||
+        this.damageFlash.game !== window.gameInstance || this.damageFlash.stage !== window.gameInstance?.currentStage)) {
+        this.clearDamageFlash(this.damageFlash.mesh === this.mesh && this.damageFlash.game === window.gameInstance &&
+          window.gameInstance?.humans?.includes(this));
+      }
+      const flash = this.damageFlash ||= { mesh: this.mesh, game: window.gameInstance,
+        stage: window.gameInstance?.currentStage, remaining: .16, materials: new Map() };
+      flash.remaining = .16;
       this.mesh?.traverse((child) => {
         if (child.isMesh && child.material) {
           const mats = Array.isArray(child.material) ? child.material : [child.material];
           mats.forEach((mat) => {
             if (mat && mat.emissive) {
-              trackedMaterials.push({
-                mat,
-                origHex: mat.emissive.getHex(),
-                origIntensity: mat.emissiveIntensity !== undefined ? mat.emissiveIntensity : 1.0
-              });
+              let entry = flash.materials.get(mat);
+              if (entry && entry.emissive !== mat.emissive) {
+                mat.removeEventListener?.('dispose', entry.onDispose);
+                flash.materials.delete(mat);
+                entry = null;
+              }
+              if (!entry) {
+                entry = { emissive: mat.emissive, color: mat.emissive.clone?.() || mat.emissive.getHex(),
+                  intensity: mat.emissiveIntensity, hasIntensity: 'emissiveIntensity' in mat,
+                  onDispose: null };
+                entry.onDispose = () => {
+                  mat.removeEventListener?.('dispose', entry.onDispose);
+                  flash.materials.delete(mat);
+                };
+                flash.materials.set(mat, entry);
+                mat.addEventListener?.('dispose', entry.onDispose);
+              }
               mat.emissive.setHex(flashColor);
               mat.emissiveIntensity = 2.4;
             }
           });
         }
       });
-      setTimeout(() => {
-        trackedMaterials.forEach(({ mat, origHex, origIntensity }) => {
-          if (mat && mat.emissive) {
-            mat.emissive.setHex(origHex);
-            mat.emissiveIntensity = origIntensity;
-          }
-        });
-      }, 160);
-
       // 2. Recul physique et interruption (stagger)
       this.staggerTimer = 0.28;
       const fromX = attacker ? attacker.x : playerCreature.x;
@@ -24818,9 +25351,17 @@
       const pushDist = ['powerloader', 'exosuit'].includes(this.type) ? 0.25 : 0.72;
       const stepX = this.x + Math.cos(pushAngle) * pushDist;
       const stepZ = this.z + Math.sin(pushAngle) * pushDist;
-      if (!stationMap.checkCollision(stepX, stepZ)) {
-        this.x = stepX;
-        this.z = stepZ;
+      const controls = window.HiveGameplayControls;
+      const recoil = attacker?.isEnvironmentalHazard ? null : controls?.sweptDestination(stationMap, this,
+        { x: stepX, z: stepZ }, { range: pushDist + .001, padding: .35, truncate: true });
+      const fallbackClear = !attacker?.isEnvironmentalHazard && !controls &&
+        !stationMap.checkCollision(stepX, stepZ, .35) &&
+        (Array.isArray(stationMap.colliders) && typeof stationMap.segmentIntersectsCollider === 'function'
+          ? !stationMap.colliders.some(c => stationMap.segmentIntersectsCollider(this.x, this.z, stepX, stepZ, c, .35))
+          : stationMap.hasLineOfSight?.(this.x, this.z, stepX, stepZ, .35));
+      if (recoil || fallbackClear) {
+        this.x = recoil?.x ?? stepX;
+        this.z = recoil?.z ?? stepZ;
         this.mesh?.position.set(this.x, this.mesh.position.y, this.z);
       }
 
@@ -25160,6 +25701,7 @@
 
     update(deltaSeconds = 1 / 60) {
       if (!this.mesh) return;
+      this.updateDamageFlash(deltaSeconds);
       if (this.directInoculated) {
         this.updateIncidentalGestation(deltaSeconds);
         return;
@@ -27306,6 +27848,89 @@
   // -------------------------------------------------------------
   // STAGES LOGIC WITH GUARANTEED ATTACKS & TRANSITIONS
   // -------------------------------------------------------------
+  // Both encounter shots use the same solid-volume and bidirectional sight
+  // checks. Profiles change composition only, never scenery or actor state.
+  function getEncounterHostCamera({ host, cache, phaseKey, initialRotation = 0, shell = null,
+    fallbackFocusY = 1, profile = null }) {
+    const distances = profile?.distances || [7.2, 5.4, 3.8, 2.6];
+    const elevation = distance => profile?.elevation ?? (distance < 4 ? 4.3 : 4.8);
+    const focus = window.HiveHostPerformance?.focus?.(host.mesh) ||
+      new THREE.Vector3(host.x, fallbackFocusY, host.z);
+    const moved = !cache.at || Math.hypot(focus.x - cache.at.x, focus.z - cache.at.z) > 1.6;
+    const inside = (box, point) => point.x >= box.min.x - 0.14 && point.x <= box.max.x + 0.14 &&
+      point.y >= box.min.y - 0.14 && point.y <= box.max.y + 0.14 &&
+      point.z >= box.min.z - 0.14 && point.z <= box.max.z + 0.14;
+    const currentDistance = cache.distance || 5.4;
+    const currentEye = new THREE.Vector3(focus.x + Math.sin(cache.azimuth || 0) * currentDistance,
+      cache.fallbackHeight ?? (focus.y + elevation(currentDistance)),
+      focus.z + Math.cos(cache.azimuth || 0) * currentDistance);
+    const invalidCached = (cache.bounds || []).some(box => inside(box, currentEye)) ||
+      !stationMap.hasLineOfSight(focus.x, focus.z, currentEye.x, currentEye.z, 0.12);
+    if (moved || cache.phaseKey !== phaseKey || invalidCached) {
+      const previous = cache.azimuth ?? (initialRotation + Math.PI / 4);
+      const angles = Array.from({ length: 16 }, (_, index) => previous + Math.ceil(index / 2) * (index % 2 ? 1 : -1) * Math.PI / 8);
+      const roots = [rendererEngine.mapGroup, rendererEngine.propsGroup, shell].filter(Boolean);
+      roots.forEach(root => root.updateMatrixWorld(true));
+      // Individual convex pieces, never a whole hollow portico's bounding box.
+      const bounds = [], local = new THREE.Matrix4(), world = new THREE.Matrix4();
+      for (const root of roots) root.traverse(object => {
+        if (!object.isMesh || !object.geometry || !/^(Box|Sphere|Cylinder|Icosahedron)(Buffer)?Geometry$/.test(object.geometry.type)) return;
+        for (let parent = object; parent; parent = parent.parent) if (!parent.visible) return;
+        const structural = (stationMap.walls || []).includes(object);
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        if (!structural && !materials.some(material => material?.depthWrite !== false &&
+          (!material?.transparent || material.opacity > 0.6))) return;
+        if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+        if (object.isInstancedMesh) {
+          for (let index = 0; index < object.count; index++) {
+            object.getMatrixAt(index, local);if (Math.abs(local.determinant()) < 1e-10) continue;
+            world.multiplyMatrices(object.matrixWorld, local);
+            bounds.push(object.geometry.boundingBox.clone().applyMatrix4(world));
+          }
+        } else bounds.push(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld));
+      });
+      cache.bounds = bounds;
+      const ray = new THREE.Raycaster(), direction = new THREE.Vector3();
+      let selected = null;
+      for (const distance of distances) {
+        for (const angle of angles) {
+          const eye = new THREE.Vector3(focus.x + Math.sin(angle) * distance,
+            focus.y + elevation(distance), focus.z + Math.cos(angle) * distance);
+          if (bounds.some(box => inside(box, eye)) || stationMap.checkCollision(eye.x, eye.z, 0.3) ||
+            !stationMap.hasLineOfSight(focus.x, focus.z, eye.x, eye.z, 0.12)) continue;
+          direction.copy(focus).sub(eye);const length = direction.length();direction.normalize();
+          ray.set(eye, direction);ray.far = Math.max(0.1, length - 0.45);
+          const opaque = hit => {
+            if (!hit.object.isMesh) return false;
+            for (let parent = hit.object; parent; parent = parent.parent) if (!parent.visible) return false;
+            const materials = Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material];
+            return materials.some(material => material && material.depthWrite !== false &&
+              (!material.transparent || material.opacity > 0.6));
+          };
+          let obscured = ray.intersectObjects(roots, true).some(opaque);
+          if (!obscured) {
+            // Reverse casting catches candidates inside a FrontSide-only mesh.
+            ray.set(focus, direction.negate());ray.near = 0.45;ray.far = length;
+            obscured = ray.intersectObjects(roots, true).some(opaque);ray.near = 0;
+          }
+          if (!obscured) { selected = { angle, distance, eye }; break; }
+        }
+        if (selected) break;
+      }
+      cache.azimuth = selected?.angle ?? initialRotation;
+      cache.distance = selected?.distance ?? 2.6;
+      cache.fallbackHeight = selected ? null : Math.max(focus.y + 6, ...bounds.map(box => box.max.y + 1.2));
+      cache.obstructed = !selected;
+      cache.at = { x: focus.x, z: focus.z };
+      cache.phaseKey = phaseKey;
+    }
+    const distance = cache.distance || 5.4, angle = cache.azimuth;
+    return { position: { x: focus.x + Math.sin(angle) * distance,
+      y: cache.fallbackHeight ?? (focus.y + elevation(distance)), z: focus.z + Math.cos(angle) * distance },
+      target: { x: focus.x, y: focus.y, z: focus.z }, fov: profile?.fov ?? 51, near: profile?.near ?? 0.08, exposure: 1.12,
+      avoidSolidGeometry: true, collisionBounds: cache.bounds, obstructed: cache.obstructed };
+  }
+
   class StageEgg {
     constructor() {
       this.step = 'CLOSED';
@@ -27317,6 +27942,12 @@
       this.environment = null;
       this.host = null;
       this.elapsed = 0;
+      this.approachPath = [];
+      this.approachSpeed = 0;
+      this.approachPhase = 0;
+      this.approachFootfall = 0;
+      this.investigationElapsed = 0;
+      this.approachBlockedFor = 0;
     }
     init() {
       playerCreature.setAdultCaste('drone');
@@ -27365,6 +27996,8 @@
         this.host.pathWaypoints = [];
         this.host.isLured = false;
         this.host.isDocileCatatonic = true;
+        this.host.eggFallFootprint = { x: approach.hostTargetX, z: approach.hostTargetZ,
+          outwardX: Math.cos(approach.approachAngle), outwardZ: Math.sin(approach.approachAngle) };
         this.host.mesh?.position.set(this.host.x, 0, this.host.z);
         if (this.host.mesh) this.host.mesh.rotation.y = Math.atan2(approach.x - this.host.x, approach.z - this.host.z);
         this.host.ensureFlashlight?.(definition.id === 'ship' || definition.id === 'colony');
@@ -27386,12 +28019,20 @@
           const heading = side * Math.PI / 8;
           const hostX = x + Math.cos(heading) * 12;
           const hostZ = z + Math.sin(heading) * 12;
-          const hostTargetX = x + Math.cos(heading) * 3.15;
-          const hostTargetZ = z + Math.sin(heading) * 3.15;
+          const hostTargetX = x + Math.cos(heading) * 4;
+          const hostTargetZ = z + Math.sin(heading) * 4;
           if (stationMap.checkCollision(hostX, hostZ, 0.8)
             || stationMap.checkCollision(hostTargetX, hostTargetZ, 0.8)) continue;
-          if (!stationMap.hasLineOfSight(hostX, hostZ, hostTargetX, hostTargetZ, 0.72)
+          if (!stationMap.hasLineOfSight(hostX, hostZ, hostTargetX, hostTargetZ, 1.1)
             || !stationMap.hasLineOfSight(hostTargetX, hostTargetZ, x, z, 0.16)) continue;
+          // Reserve the whole adult's rearward fall, not only the standing
+          // actor centre. A later unconscious body must not cross a crate.
+          const frontX = hostTargetX - Math.cos(heading) * 0.8;
+          const frontZ = hostTargetZ - Math.sin(heading) * 0.8;
+          const rearX = hostTargetX + Math.cos(heading) * 5.3;
+          const rearZ = hostTargetZ + Math.sin(heading) * 5.3;
+          if (stationMap.checkCollision(frontX, frontZ, 1.1) || stationMap.checkCollision(rearX, rearZ, 1.1)
+            || !stationMap.hasLineOfSight(frontX, frontZ, rearX, rearZ, 1.1)) continue;
           return { x, z, hostX, hostZ, hostTargetX, hostTargetZ, approachAngle: heading };
         }
       }
@@ -27552,10 +28193,16 @@
         dispose() {
           if (disposed) return;
           disposed = true;
+          const usedMaterials = new Set();
+          group.traverse(object => {
+            for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+              if (material) usedMaterials.add(material);
+            }
+          });
           rendererEngine.removeObject(group);
           // Materials with no generated instance (for example a null optional
           // factory) still belong to this scene and must be released.
-          for (const material of [dark, rib, lightMaterial]) material.dispose();
+          for (const material of [dark, rib, lightMaterial]) if (!usedMaterials.has(material)) material.dispose();
           for (const [id, intensity] of Object.entries(lighting)) {
             if (rendererEngine.lights[id] && Number.isFinite(intensity)) rendererEngine.lights[id].intensity = intensity;
           }
@@ -27579,7 +28226,7 @@
         document.getElementById('btn-calibrate-senses').onclick = () => {
           if (this.senseCalibrations >= 3) return;
           this.senseCalibrations++;
-          audioManager.playMotionTrackerPing(12 - this.senseCalibrations * 2);
+          audioManager.playEggSense?.(['heat', 'breath', 'vibration'][this.senseCalibrations - 1], playerCreature.x, playerCreature.z);
           const signatures = ['Chaleur corporelle — organisme vivant détecté.', 'Respiration — échanges gazeux compatibles.', 'Vibrations — pas humains sur le pont.'];
           this.log(`[SENS ${this.senseCalibrations}/3] ${signatures[this.senseCalibrations - 1]}`);
           window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, this.origin.color, 2 + this.senseCalibrations);
@@ -27588,13 +28235,24 @@
         };
         document.getElementById('btn-lure').onclick = () => {
           if (this.luredScientist || this.senseCalibrations < 3) return;
-          audioManager.playHeartbeat();
+          audioManager.playEggRustle?.(playerCreature.x, playerCreature.z, { intensity: 0.45 });
           this.luredScientist = true;
           this.hostArrived = false;
           this.log('[STIMULUS] La xénobiologiste Imani Kade s’approche de la signature biologique.');
           if (this.host) {
-            this.host.isDocileCatatonic = false;
             this.host.lureTowards(this.origin.hostTargetX, this.origin.hostTargetZ);
+            // The encounter owns this actor while she investigates. Normal AI
+            // must not move her a second time before this staged performance.
+            this.host.isDocileCatatonic = true;
+            this.investigationElapsed = 0;
+            this.approachSpeed = 0;
+            this.approachBlockedFor = 0;
+            this.approachPath = stationMap.findPath(this.host.x, this.host.z,
+              this.origin.hostTargetX, this.origin.hostTargetZ, { padding: 0.85 });
+            if (!this.approachPath.length && stationMap.hasLineOfSight(this.host.x, this.host.z,
+              this.origin.hostTargetX, this.origin.hostTargetZ, 0.85)) {
+              this.approachPath = [{ x: this.origin.hostTargetX, z: this.origin.hostTargetZ }];
+            }
           }
           window.HiveSystems?.updateObjective(1, 2, 'Attendre que la cible entre dans la fenêtre d’éclosion.');
           window.HiveSystems?.narrative('IMANI KADE', 'Un mouvement… Le signal vient de cet œuf. J’approche.');
@@ -27622,35 +28280,101 @@
           };
           window.HiveSystems?.updateObjective(1, 3);
           if (window.gameInstance) window.gameInstance.advanceStage(this);
-          audioManager.playHatch();
         };
       }
     }
     log(msg) { appendSensorLog(msg, 'bio'); }
     getCameraTarget() { return playerCreature; }
+    performInvestigator(pose, progress = 0, movement = 0, groundSpeed = 0) {
+      const host = this.host;
+      if (!host?.mesh) return;
+      host.mesh.position.set(host.x, 0, host.z);
+      const descriptor = animateProceduralModel(host.mesh, { phase: this.approachPhase,
+        idlePhase: this.elapsed, movement, groundSpeed, pose, poseProgress: progress });
+      window.HiveHostPerformance?.applyRoot?.(host.mesh, descriptor ||
+        window.HiveHostPerformance?.sample?.(pose, progress, this.elapsed));
+    }
     destroy() {
       if (!this.isCompleted) {
         this.environment?.dispose();
-        if (this.host) this.host.isDocileCatatonic = false;
+        if (this.host) {
+          this.host.isDocileCatatonic = false;
+          this.host.isLured = false;
+          this.host.navigationGoal = null;
+          this.host.pathWaypoints = [];
+          if (this.host.mesh) {
+            this.host.mesh.position.set(this.host.x, 0, this.host.z);
+            this.host.mesh.rotation.x = this.host.mesh.rotation.z = 0;
+            animateProceduralModel(this.host.mesh, { phase: this.approachPhase, movement: 0 });
+          }
+        }
       }
     }
     update(deltaSeconds = 1 / 60) {
-      this.elapsed += Math.max(0, deltaSeconds);
-      this.environment?.update(deltaSeconds);
-      if (!this.luredScientist || this.hostArrived || this.step !== 'CLOSED') return;
+      if (window.gameInstance?.isSystemPaused || this.isCompleted) return;
+      const delta = Math.max(0, Math.min(0.1, Number(deltaSeconds) || 0));
+      this.elapsed += delta;
+      this.environment?.update(delta);
       const host = this.host;
-      if (!host) return;
-      const distance = Math.hypot(host.x - playerCreature.x, host.z - playerCreature.z);
-      if (
-        distance <= 4.2 &&
-        stationMap.hasLineOfSight(host.x, host.z, playerCreature.x, playerCreature.z, 0.12)
-      ) {
+      if (!host?.mesh || host.isDestroyed || host.isConsumedByCycle || host.isEscaped || host.hp <= 0) return;
+      if (!this.luredScientist || this.hostArrived || this.step !== 'CLOSED') {
+        this.performInvestigator('egg-observe', 0.35 + Math.sin(this.elapsed * 0.43) * 0.12);
+        return;
+      }
+      this.investigationElapsed += delta;
+      if (this.investigationElapsed < 0.65) {
+        this.performInvestigator('egg-observe', this.investigationElapsed / 0.65);
+        return;
+      }
+      const goal = { x: this.origin.hostTargetX, z: this.origin.hostTargetZ };
+      let remaining = Math.hypot(goal.x - host.x, goal.z - host.z);
+      const desiredSpeed = Math.min(2.8, Math.sqrt(2 * 3.2 * remaining));
+      this.approachSpeed += Math.max(-4.2 * delta, Math.min(2.4 * delta, desiredSpeed - this.approachSpeed));
+      let budget = this.approachSpeed * delta;
+      const startX = host.x, startZ = host.z;
+      while (budget > 1e-6 && this.approachPath.length) {
+        const point = this.approachPath[0], distance = Math.hypot(point.x - host.x, point.z - host.z);
+        if (distance < 0.035) { this.approachPath.shift(); continue; }
+        const step = Math.min(distance, budget);
+        const requested = { x: host.x + (point.x - host.x) * step / distance,
+          z: host.z + (point.z - host.z) * step / distance };
+        const resolved = window.HiveGameplayControls?.moveWithSlide?.(stationMap, host, requested, 0.85);
+        if (resolved?.moved) { host.x = resolved.x; host.z = resolved.z; }
+        else if (!resolved && !stationMap.checkCollision(requested.x, requested.z, 0.85) &&
+          stationMap.hasLineOfSight(host.x, host.z, requested.x, requested.z, 0.85)) {
+          host.x = requested.x; host.z = requested.z;
+        } else break;
+        budget -= step;
+        if (step >= distance) this.approachPath.shift();
+      }
+      const travelled = Math.hypot(host.x - startX, host.z - startZ), speed = delta > 0 ? travelled / delta : 0;
+      this.approachPhase += travelled / 2.3 * Math.PI * 2;
+      this.approachFootfall += travelled;
+      if (this.approachFootfall >= 1.08) {
+        this.approachFootfall %= 1.08;
+        audioManager.playFootstep?.(host.type, host.x, host.z, { intensity: 0.38, surface: 'metal', speed });
+      }
+      const heading = Math.atan2(playerCreature.x - host.x, playerCreature.z - host.z);
+      const turn = Math.atan2(Math.sin(heading - host.mesh.rotation.y), Math.cos(heading - host.mesh.rotation.y));
+      host.mesh.rotation.y += turn * (1 - Math.exp(-delta * 5));
+      this.performInvestigator(speed > 0.03 ? 'egg-approach' : 'egg-observe',
+        Math.min(1, this.investigationElapsed / 5), Math.min(0.78, speed / 3.2), speed);
+      remaining = Math.hypot(goal.x - host.x, goal.z - host.z);
+      if (travelled < 1e-5 && remaining > 0.15) this.approachBlockedFor += delta;
+      else this.approachBlockedFor = 0;
+      if (this.approachBlockedFor > 0.8) {
+        this.approachPath = stationMap.findPath(host.x, host.z, goal.x, goal.z, { padding: 0.85 });
+        this.approachBlockedFor = 0;
+      }
+      if (remaining <= 0.12 && stationMap.hasLineOfSight(host.x, host.z, playerCreature.x, playerCreature.z, 0.12)) {
         this.hostArrived = true;
+        this.approachSpeed = 0;
         host.isLured = false;
         host.isDocileCatatonic = true;
         host.navigationGoal = null;
         host.pathWaypoints = [];
         host.targetPos = { x: host.x, z: host.z };
+        this.performInvestigator('egg-observe', 0.5);
         this.log('[PROXIMITÉ] Hôte dans la fenêtre d’éclosion. Les pétales peuvent s’entrouvrir.');
         window.HiveSystems?.updateObjective(1, 2, 'Entrouvrir les pétales pendant que l’hôte observe l’incubateur.');
         this.updateHUD();
@@ -27676,8 +28400,22 @@
       this.aimYaw = 0;
       this.aimPitch = 0.12;
       this.elapsed = 0;
+      this.attachmentElapsed = 0;
+      this.minimumAttachmentTime = 5.5;
+      this.gripAssist = 0;
+      this.gripAssistReadyAt = 0;
+      this.hostReaction = 'idle';
+      this.openingProgress = 1;
+      this.openingStart = 1;
+      this.openingElapsed = 0;
+      this.eggEyeY = 3.15;
+      this.eggReadyRootY = 2.714;
+      this.investigator = null;
+      this.launchInvestigator = null;
+      this.droppedObjects = [];
     }
     init() {
+      this.activeGame = window.gameInstance;
       const context = window.gameInstance?.eggStartContext;
       if (context?.opened && playerCreature.form === 'egg') {
         this.eggShell = playerCreature.mesh;
@@ -27686,12 +28424,21 @@
         this.inEgg = true;
         this.eggOrigin = { x: context.x, z: context.z };
         this.eggEnvironment = context.environment || null;
+        const shellModel = getAnimationModel(this.eggShell);
+        this.openingStart = Math.max(0, Math.min(1, shellModel?.userData?.openProgress ?? 1));
+        this.openingProgress = this.openingStart;
+        const core = this.eggShell?.getObjectByName?.('incubator_core');
+        if (core) {
+          const bounds = new THREE.Box3().setFromObject(core);
+          this.eggEyeY = Math.max(3.15, bounds.max.y + 0.12);
+        }
         const host = window.gameInstance.humans.find((human) => human.id === context.hostId);
         if (host) {
+          this.investigator = host;
           host.isDocileCatatonic = true;
           this.aimYaw = Math.atan2(host.x - context.x, host.z - context.z);
           const face = host.faceAnchor?.getWorldPosition?.(new THREE.Vector3());
-          this.aimPitch = Math.atan2((face?.y || 3.95) - 2.4, Math.hypot(host.x - context.x, host.z - context.z));
+          this.aimPitch = Math.atan2((face?.y || 3.95) - this.eggEyeY, Math.hypot(host.x - context.x, host.z - context.z));
         }
         this.initialAimPitch = this.aimPitch;
         window.gameInstance.eggStartContext = null;
@@ -27700,7 +28447,8 @@
       if (this.inEgg) {
         playerCreature.x = this.eggOrigin.x;
         playerCreature.z = this.eggOrigin.z;
-        playerCreature.mesh.position.set(playerCreature.x, 1.7, playerCreature.z);
+        playerCreature.mesh.position.set(playerCreature.x,
+          1.7 + (this.eggReadyRootY - 1.7) * this.openingProgress, playerCreature.z);
         playerCreature.detailedModel?.userData?.setPose?.('ready');
       }
       this.blocksPlayerMovement = this.inEgg;
@@ -27763,11 +28511,16 @@
           : `<strong>Choix d’hôte :</strong><br><br>• Imani Kade produit un Drone polyvalent.<br>• L’animal de service produit un Runner quadrupède.<br>• Un commando blindé produit un Warrior.<br>• Masque d’Aster Rho : ${maskStatus}. Chaque bond arrache une attache avant toute implantation.<br>• Déplacez-vous puis bondissez à courte portée.`);
       const actionsContainer = document.getElementById('action-buttons-container');
       if (this.inEgg) {
-        document.getElementById('stage-instructions').innerHTML = '<strong>À l’intérieur de l’œuf ouvert :</strong><br><br>• Basculez entre la vue de suivi et la vue FPS avec V.<br>• Déplacez la souris pour observer le visage de l’hôte ; Q/D ou les flèches ajustent la visée.<br>• Le clic gauche, Espace ou le bouton déclenchent le bond hors de l’œuf.<br>• La caméra revient à la vue normale dès le départ.';
-        actionsContainer.innerHTML = `<button type="button" id="btn-egg-view" class="act-btn" aria-pressed="${this.eggViewFPS}">${this.eggViewFPS ? 'REVENIR À LA VUE DE SUIVI' : 'VOIR DEPUIS L’ŒUF — FPS'} [V]</button><button type="button" id="btn-launch-egg" class="act-btn">BONDIR HORS DE L’ŒUF [CLIC GAUCHE / ESPACE]</button>`;
+        const ready = this.openingProgress >= 0.995;
+        document.getElementById('stage-instructions').innerHTML = ready
+          ? '<strong>À l’intérieur de l’œuf ouvert :</strong><br><br>• V : observer depuis l’ouverture ou revenir au suivi.<br>• Souris, Q/D ou flèches : viser le visage de l’hôte.<br>• Clic gauche ou Espace : bondir. La vue revient au suivi dès la sortie.'
+          : '<strong>Les pétales se déploient :</strong><br><br>Le parasite attend que l’ouverture soit dégagée avant de regarder au-dehors ou de bondir.';
+        actionsContainer.innerHTML = `<button type="button" id="btn-egg-view" class="act-btn" aria-pressed="${this.eggViewFPS}" ${ready ? '' : 'disabled'}>${this.eggViewFPS ? 'REVENIR À LA VUE DE SUIVI' : 'VOIR DEPUIS L’ŒUF — FPS'} [V]</button><button type="button" id="btn-launch-egg" class="act-btn" ${ready ? '' : 'disabled'}>${ready ? 'BONDIR HORS DE L’ŒUF [CLIC GAUCHE / ESPACE]' : 'OUVERTURE DES PÉTALES…'}</button>`;
         document.getElementById('btn-egg-view').onclick = () => this.toggleEggView();
         document.getElementById('btn-launch-egg').onclick = () => this.launchFromEgg();
-        window.HiveEvolutionUI?.setEggView(this.eggViewFPS, { canLaunch: true, hint: 'Souris : viser · Q/D : tourner · Clic gauche : bondir · V : vue de suivi' });
+        window.HiveEvolutionUI?.setEggView(this.eggViewFPS, { canLaunch: ready, hint: ready
+          ? 'Souris : viser · Q/D : tourner · Clic gauche : bondir · V : vue de suivi'
+          : 'Les pétales s’écartent : l’ouverture doit être dégagée.' });
         return;
       }
       actionsContainer.innerHTML = this.isAttacking
@@ -27776,7 +28529,7 @@
       document.getElementById('btn-action-leap').onclick = () => this.isAttacking ? this.tightenGrip() : this.attemptLeap();
     }
     toggleEggView() {
-      if (!this.inEgg || this.isCompleted || window.gameInstance?.isSystemPaused) return false;
+      if (!this.inEgg || this.isCompleted || this.openingProgress < 0.995 || window.gameInstance?.isSystemPaused) return false;
       this.eggViewFPS = !this.eggViewFPS;
       this.aimOffsetX = 0;
       if (playerCreature.mesh) playerCreature.mesh.visible = !this.eggViewFPS;
@@ -27787,9 +28540,18 @@
       return true;
     }
     getCameraOverride() {
+      const host = this.targetHost;
+      if (this.isAttacking && !this.isCompleted && host?.mesh && playerCreature.attachedHost === host &&
+        (window.gameInstance?.humans || []).includes(host) && host.hp > 0 &&
+        !host.isDestroyed && !host.isConsumedByCycle && !host.isEscaped) {
+        return getEncounterHostCamera({ host, cache: this.attachmentCameraCache ||= {},
+          phaseKey: this.hostReaction, initialRotation: host.mesh.rotation.y || 0, shell: this.eggShell,
+          fallbackFocusY: 2.8, profile: { distances: [5.2, 4.4, 3.6, 2.6], elevation: 1.4, fov: 48 } });
+      }
+      this.attachmentCameraCache = null;
       if (!this.inEgg || !this.eggViewFPS || !this.eggOrigin) return null;
       const yaw = this.aimYaw + (this.aimOffsetX || 0);
-      const eyeY = 2.4;
+      const eyeY = this.eggEyeY;
       return {
         position: { x: this.eggOrigin.x, y: eyeY, z: this.eggOrigin.z },
         target: {
@@ -27806,7 +28568,7 @@
       return true;
     }
     launchFromEgg() {
-      if (!this.inEgg || this.isBonding || this.isCompleted || window.gameInstance?.isSystemPaused) return false;
+      if (!this.inEgg || this.isBonding || this.isCompleted || this.openingProgress < 0.995 || window.gameInstance?.isSystemPaused) return false;
       const origin = this.eggOrigin;
       const wasFPS = this.eggViewFPS;
       const yaw = this.aimYaw + (this.aimOffsetX || 0);
@@ -27818,7 +28580,7 @@
       const aimed = candidates.map((human) => {
         const distance = Math.hypot(human.x - origin.x, human.z - origin.z);
         const face = human.faceAnchor?.getWorldPosition?.(new THREE.Vector3());
-        const height = (face?.y || 3.95) - 2.4;
+        const height = (face?.y || 3.95) - this.eggEyeY;
         const dot = ((human.x - origin.x) * Math.sin(yaw) * Math.cos(this.aimPitch)
           + height * Math.sin(this.aimPitch)
           + (human.z - origin.z) * Math.cos(yaw) * Math.cos(this.aimPitch)) / Math.max(0.01, Math.hypot(distance, height));
@@ -27830,11 +28592,17 @@
       this.eggViewFPS = false;
       window.HiveEvolutionUI?.setEggView(false);
       if (playerCreature.mesh) playerCreature.mesh.visible = true;
-      for (const human of window.gameInstance?.humans || []) human.isDocileCatatonic = false;
+      const scriptedHost = aimed[0]?.human === this.investigator ? this.investigator : null;
+      for (const human of window.gameInstance?.humans || []) human.isDocileCatatonic = human === scriptedHost;
+      if (scriptedHost) {
+        this.launchInvestigator = { host: scriptedHost, yaw: scriptedHost.mesh?.rotation.y || 0 };
+        scriptedHost.eggLaunchOwner = this;
+      }
       playerCreature.detailedModel?.userData?.setPose?.('leap');
       rendererEngine.snapCameraTarget(playerCreature.x, playerCreature.z);
       if (aimed.length) {
         this.attemptLeap(aimed[0].human);
+        if (!this.isBonding && !this.isAttacking) this.releaseLaunchInvestigator();
         return true;
       }
       let landing = { x: origin.x, z: origin.z };
@@ -27849,15 +28617,212 @@
       this.isBonding = true;
       audioManager.playFacehuggerLeap(playerCreature.x, playerCreature.z);
       playerCreature.startLeapTo(landing, () => {
+        if (this.activeGame && (window.gameInstance !== this.activeGame || this.activeGame.currentStage !== this)) return;
         playerCreature.isLeaping = false;
         playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
         playerCreature.detailedModel?.userData?.setPose?.('crawl');
         this.isBonding = false;
         this.updateHUD();
-      }, { duration: 0.7, arcHeight: 2.7, useFaceAnchor: false });
+      }, { duration: 0.66, arcHeight: 0.8, useFaceAnchor: false });
       this.updateHUD();
       return true;
     }
+    releaseLaunchInvestigator(handOff = false) {
+      const host = this.launchInvestigator?.host;
+      this.launchInvestigator = null;
+      if (!host || host.eggLaunchOwner !== this) return;
+      delete host.eggLaunchOwner;
+      if (handOff) return; // The attached reaction now owns the same actor.
+      host.isDocileCatatonic = false;
+      host.isLured = false;
+      host.navigationGoal = null;
+      host.pathWaypoints = [];
+      host.targetPos = { x: host.x, z: host.z };
+      if (host.mesh && host.hp > 0 && !host.isDestroyed && !host.isConsumedByCycle && !host.isEscaped && !host.isCocooned) {
+        host.mesh.position.set(host.x, 0, host.z);
+        animateProceduralModel(host.mesh, { phase: this.elapsed, movement: 0, groundSpeed: 0, pose: '' });
+      }
+    }
+
+    updateLaunchInvestigator() {
+      const record = this.launchInvestigator;
+      if (!record) return;
+      const host = record.host;
+      const cancelled = !playerCreature.isLeaping || playerCreature.leapHost !== host;
+      if (!this.isBonding || cancelled ||
+        host.eggLaunchOwner !== this || !(window.gameInstance?.humans || []).includes(host) ||
+        host.hp <= 0 || host.isDestroyed || host.isEscaped || host.isConsumedByCycle || host.isCocooned ||
+        (this.activeGame && (window.gameInstance !== this.activeGame || this.activeGame.currentStage !== this))) {
+        this.releaseLaunchInvestigator();
+        if (cancelled) {
+          this.isBonding = false;
+          if (this.targetHost === host) this.targetHost = null;
+        }
+        return;
+      }
+      // HumanAI's docile branch deliberately performs no animation. Continue
+      // the inspection here until contact, without letting normal fear AI move
+      // the investigator out of the body-width fall corridor reserved earlier.
+      host.mesh.position.set(host.x, 0, host.z);
+      host.mesh.rotation.y = record.yaw;
+      const descriptor = animateProceduralModel(host.mesh, { phase: this.elapsed * 0.5,
+        idlePhase: this.elapsed, movement: 0, groundSpeed: 0, pose: 'egg-observe', poseProgress: 0.5 });
+      window.HiveHostPerformance?.applyRoot?.(host.mesh, descriptor ||
+        window.HiveHostPerformance?.sample?.('egg-observe', 0.5, this.elapsed));
+    }
+
+    beginHostReaction(host) {
+      this.attachmentElapsed = 0;
+      this.gripAssist = 0;
+      this.gripAssistReadyAt = 0;
+      this.struggleSoundAt = 0.8;
+      this.collapseBracePlayed = false;
+      this.collapseImpactPlayed = false;
+      this.hostReaction = 'contact';
+      this.blocksPlayerMovement = true;
+      this.reactionOrigin = { x: host.x, z: host.z };
+      const dx = host.x - (this.eggOrigin?.x ?? playerCreature.x), dz = host.z - (this.eggOrigin?.z ?? playerCreature.z);
+      const length = Math.hypot(dx, dz);
+      this.recoilDirection = length > 0.05 ? { x: dx / length, z: dz / length }
+        : { x: -Math.sin(host.mesh?.rotation?.y || 0), z: -Math.cos(host.mesh?.rotation?.y || 0) };
+      host.isDocileCatatonic = true;
+      host.isLured = false;
+      host.navigationGoal = null;
+      host.pathWaypoints = [];
+      host.targetPos = { x: host.x, z: host.z };
+      host.eggCollapseProgress = 0;
+      this.dropCarriedObjects(host);
+      audioManager.playHostFoley?.('recoil', host.x, host.z, { intensity: 0.45, surface: 'metal' });
+      this.poseTargetHost('facehugger-contact', 0);
+    }
+
+    poseTargetHost(pose, progress) {
+      const host = this.targetHost;
+      if (!host?.mesh) return;
+      host.mesh.position.set(host.x, 0, host.z);
+      host.mesh.rotation.x = host.mesh.rotation.z = 0;
+      if (window.HiveFidelityRules?.classifyHost(host).morphology === 'quadruped') {
+        this.performQuadrupedHost(host, pose, progress);
+        return;
+      }
+      const descriptor = animateProceduralModel(host.mesh, { phase: this.elapsed * 5.4,
+        idlePhase: this.elapsed, pose, poseProgress: progress, movement: 0, groundSpeed: 0 });
+      window.HiveHostPerformance?.applyRoot?.(host.mesh, descriptor ||
+        window.HiveHostPerformance?.sample?.(pose, progress, this.elapsed));
+    }
+
+    performQuadrupedHost(host, pose, progress, movement = 0, groundSpeed = 0) {
+      const p = Math.max(0, Math.min(1, progress || 0)), smooth = value => value * value * (3 - 2 * value);
+      let lying = 0;
+      if (pose === 'unconscious') lying = 1;
+      if (pose === 'host-collapse') lying = smooth(p);
+      if (pose === 'waking') lying = 1 - smooth(Math.min(1, p / 0.72));
+      const recovering = pose === 'waking' ? Math.sin(p * Math.PI) * 0.55 : lying * 0.4;
+      animateProceduralModel(host.mesh, { phase: this.hostLocomotionPhase || this.elapsed * 4,
+        movement, groundSpeed, crouch: recovering,
+        attack: /contact|struggle/.test(pose) ? 0.15 + Math.sin(this.elapsed * 3) * 0.05 : 0 });
+      host.mesh.rotation.x = /contact|struggle/.test(pose) ? -0.05 : 0;
+      host.mesh.rotation.z = lying * 1.18;
+      window.HiveHostPerformance?.ground?.(host.mesh, getAnimationModel(host.mesh));
+    }
+
+    getLeapOptions(host) {
+      const distance = Math.hypot(host.x - playerCreature.x, host.z - playerCreature.z);
+      const height = Number(playerCreature.mesh?.position?.y) || 0;
+      // From the rim the target face is already near launch height: a tense
+      // short pounce, not the high ground-to-face arc through the ceiling.
+      return { duration: Math.max(0.32, Math.min(0.78, distance / 11 + 0.14)),
+        arcHeight: height > 1.5 ? Math.max(0.35, Math.min(0.9, distance * 0.13))
+          : Math.max(0.8, Math.min(2.1, distance * 0.14)), useFaceAnchor: true };
+    }
+
+    reboundFromMask(host) {
+      // Losing purchase on a sealed visor sends the parasite back into the
+      // approach lane. Keep the descent visible and sweep the landing route;
+      // an arbitrary offset can put it through a wall or inside a crate.
+      const C = window.HiveGameplayControls;
+      const start = playerCreature.leapStart || { x: playerCreature.x, z: playerCreature.z };
+      const angle = Math.atan2(start.z - host.z, start.x - host.x);
+      let landing = null;
+      for (const offset of [0, 0.4, -0.4, 0.8, -0.8, Math.PI]) {
+        const point = { x: host.x + Math.cos(angle + offset) * 2.8,
+          z: host.z + Math.sin(angle + offset) * 2.8 };
+        landing = C?.sweptDestination(stationMap, host, point, { range: 3, padding: 0.34, truncate: true });
+        if (landing) break;
+      }
+      // Even an unusually boxed-in saved host must never induce a teleport.
+      landing ||= { x: playerCreature.x, z: playerCreature.z };
+      playerCreature.isLeaping = false;
+      const release = () => {
+        if (this.isCompleted || (this.activeGame &&
+          (window.gameInstance !== this.activeGame || this.activeGame.currentStage !== this))) return;
+        if (window.gameInstance?.isSystemPaused) { this.pendingLeapResolution = release; return; }
+        playerCreature.isLeaping = false;
+        playerCreature.mesh?.rotation.set(0, playerCreature.mesh.rotation.y, 0);
+        this.isBonding = false;
+        this.updateHUD();
+      };
+      if (!playerCreature.startLeapTo(landing, release,
+        { duration: 0.4, arcHeight: 0.3, useFaceAnchor: false })) release();
+    }
+
+    dropCarriedObjects(host) {
+      this.droppedObjects ||= [];
+      for (const mesh of window.HiveHostPerformance?.carriedObjects?.(host.mesh) || []) {
+        if (!mesh?.isObject3D || mesh === host.mesh || this.droppedObjects.some(record => record.mesh === mesh)) continue;
+        let owned = false;
+        for (let parent = mesh.parent; parent; parent = parent.parent) if (parent === host.mesh) owned = true;
+        if (!owned) continue;
+        mesh.updateWorldMatrix(true, true);
+        const world = mesh.matrixWorld.clone(), position = mesh.getWorldPosition(new THREE.Vector3());
+        const quaternion = mesh.getWorldQuaternion(new THREE.Quaternion());
+        const parent = rendererEngine.propsGroup || rendererEngine.scene;
+        parent.add(mesh);parent.updateWorldMatrix(true, false);
+        new THREE.Matrix4().copy(parent.matrixWorld).invert().multiply(world)
+          .decompose(mesh.position, mesh.quaternion, mesh.scale);
+        mesh.matrixAutoUpdate = true;
+        const start = mesh.position.clone(), yaw = host.mesh.rotation.y || 0;
+        const target = start.clone().add(new THREE.Vector3(Math.cos(yaw) * 0.22, 0, -Math.sin(yaw) * 0.22));
+        if (stationMap.checkCollision?.(target.x, target.z, 0.2)) { target.x = start.x; target.z = start.z; }
+        mesh.quaternion.setFromEuler(new THREE.Euler(Math.PI / 2, yaw, 0));
+        mesh.position.set(target.x, 0, target.z);
+        let ground = 0;
+        const ray = new THREE.Raycaster(new THREE.Vector3(position.x, position.y + 0.01, position.z),
+          new THREE.Vector3(0, -1, 0), 0.01, Math.max(1, position.y + 2));
+        const surfaces = ray.intersectObjects([rendererEngine.mapGroup, rendererEngine.propsGroup].filter(Boolean), true);
+        const surface = surfaces.find(hit => {
+          if (!hit.object.isMesh) return false;
+          for (let node = hit.object; node; node = node.parent) if (node === mesh || !node.visible) return false;
+          return hit.point.y < position.y && (hit.object.material?.opacity ?? 1) > 0.8;
+        });
+        if (surface) ground = surface.point.y;
+        window.HiveModelFactory?.placeOnGround?.(mesh, ground + 0.025);
+        target.y = mesh.position.y;
+        const endQuaternion = mesh.quaternion.clone();
+        mesh.position.copy(start);mesh.quaternion.copy(quaternion);
+        this.droppedObjects.push({ mesh, elapsed: 0, duration: Math.max(0.25, Math.min(0.8,
+          Math.sqrt(Math.max(0.02, start.y - target.y) * 2 / 18))), start, target,
+          rotation: mesh.quaternion.clone(), endQuaternion, landed: false });
+      }
+    }
+
+    updateDroppedObjects(deltaSeconds) {
+      for (const record of this.droppedObjects || []) {
+        if (record.landed) continue;
+        record.elapsed = Math.min(record.duration, record.elapsed + Math.max(0, deltaSeconds));
+        const progress = record.elapsed / record.duration;
+        record.mesh.position.set(record.start.x + (record.target.x - record.start.x) * progress,
+          record.start.y + (record.target.y - record.start.y) * progress * progress,
+          record.start.z + (record.target.z - record.start.z) * progress);
+        record.mesh.quaternion.copy(record.rotation).slerp(record.endQuaternion, progress);
+        if (progress >= 1) {
+          record.landed = true;
+          audioManager.playHostFoley?.('brace', record.target.x, record.target.z,
+            { intensity: 0.16, surface: 'metal' });
+        }
+      }
+    }
+
     attemptLeap(preferredHost = null) {
       if (this.inEgg) return this.launchFromEgg();
       if (this.isAttacking || this.isBonding || this.isCompleted) return;
@@ -27914,14 +28879,23 @@
         this.isBonding = true;
         audioManager.playFacehuggerLeap(playerCreature.x, playerCreature.z);
         this.updateHUD();
-        playerCreature.startLeapTo(closestHost, () => {
+        const contact = () => {
+          if (this.isCompleted || (this.activeGame &&
+            (window.gameInstance !== this.activeGame || this.activeGame.currentStage !== this))) return;
+          if (window.gameInstance?.isSystemPaused) { this.pendingLeapResolution = contact; return; }
+          if (!(window.gameInstance?.humans || []).includes(closestHost) || closestHost.hp <= 0 ||
+            closestHost.isDestroyed || closestHost.isConsumedByCycle || closestHost.isEscaped || closestHost.isCocooned) {
+            // The old flight has arrived, but its target is no longer ours.
+            // Land safely without removing a fixing or selecting a substitute.
+            playerCreature.isLeaping = false;
+            if (this.reboundFromMask) this.reboundFromMask(closestHost);
+            else this.isBonding = false;
+            return;
+          }
           closestHost.maskAttachments--;
-          playerCreature.x = closestHost.x + 2.4;
-          playerCreature.z = closestHost.z + 1.4;
-          playerCreature.mesh?.position.set(playerCreature.x, 0.35, playerCreature.z);
-          playerCreature.mesh?.rotation.set(0, 0, 0);
           playerCreature.isLeaping = false;
-          this.isBonding = false;
+          if (this.reboundFromMask) this.reboundFromMask(closestHost);
+          else this.isBonding = false;
           audioManager.playMetalImpact?.(closestHost.x, closestHost.z);
           window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0x38bdf8, 14, 0.1, 1.4);
           if (closestHost.maskAttachments <= 0) {
@@ -27934,7 +28908,8 @@
           closestHost.detailedModel?.userData?.setMaskAttachments?.(closestHost.maskAttachments);
           window.gameInstance?.syncCampaignCharacter?.(closestHost);
           this.updateHUD();
-        });
+        };
+        playerCreature.startLeapTo(closestHost, contact, this.getLeapOptions?.(closestHost));
         return;
       }
 
@@ -27952,11 +28927,17 @@
       this.implantProgress = 0;
       audioManager.playFacehuggerLeap(playerCreature.x, playerCreature.z);
       this.updateHUD();
-      playerCreature.startLeapTo(closestHost, () => {
-        if (this.isCompleted || this.targetHost !== closestHost) return;
+      const leapStarted = playerCreature.startLeapTo(closestHost, () => {
+        if (this.isCompleted || this.targetHost !== closestHost ||
+          (this.activeGame && (window.gameInstance !== this.activeGame || this.activeGame.currentStage !== this))) {
+          this.releaseLaunchInvestigator?.();
+          return;
+        }
         this.isBonding = false;
-        if (!window.HiveFidelityRules.canImplant(closestHost)) {
+        if (!window.HiveFidelityRules.canImplant(closestHost) || closestHost.isCocooned ||
+          !(window.gameInstance?.humans || []).includes(closestHost)) {
           this.targetHost = null;
+          this.releaseLaunchInvestigator?.();
           playerCreature.isLeaping = false;
           playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
           showToast('Implantation interrompue : cet hôte n’est plus disponible.');
@@ -27964,33 +28945,57 @@
           return;
         }
         this.isAttacking = playerCreature.attachToFace(closestHost);
+        this.releaseLaunchInvestigator?.(this.isAttacking);
         this.implantProgress = this.isAttacking ? 15 : 0;
+        if (!this.isAttacking) playerCreature.isLeaping = false;
+        if (this.isAttacking) this.beginHostReaction?.(closestHost);
         audioManager.playFacehuggerGrip?.(closestHost.x, closestHost.z);
         window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0xd97706, 16, 0.11, 2.4);
         window.HiveSystems?.updateObjective(2, 1, 'Maintenir l’agrippement jusqu’à implantation complète.');
         this.updateHUD();
-      });
+      }, this.getLeapOptions?.(closestHost));
+      if (leapStarted === false) {
+        this.isBonding = false;
+        this.targetHost = null;
+        this.releaseLaunchInvestigator?.();
+        this.updateHUD();
+      }
     }
 
     tightenGrip() {
       if (!this.isAttacking || this.isCompleted) return;
-      this.implantProgress = Math.min(100, this.implantProgress + 14);
+      if (window.gameInstance?.isSystemPaused || this.attachmentElapsed < this.gripAssistReadyAt) return;
+      this.gripAssist = Math.min(8, this.gripAssist + 3);
+      this.gripAssistReadyAt = this.attachmentElapsed + 0.65;
+      this.implantProgress = Math.min(100, 15 + this.attachmentElapsed * (6 / 0.42) + this.gripAssist);
+      playerCreature.triggerAttack?.('grip');
       audioManager.playHeartbeat(1.2);
       this.updateHUD();
       this.finishImplantationIfReady();
     }
 
     finishImplantationIfReady() {
-      if (this.implantProgress < 100 || this.isCompleted || !this.targetHost) return;
+      if (this.implantProgress < 100 || this.isCompleted || !this.targetHost ||
+        this.attachmentElapsed < this.minimumAttachmentTime || window.gameInstance?.isSystemPaused) return;
+      if (!(window.gameInstance?.humans || []).includes(this.targetHost) || this.targetHost.hp <= 0 ||
+        this.targetHost.isDestroyed || this.targetHost.isEscaped || this.targetHost.isConsumedByCycle) return;
       this.targetHost.isInfected = true;
       this.targetHost.infectionState = 'RECOVERING';
       this.targetHost.usedAsHost = true;
       this.targetHost.isRestrained = true;
+      this.targetHost.eggCollapseProgress = 1;
       window.gameInstance?.syncCampaignCharacter?.(this.targetHost, { alive: true });
 
       this.isCompleted = true;
       window.HiveSystems?.updateObjective(2, 2);
       window.HiveSystems?.narrative('PALIMPSESTE', 'Organisme implanté. Les protocoles humains passent en quarantaine totale.');
+      if (window.gameInstance) {
+        window.gameInstance.hostAftermathContext = { environment: this.eggEnvironment, shell: this.eggShell,
+          droppedObjects: this.droppedObjects };
+        this.eggEnvironment = null;
+        this.eggShell = null;
+        this.droppedObjects = [];
+      }
       if (window.gameInstance) window.gameInstance.advanceStage(this);
       audioManager.playAcidSizzle();
     }
@@ -28025,28 +29030,114 @@
     }
     destroy() {
       this.unsubscribeAim?.();
+      this.releaseLaunchInvestigator();
+      this.pendingLeapResolution = null;
       window.HiveEvolutionUI?.setEggView(false);
       if (this.eggShell) rendererEngine.removeObject(this.eggShell);
       this.eggShell = null;
       this.eggEnvironment?.dispose?.();
       this.eggEnvironment = null;
+      for (const record of this.droppedObjects || []) rendererEngine.removeObject(record.mesh);
+      this.droppedObjects = [];
       if (!this.isCompleted && playerCreature.attachedHost) playerCreature.detachFromHost({ releaseHost: true, hide: true });
-      if (!this.isCompleted) for (const human of window.gameInstance?.humans || []) human.isDocileCatatonic = false;
+      if (!this.isCompleted) for (const human of window.gameInstance?.humans || []) {
+        human.isDocileCatatonic = false;
+        if (human === this.targetHost && human.mesh && !human.isCocooned) {
+          human.mesh.position.set(human.x, 0, human.z);
+          human.mesh.rotation.x = human.mesh.rotation.z = 0;
+          animateProceduralModel(human.mesh, { phase: 0, movement: 0, pose: '' });
+        }
+      }
     }
     update(deltaSeconds = 1 / 60) {
-      this.elapsed += Math.max(0, deltaSeconds);
-      this.eggEnvironment?.update?.(deltaSeconds);
+      if (window.gameInstance?.isSystemPaused || this.isCompleted) return;
+      const delta = Math.max(0, Math.min(0.1, Number(deltaSeconds) || 0));
+      this.elapsed += delta;
+      this.eggEnvironment?.update?.(delta);
+      this.updateDroppedObjects(delta);
+      this.updateLaunchInvestigator();
+      if (this.pendingLeapResolution) {
+        const resolve = this.pendingLeapResolution;
+        this.pendingLeapResolution = null;
+        resolve();
+      }
       if (this.inEgg) {
+        if (this.openingProgress < 0.995) {
+          this.openingElapsed += delta;
+          const t = Math.min(1, this.openingElapsed / 0.7), ease = t * t * (3 - 2 * t);
+          this.openingProgress = this.openingStart + (1 - this.openingStart) * ease;
+          getAnimationModel(this.eggShell)?.userData?.setOpenProgress?.(this.openingProgress);
+          if (this.openingProgress >= 0.995) { this.openingProgress = 1; this.updateHUD(); }
+        }
+        if (this.investigator?.mesh) {
+          const host = this.investigator;
+          host.mesh.position.set(host.x, 0, host.z);
+          const descriptor = animateProceduralModel(host.mesh, { phase: this.elapsed * 0.5,
+            idlePhase: this.elapsed, movement: 0, pose: 'egg-observe', poseProgress: 0.5, groundSpeed: 0 });
+          window.HiveHostPerformance?.applyRoot?.(host.mesh, descriptor ||
+            window.HiveHostPerformance?.sample?.('egg-observe', 0.5, this.elapsed));
+        }
         if (this.eggViewFPS) {
           const { dx, dy } = inputManager.getMovementVector();
           this.aimYaw += dx * deltaSeconds * 1.2;
           this.aimPitch = Math.max(-0.5, Math.min(1.1, this.aimPitch - dy * deltaSeconds * 0.6));
         }
         playerCreature.detailedModel?.userData?.setPose?.('ready');
+        if (playerCreature.mesh) playerCreature.mesh.position.set(this.eggOrigin.x,
+          1.7 + (this.eggReadyRootY - 1.7) * this.openingProgress, this.eggOrigin.z);
         return;
       }
       if (!this.isAttacking || this.isCompleted) return;
-      this.implantProgress = Math.min(100, this.implantProgress + (6 / 0.42) * Math.max(0, deltaSeconds));
+      const host = this.targetHost;
+      if (!host?.mesh || !(window.gameInstance?.humans || []).includes(host) || host.hp <= 0 ||
+        host.isDestroyed || host.isEscaped || host.isConsumedByCycle || playerCreature.attachedHost !== host) {
+        this.isAttacking = false;
+        this.blocksPlayerMovement = false;
+        this.implantProgress = 0;
+        playerCreature.detachFromHost?.({ releaseHost: true });
+        if (host) {
+          host.isDocileCatatonic = false;
+          if (host.mesh && host.hp > 0 && !host.isDestroyed && !host.isEscaped && !host.isConsumedByCycle) {
+            host.mesh.position.set(host.x, 0, host.z);host.mesh.rotation.x = host.mesh.rotation.z = 0;
+            animateProceduralModel(host.mesh, { phase: 0, movement: 0, pose: '' });
+          }
+        }
+        this.targetHost = null;
+        this.updateHUD();
+        return;
+      }
+      this.attachmentElapsed += delta;
+      if (this.attachmentElapsed <= 0.45) {
+        const t = this.attachmentElapsed / 0.45, ease = t * t * (3 - 2 * t);
+        const requested = { x: this.reactionOrigin.x + this.recoilDirection.x * 0.42 * ease,
+          z: this.reactionOrigin.z + this.recoilDirection.z * 0.42 * ease };
+        const landing = window.HiveGameplayControls?.sweptDestination?.(stationMap, host, requested,
+          { range: 0.5, padding: 0.85, truncate: true });
+        if (landing) { host.x = landing.x; host.z = landing.z; }
+        this.hostReaction = 'contact';
+        this.poseTargetHost('facehugger-contact', t);
+      } else if (this.attachmentElapsed < 4.2) {
+        this.hostReaction = 'struggle';
+        this.poseTargetHost('facehugger-struggle', (this.attachmentElapsed - 0.45) / 3.75);
+        if (this.attachmentElapsed >= this.struggleSoundAt) {
+          this.struggleSoundAt = this.attachmentElapsed + 1.05;
+          audioManager.playHostFoley?.('struggle', host.x, host.z, { intensity: 0.36, surface: 'metal' });
+        }
+      } else {
+        this.hostReaction = 'collapse';
+        const progress = Math.min(1, (this.attachmentElapsed - 4.2) / 1.3);
+        host.eggCollapseProgress = progress;
+        this.poseTargetHost(progress >= 1 ? 'unconscious' : 'host-collapse', progress);
+        if (progress >= 0.4 && !this.collapseBracePlayed) {
+          this.collapseBracePlayed = true;
+          audioManager.playHostFoley?.('brace', host.x, host.z, { intensity: 0.24, surface: 'metal' });
+        }
+        if (progress >= 0.9 && !this.collapseImpactPlayed) {
+          this.collapseImpactPlayed = true;
+          audioManager.playHostFoley?.('collapse', host.x, host.z, { intensity: 0.58, surface: 'metal' });
+        }
+      }
+      this.implantProgress = Math.min(100, 15 + this.attachmentElapsed * (6 / 0.42) + this.gripAssist);
       const displayedPercent = Math.floor(this.implantProgress);
       if (displayedPercent !== this.lastImplantPercent) {
         this.lastImplantPercent = displayedPercent;
@@ -28074,14 +29165,20 @@
       this.emergenceLanding = null;
       this.aftermathPath = [];
       this.hostInitialRotation = 0;
+      this.entryCollapseProgress = 0;
+      this.encounterEnvironment = null;
+      this.encounterEggShell = null;
+      this.hostLocomotionPhase = 0;
+      this.hostFlightSpeed = 0;
+      this.droppedObjects = [];
       this.chrysalisElapsed = 0;
       this.chrysalisOrigin = null;
       this.cinematicFrames = Object.freeze({
         ATTACHED_RECOVERY: { duration: 3, title: 'IMPLANTATION ACHEVÉE', detail: 'Le parasite reste fixé. L’hôte est inconscient.' },
         PARASITE_DETACHING: { duration: 1.4, title: 'DERNIER SOUFFLE', detail: 'La queue se desserre. Le facehugger se détache et tombe.' },
         HOST_UNCONSCIOUS: { duration: 2.4, title: 'SILENCE', detail: 'Le parasite est mort, pattes repliées vers le haut. L’hôte respire encore.' },
-        HOST_WAKING: { duration: 2.8, title: 'REPRISE DE CONSCIENCE', detail: 'L’hôte se redresse, désorienté, et cherche à comprendre.' },
-        HOST_DISCOVERY: { duration: 2.5, title: 'LA DÉCOUVERTE', detail: 'Au sol : le corps du parasite. La confusion cède à la terreur.' },
+        HOST_WAKING: { duration: 4.8, title: 'REPRISE DE CONSCIENCE', detail: 'Un coude prend appui, le corps se rassemble. L’hôte se relève, encore désorienté.' },
+        HOST_DISCOVERY: { duration: 3.2, title: 'LA DÉCOUVERTE', detail: 'Le regard trouve le parasite mort. L’hôte recule, puis cherche une issue.' },
         HOST_PANIC: { duration: 3.2, title: 'FUITE', detail: 'L’hôte prend la fuite. Vous restez à l’intérieur de ce même corps.' },
         TRANSFER_OUT: { duration: 1.2, title: 'QUELQUES INSTANTS PLUS TARD', detail: 'La fuite se poursuit dans les coursives de la station.' },
         TRANSFER_IN: { duration: 1.2, title: 'UNE AUTRE PIÈCE', detail: 'Le même hôte cherche refuge. La croissance silencieuse continue.' }
@@ -28144,6 +29241,13 @@
 
     init() {
       this.setInternalViewUI(false);
+      const aftermath = window.gameInstance?.hostAftermathContext;
+      if (aftermath) {
+        this.encounterEnvironment = aftermath.environment || null;
+        this.encounterEggShell = aftermath.shell || null;
+        this.droppedObjects = aftermath.droppedObjects || [];
+        window.gameInstance.hostAftermathContext = null;
+      }
       this.infectedHost = playerCreature.attachedHost || window.gameInstance?.humans.find((human) => human.isInfected && human.usedAsHost) || null;
       // Keep the attached parasite as an independent actor: changing the player
       // form must not destroy the organism before its timed death and fall.
@@ -28181,19 +29285,24 @@
         this.infectedHost.infectionState = 'RECOVERING';
         this.infectedHost.aiState = 'PATROL';
         this.hostInitialRotation = this.infectedHost.mesh?.rotation.y || 0;
+        this.entryCollapseProgress = Math.max(0, Math.min(1, this.infectedHost.eggCollapseProgress || 0));
         playerCreature.x = this.infectedHost.x;
         playerCreature.z = this.infectedHost.z;
         playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
         if (!this.parasiteMesh) {
           this.parasiteMesh = window.HiveModelFactory?.createFacehugger?.() || null;
           if (this.parasiteMesh) {
-            this.parasiteMesh.scale.setScalar(0.92);
-            this.parasiteMesh.rotation.set(Math.PI / 2, 0, Math.PI);
-            this.infectedHost.faceAnchor?.add(this.parasiteMesh);
-            this.parasiteMesh.userData?.setFoldedPose?.(true);
+            const attached = window.HiveModernLifecycle?.attachFacehugger?.(this.parasiteMesh,
+              this.infectedHost, { duration: 0, phase: this.elapsed });
+            if (!attached && this.infectedHost.faceAnchor) {
+              this.infectedHost.faceAnchor.add(this.parasiteMesh);
+              this.parasiteMesh.rotation.set(-Math.PI / 2, 0, Math.PI);
+              this.parasiteMesh.userData?.setPose?.('attached');
+            }
           }
         }
-        this.corpsePosition = this.findFreePoint(this.infectedHost.x + 1.5, this.infectedHost.z + 1.2, 0.25);
+        this.corpsePosition = this.findFreePoint(this.infectedHost.x + Math.cos(this.hostInitialRotation) * 1.7,
+          this.infectedHost.z - Math.sin(this.hostInitialRotation) * 1.7, 0.5);
       }
       this.updateHUD();
       this.presentCinematic();
@@ -28224,6 +29333,14 @@
       this.step = step;
       this.phaseElapsed = 0;
       this.lastDisplayedPercent = -1;
+      if (step === 'HOST_WAKING') {
+        this.wakeBracePlayed = false;
+        this.wakeKneePlayed = false;
+        this.wakeRisePlayed = false;
+      }
+      if (step === 'HOST_DISCOVERY' && this.infectedHost) {
+        this.discoveryStart = { x: this.infectedHost.x, z: this.infectedHost.z };
+      }
       const soundPhase = { PARASITE_DETACHING: 'detach', HOST_WAKING: 'wake', HOST_PANIC: 'panic', EMERGING: 'emerge' }[step];
       const soundSource = step === 'EMERGING' ? playerCreature : (this.infectedHost || playerCreature);
       if (changed && soundPhase) audioManager.playBiologicalTransition?.(soundPhase,
@@ -28246,26 +29363,26 @@
       });
     }
 
-    poseHost(pose, progress = 0, movement = 0) {
+    poseHost(pose, progress = 0, movement = 0, groundSpeed = 0) {
       const host = this.infectedHost;
       if (!host?.mesh) return;
-      animateProceduralModel(host.mesh, {
-        phase: this.elapsed * 6,
+      host.mesh.position.set(host.x, 0, host.z);
+      host.mesh.rotation.x = host.mesh.rotation.z = 0;
+      if (window.HiveFidelityRules?.classifyHost(host).morphology === 'quadruped') {
+        StageFacehugger.prototype.performQuadrupedHost.call(this, host, pose, progress, movement, groundSpeed);
+        return;
+      }
+      const descriptor = animateProceduralModel(host.mesh, {
+        phase: movement > 0 ? this.hostLocomotionPhase : this.elapsed * 1.4,
+        idlePhase: this.elapsed,
         movement,
+        groundSpeed,
         pose,
         poseProgress: progress,
         crouch: pose === 'discovery' ? 0.45 : 0
       });
-      if (pose === 'unconscious' || pose === 'waking') {
-        const rise = pose === 'waking' ? progress * progress * (3 - 2 * progress) : 0;
-        host.mesh.rotation.x = (1 - rise) * Math.PI / 2;
-        host.mesh.position.y = (1 - rise) * 0.3;
-      } else {
-        host.mesh.rotation.x = 0;
-        host.mesh.position.y = 0;
-      }
-      host.mesh.position.x = host.x;
-      host.mesh.position.z = host.z;
+      window.HiveHostPerformance?.applyRoot?.(host.mesh, descriptor ||
+        window.HiveHostPerformance?.sample?.(pose, progress, this.elapsed));
     }
 
     beginParasiteFall() {
@@ -28273,8 +29390,12 @@
       const position = this.parasiteMesh.getWorldPosition(new THREE.Vector3());
       const quaternion = this.parasiteMesh.getWorldQuaternion(new THREE.Quaternion());
       const scale = this.parasiteMesh.getWorldScale(new THREE.Vector3());
-      this.parasiteMesh.parent?.remove(this.parasiteMesh);
-      rendererEngine.scene.add(this.parasiteMesh);
+      const released = window.HiveModernLifecycle?.detachFacehugger?.(this.parasiteMesh,
+        { parent: rendererEngine.scene });
+      if (!released) {
+        this.parasiteMesh.parent?.remove(this.parasiteMesh);
+        rendererEngine.scene.add(this.parasiteMesh);
+      }
       this.parasiteMesh.position.copy(position);
       this.parasiteMesh.quaternion.copy(quaternion);
       this.parasiteMesh.scale.copy(scale);
@@ -28294,15 +29415,21 @@
       this.parasiteMesh.position.copy(position);
       this.parasiteMesh.quaternion.copy(quaternion);
       model.userData?.setFoldedPose?.(false);
-      audioManager.playWetImpact?.(this.infectedHost?.x, this.infectedHost?.z);
     }
 
     prepareHostFlight() {
       const host = this.infectedHost;
       if (!host) return;
-      const destination = this.findFreePoint(host.x + 11, host.z + 9, 0.55);
-      this.aftermathPath = stationMap.findPath(host.x, host.z, destination.x, destination.z, { padding: 0.4 });
+      let route = [];
+      for (let attempt = 0; attempt < 12 && !route.length; attempt++) {
+        const angle = this.hostInitialRotation + Math.PI + attempt * 2.39996323;
+        const destination = this.findFreePoint(host.x + Math.sin(angle) * 12,
+          host.z + Math.cos(angle) * 12, 0.85);
+        route = stationMap.findPath(host.x, host.z, destination.x, destination.z, { padding: 0.85 });
+      }
+      this.aftermathPath = route;
       if (!this.aftermathPath.length) this.aftermathPath = [{ x: host.x, z: host.z }];
+      this.hostFlightSpeed = 0;
       host.stress = 100;
       host.aiState = 'FLEE';
       audioManager.playHostCough?.(host.x, host.z);
@@ -28314,7 +29441,9 @@
       const host = this.infectedHost;
       if (!host) return;
       const startX = host.x, startZ = host.z;
-      let remaining = speed * deltaSeconds;
+      const delta = Math.max(0, Math.min(0.1, Number(deltaSeconds) || 0));
+      this.hostFlightSpeed = Math.min(speed, (this.hostFlightSpeed || 0) + delta * 5.5);
+      let remaining = this.hostFlightSpeed * delta;
       while (remaining > 0 && this.aftermathPath.length) {
         const target = this.aftermathPath[0];
         const distance = Math.hypot(target.x - host.x, target.z - host.z);
@@ -28322,19 +29451,26 @@
         const stride = Math.min(distance, remaining);
         const x = host.x + (target.x - host.x) * stride / distance;
         const z = host.z + (target.z - host.z) * stride / distance;
-        if (stationMap.checkCollision(x, z, 0.15)) { this.aftermathPath.shift(); break; }
-        host.mesh.rotation.y = Math.atan2(target.x - host.x, target.z - host.z);
-        host.x = x;
-        host.z = z;
+        const resolved = window.HiveGameplayControls?.moveWithSlide?.(stationMap, host, { x, z }, 0.75);
+        if (resolved?.moved) { host.x = resolved.x; host.z = resolved.z; }
+        else if (!resolved && !stationMap.checkCollision(x, z, 0.75) &&
+          stationMap.hasLineOfSight(host.x, host.z, x, z, 0.75)) { host.x = x; host.z = z; }
+        else { this.hostFlightSpeed = 0; break; }
+        const yaw = Math.atan2(target.x - startX, target.z - startZ);
+        host.mesh.rotation.y += Math.atan2(Math.sin(yaw - host.mesh.rotation.y), Math.cos(yaw - host.mesh.rotation.y))
+          * (1 - Math.exp(-delta * 8));
         remaining -= stride;
         if (stride >= distance) this.aftermathPath.shift();
       }
-      this.poseHost(pose, 1, this.aftermathPath.length ? (pose === 'panic' ? 1 : 0.45) : 0);
       const travelled = Math.hypot(host.x - startX, host.z - startZ);
+      const groundSpeed = delta > 0 ? travelled / delta : 0;
+      this.hostLocomotionPhase += travelled / 2.3 * Math.PI * 2;
+      this.poseHost(pose, 1, travelled > 1e-5 ? (pose === 'panic' ? 1 : 0.45) : 0, groundSpeed);
       this.hostStrideDistance = (this.hostStrideDistance || 0) + travelled;
       if (this.hostStrideDistance >= (pose === 'panic' ? 1.35 : 1.1)) {
-        this.hostStrideDistance = 0;
-        audioManager.playFootstep?.(host.type, host.x, host.z);
+        this.hostStrideDistance %= pose === 'panic' ? 1.35 : 1.1;
+        audioManager.playFootstep?.(host.type, host.x, host.z, { intensity: pose === 'panic' ? 0.65 : 0.4,
+          speed: groundSpeed, surface: 'metal' });
       }
       playerCreature.x = host.x;
       playerCreature.z = host.z;
@@ -28343,6 +29479,7 @@
     transferHost() {
       const host = this.infectedHost;
       if (!host || this.transferredHost) return;
+      this.disposeEncounter();
       const candidates = [{ x: 40, z: 7 }, { x: -40, z: 7 }, { x: 8, z: -54 }];
       const preferred = candidates.find((point) => Math.hypot(point.x - host.x, point.z - host.z) > 25) || candidates[0];
       this.transferDestination = this.findFreePoint(preferred.x, preferred.z, 0.75);
@@ -28361,6 +29498,15 @@
       const camera = this.getHostCameraOverride();
       if (camera) rendererEngine.snapCinematicCamera(camera);
       appendSensorLog(`[CONTINUITÉ] ${host.name} gagne un autre compartiment. Même hôte, même organisme implanté.`, 'bio');
+    }
+
+    disposeEncounter() {
+      this.encounterEnvironment?.dispose?.();
+      this.encounterEnvironment = null;
+      if (this.encounterEggShell) rendererEngine.removeObject(this.encounterEggShell);
+      this.encounterEggShell = null;
+      for (const record of this.droppedObjects || []) rendererEngine.removeObject(record.mesh);
+      this.droppedObjects = [];
     }
 
     enterGestation() {
@@ -28393,17 +29539,23 @@
       this.updateHUD();
     }
 
+    getCinematicCollisionBounds() { return this.hostCameraCache?.bounds || []; }
+
     getHostCameraOverride() {
       const host = this.infectedHost;
-      if (!host) return null;
-      const close = this.cinematicFrames[this.step] ? 1 : 1.35;
-      return {
-        position: { x: host.x + 6.2 * close, y: 5.8 * close, z: host.z + 8.2 * close },
-        target: { x: host.x, y: 1.05, z: host.z },
-        fov: 48,
-        near: 0.1,
-        exposure: 1.12
-      };
+      if (!host?.mesh) return null;
+      if (this.cinematicFrames[this.step] && host.mesh) {
+        return getEncounterHostCamera({ host, cache: this.hostCameraCache ||= {}, phaseKey: this.step,
+          initialRotation: this.hostInitialRotation, shell: this.encounterEggShell,
+          fallbackFocusY: this.step === 'HOST_PANIC' ? 2.5 : 1 });
+      }
+      // External gestation is still a real station shot. A fixed offset here
+      // can enter the next room's wall just after the black transfer, or when
+      // returning from the abdominal view. Keep the same safe selector rather
+      // than dropping collision protection when the cinematic phases finish.
+      return getEncounterHostCamera({ host, cache: this.hostCameraCache ||= {}, phaseKey: this.step,
+        initialRotation: this.hostInitialRotation, shell: this.encounterEggShell,
+        fallbackFocusY: 1.05, profile: { fov: 48, near: 0.1 } });
     }
 
     updateHUD() {
@@ -28827,6 +29979,7 @@
       return null;
     }
     destroy() {
+      this.disposeEncounter();
       this.setInternalViewUI(false);
       this.thoracicView.deactivate();
       this.internalView = false;
@@ -28836,8 +29989,9 @@
         this.infectedHost.isDocileCatatonic = false;
         this.infectedHost.isRestrained = false;
         if (this.infectedHost.mesh && !this.infectedHost.isBursting) {
-          this.infectedHost.mesh.rotation.x = 0;
-          this.infectedHost.mesh.position.y = 0;
+          this.infectedHost.mesh.rotation.x = this.infectedHost.mesh.rotation.z = 0;
+          this.infectedHost.mesh.position.set(this.infectedHost.x, 0, this.infectedHost.z);
+          animateProceduralModel(this.infectedHost.mesh, { phase: 0, movement: 0, groundSpeed: 0, pose: '' });
         }
       }
       if (this.parasiteMesh) rendererEngine.removeObject(this.parasiteMesh);
@@ -28863,17 +30017,20 @@
         playerCreature.z = host.z;
       }
       if (this.step === 'ATTACHED_RECOVERY') {
-        this.poseHost('unconscious');
-        if (host?.mesh) {
-          const collapse = Math.min(1, this.phaseElapsed / 0.9);
-          const eased = collapse * collapse * (3 - 2 * collapse);
-          host.mesh.rotation.x = eased * Math.PI / 2;
-          host.mesh.position.y = eased * 0.3;
+        const collapse = this.entryCollapseProgress + (1 - this.entryCollapseProgress) * Math.min(1, this.phaseElapsed / 1.3);
+        this.poseHost(collapse >= 1 ? 'unconscious' : 'host-collapse', collapse);
+        if (host) host.eggCollapseProgress = collapse;
+        if (this.entryCollapseProgress < 1 && collapse >= 0.4 && !this.initialBracePlayed) {
+          this.initialBracePlayed = true;
+          audioManager.playHostFoley?.('brace', host?.x, host?.z, { intensity: 0.24, surface: 'metal' });
+        }
+        if (this.entryCollapseProgress < 1 && collapse >= 0.9 && !this.initialCollapsePlayed) {
+          this.initialCollapsePlayed = true;
+          audioManager.playHostFoley?.('collapse', host?.x, host?.z, { intensity: 0.58, surface: 'metal' });
         }
         if (this.parasiteMesh) {
-          animateProceduralModel(this.parasiteMesh, { phase: this.elapsed * 5, attack: 0.6, crouch: 0.55 });
-          const model = getAnimationModel(this.parasiteMesh) || this.parasiteMesh;
-          model.userData?.setFoldedPose?.(true);
+          window.HiveModernLifecycle?.updateFacehuggerGrip?.(this.parasiteMesh,
+            { deltaSeconds, phase: this.elapsed, strength: 0.8 });
         }
         if (progress >= 1) this.setPhase('PARASITE_DETACHING');
       } else if (this.step === 'PARASITE_DETACHING') {
@@ -28891,7 +30048,8 @@
           window.HiveModelFactory?.animateEvolutionModel?.(this.parasiteMesh, { phase: this.elapsed, dead: progress, amount: progress });
         }
         if (progress >= 1) {
-          audioManager.playWetImpact?.(host?.x, host?.z);
+          audioManager.playHostFoley?.('parasite-drop', this.corpsePosition?.x, this.corpsePosition?.z,
+            { intensity: 0.3, surface: 'metal' });
           this.setPhase('HOST_UNCONSCIOUS');
         }
       } else if (this.step === 'HOST_UNCONSCIOUS') {
@@ -28899,16 +30057,38 @@
         if (progress >= 1) this.setPhase('HOST_WAKING');
       } else if (this.step === 'HOST_WAKING') {
         this.poseHost('waking', progress);
+        if (progress >= 0.18 && !this.wakeBracePlayed) {
+          this.wakeBracePlayed = true;
+          audioManager.playHostFoley?.('brace', host?.x, host?.z, { intensity: 0.22, surface: 'metal' });
+        }
+        if (progress >= 0.56 && !this.wakeKneePlayed) {
+          this.wakeKneePlayed = true;
+          audioManager.playHostFoley?.('brace', host?.x, host?.z, { intensity: 0.28, surface: 'metal' });
+        }
+        if (progress >= 0.78 && !this.wakeRisePlayed) {
+          this.wakeRisePlayed = true;
+          audioManager.playHostFoley?.('rise', host?.x, host?.z, { intensity: 0.35, surface: 'metal' });
+        }
         if (progress >= 1) {
-          audioManager.playHostCough?.(host?.x, host?.z);
           window.HiveSystems?.narrative(host?.name || 'HÔTE', 'Ma tête… Qu’est-ce qui m’est arrivé ?');
           this.setPhase('HOST_DISCOVERY');
         }
       } else if (this.step === 'HOST_DISCOVERY') {
-        this.poseHost('discovery', progress);
         if (host?.mesh && this.corpsePosition) {
-          host.mesh.rotation.y = Math.atan2(this.corpsePosition.x - host.x, this.corpsePosition.z - host.z);
+          const yaw = Math.atan2(this.corpsePosition.x - host.x, this.corpsePosition.z - host.z);
+          host.mesh.rotation.y += Math.atan2(Math.sin(yaw - host.mesh.rotation.y), Math.cos(yaw - host.mesh.rotation.y))
+            * (1 - Math.exp(-deltaSeconds * 2.4));
+          if (progress > 0.5 && this.discoveryStart) {
+            const dx = this.discoveryStart.x - this.corpsePosition.x, dz = this.discoveryStart.z - this.corpsePosition.z;
+            const length = Math.hypot(dx, dz) || 1, retreat = Math.min(0.6, (progress - 0.5) * 1.2);
+            const point = { x: this.discoveryStart.x + dx / length * retreat,
+              z: this.discoveryStart.z + dz / length * retreat };
+            const destination = window.HiveGameplayControls?.sweptDestination?.(stationMap, host, point,
+              { range: 0.7, padding: 0.8, truncate: true });
+            if (destination) { host.x = destination.x; host.z = destination.z; }
+          }
         }
+        this.poseHost('discovery', progress);
         if (progress >= 1) {
           this.prepareHostFlight();
           this.setPhase('HOST_PANIC');
@@ -28936,9 +30116,12 @@
     }
 
     update(deltaSeconds = 1 / 60) {
-      const safeDelta = Math.max(0, deltaSeconds);
+      if (window.gameInstance?.isSystemPaused || this.isCompleted) return;
+      const safeDelta = Math.max(0, Math.min(0.1, Number(deltaSeconds) || 0));
       this.elapsed += safeDelta;
       this.phaseElapsed += safeDelta;
+      this.encounterEnvironment?.update?.(safeDelta);
+      StageFacehugger.prototype.updateDroppedObjects.call(this, safeDelta);
       if (this.updateAftermath(safeDelta)) return;
       this.biteCooldown = Math.max(0, this.biteCooldown - safeDelta);
       this.huntRepathCooldown = Math.max(0, this.huntRepathCooldown - safeDelta);
@@ -32243,6 +33426,8 @@
     resetWorldState() {
       if (this.currentStage?.destroy) this.currentStage.destroy();
       this.currentStage = null;
+      rendererEngine.renderQuality?.setLowLatency?.(false);
+      stationMap.resetSecurityCameras?.();
       stationMap.clearIncidentalBrood?.();
       this.eggStartContext?.environment?.dispose?.();
       this.eggStartContext = null;
@@ -32351,6 +33536,11 @@
       this.humans.push(scientist);
     }
 
+    isEarlyEncounterSequence() {
+      return this.campaignActive === true && (this.currentStageIndex === 1 || this.currentStageIndex === 2 ||
+        (this.currentStageIndex === 3 && !!this.currentStage?.cinematicFrames?.[this.currentStage.step]));
+    }
+
     setSystemPaused(paused) {
       if(paused&&playerCreature.actionTarget) {
         playerCreature.actionTarget=null;playerCreature.moveTarget=null;playerCreature.moveWaypoints=[];
@@ -32358,7 +33548,9 @@
       this.isSystemPaused = !!paused;
       audioManager.setPaused?.(this.isSystemPaused);
       if (!this.isSystemPaused) {
-        this.renderResumeAt = performance.now() + (rendererEngine.isSoftwareRenderer ? 3000 : 750);
+        const intro = this.isEarlyEncounterSequence();
+        this.renderResumeAt = performance.now() + (intro ? 0 : rendererEngine.isSoftwareRenderer ? 3000 : 750);
+        if (intro) this.lastSoftwareRenderAt = -Infinity;
       }
       document.getElementById('app-container')?.classList.toggle('game-paused', this.isSystemPaused);
       inputManager.reset();
@@ -32441,50 +33633,66 @@
         return;
       }
 
-      window.HiveAdvancedCombat?.advanceClock(this,deltaSeconds);
-      audioManager.updateSoundscape?.(deltaSeconds);
-      if (this.currentStageIndex !== 5) playerCreature.update(deltaSeconds);
-      if (!this.isRunning) return;
-      for (const human of this.humans) {
-        human.update(deltaSeconds);
+      const softwareEncounter = rendererEngine.isSoftwareRenderer && this.isEarlyEncounterSequence();
+      rendererEngine.renderQuality?.setLowLatency?.(softwareEncounter);
+      // Expensive software frames must not erase nearly all elapsed approach
+      // time. Catch up in bounded simulation steps, never one tunnelling jump.
+      let simulationRemaining = softwareEncounter ? Math.max(0, Math.min(.2, rawDelta)) : deltaSeconds;
+      let simulationSteps = 0;
+      do {
+        const deltaSeconds = Math.min(.05, simulationRemaining);
+        window.HiveAdvancedCombat?.advanceClock(this,deltaSeconds);
+        audioManager.updateSoundscape?.(deltaSeconds);
+        if (this.currentStageIndex !== 5) playerCreature.update(deltaSeconds);
         if (!this.isRunning) return;
-      }
-
-      const activeStage = this.currentStage;
-      if (activeStage) {
-        activeStage.update(deltaSeconds);
-        if (!this.isRunning) return;
-        if (activeStage === this.currentStage && activeStage.isCompleted && this.currentStageIndex < 5) {
-          this.advanceStage(activeStage);
+        for (const human of this.humans) {
+          human.update(deltaSeconds);
+          if (!this.isRunning) return;
         }
+
+        const activeStage = this.currentStage;
+        if (activeStage) {
+          activeStage.update(deltaSeconds);
+          if (!this.isRunning) return;
+          if (activeStage === this.currentStage && activeStage.isCompleted && this.currentStageIndex < 5) {
+            this.advanceStage(activeStage);
+          }
+        }
+        window.HiveSystems?.update(deltaSeconds);
+        window.HiveAssetLibrary?.update(deltaSeconds);
+        stationMap.update?.(deltaSeconds);
+        visionSystem.update?.(deltaSeconds);
+        pheromoneSystem.update?.(deltaSeconds);
+        this.motionTracker?.update(deltaSeconds, playerCreature, this.humans);
+        window.HiveFieldGuide?.update(deltaSeconds,this,stationMap,playerCreature);
+        if (!this.isRunning) return;
+        simulationRemaining -= deltaSeconds;
+        simulationSteps++;
+      } while (simulationRemaining > 1e-7 && simulationSteps < 4 && !this.isSystemPaused);
+      if (this.isSystemPaused) {
+        requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
+        return;
       }
-      window.HiveSystems?.update(deltaSeconds);
-      window.HiveAssetLibrary?.update(deltaSeconds);
-      stationMap.update?.(deltaSeconds);
-      visionSystem.update?.(deltaSeconds);
-      pheromoneSystem.update?.(deltaSeconds);
-      this.motionTracker?.update(deltaSeconds, playerCreature, this.humans);
-      window.HiveFieldGuide?.update(deltaSeconds,this,stationMap,playerCreature);
-      if (!this.isRunning) return;
 
       if (performance.now() < this.renderResumeAt) {
         requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
         return;
       }
 
-      // A software WebGL frame can monopolize the browser for hundreds of
-      // milliseconds. Cap only that fallback path so touch and menu input stay
-      // responsive; hardware rendering remains synchronized to animation frames.
+      // Hardware stays RAF-driven. During the encounter the lightweight software
+      // path can show motion instead of deliberately discarding 59/60 frames.
       const renderTimestamp = performance.now();
-      if (rendererEngine.isSoftwareRenderer && renderTimestamp - this.lastSoftwareRenderAt < 1000) {
+      const softwareInterval = softwareEncounter ? 125 : 1000;
+      if (rendererEngine.isSoftwareRenderer && renderTimestamp - this.lastSoftwareRenderAt < softwareInterval) {
         requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
         return;
       }
       this.lastSoftwareRenderAt = renderTimestamp;
 
       const cameraOverride = this.currentStage?.getCameraOverride?.() || null;
+      const viewDelta = softwareEncounter ? Math.max(deltaSeconds, Math.min(.2, rawDelta)) : deltaSeconds;
       if (cameraOverride) {
-        rendererEngine.setCinematicCamera(cameraOverride, deltaSeconds);
+        rendererEngine.setCinematicCamera(cameraOverride, viewDelta);
       } else {
         const cameraTarget = this.currentStage?.getCameraTarget
           ? this.currentStage.getCameraTarget()
@@ -32494,7 +33702,7 @@
           cameraTarget.z,
           0,
           this.currentStageIndex === 5,
-          deltaSeconds
+          viewDelta
         );
       }
       const visibleCreature = this.currentStageIndex === 5 ? this.currentStage?.queen : playerCreature;
@@ -32503,7 +33711,7 @@
         x: visibleCreature.x,
         z: visibleCreature.z,
         y: this.currentStageIndex === 5 ? 3 : 1.4
-      }, deltaSeconds);
+      }, viewDelta);
       rendererEngine.render();
       requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
     }

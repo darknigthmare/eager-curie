@@ -233,6 +233,7 @@
       this.camera = camera;
       this.disposed = false;
       this.preferMobileAuto = options.preferMobileAuto === true;
+      this.lowLatencyRequested = false;
       this.originalPixelRatio = renderer.getPixelRatio();
       const size = renderer.getSize(new THREE.Vector2());
       this.width = Math.max(1, size.x);
@@ -325,6 +326,18 @@
       this.setSize(this.width, this.height);
     }
 
+    isLowLatency() {
+      // Honour an explicitly selected High/Ultra profile. This budget is only
+      // requested for animated intro scenes on an unaccelerated renderer.
+      return this.lowLatencyRequested && (this.requestedQuality === 'auto' || this.requestedQuality === 'mobile');
+    }
+
+    setLowLatency(enabled) {
+      if (this.disposed || this.lowLatencyRequested === !!enabled) return;
+      this.lowLatencyRequested = !!enabled;
+      this.setSize(this.width, this.height);
+    }
+
     resizeShadow(light, width, height) {
       const shadow = light.shadow;
       if (shadow.mapSize.x === width && shadow.mapSize.y === height) return;
@@ -343,7 +356,9 @@
         this.setQuality('auto');
         return;
       }
-      const ratio = Math.min(window.devicePixelRatio || 1, this.profile.pixelRatio) * this.profile.scale;
+      const profileRatio = Math.min(window.devicePixelRatio || 1, this.profile.pixelRatio) * this.profile.scale;
+      const animationRatio = Math.min(1, 640 / this.width, Math.sqrt(240000 / (this.width * this.height)));
+      const ratio = this.isLowLatency() ? Math.min(profileRatio, animationRatio) : profileRatio;
       this.renderer.setPixelRatio(ratio);
       this.renderer.setSize(this.width, this.height);
       const drawing = this.renderer.getDrawingBufferSize(new THREE.Vector2());
@@ -382,6 +397,17 @@
         exposure: renderer.toneMappingExposure
       };
       try {
+        if (this.isLowLatency()) {
+          // Use Three's native ACES/sRGB path once, rather than five full-screen
+          // passes. Materials, lighting, depth and the scene remain unchanged.
+          renderer.toneMapping = THREE.ACESFilmicToneMapping;
+          renderer.outputEncoding = THREE.sRGBEncoding;
+          renderer.autoClear = true;
+          renderer.setRenderTarget(saved.target);
+          renderer.render(this.scene, this.camera);
+          this.lastSceneInfo = { ...renderer.info.render };
+          return;
+        }
         renderer.toneMapping = THREE.NoToneMapping;
         renderer.outputEncoding = THREE.LinearEncoding;
         renderer.autoClear = true;
@@ -415,12 +441,13 @@
     getDiagnostics() {
       return {
         requestedQuality: this.requestedQuality, quality: this.quality,
-        hdr: this.supportsHDR, depthContacts: this.supportsDepth && this.supportsDerivatives && this.profile.ao > 0,
+        hdr: this.supportsHDR && !this.isLowLatency(), depthContacts: !this.isLowLatency() && this.supportsDepth && this.supportsDerivatives && this.profile.ao > 0,
         pixelRatio: this.renderer.getPixelRatio(), renderScale: this.profile.scale,
         width: this.colorTarget.width, height: this.colorTarget.height,
         bloomWidth: this.bloomA.width, bloomHeight: this.bloomA.height,
-        shadowSize: this.profile.shadowSize, bloomStrength: this.profile.bloom,
-        aoSamples: this.profile.samples, passes: 5, disposed: this.disposed,
+        shadowSize: this.profile.shadowSize, bloomStrength: this.isLowLatency() ? 0 : this.profile.bloom,
+        aoSamples: this.isLowLatency() ? 0 : this.profile.samples, passes: this.isLowLatency() ? 1 : 5,
+        lowLatency: this.isLowLatency(), animationBudgetRequested: this.lowLatencyRequested, disposed: this.disposed,
         scene: { ...this.lastSceneInfo },
         sceneDrawCalls: this.lastSceneInfo.calls, sceneTriangles: this.lastSceneInfo.triangles,
         memory: { ...this.renderer.info.memory },

@@ -2993,7 +2993,7 @@
       const scaledAssembly = new T.Group();
       scaledAssembly.name = 'crawler_scaled_assembly';
       while (root.children.length) scaledAssembly.add(root.children[0]);
-      scaledAssembly.scale.setScalar(0.82);
+      scaledAssembly.scale.setScalar(0.58);
       root.add(scaledAssembly);
 
       const facehugger = this._finalize(root, {
@@ -3022,7 +3022,20 @@
         [...legJoints, ...kneeJoints, ...ankleJoints, tailJoint].forEach((joint, index) => {
           joint.rotation.copy(bindRotations[index]);
         });
-        if (pose === 'folded' || pose === 'ready') {
+        if (pose === 'attached') {
+          // Digits brace around the temples and jaw. Folding into the egg is
+          // the opposite bend direction and must never stand in for a grip.
+          legJoints.forEach((joint, index) => {
+            const side = joint.userData.side, row = joint.userData.row;
+            joint.rotation.z = -side * (1.05 + (row % 2) * 0.045) * weight;
+            joint.rotation.y = side * (row - 1.5) * 0.20 * weight;
+            kneeJoints[index].rotation.z = side * (0.28 + (row === 0 ? 0.035 : 0)) * weight;
+            ankleJoints[index].rotation.z = -side * (0.95 + (row === 3 ? 0.08 : 0)) * weight;
+          });
+          facehugger.userData.updateAttachmentTail?.(weight);
+          facehugger.userData.updateAttachmentVentral?.(weight);
+          facehugger.userData.solveAttachmentDigits?.();
+        } else if (pose === 'folded' || pose === 'ready') {
           const curled = pose === 'ready' ? 0.54 : 1;
           legJoints.forEach((joint, index) => {
             const side = joint.userData.side;
@@ -3058,12 +3071,16 @@
           tailJoint.rotation.y = -0.48 * weight;
           tailJoint.rotation.x = -0.1 * weight;
         }
+        if (pose !== 'attached') {
+          facehugger.userData.updateAttachmentTail?.(0);
+          facehugger.userData.updateAttachmentVentral?.(0);
+        }
         facehugger.userData.pose = pose;
         facehugger.userData.foldedPose = pose === 'folded';
         facehugger.userData.deadPose = pose === 'dead';
       };
       facehugger.userData.setFoldedPose = (folded) => facehugger.userData.setPose(folded ? 'folded' : 'crawl');
-      facehugger.userData.animateEvolution = ({ phase = 0, pose, dead, amount = 1, movement = 0, action } = {}) => {
+      facehugger.userData.animateEvolution = ({ phase = 0, pose, dead, amount = 1, movement = 0, action, strength = 1 } = {}) => {
         const selectedPose = dead ? 'dead' : (pose || action || facehugger.userData.pose || 'crawl');
         facehugger.userData.setPose(selectedPose, amount);
         if (selectedPose === 'dead') return;
@@ -3074,13 +3091,20 @@
           joint.rotation.y += Math.cos(phase * 9 + index) * movement * 0.15;
           kneeJoints[index].rotation.z += side * Math.max(0, gait) * movement * 0.35;
           if (selectedPose === 'folded') kneeJoints[index].rotation.z += side * Math.sin(phase * 3.2) * 0.018;
+          if (selectedPose === 'attached') kneeJoints[index].rotation.z -= side *
+            (Math.sin(phase * 2.1 + index * .37) * .009 + (Math.max(0,Math.min(1,Number(strength)||0))-.6)*.04);
         });
-        tailJoint.rotation.y += Math.sin(phase * 2.4) * (selectedPose === 'folded' ? 0.035 : 0.12);
+        if (selectedPose === 'attached') {
+          facehugger.userData.solveAttachmentDigits?.({strength});
+          facehugger.userData.pulseAttachment?.(phase);
+        }
+        else tailJoint.rotation.y += Math.sin(phase * 2.4) * (selectedPose === 'folded' ? 0.035 : 0.12);
       };
       facehugger.userData.attachmentPose = {
-        name: 'folded',
+        name: 'attached',
         forwardAxis: '+Z',
-        suggestedFaceOffset: { x: 0, y: 0.02, z: 0.34 }
+        suggestedFaceOffset: { x: 0, y: 0, z: 0 },
+        faceRotation: { x: -Math.PI / 2, y: 0, z: Math.PI }
       };
       return facehugger;
     }
@@ -5138,14 +5162,57 @@
         root.add(this._box(dark, { x: 0.8, y: 0.28, z: 0.22 }, { x: 0, y: 0.28, z: 0.22 }, 'keyboard_bevel', true));
         root.add(this._box(warning, { x: 0.2, y: 0.04, z: 0.05 }, { x: 0, y: 0.55, z: 0.18 }, 'cassette_drive_slot'));
       } else if (normalizedType === 'camera' || normalizedType === 'security_camera') {
-        // Chantier 33 : Caméra de sécurité motorisée CRT Weyland-Yutani (Alien: Isolation)
-        const camMetal = this._material('darkMetal', { color: 0x0f172a, roughness: 0.3 });
-        const lensLed = this._material('emissiveGreen', { color: 0x22c55e, emissiveIntensity: 2.0 });
-        root.add(this._box(camMetal, { x: 0.3, y: 0.4, z: 0.18 }, { x: 0, y: 0.2, z: 0 }, 'camera_wall_bracket', true));
-        root.add(this._segment(camMetal, new T.Vector3(0, 0.2, 0.1), new T.Vector3(0, 0.2, 0.5), 0.06, 0.06, 'camera_swivel_arm', 10));
-        root.add(this._box(camMetal, { x: 0.28, y: 0.32, z: 0.75 }, { x: 0, y: 0.2, z: 0.85 }, 'camera_casing', true));
-        root.add(this._ring(dark, 0.16, 0.03, { x: 0, y: 0.2, z: 1.24 }, { x: 0, y: 0, z: 0 }, 'camera_lens_hood'));
-        root.add(this._ellipsoid(lensLed, { x: 0.08, y: 0.08, z: 0.05 }, { x: 0, y: 0.2, z: 1.25 }, 'camera_starlight_sensor', 12));
+        // The mounting plate and arm never rotate. The pan bearing and tilt
+        // trunnion are real pivots, not a spin of the complete wall fixture.
+        const camMetal = this._material('darkMetal', { color: 0x27363f, roughness: 0.43, metalness: 0.72 });
+        const lensGlass = this._material('visorGlass', { color: 0x162d36, opacity: 0.94, roughness: 0.12 });
+        const status = this._material('emissiveGreen', { color: 0x4ba36a, emissiveIntensity: 0.8 });
+        const plate = this._box(camMetal, { x: 0.48, y: 0.66, z: 0.12 }, { x: 0, y: 0, z: 0.06 }, 'camera_wall_bracket', true);
+        root.add(plate);
+        for (const side of [-1, 1]) for (const y of [-0.23, 0.23]) {
+          root.add(this._ellipsoid(dark, { x: 0.035, y: 0.035, z: 0.018 }, { x: side * 0.17, y, z: 0.13 }, `camera_mount_bolt_${side}_${y}`, 8));
+        }
+        const arm = this._box(camMetal, { x: 0.15, y: 0.13, z: 0.45 }, { x: 0, y: -0.13, z: 0.34 }, 'camera_swivel_arm', true);
+        root.add(arm);
+        root.add(this._segment(dark, new T.Vector3(0, -0.13, 0.56), new T.Vector3(0, 0.02, 0.56), 0.12, 0.12, 'camera_pan_bearing', 12));
+        const yaw = new T.Group(); yaw.name = 'camera_pan_pivot'; yaw.position.set(0, 0.02, 0.56); root.add(yaw);
+        for (const side of [-1, 1]) yaw.add(this._box(camMetal,
+          { x: 0.055, y: 0.38, z: 0.24 }, { x: side * 0.235, y: 0.09, z: 0.1 }, `camera_tilt_yoke_${side}`, true));
+        const pitch = new T.Group(); pitch.name = 'camera_tilt_pivot'; pitch.position.set(0, 0.08, 0.1); yaw.add(pitch);
+        for (const side of [-1, 1]) pitch.add(this._ellipsoid(dark,
+          { x: 0.045, y: 0.075, z: 0.075 }, { x: side * 0.215, y: 0, z: 0 }, `camera_tilt_pin_${side}`, 10));
+        pitch.add(this._box(camMetal, { x: 0.40, y: 0.34, z: 0.78 }, { x: 0, y: 0, z: 0.29 }, 'camera_casing', true));
+        pitch.add(this._box(dark, { x: 0.44, y: 0.07, z: 0.86 }, { x: 0, y: 0.20, z: 0.32 }, 'camera_weather_hood', true));
+        pitch.add(this._ring(dark, 0.125, 0.035, { x: 0, y: 0, z: 0.71 }, { x: 0, y: 0, z: 0 }, 'camera_lens_hood'));
+        pitch.add(this._ellipsoid(lensGlass, { x: 0.103, y: 0.103, z: 0.035 }, { x: 0, y: 0, z: 0.735 }, 'camera_starlight_sensor', 14));
+        pitch.add(this._ellipsoid(status, { x: 0.022, y: 0.022, z: 0.012 }, { x: 0.156, y: 0.10, z: 0.694 }, 'camera_status_indicator', 8));
+        const lens = new T.Group(); lens.name = 'camera_optical_axis'; lens.position.set(0, 0, 0.78); pitch.add(lens);
+        // Keep mechanism landmarks through the industrial detail batching pass.
+        // No generic animationJoints are bound: this rig owns pan/tilt only.
+        root.userData.animationRoles = { cameraMechanism: ['camera_wall_bracket', 'camera_swivel_arm', 'camera_casing', 'camera_status_indicator'] };
+        const worldPosition = new T.Vector3(), worldDirection = new T.Vector3(), worldQuaternion = new T.Quaternion();
+        let alerted = false;
+        root.userData.cameraRig = {
+          version: 1, plate, arm, yaw, pitch, lens,
+          setAngles(pan = 0, tilt = 0.3) {
+            if (!Number.isFinite(pan) || !Number.isFinite(tilt)) return false;
+            const nextPan = Math.max(-0.95, Math.min(0.95, pan)), nextTilt = Math.max(-0.05, Math.min(0.85, tilt));
+            const changed = Math.abs(yaw.rotation.y - nextPan) + Math.abs(pitch.rotation.x - nextTilt) > 1e-8;
+            yaw.rotation.y = nextPan; pitch.rotation.x = nextTilt; return changed;
+          },
+          setAlert(active) {
+            if (alerted === !!active) return;
+            alerted = !!active; status.color.setHex(alerted ? 0xe65b48 : 0x4ba36a);
+            status.emissive.setHex(alerted ? 0xe65b48 : 0x4ba36a);
+          },
+          getOptics() {
+            root.updateWorldMatrix(true, true);
+            lens.getWorldPosition(worldPosition); lens.getWorldQuaternion(worldQuaternion);
+            worldDirection.set(0, 0, 1).applyQuaternion(worldQuaternion).normalize();
+            return { position: worldPosition, direction: worldDirection, quaternion: worldQuaternion };
+          }
+        };
+        root.userData.cameraRig.setAngles(0, 0.3);
       } else if (normalizedType === 'trap' || normalizedType === 'tripwire_trap') {
         // Chantier 35 : Piège au sol à harpons pneumatiques et filet électrifié (Alien 3 / Isolation)
         const baseMat = this._material('darkMetal', { color: 0x18181b, roughness: 0.4, metalness: 0.8 });
@@ -7006,7 +7073,7 @@
         const shroudMetal = this._material('darkMetal', { color: 0x18181b, roughness: 0.5, metalness: 0.9 });
         const bladeSteel = this._material('industrial', { color: 0x94a3b8, roughness: 0.25, metalness: 0.95 });
         const hubDark = this._material('darkMetal', { color: 0x09090b, roughness: 0.4, metalness: 0.8 });
-        root.add(this._ring(shroudMetal, 1.65, 0.28, { x: 0, y: 1.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'fan_outer_shroud', true));
+        root.add(this._ring(shroudMetal, 1.65, 0.28, { x: 0, y: 1.8, z: 0 }, { x: 0, y: 0, z: 0 }, 'fan_outer_shroud'));
         root.add(this._cylinder(hubDark, 0.4, 0.4, 0.5, { x: 0, y: 1.8, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'fan_rotor_hub'));
         for (let b = 0; b < 6; b++) {
           const ang = (b * Math.PI) / 3;
@@ -7027,7 +7094,7 @@
         const frameTitanium = this._material('industrial', { color: 0x64748b, roughness: 0.3, metalness: 0.85 });
         const gravityViolet = this._material('emissivePurple', { color: 0xc084fc, emissive: 0xa855f7, emissiveIntensity: 3.0 });
         const gimbalDark = this._material('darkMetal', { color: 0x0f172a, roughness: 0.4, metalness: 0.9 });
-        root.add(this._ring(frameTitanium, 2.2, 0.25, { x: 0, y: 1.6, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'gravity_outer_gimbal', true));
+        root.add(this._ring(frameTitanium, 2.2, 0.25, { x: 0, y: 1.6, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'gravity_outer_gimbal'));
         root.add(this._ring(gravityViolet, 1.8, 0.12, { x: 0, y: 1.6, z: 0 }, { x: 0, y: Math.PI / 2, z: 0 }, 'gravity_flux_emitter'));
         root.add(this._cylinder(gimbalDark, 0.35, 0.35, 1.2, { x: 0, y: 0.6, z: 0 }, { x: 0, y: 0, z: 0 }, 'gravity_pedestal_core'));
       } else if (normalizedType === 'uscm_sentry_barricade' || normalizedType === 'sentry_barricade') {
@@ -7217,7 +7284,7 @@
         const clampSteel = this._material('hazard', { color: 0xeab308, roughness: 0.35, metalness: 0.75 });
         const beaconAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 3.5 });
         // Anneau d'amarrage circulaire de 3.6m
-        root.add(this._ring(ringTitanium, 3.4, 0.35, { x: 0, y: 2.0, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'corbel_docking_ring', true));
+        root.add(this._ring(ringTitanium, 3.4, 0.35, { x: 0, y: 2.0, z: 0 }, { x: Math.PI / 2, y: 0, z: 0 }, 'corbel_docking_ring'));
         root.add(this._ring(sealNeoprene, 3.1, 0.15, { x: 0, y: 2.0, z: 0.2 }, { x: Math.PI / 2, y: 0, z: 0 }, 'corbel_pressure_seal'));
         // 4 Mâchoires de verrouillage hydrauliques
         for (let c = 0; c < 4; c++) {

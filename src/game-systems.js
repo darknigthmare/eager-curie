@@ -527,12 +527,16 @@
       scale = 0.12,
       speed = 42,
       acid = false,
+      arcHeight = 0,
+      targetRadius = 0,
+      isValid = null,
       onImpact = null
     }) {
       if (typeof THREE === 'undefined' || ![startX,startY,startZ,endX,endY,endZ].every(Number.isFinite)) return false;
       const start = new THREE.Vector3(startX, startY, startZ);
       const end = new THREE.Vector3(endX, endY, endZ);
       const distance = Math.max(0.01, start.distanceTo(end));
+      const arc = Number.isFinite(arcHeight) ? Math.max(0, Math.min(12, arcHeight)) : 0;
       const group = new THREE.Group();
       const projectile = acid
         ? new THREE.Mesh(
@@ -557,10 +561,25 @@
             depthWrite: false
           })
         );
-      const direction = end.clone().sub(start).normalize();
-      projectile.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+      const projectileUp = new THREE.Vector3(0, 1, 0);
+      const direction = end.clone().sub(start);
+      if (arc) direction.y += Math.PI * arc / 2;
+      direction.normalize();
+      projectile.quaternion.setFromUnitVectors(projectileUp, direction);
       projectile.scale.set(scale * (acid ? 1.3 : .4), acid ? scale * 2.9 : Math.max(.55,scale * 7), scale * (acid ? 1.3 : .4));
       group.add(projectile);
+      // An essential, stationary danger footprint is not a decorative flash:
+      // reduced motion retains it and the shell, without any pulsing/scaling.
+      let targetMarker = null;
+      if (Number.isFinite(targetRadius) && targetRadius > 0) {
+        targetMarker = new THREE.Mesh(this.geometry('ring'), new THREE.MeshBasicMaterial({
+          color, transparent: true, opacity: .5, side: THREE.DoubleSide, depthWrite: false
+        }));
+        targetMarker.rotation.x = -Math.PI / 2;
+        targetMarker.scale.setScalar(Math.min(12, targetRadius));
+        targetMarker.position.copy(end).sub(start); targetMarker.position.y = .045 - start.y;
+        group.add(targetMarker);
+      }
       if (acid && !this.reducedMotion) {
         for (let i=0;i<3;i++) {
           const vapour=this.getParticle(scale * (1.6+i*.5),0x91a85a,'mist');
@@ -576,6 +595,11 @@
         lifetime: Math.max(0.08, distance / Math.max(1, speed)),
         projectile: true,
         acid,
+        arcHeight: arc,
+        arcDirection: arc ? new THREE.Vector3() : null,
+        projectileUp,
+        targetMarker,
+        isValid: typeof isValid === 'function' ? isValid : null,
         color,
         scale,
         start,
@@ -833,10 +857,11 @@
     }
 
     update(deltaSeconds) {
+      if (window.gameInstance?.isSystemPaused) return;
       const delta = Math.max(0, Number(deltaSeconds) || 0);
       for (let index = this.effects.length - 1; index >= 0; index--) {
         const effect = this.effects[index];
-        if (!this.isCurrent(effect)) {
+        if (!this.isCurrent(effect) || (effect.projectile && effect.isValid && !effect.isValid())) {
           this.effects.splice(index,1); this.releaseVisual(effect); continue;
         }
         const activeDelta = Math.max(0, Math.min(delta, effect.lifetime - effect.age));
@@ -845,8 +870,19 @@
         if (effect.projectile) {
           const easedProgress = 1 - Math.pow(1 - progress, 2);
           effect.group.position.lerpVectors(effect.start, effect.end, easedProgress);
+          if (effect.arcHeight > 0) {
+            effect.group.position.y += Math.sin(progress * Math.PI) * effect.arcHeight;
+            const direction = effect.arcDirection.copy(effect.end).sub(effect.start).multiplyScalar(2 * (1 - progress));
+            direction.y += Math.cos(progress * Math.PI) * Math.PI * effect.arcHeight;
+            if (direction.lengthSq() > 1e-12) effect.group.children[0].quaternion.setFromUnitVectors(
+              effect.projectileUp, direction.normalize());
+          }
+          if (effect.targetMarker) {
+            effect.targetMarker.position.copy(effect.end).sub(effect.group.position);
+            effect.targetMarker.position.y = .045 - effect.group.position.y;
+          }
           effect.group.children.forEach((child,i) => {
-            child.visible = !this.reducedMotion || i===0;
+            child.visible = !this.reducedMotion || i===0 || child === effect.targetMarker;
             if(i===0&&child.material)child.material.opacity=this.reducedMotion ? .58 : .85;
           });
         } else if (effect.sprite) {

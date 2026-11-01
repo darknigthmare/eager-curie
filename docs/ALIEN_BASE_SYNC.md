@@ -1,12 +1,12 @@
 # ALIEN BASE ↔ HIVE ASCENSION (EAGER-CURIE)
 
 ## Ce qui fonctionne
-Le bouton **Archives unifiées** (menu) et **Archives** (HUD) ouvre un catalogue filtrable/recherchable, alimenté par `data/alien-base.snapshot.v1.json`. Il contient 6 identités communes et les fiches publiques du jeu : 16 formes, 10 ennemis, 4 boss, 5 factions de contexte, 21 équipements. La fenêtre n'interrompt aucune fonction du Codex historique. Son absence n'empêche pas de jouer.
+Le bouton **Archives unifiées** (menu) et **Archives** (HUD) ouvre un catalogue filtrable/recherchable, alimenté par `data/alien-base.snapshot.v1.json`. Il contient 58 références communes minimales (dont six castes liées) et les fiches publiques du jeu : 16 formes, 10 ennemis, 4 boss, 5 factions de contexte, 21 équipements. La fenêtre n'interrompt aucune fonction du Codex historique. Son absence n'empêche pas de jouer.
 
 Une petite API `window.AlienBaseReference` devient disponible une fois la copie locale chargée :
 - `getSharedIdForCaste("ovomorphe")` → `"xeno:ovomorph"`
 - `getSharedRecord("xeno:ovomorph")` → identité et nom uniquement
-- `listSharedRecords()` → copie des six fiches de référence
+- `listSharedRecords()` → copie des 58 fiches de référence
 - `sourceCommit` → version du contenu du jeu utilisée pour la synchronisation
 
 Le jeu conserve ses 16 IDs de caste, ses règles, équilibrages et sauvegardes inchangés. Un identifiant partagé ne valide ni les stats ni les assets.
@@ -31,3 +31,6 @@ Une fois le fichier actualisé, depuis `eager-curie` : `node tools/qa-alien-base
 
 ## Manquants honnêtement identifiés
 Il faut encore un audit d'édition et de source pour les formes étendues, des références visuelles sous licence, les variantes hôtes/continuités, les véhicules et équipements non présents dans le catalogue narratif, des tests navigateur interactifs et un raccordement du contenu commun aux futurs moteurs de jeu.
+
+## Références consultables en supplément
+Le snapshot expose les noms/IDs minimaux de 6 organismes, 22 personnages, 7 armes, 4 véhicules, 3 vaisseaux, 4 équipements, 4 factions et 8 lieux connus du référentiel. Les 18 archives narratives restent privées et les armes/véhicules ne sont pas ajoutés au monde 3D : ce sont des entrées documentaires consultables et filtrables. Toute création d'asset ou mécaniques jouables est un chantier distinct.

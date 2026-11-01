@@ -10,6 +10,7 @@
     equipment: "ÉQUIPEMENTS",
     shared: "IDENTITÉS COMMUNES"
   };
+  const SHARED_KINDS = {organism:"XÉNOMORPHES DE RÉFÉRENCE",character:"PERSONNAGES DE RÉFÉRENCE",weapon:"ARMES DE RÉFÉRENCE",vehicle:"VÉHICULES DE RÉFÉRENCE",vessel:"VAISSEAUX DE RÉFÉRENCE",equipment:"ÉQUIPEMENTS DE RÉFÉRENCE",faction:"FACTIONS DE RÉFÉRENCE",location:"LIEUX DE RÉFÉRENCE"};
   let overlay, list, detail, queryInput, typeFilter, count, status;
   let entries = [], snapshot = null, selected = null, previousFocus = null;
   let loadPromise = null;
@@ -65,7 +66,7 @@
     queryInput.addEventListener("input", renderList);
     const filterLabel = node("label", "", "DOMAINE");
     typeFilter = node("select"); typeFilter.id = "alien-base-filter"; filterLabel.htmlFor = typeFilter.id;
-    for (const [value, titleText] of [["all", "TOUTES LES FICHES"], ...Object.entries(KIND)]) {
+    for (const [value, titleText] of [["all", "TOUTES LES FICHES"], ...Object.entries(KIND), ...Object.entries(SHARED_KINDS).map(([key, name]) => ["shared:" + key, name])]) {
       const opt = node("option", "", titleText); opt.value = value; typeFilter.appendChild(opt);
     }
     typeFilter.addEventListener("change", renderList);
@@ -119,7 +120,7 @@
     });
   }
   function itemLabel(e) {
-    return e.group === "castes" && e.sharedId ? "RÉF. " + e.sharedId : KIND[e.group];
+    return e.group === "shared" ? "RÉF. " + (SHARED_KINDS[e.kind] || e.kind) : (e.group === "castes" && e.sharedId ? "RÉF. " + e.sharedId : KIND[e.group]);
   }
   function describe(e) {
     detail.replaceChildren();
@@ -132,6 +133,7 @@
     const table = node("dl", "ab-facts");
     table.appendChild(row("Identifiant", e.displayId));
     if (e.sharedId) table.appendChild(row("Identité commune", e.sharedId));
+    if (e.group === "shared") table.appendChild(row("Domaine", SHARED_KINDS[e.kind] || e.kind));
     if (e.sourceLoreStatus) table.appendChild(row("Statut annoncé par le jeu", e.sourceLoreStatus));
     if (e.group === "enemies") {
       table.appendChild(row("Faction", e.faction));
@@ -157,9 +159,9 @@
   function renderList() {
     if (!list || !snapshot) return;
     const q = normal(queryInput.value), group = typeFilter.value;
-    const filtered = entries.filter(x => (group === "all" || x.group === group) &&
+    const filtered = entries.filter(x => (group === "all" || x.group === group || (x.group === "shared" && group === "shared:" + x.kind)) &&
       normal([x.name, x.id, x.role, x.faction, x.sharedId, x.title].join(" ")).includes(q));
-    count.textContent = filtered.length + " FICHE(S) • " + snapshot.records.length + " IDENTITÉS COMMUNES • " + snapshot.projectIntake.castes.length + " FORMES DU JEU";
+    count.textContent = filtered.length + " FICHE(S) • " + snapshot.records.length + " RÉFÉRENCES COMMUNES • " + snapshot.projectIntake.castes.length + " FORMES DU JEU";
     list.replaceChildren();
     if (!filtered.length) {
       list.appendChild(node("p", "ab-empty", "Aucune fiche pour cette recherche."));

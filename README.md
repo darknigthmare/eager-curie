@@ -16,7 +16,7 @@ Jeu de survie et de stratégie biologique en cinq actes, jouable dans un navigat
 
 Le catalogue narratif et les règles biologiques sont centralisés dans `src/content.js`. L’audit de contenu et de cohérence se trouve dans `GAME_AUDIT.md`.
 
-**Nouveau :** le menu et le HUD proposent **Archives unifiées**, alimenté par une copie locale publique minimale du référentiel [alien_base](https://github.com/darknigthmare/alien_base) : 6 identités partagées, formes biologiques, opposition et équipements de MNEMOSYNE. Voir [ALIEN_BASE_SYNC.md](docs/ALIEN_BASE_SYNC.md). Le jeu ne requiert aucun accès GitHub privé pendant la partie.
+**Nouveau :** le menu et le HUD proposent **Archives unifiées**, alimenté par une copie locale publique minimale du référentiel [alien_base](https://github.com/darknigthmare/alien_base) : 58 références communes minimales (dont 6 castes liées), personnages, armes, véhicules, formes biologiques, opposition et équipements de MNEMOSYNE. Voir [ALIEN_BASE_SYNC.md](docs/ALIEN_BASE_SYNC.md). Le jeu ne requiert aucun accès GitHub privé pendant la partie.
 
 ## Cycle biologique jouable
 

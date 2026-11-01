@@ -15,7 +15,11 @@ vm.runInNewContext(text, env, {filename: "content.js", timeout: 1500});
 const content = env.window.HIVE_CONTENT;
 assert.ok(content);
 assert.equal(snapshot.scope, "public-minimal");
-assert.equal(snapshot.records.length, 6);
+assert.equal(snapshot.records.length, 58);
+assert.ok(snapshot.records.every(x => Object.keys(x).every(k => ["id", "kind", "name"].includes(k))));
+for (const id of ["weapon:m41a", "vehicle:ud4l", "character:ellen-ripley", "faction:weyland-yutani"]) {
+  assert.ok(snapshot.records.some(x => x.id === id), "Missing reference " + id);
+}
 assert.equal(snapshot.crosswalks.length, 12);
 assert.equal(snapshot.projectIntake.castes.length, Object.keys(content.castes).length);
 assert.equal(snapshot.projectIntake.enemies.length, Object.keys(content.enemies).length);
@@ -40,4 +44,4 @@ const json = JSON.stringify(snapshot);
 for (const forbidden of ["gameOnlyProfile", "gameOnlyThreat", "damage"]) assert.equal(json.includes(forbidden), false);
 assert.equal(snapshot.sourcePins.length, 1);
 assert.equal(snapshot.sourcePins[0].repository, "darknigthmare/eager-curie");
-console.log("Alien Base ↔ Hive Ascension: 6 linked identities, 16 game castes, 10 enemies, 4 bosses; pinned snapshot OK");
+console.log("Alien Base ↔ Hive Ascension: 58 minimal shared references, 6 linked identities, 16 game castes, 10 enemies, 4 bosses; pinned snapshot OK");

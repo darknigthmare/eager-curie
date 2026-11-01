@@ -5,6 +5,266 @@
   "evidence": "identity-and-source-only-not-playable",
   "records": [
     {
+      "id": "character:amanda-ripley",
+      "kind": "character",
+      "name": "Amanda Ripley"
+    },
+    {
+      "id": "character:andy",
+      "kind": "character",
+      "name": "Andy"
+    },
+    {
+      "id": "character:annalee-call",
+      "kind": "character",
+      "name": "Annalee Call"
+    },
+    {
+      "id": "character:apone",
+      "kind": "character",
+      "name": "Apone"
+    },
+    {
+      "id": "character:arthur-dallas",
+      "kind": "character",
+      "name": "Arthur Dallas"
+    },
+    {
+      "id": "character:ash",
+      "kind": "character",
+      "name": "Ash"
+    },
+    {
+      "id": "character:bishop",
+      "kind": "character",
+      "name": "Bishop"
+    },
+    {
+      "id": "character:brett",
+      "kind": "character",
+      "name": "Brett"
+    },
+    {
+      "id": "character:burke",
+      "kind": "character",
+      "name": "Carter Burke"
+    },
+    {
+      "id": "character:david-8",
+      "kind": "character",
+      "name": "David 8"
+    },
+    {
+      "id": "character:dwayne-hicks",
+      "kind": "character",
+      "name": "Dwayne Hicks"
+    },
+    {
+      "id": "character:elizabeth-shaw",
+      "kind": "character",
+      "name": "Elizabeth Shaw"
+    },
+    {
+      "id": "character:ellen-ripley",
+      "kind": "character",
+      "name": "Ellen Ripley"
+    },
+    {
+      "id": "character:hudson",
+      "kind": "character",
+      "name": "Hudson"
+    },
+    {
+      "id": "character:kane",
+      "kind": "character",
+      "name": "Kane"
+    },
+    {
+      "id": "character:lambert",
+      "kind": "character",
+      "name": "Lambert"
+    },
+    {
+      "id": "character:newt",
+      "kind": "character",
+      "name": "Rebecca « Newt » Jorden"
+    },
+    {
+      "id": "character:parker",
+      "kind": "character",
+      "name": "Parker"
+    },
+    {
+      "id": "character:rain-carradine",
+      "kind": "character",
+      "name": "Rain Carradine"
+    },
+    {
+      "id": "character:ripley-8",
+      "kind": "character",
+      "name": "Ripley 8"
+    },
+    {
+      "id": "character:vasquez",
+      "kind": "character",
+      "name": "Vasquez"
+    },
+    {
+      "id": "character:walter",
+      "kind": "character",
+      "name": "Walter"
+    },
+    {
+      "id": "equipment:containment",
+      "kind": "equipment",
+      "name": "Kit de confinement xéno"
+    },
+    {
+      "id": "equipment:m314",
+      "kind": "equipment",
+      "name": "M314 — Détecteur de mouvement"
+    },
+    {
+      "id": "equipment:trauma",
+      "kind": "equipment",
+      "name": "Kit de traumatologie"
+    },
+    {
+      "id": "equipment:welder",
+      "kind": "equipment",
+      "name": "Chalumeau de découpe"
+    },
+    {
+      "id": "faction:colonists",
+      "kind": "faction",
+      "name": "Colons de la frontière"
+    },
+    {
+      "id": "faction:synthetics",
+      "kind": "faction",
+      "name": "Personnel synthétique"
+    },
+    {
+      "id": "faction:uscm",
+      "kind": "faction",
+      "name": "Colonial Marines — USCM"
+    },
+    {
+      "id": "faction:weyland-yutani",
+      "kind": "faction",
+      "name": "Weyland-Yutani"
+    },
+    {
+      "id": "location:fiorina-161",
+      "kind": "location",
+      "name": "Fiorina 161"
+    },
+    {
+      "id": "location:hadleys-hope",
+      "kind": "location",
+      "name": "Hadley’s Hope"
+    },
+    {
+      "id": "location:lethe",
+      "kind": "location",
+      "name": "Lethe"
+    },
+    {
+      "id": "location:lv-223",
+      "kind": "location",
+      "name": "LV-223"
+    },
+    {
+      "id": "location:lv-426",
+      "kind": "location",
+      "name": "LV-426 / Acheron"
+    },
+    {
+      "id": "location:lv-895",
+      "kind": "location",
+      "name": "LV-895"
+    },
+    {
+      "id": "location:renaissance",
+      "kind": "location",
+      "name": "Renaissance"
+    },
+    {
+      "id": "location:sevastopol",
+      "kind": "location",
+      "name": "Sevastopol"
+    },
+    {
+      "id": "vehicle:m577",
+      "kind": "vehicle",
+      "name": "M577 Armored Personnel Carrier"
+    },
+    {
+      "id": "vehicle:narcissus",
+      "kind": "vehicle",
+      "name": "Narcissus Lifeboat"
+    },
+    {
+      "id": "vehicle:p5000",
+      "kind": "vehicle",
+      "name": "P-5000 Powered Work Loader"
+    },
+    {
+      "id": "vehicle:ud4l",
+      "kind": "vehicle",
+      "name": "UD-4L Cheyenne Dropship"
+    },
+    {
+      "id": "vessel:uscss-nostromo",
+      "kind": "vessel",
+      "name": "USCSS Nostromo"
+    },
+    {
+      "id": "vessel:usm-auriga",
+      "kind": "vessel",
+      "name": "USM Auriga"
+    },
+    {
+      "id": "vessel:uss-sulaco",
+      "kind": "vessel",
+      "name": "USS Sulaco"
+    },
+    {
+      "id": "weapon:ithaca37",
+      "kind": "weapon",
+      "name": "Ithaca Model 37 — Fusil à pompe"
+    },
+    {
+      "id": "weapon:m240",
+      "kind": "weapon",
+      "name": "M240 — Incinérateur"
+    },
+    {
+      "id": "weapon:m41a",
+      "kind": "weapon",
+      "name": "M41A — Fusil à impulsion"
+    },
+    {
+      "id": "weapon:m56",
+      "kind": "weapon",
+      "name": "M56 — Smartgun"
+    },
+    {
+      "id": "weapon:model39",
+      "kind": "weapon",
+      "name": "Smith & Wesson Model 39 — Pistolet"
+    },
+    {
+      "id": "weapon:sentry",
+      "kind": "weapon",
+      "name": "UA 571-C — Sentinelle"
+    },
+    {
+      "id": "weapon:vp70",
+      "kind": "weapon",
+      "name": "Heckler & Koch VP70 — Pistolet"
+    },
+    {
       "id": "xeno:adult-1979",
       "kind": "organism",
       "name": "Drone xénomorphe"

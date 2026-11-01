@@ -10,9 +10,9 @@
   const HIVE_CONTENT = {
     metadata: {
       schema: "hive-content-v1",
-      version: "1.0.0",
+      version: "1.1.0",
       language: "fr-FR",
-      updatedAt: "2026-07-30",
+      updatedAt: "2026-11-01",
       projectTitle: "HIVE ASCENSION",
       campaignTitle: "Les Archives de MNEMOSYNE",
       location: {
@@ -660,7 +660,8 @@
             id: "sense_heat",
             name: "Lecture thermique",
             type: "sense",
-            description: "Révèle brièvement les organismes et machines chaudes à travers les parois proches."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Représente les gradients thermiques proches ; une machine chaude n'est pas pour autant un hôte viable."
           },
           {
             id: "sense_vibration",
@@ -679,10 +680,10 @@
             id: "open_petals",
             name: "Ouverture des pétales",
             type: "transform",
-            description: "Libère le Facehugger ; l'action est irréversible et doit être minutée."
+            description: "Écarte les quatre lobes sans téléporter le parasite : le bond est préparé dans l'œuf puis déclenché vers un accès dégagé."
           }
         ],
-        strengths: ["Dormance prolongée", "Détection sans ligne de vue", "Très difficile à remarquer avant l'ouverture"],
+        strengths: ["Dormance prolongée", "Perception de stimuli proches", "Très difficile à remarquer avant l'ouverture"],
         weaknesses: ["Immobile", "Vulnérable au feu et à la stérilisation", "Une ouverture prématurée condamne le cycle"],
         counters: ["Scanner thermique", "Purge thermique", "Bras robotisé"]
       },
@@ -718,7 +719,7 @@
             id: "final_embrace",
             name: "Étreinte finale",
             type: "channel",
-            description: "Maintient l'hôte avec les doigts et la queue jusqu'à implantation complète."
+            description: "Maintient l'hôte avec les huit doigts et la queue. Après l'implantation vient le détachement, puis la mort du parasite."
           }
         ],
         strengths: ["Extrêmement rapide", "Petite cible", "Ignore une grande partie de l'armure corporelle"],
@@ -739,7 +740,8 @@
             id: "choose_eruption_path",
             name: "Chemin d'émergence",
             type: "sense",
-            description: "Compare plusieurs points de sortie et révèle leur niveau de danger."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "La vue intérieure traduit pression et rythme de l'hôte ; elle sert à préparer l'émergence, pas à voir au travers de la station."
           },
           {
             id: "erupt",
@@ -757,7 +759,7 @@
             id: "weave_molt_cocoon",
             name: "Chrysalide de mue",
             type: "transform",
-            description: "Consomme la matière collectée et rend le juvénile immobile jusqu'à la forme adulte."
+            description: "Une membrane humide, tendue et nervurée enveloppe la mue. L'adulte la distend, la fend puis dégage son corps avant de reprendre le contrôle."
           }
         ],
         strengths: ["Très discret", "Accélération élevée", "Peut emprunter les plus petits conduits"],
@@ -1036,9 +1038,10 @@
           },
           {
             id: "detach_ovipositor",
-            name: "Rupture de l'ovipositeur",
+            name: "Détachement des ancrages",
             type: "transform",
-            description: "Rend la Reine mobile et redoutable, mais suspend toute ponte."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Rend la Reine mobile et suspend la ponte. Le détachement réversible des ancrages est une adaptation de jeu ; il ne représente pas un ovipositeur sectionné qui se reconnecte."
           },
           {
             id: "royal_rend",
@@ -1055,8 +1058,9 @@
         id: "royal_facehugger",
         name: "Superfacehugger Royal",
         priority: "P1",
-        loreStatus: "FILM_CORE",
-        role: "Parasite royal blindé transportant la lignée royale",
+        loreStatus: "EXPANDED_COMPATIBLE",
+        loreNote: "Variante royale de référence ; armure balistique, double implantation et infusion sont des adaptations, pas des propriétés universelles établies.",
+        role: "Parasite spécialisé transportant la lignée royale",
         evolutionFrom: ["queen_ovipositor_royal_cycle"],
         evolvesTo: ["queenburster", "praetorian"],
         evolutionCondition: "Ponte spécialisée d'une Reine mature ou infusion de Gelée Royale.",
@@ -1078,7 +1082,8 @@
             id: "royal_implantation",
             name: "Implantation royale double",
             type: "channel",
-            description: "Dépose un embryon de Reine et un embryon de garde prétorien."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Implante la lignée royale ; le second embryon de garde appartient à l'adaptation de cette campagne."
           }
         ],
         strengths: ["Résistance balistique accrue", "Implantation irréversible", "Fonde une nouvelle dynastie"],
@@ -1112,7 +1117,7 @@
             id: "shadow_veil",
             name: "Voile d'ombre",
             type: "defense",
-            description: "Reste indétectable aux détecteurs inertiels tant qu'il ne bouge pas."
+            description: "L'immobilité supprime le déplacement détectable ; elle ne neutralise ni caméra, ni éclairage, ni observation directe."
           }
         ],
         strengths: ["Dégâts de surprise dévastateurs", "Contrôle individuel absolu", "Furtivité maximale"],
@@ -1161,7 +1166,7 @@
         role: "Mastodonte quadrupède et bélier anti-blindage",
         evolutionFrom: ["runner_heavy_molt", "warrior_mutation"],
         evolvesTo: [],
-        evolutionCondition: "Hôte quadrupède lourd ou exo-armure assimilée avec mue de carapace frontale (75 Bio).",
+        evolutionCondition: "Spécialisation de jeu par mue lourde d'un Runner ou Warrior (75 Bio) ; une exo-armure n'est pas assimilée génétiquement.",
         profile: { mobility: 4, stealth: 0, resilience: 5, control: 5, support: 2, range: 0 },
         actions: [
           {
@@ -1202,7 +1207,8 @@
             id: "queens_aegis",
             name: "Égide de la Reine",
             type: "defense",
-            description: "Redirige vers lui 50% de tous les dégâts infligés à la Reine à proximité."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Bonus de protection de jeu : représente un garde qui s'interpose, et non un transfert magique de blessures."
           },
           {
             id: "palatine_execution",
@@ -1214,7 +1220,8 @@
             id: "royal_dominance",
             name: "Présence royale",
             type: "buff",
-            description: "Confère +40% de vitesse et de résistance à toutes les créatures alliées proches."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Bonus de coordination de jeu : stimule les alliés proches sans soigner ni transformer instantanément leur anatomie."
           }
         ],
         strengths: ["Résistance inégalée", "Garantie de survie pour la Reine", "Aura de combat suprême"],
@@ -1225,11 +1232,12 @@
         id: "offspring",
         name: "Offspring (Hybride Z-01)",
         priority: "P1",
-        loreStatus: "FILM_CORE",
-        role: "Hybride recombinant biomécanique issu du Mutagène Noir",
+        loreStatus: "INSPIRED_ORIGINAL",
+        loreNote: "La silhouette de l'hybride renvoie à une apparition filmique exceptionnelle ; Z-01, sa reproduction et ses statistiques sont propres à cette campagne.",
+        role: "Hybride expérimental Z-01, hors cycle naturel de la ruche",
         evolutionFrom: ["chemical_mutation_z01"],
         evolvesTo: [],
-        evolutionCondition: "Exposition d'un embryon ou cocon au Composé Z-01 / Mutagène Noir Prometheus (95 Bio).",
+        evolutionCondition: "Scénario expérimental de campagne : exposition au Composé Z-01 (95 Bio), hors arbre biologique naturel.",
         profile: { mobility: 4, stealth: 2, resilience: 5, control: 4, support: 1, range: 0 },
         actions: [
           {
@@ -1242,7 +1250,8 @@
             id: "acid_immunity",
             name: "Chair résistante à l'acide",
             type: "passive",
-            description: "Immunisé aux brûlures de son propre sang et des fluides corrosifs."
+            loreStatus: "INSPIRED_ORIGINAL",
+            description: "Résistance corrosive attribuée par les expériences Z-01 ; aucune immunité universelle à l'acide n'est déduite de son apparence."
           },
           {
             id: "grotesque_screech",
@@ -1251,7 +1260,7 @@
             description: "Émet un cri humanoïde-insectoïde glaçant qui terrorise l'équipage."
           }
         ],
-        strengths: ["Force brute colossale", "Immunité acide", "Effroi psychologique maximal"],
+        strengths: ["Force brute colossale", "Résistance corrosive adaptée au jeu", "Effroi psychologique maximal"],
         weaknesses: ["Morphologie non standard", "Ne communique pas par phéromones pures"],
         counters: ["Tirs perforants lourds", "Décompression spatiale", "Incinération totale"]
       }

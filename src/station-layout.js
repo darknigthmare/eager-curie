@@ -169,10 +169,14 @@
     if(!map || !Array.isArray(map.colliders))return null;
     if(map.layoutDiagnostics?.version===1)return map.layoutDiagnostics;
     const data=collect(map),before=metrics(map,data),accepted=[...data.fixed],moves=[],unresolved=[];
-    // Give the large functional equipment a real service bay before placing
-    // smaller crates around it. Otherwise preserving every tiny original box
-    // first can exile a reactor generator into an unrelated sector.
+    // Tactical emplacements keep their authored firing positions; loose
+    // consoles/crates must leave the tripod's service clearance, not shift a
+    // mortar to an unrelated firing lane. Both authored bases clear walls and
+    // reserved routes. Then give large functional equipment a service bay
+    // before smaller crates: preserving every tiny original box first can
+    // exile a reactor generator into an unrelated sector.
     const order=[...data.entries].sort((a,b)=>
+      Number(b.collection==='portableMortars')-Number(a.collection==='portableMortars')||
       (b.bounds.maxX-b.bounds.minX)*(b.bounds.maxZ-b.bounds.minZ)-
       (a.bounds.maxX-a.bounds.minX)*(a.bounds.maxZ-a.bounds.minZ)||a.uid.localeCompare(b.uid));
     for(const entry of order) {

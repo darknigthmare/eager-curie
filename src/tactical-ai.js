@@ -29,7 +29,8 @@
     return {role:isCombatant(type)?'rifle':'civilian',aim:.46,memory:6,range:26,halfFov:1.50};
   }
   function createState() {
-    return {lastKnown:null,remaining:0,source:null,searchIndex:0,searchGoal:null,goalCheckRemaining:0,seenAge:Infinity,
+    return {lastKnown:null,remaining:0,source:null,searchIndex:0,searchGoal:null,goalCheckRemaining:0,
+      searchProbeRemaining:[0,0,0,0],seenAge:Infinity,
       aimRemaining:0,aimTarget:null,aimStarted:false};
   }
   function squadRecipients(reporter, humans, radius=35, limit=4) {
@@ -64,6 +65,7 @@
     if (!finitePoint(point) || (source !== 'visual' && state.seenAge < .8)) return false;
     state.lastKnown={x:point.x,z:point.z};state.source=source;
     state.remaining=source==='visual'?6:3.6;state.searchIndex=0;state.searchGoal=null;state.goalCheckRemaining=0;
+    if(state.searchProbeRemaining)state.searchProbeRemaining.fill(0);
     return true;
   }
   function approachGoal(position, contact, options={}) {
@@ -96,9 +98,12 @@
     state.remaining=Math.max(0,state.remaining-dt);
     if (!state.lastKnown || state.remaining<=0 || input.detectable===false) {
       state.lastKnown=null;state.remaining=0;state.source=null;state.searchGoal=null;state.goalCheckRemaining=0;
+      if(state.searchProbeRemaining)state.searchProbeRemaining.fill(0);
       return {mode:'PATROL',goal:null};
     }
     let goal={...state.lastKnown};
+    const probeRemaining=state.searchProbeRemaining || (state.searchProbeRemaining=[0,0,0,0]);
+    for(let index=0;index<4;index++)probeRemaining[index]=Math.max(0,probeRemaining[index]-dt);
     state.goalCheckRemaining=Math.max(0,(state.goalCheckRemaining||0)-dt);
     if (state.goalCheckRemaining===0) {
       state.goalCheckRemaining=.8;
@@ -115,8 +120,14 @@
       (state.searchGoal && distance(input.position,state.searchGoal)<.8))) {
       const angle=(Number(input.id)||0)*2.399963+state.searchIndex*Math.PI*.5;
       const candidate={x:goal.x+Math.cos(angle)*2.8,z:goal.z+Math.sin(angle)*2.8};
-      if ((!input.walkable || input.walkable(candidate.x,candidate.z)) &&
-          (!input.reachable || input.reachable(candidate.x,candidate.z))) state.searchGoal=candidate;
+      // Reaching a dead end must not run A* against the same four blocked
+      // corners every render frame. Each failed direction is retried on the
+      // decision clock, while a different untried exit can still be chosen now.
+      if(probeRemaining[state.searchIndex]===0) {
+        if ((!input.walkable || input.walkable(candidate.x,candidate.z)) &&
+            (!input.reachable || input.reachable(candidate.x,candidate.z))) state.searchGoal=candidate;
+        else probeRemaining[state.searchIndex]=.8;
+      }
       state.searchIndex=(state.searchIndex+1)%4;
     }
     if (state.searchGoal) goal={...state.searchGoal};
@@ -137,6 +148,8 @@
   function validImpact(target,shot,currentStage,hasLineOfSight) {
     if (!finitePoint(target)||!finitePoint(shot)||currentStage!==shot.stage ||
       target.isDestroyed||target.isIncapacitated||target.isCocooned||target.isDefeated||target.isEscaped||target.isConsumedByCycle||
+      target.mesh?.visible===false || target.form==='egg' || target.inEgg || target.isInEgg || target.inHost || target.isInHost || target.attachedHost ||
+      target.isSubfloorProwling || (!shot.areaDamage && (target.isInVent || target.isCeilingProwling)) ||
       target.isActive===false || (Number.isFinite(target.hp)&&target.hp<=0) ||
       (Number.isFinite(target.health)&&target.health<=0) ||
       (Number.isFinite(target.integrity)&&target.integrity<=0)) return false;

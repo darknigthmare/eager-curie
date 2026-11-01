@@ -219,14 +219,21 @@
     if(rule.collection==='dissectionTheaters')
       return humans.some(h=>finitePoint(h)&&!h.isCocooned&&!h.isConsumedByCycle&&h.hp>0&&distance(h,prop)<=3.8);
     if(rule.collection==='medlabAutopsyChutes')
-      return humans.some(h=>finitePoint(h)&&(h.isIncapacitated||h.isCocooned)&&!h.isConsumedByCycle&&h.mesh?.visible!==false&&distance(h,prop)<=4.5);
+      return !!findIncineratorSubject(options.map,prop,humans);
     return true;
+  }
+  function findIncineratorSubject(map,prop,humans=[]) {
+    return humans.find(h=>finitePoint(h)&&(h.isIncapacitated||h.isCocooned)&&
+      Number.isFinite(h.hp)&&h.hp>=0&&!h.isConsumedByCycle&&!h.isDestroyed&&!h.isEscaped&&
+      h.mesh&&h.mesh.visible!==false&&distance(h,prop)<=4.5&&
+      !(map?.ceilingCocoons||[]).some(c=>c.host===h&&!c.isHatches)&&
+      (!map||hasSight(map,h,prop)));
   }
   function eligible(map,actor,rule,prop,options) {
     return finitePoint(prop)&&!prop.isDestroyed&&!(Number.isFinite(prop.hp)&&prop.hp<=0)&&
       typeof map[rule.method]==='function'&&rule.ready(prop)&&
       !(now(options)<(recovery.get(prop)||0))&&distance(actor,prop)<=rule.range&&
-      hasRequiredSubject(rule,prop,options)&&hasSight(map,actor,prop);
+      hasRequiredSubject(rule,prop,{...options,map})&&hasSight(map,actor,prop);
   }
   function select(map,actor,options={}) {
     if(!map||options.active===false||!onDeck(actor))return null;
@@ -299,6 +306,6 @@
       active:!!game?.campaignActive&&game.currentStage===stage&&game.currentStageIndex===4&&!game.isSystemPaused&&game.isRunning!==false});
   }
   global.HiveContextualInteractions=Object.freeze({definitions,deviceButtons,select,execute,executeCollection,
-    describe,hasSight,updateDeviceButtons,bindDeviceButtons});
+    describe,hasSight,findIncineratorSubject,updateDeviceButtons,bindDeviceButtons});
 })(typeof window==='undefined'?globalThis:window);
 

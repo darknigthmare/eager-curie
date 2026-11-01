@@ -816,6 +816,88 @@
       ], x, z, 30);
     }
 
+    // Used by real Swarmer deaths and resin erosion. These callbacks used to
+    // be absent, so optional chaining silently discarded both action cues.
+    playAcidBurn(x = null, z = null) {
+      if (!this.initialized || this.isMuted || this.isPaused || this.volume === 0) return false;
+      this.playLayers([
+        { noise: 'brown', filter: 'lowpass', cutoff: 720, cutoffEnd: 190, duration: .16, level: .14 },
+        { noise: 'white', filter: 'highpass', cutoff: 1800, cutoffEnd: 4300, duration: .46, attack: .012, level: .12 },
+        ...[.05, .14, .29].map(delay => ({ noise: 'brown', filter: 'bandpass', cutoff: 1100,
+          cutoffEnd: 2500, duration: .065, delay, level: .065 }))
+      ], x, z, 26);
+      return true;
+    }
+
+    playAcidBurnSizzle(x = null, z = null) {
+      if (!this.initialized || this.isMuted || this.isPaused || this.volume === 0) return false;
+      this.playLayers([
+        { noise: 'white', filter: 'bandpass', cutoff: 1600, cutoffEnd: 3900,
+          duration: .94, attack: .045, sustain: true, level: .145 },
+        ...[.04, .22, .43, .68].map((delay, index) => ({ noise: 'brown', filter: 'bandpass',
+          cutoff: 620 + index * 190, cutoffEnd: 1900, duration: .11, delay, level: .055 }))
+      ], x, z, 30);
+      return true;
+    }
+
+    // Compatibility entry points are used by actual stage/AI callbacks, not
+    // a second synthesis implementation. Creature-local calls still carry a
+    // world origin when the historical caller did not supply one.
+    playHissSound(x = null, z = null) {
+      if (!this.initialized || this.isMuted || this.isPaused || this.volume === 0) return false;
+      const source = typeof playerCreature === 'undefined' ? null : playerCreature;
+      this.playXenoHiss(Number.isFinite(x) ? x : source?.x ?? null,
+        Number.isFinite(z) ? z : source?.z ?? null);
+      return true;
+    }
+
+    playLeapAttack(x = null, z = null) {
+      if (!this.initialized || this.isMuted || this.isPaused || this.volume === 0) return false;
+      const source = typeof playerCreature === 'undefined' ? null : playerCreature;
+      this.playFacehuggerLeap(Number.isFinite(x) ? x : source?.x ?? null,
+        Number.isFinite(z) ? z : source?.z ?? null);
+      return true;
+    }
+
+    playEggHatch(x = null, z = null) {
+      if (!this.initialized || this.isMuted || this.isPaused || this.volume === 0) return false;
+      this.playEggOpen(x, z);
+      return true;
+    }
+
+    playPistolShot(x = null, z = null) {
+      if (!this.initialized || this.isMuted || this.isPaused || this.volume === 0) return false;
+      this.playLayers([
+        { noise: 'white', filter: 'highpass', cutoff: 1800, cutoffEnd: 3800, duration: .022, level: .19 },
+        { noise: 'brown', filter: 'bandpass', cutoff: 1400, cutoffEnd: 360, duration: .095, level: .17 },
+        { type: 'triangle', f0: 185, f1: 56, cutoff: 720, duration: .095, delay: .003, level: .13 }
+      ], x, z, 58);
+      return true;
+    }
+
+    playRadioAlertBeep(x = null, z = null) {
+      if (!this.initialized || this.isMuted || this.isPaused || this.volume === 0) return false;
+      this.playLayers([
+        ...[0, .13].map(delay => ({ f0: 1140, f1: 1030, filter: 'bandpass', cutoff: 1500,
+          duration: .075, attack: .006, delay, level: .08 })),
+        { noise: 'white', filter: 'bandpass', cutoff: 2400, duration: .035, level: .025 }
+      ], x, z, 35);
+      return true;
+    }
+
+    playRadioChatter(x = null, z = null) {
+      if (!this.initialized || this.isMuted || this.isPaused || this.volume === 0) return false;
+      // A receiver opening/closing around the displayed dialogue, not sampled
+      // film speech or invented intelligible voice lines.
+      this.playLayers([
+        ...[0, .56].map(delay => ({ noise: 'white', filter: 'bandpass', cutoff: 2100,
+          cutoffEnd: 1200, duration: .055, delay, level: .075 })),
+        ...[.07, .23, .37].map((delay, index) => ({ noise: 'brown', filter: 'bandpass',
+          cutoff: 820 + index * 230, cutoffEnd: 1600, duration: .13, attack: .018, delay, level: .065 }))
+      ], x, z, 40);
+      return true;
+    }
+
     playPulseRifleFire(x = null, z = null) {
       this.playLayers([
         { noise: 'white', filter: 'bandpass', cutoff: 2600, cutoffEnd: 1100, duration: 0.052, level: 0.25 },
@@ -3667,20 +3749,20 @@
 
     // Chantier 128 : Départ de mortier en cloche & shrapnel M40 USCM (Aliens: Fireteam Elite)
     playMortarLaunchAndShrapnel(x = null, z = null) {
-      if (!this.initialized || this.isMuted) return;
-      this.resume();
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(240, now);
-      osc.frequency.exponentialRampToValueAtTime(50, now + 0.6);
-      gain.gain.setValueAtTime(1.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
-      osc.connect(gain);
-      this.connect(gain, x, z, 110);
-      osc.start(now);
-      osc.stop(now + 0.65);
+      if (!this.initialized || this.isMuted || this.isPaused || this.volume === 0) return false;
+      // Preserve the action's API, but sound only the tube/chuff at launch.
+      // The actual projectile resolves its explosion separately at impact.
+      // Layered finite voices also avoid queuing a tone in a paused context.
+      this.playLayers([
+        { noise: 'white', filter: 'bandpass', cutoff: 2100, cutoffEnd: 820,
+          duration: .045, level: .19 },
+        { noise: 'brown', filter: 'lowpass', cutoff: 680, cutoffEnd: 160,
+          duration: .2, attack: .006, level: .22 },
+        { f0: 104, f1: 36, cutoff: 420, duration: .17, delay: .008, level: .19 },
+        { noise: 'white', filter: 'bandpass', cutoff: 3200, cutoffEnd: 1600,
+          duration: .105, delay: .045, level: .055 }
+      ], x, z, 78);
+      return true;
     }
 
     // Chantier 129 : Dégazage dorsal acide pressurisé à 360° (Alien: Romulus / Comics)
@@ -10360,6 +10442,14 @@
           rendererEngine.propsGroup.add(mesh);
           pm.mesh = mesh;
         }
+        // Measured local tripod, tube and magazine extents (the root has no
+        // yaw/scale): X[-.38944,.67889], Z[-.60624,.73613]. Keep the fitting
+        // solid to actors/navigation; its firing guard ignores only mortarRef.
+        this.colliders.push({
+          minX: pm.x - .4, maxX: pm.x + .69,
+          minZ: pm.z - .62, maxZ: pm.z + .75,
+          isPortableMortar: true, mortarRef: pm
+        });
       });
 
       // Chantier 130 : Sas d'Amarrage Navette de Sauvetage Narcissus (Alien 1979)
@@ -19060,19 +19150,39 @@
     // Chantier 257 : MedLab Autopsy Sump Drain & Biohazard Chute (Aliens 1986)
     // -------------------------------------------------------------------------
     dumpCorpseIntoIncinerator(chute) {
-      if (!chute) return false;
-      const humans = window.gameInstance?.humans || [];
-      const corpse = humans.find((h) => (h.isIncapacitated || h.isCocooned) && Math.hypot(h.x - chute.x, h.z - chute.z) <= 4.5);
+      const game = window.gameInstance, interactions = window.HiveContextualInteractions;
+      if (!game?.campaignActive || game.isRunning === false || game.isSystemPaused ||
+        game.currentStageIndex !== 4 || !this.medlabAutopsyChutes?.includes(chute) ||
+        !Number.isFinite(chute?.x + chute?.z) || playerCreature.form !== 'drone' ||
+        playerCreature.health <= 0 || playerCreature.attachedHost || playerCreature.isInVent ||
+        playerCreature.isCeilingProwling || playerCreature.isSubfloorProwling || playerCreature.isLeaping ||
+        playerCreature.isChrysalis || Math.hypot(playerCreature.x-chute.x, playerCreature.z-chute.z)>5.5 ||
+        !interactions?.hasSight(this,playerCreature,chute)) return false;
+      const corpse = interactions.findIncineratorSubject(this,chute,game.humans||[]);
       if (!corpse) {
         showToast('Aucun corps inanimé à proximité de la trappe de crémation.');
         return false;
       }
+      // Incapacitated/cocooned actors deliberately reject combat hits. Disposal
+      // is a terminal lifecycle transition, not an attack that can be ignored.
+      // Mark it before callbacks so this body cannot be selected twice or later
+      // revived/hatched by a delayed medical or gestation task.
+      corpse.clearDamageFlash?.();
+      corpse.hp = 0;
+      corpse.isConsumedByCycle = true;
+      corpse.isIncapacitated = true;
+      corpse.isCocooned = false;
+      corpse.isRestrained = false;
+      corpse.medicalTask = null;
+      corpse.directInoculated = corpse.bloodbursterIncubating = false;
+      corpse.directInoculationTimer = corpse.bloodbursterTimer = 0;
+      corpse.directInoculationGame = corpse.directInoculationStage = null;
+      corpse.bloodbursterGame = corpse.bloodbursterStage = null;
+      if (corpse.mesh) corpse.mesh.visible = false;
+      game.syncCampaignCharacter?.(corpse,{alive:false});
       audioManager.playIncineratorDraftRoar?.(chute.x, chute.z);
       rendererEngine.addScreenShake?.(0.45, 0.3);
       window.HiveSystems?.vfx?.burst?.(chute.x, chute.z, 0xf97316, 45, 0.35, 2.8);
-
-      corpse.takeDamage?.(999, playerCreature);
-      if (corpse.mesh) corpse.mesh.visible = false;
       window.HiveSystems?.vfx?.floatingText?.(chute.x, 2.5, chute.z, 'CORPS PURGÉ À L\'INCINÉRATEUR !', '#f97316', true);
       showToast('GOULOTTE MEDLAB : Dépouille précipitée dans le four thermique !');
       appendSensorLog('[BIO-INCINERATE] Élimination thermique de matériel biologique étranger.', 'bio');
@@ -22082,7 +22192,28 @@
     }
 
     toggleCeilingProwl() {
-      if (this.form !== 'drone') return;
+      const combat=window.HiveAdvancedCombat,game=window.gameInstance;
+      if(this.form!=='drone'||this.isLeaping||!combat?.active(this,game,{allowCeiling:true,allowVent:true}))return false;
+      if(this.isCeilingProwling){
+        if(this.dropFromCeiling())return true;
+        // Saves made before the volume gate may contain an oversized ceiling
+        // actor. Keep the former local exit as an explicitly limited recovery;
+        // new entries of that morphology are rejected below.
+        if(['height','geometry','ground'].includes(combat.ceilingFailure(this))&&
+          window.HiveGameplayControls?.canStand(stationMap,this,.88)){
+          this.isCeilingProwling=false;this.mesh.position.y=0;
+          if(this.detailedModel){this.detailedModel.rotation.set(0,0,0);this.detailedModel.position.set(0,0,0);}
+          showToast('Récupération locale : ancienne posture plafond incompatible. Cette morphologie reste au sol.');
+          appendSensorLog('[RÉCUPÉRATION ANCIENNE POSTURE] Sortie locale de secours ; enveloppe plafond non certifiée pour ce corps.','alert');
+          return true;
+        }
+        return false;
+      }
+      if(!combat.canEnterCeiling(this,stationMap,{graphics:THREE,
+        poseSampler:progress=>animateProceduralModel(this.mesh,{phase:progress*Math.PI*5,movement:1,attack:progress,action:'leap'}),
+        groundSampler:idlePhase=>animateProceduralModel(this.mesh,{phase:this.locomotionPhase||0,idlePhase,movement:.08,attack:0,action:'melee'})})){
+        showToast('Plafond inaccessible : volume ou réception non compatibles avec ce corps.');return false;
+      }
       if (this.isInVent) {
         // Audit QA #23 : Transition directe fluide conduit-plafond [C] -> [Q]
         this.isInVent = false;
@@ -22098,10 +22229,9 @@
         showToast('TRANSITION CONDUIT -> PLAFOND DIRECTE [MAJ+Q] : Émergence directe sur les poutrelles suspendues !');
         appendSensorLog('[TRAQUE 3D] Sortie directe du réseau de ventilation vers les superstructures du plafond.', 'stealth');
         window.HiveSystems?.vfx?.floatingText?.(this.x, 6.2, this.z, 'TRANSITION PLAFOND DIRECTE [MAJ+Q]', '#38bdf8', true);
-        return;
+        return true;
       }
-      this.isCeilingProwling = !this.isCeilingProwling;
-      if (this.isCeilingProwling) {
+      this.isCeilingProwling = true;
         this.mesh?.position.set(this.x, 5.85, this.z);
         if (this.detailedModel) {
           this.detailedModel.rotation.x = Math.PI; // Tête en bas agrippé aux poutres métalliques
@@ -22113,47 +22243,32 @@
         showToast('PAROI & PLAFOND ACTIF [MAJ+Q] : Suspendu aux superstructures ! Chute mortelle prête [ESPACE].');
         appendSensorLog('[TRAQUE 3D] Escalade aux poutrelles du plafond. Angle mort total des patrouilles.', 'stealth');
         window.HiveSystems?.vfx?.floatingText?.(this.x, 6.2, this.z, 'SUSPENDU AU PLAFOND [MAJ+Q]', '#38bdf8', true);
-      } else {
-        this.mesh?.position.set(this.x, 0, this.z);
-        if (this.detailedModel) {
-          this.detailedModel.rotation.x = this.isProwling ? 0.42 : 0;
-          this.detailedModel.position.y = this.isProwling ? -0.35 : 0;
-        }
-        audioManager.playWetImpact?.(this.x, this.z);
-        showToast('DESCENTE AU SOL [MAJ+Q] : Posture au sol rétablie.');
-        appendSensorLog('[TRAQUE 3D] Descente furtive sur le pont.', 'bio');
-      }
+      return true;
     }
 
     dropFromCeiling(target = null) {
-      const combat=window.HiveAdvancedCombat,game=window.gameInstance,spec={pose:'ceiling',allowCeiling:true};
-      if(!combat?.active(this,game,spec))return false;
-      if(target){
-        target=combat.contact(this,game,stationMap,'ceilingDrop',{...spec,range:5.8,cooldown:3},target);
-        if(!target){showToast(combat.failure(this));return false;}
-      }
-      this.isCeilingProwling = false;
-      this.mesh?.position.set(this.x, 0, this.z);
-      if (this.detailedModel) {
-        this.detailedModel.rotation.x = this.isProwling ? 0.42 : 0;
-        this.detailedModel.position.y = this.isProwling ? -0.35 : 0;
-      }
-      audioManager.playBoneCrunch?.();
-      audioManager.playXenoRoar?.();
-      rendererEngine.addScreenShake?.(0.48, 0.28);
-      window.HiveSystems?.vfx?.burst(this.x, this.z, 0xef4444, 22, 0.18, 1.8);
-      window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0xef4444, 5.5);
-
-      if (target) {
-        const dropDmg = 120;
-        target.takeDamage(dropDmg, this);
-        target.staggerTimer = 1.3;
-        window.HiveSystems?.vfx?.floatingText?.(target.x, 2.5, target.z, `-${dropDmg} CHUTE MORTELLE !`, '#ef4444', true);
-        showToast(`CHUTE MORTELLE DU PLAFOND ! ${target.name} broyé sous l'impact !`);
-        appendSensorLog(`[AMBUSH VERTICALE] Plongeon foudroyant sur ${target.name}. Dommages critiques.`, 'alert');
-      } else {
-        showToast('Atterrissage lourd sur le pont.');
-      }
+      const combat=window.HiveAdvancedCombat,game=window.gameInstance;
+      const spec={pose:'ceiling',allowCeiling:true,dropCeiling:true,range:5.8,
+        cooldown:3,duration:.68,arcHeight:0,action:'leap',graphics:THREE,
+        poseSampler:progress=>animateProceduralModel(this.mesh,{phase:progress*Math.PI*5,movement:1,attack:progress,action:'leap'}),
+        groundSampler:idlePhase=>animateProceduralModel(this.mesh,{phase:this.locomotionPhase||0,idlePhase,movement:.08,attack:0,action:'melee'})};
+      const launched=combat?.descend(this,game,stationMap,'ceilingDrop',spec,target,(victim)=>{
+        rendererEngine.addScreenShake?.(victim ? .48 : .16,.22);
+        window.HiveSystems?.vfx?.burst?.(this.x,this.z,victim?0xef4444:0x64748b,victim?22:8,.12,1.1);
+        window.HiveSystems?.vfx?.ring?.(this.x,this.z,victim?0xef4444:0x64748b,victim?2.4:1.2);
+        if(!victim){showToast('Descente contrôlée : réception sur le pont.');return;}
+        // The descent owns a fixed, collision-checked landing. A living target
+        // must still be in contact and exposed when the actual motion arrives.
+        victim.takeDamage?.(120,this);
+        if(victim.hp>0)victim.staggerTimer=Math.max(Number(victim.staggerTimer)||0,1.3);
+        audioManager.playBoneCrunch?.();
+        audioManager.playWetImpact?.(victim.x,victim.z);
+        window.HiveSystems?.vfx?.floatingText?.(victim.x,2.5,victim.z,'-120 EMBUSCADE VERTICALE','#ef4444',true);
+        showToast(`EMBUSCADE VERTICALE : réception au contact de ${victim.name} (-120 PV).`);
+        appendSensorLog(`[EMBUSCADE VERTICALE] Descente physique au contact de ${victim.name} ; récupération 3 s.`,'alert');
+      });
+      if(!launched){showToast(combat?.failure(this)||'Descente du plafond indisponible.');return false;}
+      showToast(target?'Descente engagée : réception au contact, esquive possible.':'Descente contrôlée vers le pont.');
       return true;
     }
 
@@ -23152,7 +23267,9 @@
     executeCeilingDropEvisceration(target) {
       const combat=window.HiveAdvancedCombat,game=window.gameInstance;
       const launched=combat?.leap(this,game,stationMap,'ceilingEvisceration',
-        {range:5.8,cooldown:4,pose:'ceiling',allowCeiling:true,dropCeiling:true,arcHeight:.9},target,(victim)=>{
+        {range:5.8,cooldown:4,pose:'ceiling',allowCeiling:true,dropCeiling:true,arcHeight:.9,graphics:THREE,
+          poseSampler:progress=>animateProceduralModel(this.mesh,{phase:progress*Math.PI*5,movement:1,attack:progress,action:'leap'}),
+          groundSampler:idlePhase=>animateProceduralModel(this.mesh,{phase:this.locomotionPhase||0,idlePhase,movement:.08,attack:0,action:'melee'})},target,(victim)=>{
         victim.takeDamage?.(180,this);victim.staggerTimer=3;
         audioManager.playCeilingDropEviscerate?.(victim.x,victim.z);
         rendererEngine.addScreenShake?.(.55,.35);
@@ -23961,7 +24078,9 @@
       }
       const startPos = { x: this.x, z: this.z };
       const launched=combat.travel(this,game,stationMap,'prowlLeap',
-        {allowCeiling:true,dropCeiling:true,range:leapDist,cooldown:1.2,arcHeight:isRunner?1.1:1.7},
+        {allowCeiling:true,dropCeiling:true,range:leapDist,cooldown:1.2,arcHeight:isRunner?1.1:1.7,graphics:THREE,
+          poseSampler:progress=>animateProceduralModel(this.mesh,{phase:progress*Math.PI*5,movement:1,attack:progress,action:'leap'}),
+          groundSampler:idlePhase=>animateProceduralModel(this.mesh,{phase:this.locomotionPhase||0,idlePhase,movement:.08,attack:0,action:'melee'})},
         {x:destX,z:destZ},()=>{
         window.HiveSystems?.vfx?.organicTrail?.(startPos.x, 1.5, startPos.z, this.x, 1.5, this.z, isRunner ? 0xf59e0b : 0x39ff14);
         window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xef4444, 24, 0.18, 1.8);
@@ -24698,13 +24817,15 @@
         const arcHeight = baseHeight + Math.sin(progress * Math.PI) * this.leapArcHeight;
         this.mesh.position.set(this.x, arcHeight, this.z);
         this.mesh.rotation.x = Math.sin(progress * Math.PI) * -0.35;
-        this.mesh.rotation.y = Math.atan2(targetX - this.leapStart.x, targetZ - this.leapStart.z);
+        if(Math.hypot(targetX-this.leapStart.x,targetZ-this.leapStart.z)>1e-7)
+          this.mesh.rotation.y = Math.atan2(targetX - this.leapStart.x, targetZ - this.leapStart.z);
         animateProceduralModel(this.mesh, {
           phase: progress * Math.PI * 5,
           movement: 1,
           attack: progress,
           action: 'leap'
         });
+        if(window.HiveAdvancedCombat?.updateMotionPose?.(this,progress)===false)return;
         this.leapTrailCooldown -= safeDelta;
         if (this.leapTrailCooldown <= 0) {
           this.leapTrailCooldown = 0.09;
@@ -24873,6 +24994,11 @@
           action: this.actionType,
           pulse: this.form === 'chestburster' ? 0.4 : 0
         });
+        if(this.isCeilingProwling&&window.HiveAdvancedCombat?.updateCeilingSupport?.(this,THREE)===false){
+          this.isCeilingProwling=false;this.mesh.position.y=0;
+          this.detailedModel?.rotation.set(0,0,0);this.detailedModel?.position.set(0,0,0);
+          appendSensorLog('[POSTURE PLAFOND INCOMPATIBLE] Retour local au pont ; ce corps ne tient plus sous le plafond.','alert');
+        }
       } else if (this.isChrysalis) {
         animateProceduralModel(this.mesh, {
           phase: this.animationTime * 6,
@@ -25469,10 +25595,10 @@
       return true;
     }
 
-    createWeaponTarget(victim, radius = 1) {
+    createWeaponTarget(victim, radius = 1, areaDamage = false) {
       const game = window.gameInstance;
       const shot = { x: victim.x, z: victim.z, originX: this.x, originZ: this.z,
-        radius, stage: game?.currentStage };
+        radius, areaDamage, stage: game?.currentStage };
       let resolved = null;
       let damageApplied = false;
       const isCurrentStage = () => window.gameInstance === game && game?.currentStage === shot.stage &&
@@ -25818,7 +25944,10 @@
       const inCeilingStealth = combatTarget === playerCreature && playerCreature.isCeilingProwling;
       const biologicalTargetDetectable = (currentStageIndex !== 3 ||
         currentStageStep === 'HUNT_FAUNA' ||
-        currentStageStep === 'CHRYSALIS') && !inVentStealth && !inCeilingStealth;
+        currentStageStep === 'CHRYSALIS') && !inVentStealth && !inCeilingStealth &&
+        combatTarget.mesh?.visible !== false && combatTarget.form !== 'egg' && !combatTarget.isSubfloorProwling &&
+        !combatTarget.inEgg && !combatTarget.isInEgg && !combatTarget.inHost && !combatTarget.isInHost &&
+        !combatTarget.attachedHost && !(combatTarget === playerCreature && window.gameInstance?.currentStage?.inEgg);
 
       this.motionPingCooldown -= safeDelta;
       if (this.radioAlertCooldown > 0) this.radioAlertCooldown -= safeDelta;
@@ -26207,9 +26336,11 @@
         weaponEligible && aimState.ready
       ) {
           const shotVictim = combatTarget;
-          const explosiveShot = ['commando','uscm_sadar_operator','weyland_plasma_gunner'].includes(this.type) ||
-            (['marine','guard'].includes(this.type) && distToPlayer >= 6.5 && (this.u1GrenadeCooldown || 0) <= 0);
-          const shotContext = this.createWeaponTarget(shotVictim,explosiveShot ? 3.2 : (meleeOnly ? 3.8 : 1.05));
+          const explosiveShot = ['uscm_sadar_operator','weyland_plasma_gunner'].includes(this.type) ||
+            (this.type === 'commando' && this.grenadeCooldown <= 0 && distToPlayer >= 5.5 && distToPlayer <= 22) ||
+            (['marine','guard','commando'].includes(this.type) && distToPlayer >= 6.5 && distToPlayer <= 22 &&
+              (this.u1GrenadeCooldown || 0) <= safeDelta);
+          const shotContext = this.createWeaponTarget(shotVictim,explosiveShot ? 3.2 : (meleeOnly ? 3.8 : 1.05),explosiveShot);
           {
           const combatTarget = shotContext.target;
           const applyWeaponDamage = (multiplier = 1) => {
@@ -29355,11 +29486,16 @@
         window.HiveEvolutionUI?.clearCinematic?.();
         return;
       }
+      // The sidebar and the lower timeline describe this same simulated
+      // phase. Refresh only its meter here: rebuilding updateHUD every frame
+      // would replace the action DOM and its handlers during the sequence.
+      const progress = Math.max(0, Math.min(1, this.phaseElapsed / frame.duration));
+      setHudBar('sec', frame.title, progress * 100);
       window.HiveEvolutionUI?.setCinematic?.({
         title: frame.title,
         detail: frame.detail,
         mode: 'host-cycle',
-        progress: Math.min(1, this.phaseElapsed / frame.duration)
+        progress
       });
     }
 
@@ -30330,14 +30466,39 @@
       window.HiveSystems?.setMission(4, 0, 'Saboter l’équipe de confinement sans gaspiller les hôtes viables.');
       window.HiveSystems?.narrative('ELIAN TORV', 'Équipe KAPPA, je veux l’échantillon intact — brûlez tout le reste.');
 
-      // Directive Weyland-Yutani Special Order 937
-      setTimeout(() => {
-        window.HiveSystems?.narrative(
-          'ORDRE SPÉCIAL 937',
-          'Priorité 1 : Assurer la capture de l’organisme pour analyse. Toute autre considération secondaire. Équipage sacrifiable.'
-        );
+      // The directive belongs to this campaign/stage and its simulation clock.
+      // A wall-clock callback could speak over a menu or the next act.
+      this.specialOrderRemaining = 3.5;
+      this.specialOrderGame = window.gameInstance;
+      this.specialOrderSent = false;
+    }
+
+    updateSpecialOrder(deltaSeconds) {
+      if (!Number.isFinite(this.specialOrderRemaining) || this.specialOrderSent) return false;
+      const game = this.specialOrderGame;
+      if (!game || window.gameInstance !== game || game.currentStage !== this ||
+          game.currentStageIndex !== 4 || game.campaignActive !== true ||
+          game.isRunning !== true || this.isCompleted) {
+        this.specialOrderRemaining = null;
+        return false;
+      }
+      if (game.isSystemPaused) return false;
+      const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(.1, deltaSeconds)) : 0;
+      if (!delta) return false;
+      this.specialOrderRemaining = Math.max(0, this.specialOrderRemaining - delta);
+      if (this.specialOrderRemaining > 1e-7) return false;
+      // Mark consumed before invoking external UI/audio callbacks, which may
+      // synchronously re-enter a stage update or change the campaign.
+      this.specialOrderSent = true;
+      this.specialOrderRemaining = null;
+      window.HiveSystems?.narrative(
+        'ORDRE SPÉCIAL 937',
+        'Priorité 1 : Assurer la capture de l’organisme pour analyse. Toute autre considération secondaire. Équipage sacrifiable.'
+      );
+      if (window.gameInstance === game && game.currentStage === this && game.currentStageIndex === 4 &&
+          game.campaignActive === true && game.isRunning === true && !game.isSystemPaused)
         audioManager.playRadioChatter?.();
-      }, 3500);
+      return true;
     }
 
     updateHUD() {
@@ -31093,7 +31254,9 @@
     }
 
     toggleCeilingProwl() {
-      playerCreature.toggleCeilingProwl();
+      const changed=playerCreature.toggleCeilingProwl();
+      if(changed){stationMap.interactPromptTimer=0;stationMap.updateInteractionPrompt(0);}
+      return changed;
     }
 
     executeDragOrWallCocoon() {
@@ -31172,7 +31335,7 @@
         return;
       }
       if (playerCreature.isCeilingProwling) {
-        if (key === '1' || key === 'e' || key === '3' || key === 't') {
+        if (key === '3' || key === 't') {
           playerCreature.executeCeilingImpale();
           this.updateCooldownBadges();
       this.updateRoyalButton();
@@ -31268,10 +31431,9 @@
       if (key === '1' || key === 'e') {
         if (playerCreature.isCeilingProwling) {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.5);
-          if (target) {
-            playerCreature.executeCeilingDropEvisceration(target);
-            return;
-          }
+          if (target) playerCreature.executeCeilingDropEvisceration(target);
+          else showToast('Aucune cible sous la créature pour l’éventration sternale.');
+          return;
         }
         if (playerCreature.isInVent || (stationMap?.findClosestVent?.(playerCreature.x, playerCreature.z)?.distance <= 4.0)) {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
@@ -31404,6 +31566,8 @@
       }
       if (key === '4' || key === 'f') this.executeCocoonHost();
       if (key === ' ') {
+        if(playerCreature.isLeaping)return;
+        if(playerCreature.isCeilingProwling){this.executeClawSwipe();return;}
         if (playerCreature.isWallMimic) {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 3.5);
           if (target) {
@@ -31501,6 +31665,7 @@
     }
 
     executeClawSwipe(preferredTarget = null) {
+      if(playerCreature.isLeaping)return false;
       if (playerCreature.isCeilingProwling) {
         const valid = (human) => !human.isCocooned && !human.isIncapacitated && human.hp > 0 &&
           Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= 7.5 &&
@@ -31509,10 +31674,10 @@
           ? ((window.gameInstance?.humans || []).includes(preferredTarget) && valid(preferredTarget) ? preferredTarget : null)
           : this.findClosestHuman(valid).human;
         if (!target) return false;
-        playerCreature.dropFromCeiling(target);
+        const launched=playerCreature.dropFromCeiling(target);
         this.updateCooldownBadges();
         this.updateRoyalButton();
-        return true;
+        return launched;
       }
       const validTarget = (human) => human && !human.isCocooned && !human.isIncapacitated && human.hp > 0 &&
         Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= 3.6 &&
@@ -32055,6 +32220,7 @@
     log(msg) { appendSensorLog(msg, 'bio'); }
 
     update(deltaSeconds = 1 / 60) {
+      this.updateSpecialOrder(deltaSeconds);
       this.royalCycle?.update(deltaSeconds);
       if (this.huntReserve < 100) {
         this.huntReserve = Math.min(100, this.huntReserve + Math.max(0, deltaSeconds) * 15);
@@ -33548,9 +33714,12 @@
       this.isSystemPaused = !!paused;
       audioManager.setPaused?.(this.isSystemPaused);
       if (!this.isSystemPaused) {
-        const intro = this.isEarlyEncounterSequence();
-        this.renderResumeAt = performance.now() + (intro ? 0 : rendererEngine.isSoftwareRenderer ? 3000 : 750);
-        if (intro) this.lastSoftwareRenderAt = -Infinity;
+        // Menus can resize/clear the drawing buffer. Submit the first resumed
+        // scene on its next RAF instead of leaving a black canvas while the
+        // simulation is already running (and enemies can already attack).
+        // The normal software cadence still limits subsequent submissions.
+        this.renderResumeAt = performance.now();
+        this.lastSoftwareRenderAt = -Infinity;
       }
       document.getElementById('app-container')?.classList.toggle('game-paused', this.isSystemPaused);
       inputManager.reset();

@@ -18,5 +18,7 @@ jobs:
           node-version: '22'
       - name: Syntaxe JS de l'interface archives
         run: node --check src/alien-base-library.js
-      - name: Validation cohérence jeu et snapshot
+      - name: Validation cohérence jeu et snapshots v1/v2
         run: node tools/qa-alien-base.cjs
+      - name: Comportement de l'interface archives (DOM simulé)
+        run: node tools/qa-alien-base-ui.cjs

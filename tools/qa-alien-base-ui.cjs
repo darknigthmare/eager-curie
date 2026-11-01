@@ -72,8 +72,8 @@ async function runCase(fallback) {
     assert.equal(win.AlienBaseReference.getCanonicalIdForCaste("runner"),"ha.bio.runner");
     assert.equal(win.AlienBaseReference.getCanonicalIdForCaste("ovomorphe"),"bio.xenomorph.ovomorph");
     assert.equal(list.length,380 + 16 + 10 + 4 + 5 + 21);
-    const query = controls.children[0].children.find(x=>x.tag==="input");
-    const filter = controls.children[1].children.find(x=>x.tag==="select");
+    const query = controls.children.find(x=>x.tag==="input");
+    const filter = controls.children.find(x=>x.tag==="select");
     filter.value="shared:opposition"; await filter.send("change");
     assert.equal(overlay.querySelectorAll("button.ab-record").length,10);
     filter.value="all"; query.value="offspring"; await query.send("input");

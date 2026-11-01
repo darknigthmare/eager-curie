@@ -1,7 +1,7 @@
 # Alien Base ↔ HIVE ASCENSION (eager-curie) — intégration v2
 
 ## En service sur cette PR
-Les Archives unifiées dans le menu et le HUD chargent **localement**, sans jeton ni connexion à GitHub privé, `data/alien-base.snapshot.v2.json`. Le catalogue v2 comporte **380 fiches minimales** : organismes, personnages, factions, équipements et armes, lieux, véhicules, vaisseaux, opposition et boss. Il exclut les **158 cartes TCG** et toute statistique de combat. Les 16 castes, 10 ennemis, 4 boss, 5 factions et 21 équipements du jeu sont conservés dans une catégorie distincte. Chaque fiche expose son ID du registre et son type de référence lorsque disponible.
+Les Archives unifiées dans le menu et le HUD chargent **localement**, sans jeton ni connexion à GitHub privé, `data/alien-base.snapshot.v2.json`. Le catalogue v2 comporte **474 fiches minimales** : organismes, personnages, factions, équipements et armes, lieux, véhicules, vaisseaux, opposition et boss. Il exclut les **158 cartes TCG** et toute statistique de combat. Les 16 castes, 10 ennemis, 4 boss, 5 factions et 21 équipements du jeu sont conservés dans une catégorie distincte. Chaque fiche expose son ID du registre et son type de référence lorsque disponible.
 
 Le menu fonctionne toujours si le nouveau fichier est manquant : il retombe alors sur `data/alien-base.snapshot.v1.json` (**58 anciennes références**), sans interrompre la partie.
 
@@ -34,3 +34,7 @@ Depuis le dépôt du jeu : `node tools/qa-alien-base.cjs`. Le QA vérifie que `s
 Les stats du jeu résident dans `data/gameplay/hive-ascension.v1.json` côté référentiel central ; elles ne contaminent pas les autres moteurs. MNEMOSYNE, IRISE, KAPPA, R-9, K-12, T-4, VIGIE et ÉCHO-12 sont des créations de la campagne, pas des fiches canoniques de Weyland-Yutani.
 
 La branche `codex/remainder-20261101@be04f892` diverge de main. Elle corrige la classification de Royal Facehugger et de l'Offspring Z-01, mais ne doit pas remplacer le moteur actuel sans vraie réconciliation et tests graphiques/QA. Les modèles, armes, véhicules et animations ne sont pas automatiquement intégrés ou certifiés 1:1.
+
+## Archives documentaires de World Hive Wars (rattrapage PR #4)
+
+La PR #4 du registre a reçu **68 équipements et 26 profils biologiques documentaires** après la création initiale de #8. Ces 94 fiches sont incluses dans le snapshot v2 du jeu avec leurs identifiants centraux inchangés et leurs catégories `source-profile` / `source-equipment-profile`. Elles n'activent aucun spawn, boutique, IA, arme utilisable ou capacité, et n'impliquent pas une fidélité visuelle 1:1. Le répertoire de sauvegarde de HIVE ASCENSION reste inchangé.

@@ -63,7 +63,7 @@ async function runCase(fallback) {
   const children = overlay.children[0].children;
   const controls = children.find(x=>x.className==="ab-controls");
   const list = overlay.querySelectorAll("button.ab-record");
-  const expected = fallback ? 58 : 380;
+  const expected = fallback ? 58 : 474;
   assert.equal(win.AlienBaseReference.listSharedRecords().length,expected);
   assert.equal(win.AlienBaseReference.getSharedIdForCaste("ovomorphe"),"xeno:ovomorph");
   assert.ok(win.AlienBaseReference.getSharedRecord("xeno:ovomorph"));
@@ -71,11 +71,15 @@ async function runCase(fallback) {
   if (!fallback) {
     assert.equal(win.AlienBaseReference.getCanonicalIdForCaste("runner"),"ha.bio.runner");
     assert.equal(win.AlienBaseReference.getCanonicalIdForCaste("ovomorphe"),"bio.xenomorph.ovomorph");
-    assert.equal(list.length,380 + 16 + 10 + 4 + 5 + 21);
+    assert.equal(list.length,474 + 16 + 10 + 4 + 5 + 21);
     const query = controls.children.find(x=>x.tag==="input");
     const filter = controls.children.find(x=>x.tag==="select");
     filter.value="shared:opposition"; await filter.send("change");
     assert.equal(overlay.querySelectorAll("button.ab-record").length,10);
+    filter.value="shared:source-equipment-profile"; await filter.send("change");
+    assert.equal(overlay.querySelectorAll("button.ab-record").length,68);
+    filter.value="shared:source-profile"; await filter.send("change");
+    assert.equal(overlay.querySelectorAll("button.ab-record").length,26);
     filter.value="all"; query.value="offspring"; await query.send("input");
     assert.ok(overlay.querySelectorAll("button.ab-record").length >=2);
     query.value="";await query.send("input");

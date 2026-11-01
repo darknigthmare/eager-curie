@@ -53,7 +53,9 @@ assert.equal(v2.scope, "public-metadata-only");
 assert.equal(v2.status, "reference-only-not-playable");
 assert.equal(v2.sourceContent.blobSha, gitBlobSha);
 assert.equal(v2.sourceContent.commit, snapshot.sourceContent.commit);
-assert.equal(v2.records.length, 380);
+assert.equal(v2.records.length, 474);
+assert.equal(v2.records.filter(x => x.kind === "source-profile").length, 26);
+assert.equal(v2.records.filter(x => x.kind === "source-equipment-profile").length, 68);
 assert.ok(v2.records.every(e => e.kind !== "game-card"));
 assert.equal(new Set(v2.records.map(x => x.id)).size, v2.records.length);
 assert.ok(v2.records.every(e => Object.keys(e).every(k => ["id","kind","name","classification","biology","originGame"].includes(k))));
@@ -80,4 +82,4 @@ for (const row of v2.compatibility) {
 }
 for (const forbidden of ["sourceRefs","gameOnlyProfile","gameOnlyThreat","gameActions"])
   assert.equal(JSON.stringify(v2).includes('"' + forbidden + '"'), false);
-console.log("Alien Base v2 : 380 références minimales, 68 bindings, 52 identités MNEMOSYNE, aucun changement des sauvegardes");
+console.log("Alien Base v2 : 474 références minimales, 68 bindings Hive, 52 identités MNEMOSYNE, 94 archives WHW, aucun changement des sauvegardes");

@@ -15,7 +15,9 @@
     opposition: "OPPOSITION MNEMOSYNE", boss: "BOSS MNEMOSYNE",
     equipment: "ARMES ET ÉQUIPEMENTS", faction: "FACTIONS ET ORGANISATIONS",
     place: "LIEUX DE RÉFÉRENCE", vehicle: "VÉHICULES / VAISSEAUX", vessel: "VAISSEAUX",
-    weapon: "ARMES DE RÉFÉRENCE", location: "LIEUX DE RÉFÉRENCE"
+    weapon: "ARMES DE RÉFÉRENCE", location: "LIEUX DE RÉFÉRENCE",
+    "source-profile": "DOSSIERS BIOLOGIQUES ARCHIVÉS",
+    "source-equipment-profile": "ÉQUIPEMENTS DOCUMENTAIRES ARCHIVÉS"
   };
   let overlay, list, detail, queryInput, typeFilter, count, status;
   let entries = [], snapshot = null, selected = null, previousFocus = null;

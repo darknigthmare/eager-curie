@@ -92,7 +92,7 @@ assert.equal(v2.sourceContent.commit, "dd3d417b103a56a2c9f3b6510040106df6693926"
 assert.equal(v2.sourceContent.blobSha, "21a4b3a88b8183ef54b3370b4c994265030ffc09");
 for (const [id, loreStatus] of [["royal_facehugger","EXPANDED_COMPATIBLE"],["offspring","INSPIRED_ORIGINAL"]]) {
   assert.equal(content.castes[id].loreStatus, loreStatus, id);
-  assert.equal(v1.projectIntake.castes.find(x=>x.id===id)?.sourceLoreStatus,loreStatus);
+  assert.equal(snapshot.projectIntake.castes.find(x=>x.id===id)?.sourceLoreStatus,loreStatus);
   assert.equal(v2.projectIntake.castes.find(x=>x.id===id)?.sourceLoreStatus,loreStatus);
 }
 assert.doesNotMatch(content.castes.crusher.evolutionCondition, /exo-armure assimilée/);

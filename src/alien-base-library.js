@@ -1,7 +1,7 @@
 /* HIVE ASCENSION — Alien Base reference browser (no runtime GitHub/private API requests). */
 (() => {
   "use strict";
-  const SOURCE = "data/alien-base.snapshot.v1.json";
+  const SOURCES = ["data/alien-base.snapshot.v2.json", "data/alien-base.snapshot.v1.json"];
   const KIND = {
     castes: "FORMES BIOLOGIQUES",
     enemies: "OPPOSITION",
@@ -10,7 +10,13 @@
     equipment: "ÉQUIPEMENTS",
     shared: "IDENTITÉS COMMUNES"
   };
-  const SHARED_KINDS = {organism:"XÉNOMORPHES DE RÉFÉRENCE",character:"PERSONNAGES DE RÉFÉRENCE",weapon:"ARMES DE RÉFÉRENCE",vehicle:"VÉHICULES DE RÉFÉRENCE",vessel:"VAISSEAUX DE RÉFÉRENCE",equipment:"ÉQUIPEMENTS DE RÉFÉRENCE",faction:"FACTIONS DE RÉFÉRENCE",location:"LIEUX DE RÉFÉRENCE"};
+  const SHARED_KINDS = {
+    organism: "ORGANISMES DE RÉFÉRENCE", character: "PERSONNAGES DE RÉFÉRENCE",
+    opposition: "OPPOSITION MNEMOSYNE", boss: "BOSS MNEMOSYNE",
+    equipment: "ARMES ET ÉQUIPEMENTS", faction: "FACTIONS ET ORGANISATIONS",
+    place: "LIEUX DE RÉFÉRENCE", vehicle: "VÉHICULES / VAISSEAUX", vessel: "VAISSEAUX",
+    weapon: "ARMES DE RÉFÉRENCE", location: "LIEUX DE RÉFÉRENCE"
+  };
   let overlay, list, detail, queryInput, typeFilter, count, status;
   let entries = [], snapshot = null, selected = null, previousFocus = null;
   let loadPromise = null;
@@ -98,33 +104,48 @@
     }, true);
   }
   function prepare(data) {
-    if (data?.schemaVersion !== "1.0.0" || data.scope !== "public-minimal" || !Array.isArray(data.records) || !data.projectIntake || !Array.isArray(data.crosswalks)) {
+    const v2 = data?.schemaVersion === "2.0.0" && data?.format === "alien-base-registry-consumer-v2";
+    const v1 = data?.schemaVersion === "1.0.0" && data?.scope === "public-minimal";
+    if ((!v1 && !v2) || !Array.isArray(data.records) || !data.projectIntake || (!v2 && !Array.isArray(data.crosswalks))) {
       throw new Error("Format Alien Base non reconnu.");
     }
-    if (!/^[a-f0-9]{40}$/.test(data.sourceContent?.commit || "")) throw new Error("Provenance non épinglée.");
+    if (!/^[a-f0-9]{40}$/.test(data.sourceContent?.commit || "") || !/^[a-f0-9]{40}$/.test(data.sourceContent?.blobSha || "")) {
+      throw new Error("Provenance non épinglée.");
+    }
+    if (v2 && (data.records.some(e => e.kind === "game-card") || !data.bindings?.castes || !Array.isArray(data.compatibility))) {
+      throw new Error("Export v2 incohérent ou non filtré.");
+    }
     snapshot = data;
     entries = [];
     for (const kind of ["castes", "enemies", "bosses", "factions", "equipment"]) {
       for (const e of data.projectIntake[kind] || []) {
-        entries.push({ ...e, group: kind, displayId: e.id, key: kind + ":" + e.id });
+        const localId = e.id || e.name || e.entityId;
+        entries.push({ ...e, group: kind, displayId: localId, key: kind + ":" + localId });
       }
     }
     for (const e of data.records) entries.push({ ...e, group: "shared", displayId: e.id, key: "shared:" + e.id });
-    const map = new Map(data.crosswalks.filter(x => x.collection === "HIVE_CONTENT_CASTES").map(x => [x.legacyId, x.sharedId]));
+    const linked = v2 ? new Map(Object.entries(data.bindings.castes).map(([local, info]) => [local, info.id])) :
+      new Map(data.crosswalks.filter(x => x.collection === "HIVE_CONTENT_CASTES").map(x => [x.legacyId, x.sharedId]));
+    const oldIds = v2 ? new Map(data.compatibility.map(x => [x.registryId, x.legacySharedId])) : new Map();
+    const legacyCasteIds = v2 ? new Map([...linked].map(([local, id]) => [local, oldIds.get(id) || null])) : linked;
+    const idLookup = new Map(data.records.map(e => [e.id, e]));
     window.AlienBaseReference = Object.freeze({
       schemaVersion: data.schemaVersion,
-      getSharedIdForCaste: (id) => map.get(String(id)) || null,
-      getSharedRecord: (id) => data.records.find(x => x.id === id) || null,
-      listSharedRecords: () => data.records.slice(),
-      sourceCommit: data.sourceContent.commit
+      getSharedIdForCaste: (id) => legacyCasteIds.get(String(id)) || null,
+      getCanonicalIdForCaste: (id) => linked.get(String(id)) || null,
+      getSharedRecord: (id) => idLookup.get(String(id)) ||
+        idLookup.get((data.compatibility || []).find(x => x.legacySharedId === id)?.registryId) || null,
+      listSharedRecords: () => data.records.map(e => ({...e})),
+      sourceCommit: data.sourceContent.commit,
+      scope: data.scope
     });
   }
   function itemLabel(e) {
-    return e.group === "shared" ? "RÉF. " + (SHARED_KINDS[e.kind] || e.kind) : (e.group === "castes" && e.sharedId ? "RÉF. " + e.sharedId : KIND[e.group]);
+    return e.group === "shared" ? "RÉF. " + (SHARED_KINDS[e.kind] || e.kind) : (e.group === "castes" && e.entityId ? "ID " + e.entityId : (e.group === "castes" && e.sharedId ? "RÉF. " + e.sharedId : KIND[e.group]));
   }
   function describe(e) {
     detail.replaceChildren();
-    detail.appendChild(node("span", "ab-kicker", KIND[e.group]));
+    detail.appendChild(node("span", "ab-kicker", e.group === "shared" ? (SHARED_KINDS[e.kind] || "RÉFÉRENTIEL") : KIND[e.group]));
     detail.appendChild(node("h3", "", e.name));
     detail.appendChild(node("p", "ab-detail-summary", e.role || e.title || (
       e.group === "shared" ? "Identité bibliographique commune, sans statistiques de jeu." :
@@ -133,6 +154,10 @@
     const table = node("dl", "ab-facts");
     table.appendChild(row("Identifiant", e.displayId));
     if (e.sharedId) table.appendChild(row("Identité commune", e.sharedId));
+    if (e.entityId) table.appendChild(row("ID du registre", e.entityId));
+    if (e.classification) table.appendChild(row("Type de référence", e.classification));
+    if (e.biology) table.appendChild(row("Biologie / technologie", e.biology));
+    if (e.originGame) table.appendChild(row("Origine du dossier", e.originGame));
     if (e.group === "shared") table.appendChild(row("Domaine", SHARED_KINDS[e.kind] || e.kind));
     if (e.sourceLoreStatus) table.appendChild(row("Statut annoncé par le jeu", e.sourceLoreStatus));
     if (e.group === "enemies") {
@@ -149,7 +174,7 @@
     detail.appendChild(node("p", "ab-warning", e.group === "shared" ?
       "Référence commune : identité seulement, pas d'asset ni de valeurs de combat." :
       "Entrée provenant du jeu : aucune certification canonique 1:1. Les variantes originales ne sont pas des castes universelles."));
-    if (snapshot?.sourceContent?.commit) {
+    if (snapshot?.sourceContent?.commit && e.group !== "shared") {
       const a = node("a", "ab-source-link", "Consulter le fichier source épinglé");
       a.href = "https://github.com/darknigthmare/eager-curie/blob/" + snapshot.sourceContent.commit + "/src/content.js";
       a.target = "_blank"; a.rel = "noopener noreferrer";
@@ -160,8 +185,8 @@
     if (!list || !snapshot) return;
     const q = normal(queryInput.value), group = typeFilter.value;
     const filtered = entries.filter(x => (group === "all" || x.group === group || (x.group === "shared" && group === "shared:" + x.kind)) &&
-      normal([x.name, x.id, x.role, x.faction, x.sharedId, x.title].join(" ")).includes(q));
-    count.textContent = filtered.length + " FICHE(S) • " + snapshot.records.length + " RÉFÉRENCES COMMUNES • " + snapshot.projectIntake.castes.length + " FORMES DU JEU";
+      normal([x.name, x.id, x.entityId, x.role, x.faction, x.sharedId, x.title, x.classification, x.kind].join(" ")).includes(q));
+    count.textContent = filtered.length + " FICHE(S) • " + snapshot.records.length + " RÉFÉRENCES DU REGISTRE • " + snapshot.projectIntake.castes.length + " FORMES DU JEU";
     list.replaceChildren();
     if (!filtered.length) {
       list.appendChild(node("p", "ab-empty", "Aucune fiche pour cette recherche."));
@@ -183,10 +208,18 @@
   }
   async function load() {
     if (snapshot) return;
-    if (!loadPromise) loadPromise = fetch(SOURCE, { cache: "no-cache" }).then((r) => {
-      if (!r.ok) throw new Error("Snapshot local indisponible (HTTP " + r.status + ")");
-      return r.json();
-    }).then(prepare).catch((error) => { loadPromise = null; throw error; });
+    if (!loadPromise) loadPromise = (async () => {
+      let failure = null;
+      for (const url of SOURCES) {
+        try {
+          const response = await fetch(url, {cache: "no-cache"});
+          if (!response.ok) throw new Error("HTTP " + response.status + " : " + url);
+          prepare(await response.json());
+          return;
+        } catch (error) { failure = error; }
+      }
+      throw failure || new Error("Aucun snapshot local disponible.");
+    })().catch((error) => { loadPromise = null; throw error; });
     await loadPromise;
   }
   async function open() {
@@ -194,7 +227,7 @@
     previousFocus = document.activeElement;
     overlay.hidden = false; overlay.setAttribute("aria-hidden", "false");
     queryInput.focus(); count.textContent = "Lecture de la copie locale…";
-    try { await load(); renderList(); status.textContent = "Version locale épinglée : " + snapshot.sourceContent.commit.slice(0, 12) + " • Aucun accès à GitHub privé"; }
+    try { await load(); renderList(); status.textContent = "Registre " + snapshot.schemaVersion + " • source " + snapshot.sourceContent.commit.slice(0, 12) + " • offline / sans GitHub privé"; }
     catch (error) {
       count.textContent = "ARCHIVES INDISPONIBLES";
       list.replaceChildren();

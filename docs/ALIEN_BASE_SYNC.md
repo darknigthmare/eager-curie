@@ -1,36 +1,36 @@
-# ALIEN BASE ↔ HIVE ASCENSION (EAGER-CURIE)
+# Alien Base ↔ HIVE ASCENSION (eager-curie) — intégration v2
 
-## Ce qui fonctionne
-Le bouton **Archives unifiées** (menu) et **Archives** (HUD) ouvre un catalogue filtrable/recherchable, alimenté par `data/alien-base.snapshot.v1.json`. Il contient 58 références communes minimales (dont six castes liées) et les fiches publiques du jeu : 16 formes, 10 ennemis, 4 boss, 5 factions de contexte, 21 équipements. La fenêtre n'interrompt aucune fonction du Codex historique. Son absence n'empêche pas de jouer.
+## En service sur cette PR
+Les Archives unifiées dans le menu et le HUD chargent **localement**, sans jeton ni connexion à GitHub privé, `data/alien-base.snapshot.v2.json`. Le catalogue v2 comporte **380 fiches minimales** : organismes, personnages, factions, équipements et armes, lieux, véhicules, vaisseaux, opposition et boss. Il exclut les **158 cartes TCG** et toute statistique de combat. Les 16 castes, 10 ennemis, 4 boss, 5 factions et 21 équipements du jeu sont conservés dans une catégorie distincte. Chaque fiche expose son ID du registre et son type de référence lorsque disponible.
 
-Une petite API `window.AlienBaseReference` devient disponible une fois la copie locale chargée :
-- `getSharedIdForCaste("ovomorphe")` → `"xeno:ovomorph"`
-- `getSharedRecord("xeno:ovomorph")` → identité et nom uniquement
-- `listSharedRecords()` → copie des 58 fiches de référence
-- `sourceCommit` → version du contenu du jeu utilisée pour la synchronisation
+Le menu fonctionne toujours si le nouveau fichier est manquant : il retombe alors sur `data/alien-base.snapshot.v1.json` (**58 anciennes références**), sans interrompre la partie.
 
-Le jeu conserve ses 16 IDs de caste, ses règles, équilibrages et sauvegardes inchangés. Un identifiant partagé ne valide ni les stats ni les assets.
+## API de lecture
+`window.AlienBaseReference` est créé après le chargement des Archives :
+- `getCanonicalIdForCaste('ovomorphe')` → `bio.xenomorph.ovomorph` (v2).
+- `getCanonicalIdForCaste('runner')` → `ha.bio.runner` (variante locale, non universelle).
+- `getSharedIdForCaste('ovomorphe')` → `xeno:ovomorph` (compatibilité v1).
+- `getSharedRecord('xeno:ovomorph')` → fiche v2 si disponible, via la table de correspondances explicite.
+- `listSharedRecords()` → copie des références minimales, jamais stats/IA/animations.
 
-## Réactualiser après une fusion dans alien_base
-Le producteur de référence est **darknigthmare/alien_base**, PR #6 empilée sur PR #3. Lorsqu'elles sont fusionnées, depuis le checkout local de `alien_base` :
+**Aucun identifiant de sauvegarde n'est modifié.** Une identité ou arme apparaît dans les archives uniquement ; elle ne devient pas une unité jouable.
 
+## Producteur et ordre GitHub
+Le registre cible n'est plus la PR #3 (désormais archive d'ingestion) :
+1. [Alien_base #4](https://github.com/darknigthmare/alien_base/pull/4) — registre unifié.
+2. [Alien_base #8](https://github.com/darknigthmare/alien_base/pull/8) — compatibilité et dossiers de recherche.
+3. [Alien_base #15](https://github.com/darknigthmare/alien_base/pull/15) — ajout Hive Ascension et export v2.
+4. [Eager-curie #2](https://github.com/darknigthmare/eager-curie/pull/2) — consommation du snapshot v2.
+
+Le fichier est produit par :
 ```sh
-node scripts/export-hive-ascension.mjs --out ../eager-curie/data/alien-base.snapshot.v1.json
-node scripts/export-hive-ascension.mjs --out ../eager-curie/data/alien-base.snapshot.v1.json --check
+node scripts/export-hive-ascension.mjs --out ../eager-curie/data/alien-base.snapshot.v2.json
+node scripts/export-hive-ascension.mjs --out ../eager-curie/data/alien-base.snapshot.v2.json --check
 ```
 
-Une fois le fichier actualisé, depuis `eager-curie` : `node tools/qa-alien-base.cjs`. Le test s'arrête si `src/content.js` a été modifié sans mise à jour du pin et du snapshot. La page n'interroge jamais un dépôt privé depuis le navigateur et respecte la CSP locale Vercel.
+Depuis le dépôt du jeu : `node tools/qa-alien-base.cjs`. Le QA vérifie que `src/content.js` reste identique à la source épinglée SHA Git. Une nouvelle version du contenu doit d'abord être réimportée dans Alien_base puis réexportée et validée avant d'actualiser la PR du jeu.
 
-## Règles de cohérence
-- Les identités filmique de base sont reliées par archétype, pas par ressemblance superficielle : Ovomorphe, Facehugger, Chestburster, Drone, Warrior, Queen.
-- Runner et variantes étendues restent distincts selon média, hôte, source, variante et continuité : aucun lien automatique vers Alien 3 ou Fireteam Elite.
-- MNEMOSYNE, LV-X91, IRISE, KAPPA, R-9, K-12, T-4 et VIGIE sont des éléments du jeu ; ne pas les attribuer à Weyland-Yutani sans preuve.
-- Synthétiques et tourelles ne sont pas hôtes viables ; un masque ne devient pas « viable » sans action de jeu.
-- La catégorie FILM_CORE du jeu est un niveau de **politique interne** : ce n'est pas une certification visuelle ou documentaire 1:1.
-- Les archives originales ne débloquent ni un ennemi, ni une arme, ni une caste.
+## Contenus strictement séparés
+Les stats du jeu résident dans `data/gameplay/hive-ascension.v1.json` côté référentiel central ; elles ne contaminent pas les autres moteurs. MNEMOSYNE, IRISE, KAPPA, R-9, K-12, T-4, VIGIE et ÉCHO-12 sont des créations de la campagne, pas des fiches canoniques de Weyland-Yutani.
 
-## Manquants honnêtement identifiés
-Il faut encore un audit d'édition et de source pour les formes étendues, des références visuelles sous licence, les variantes hôtes/continuités, les véhicules et équipements non présents dans le catalogue narratif, des tests navigateur interactifs et un raccordement du contenu commun aux futurs moteurs de jeu.
-
-## Références consultables en supplément
-Le snapshot expose les noms/IDs minimaux de 6 organismes, 22 personnages, 7 armes, 4 véhicules, 3 vaisseaux, 4 équipements, 4 factions et 8 lieux connus du référentiel. Les 18 archives narratives restent privées et les armes/véhicules ne sont pas ajoutés au monde 3D : ce sont des entrées documentaires consultables et filtrables. Toute création d'asset ou mécaniques jouables est un chantier distinct.
+La branche `codex/remainder-20261101@be04f892` diverge de main. Elle corrige la classification de Royal Facehugger et de l'Offspring Z-01, mais ne doit pas remplacer le moteur actuel sans vraie réconciliation et tests graphiques/QA. Les modèles, armes, véhicules et animations ne sont pas automatiquement intégrés ou certifiés 1:1.

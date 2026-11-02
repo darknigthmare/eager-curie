@@ -2,12 +2,14 @@
 (() => {
   "use strict";
   const SOURCES = ["data/alien-base.snapshot.v2.json", "data/alien-base.snapshot.v1.json"];
+  const MEDIA_SOURCE = "data/alien-base.media.v2.json";
   const KIND = {
     castes: "FORMES BIOLOGIQUES",
     enemies: "OPPOSITION",
     bosses: "BOSS",
     factions: "FACTIONS",
     equipment: "ÉQUIPEMENTS",
+    works: "ŒUVRES / MÉDIAS",
     shared: "IDENTITÉS COMMUNES"
   };
   const SHARED_KINDS = {
@@ -21,6 +23,7 @@
   };
   let overlay, list, detail, queryInput, typeFilter, count, status;
   let entries = [], snapshot = null, selected = null, previousFocus = null;
+  let workRecords = [];
   let loadPromise = null;
   const normal = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const node = (tag, className, content) => {
@@ -150,12 +153,18 @@
       getSharedRecord: (id) => idLookup.get(String(id)) ||
         idLookup.get((data.compatibility || []).find(x => x.legacySharedId === id)?.registryId) || null,
       listSharedRecords: () => data.records.map(e => ({...e})),
+      listWorks: () => workRecords.map(e => ({...e})),
+      getWork: (id) => { const r = workRecords.find(e => e.id === String(id)); return r ? {...r} : null; },
       sourceCommit: data.sourceContent.commit,
       scope: data.scope
     });
   }
   function itemLabel(e) {
-    return e.group === "shared" ? "RÉF. " + (SHARED_KINDS[e.kind] || e.kind) : (e.group === "castes" && e.entityId ? "ID " + e.entityId : (e.group === "castes" && e.sharedId ? "RÉF. " + e.sharedId : KIND[e.group]));
+    if (e.group === "works") return "ŒUVRE • " + e.medium;
+    if (e.group === "shared") return "RÉF. " + (SHARED_KINDS[e.kind] || e.kind);
+    if (e.group === "castes" && e.entityId) return "ID " + e.entityId;
+    if (e.group === "castes" && e.sharedId) return "RÉF. " + e.sharedId;
+    return KIND[e.group] || "DOSSIER";
   }
   function describe(e) {
     detail.replaceChildren();
@@ -167,6 +176,15 @@
     )));
     const table = node("dl", "ab-facts");
     table.appendChild(row("Identifiant", e.displayId));
+    if (e.group === "works") {
+      table.appendChild(row("Année", e.year));
+      table.appendChild(row("Média", e.medium));
+      table.appendChild(row("Continuité déclarée", e.continuity));
+      table.appendChild(row("Statut de publication déclaré", e.publicationStatus));
+      table.appendChild(row("Provenance", e.provenanceTier));
+      table.appendChild(row("Vérification", "Source du projet non vérifiée indépendamment"));
+      table.appendChild(row("Fidélité visuelle", "Non certifiée"));
+    }
     if (e.sharedId) table.appendChild(row("Identité commune", e.sharedId));
     if (e.entityId) table.appendChild(row("ID du registre", e.entityId));
     if (e.classification) table.appendChild(row("Type de référence", e.classification));
@@ -197,7 +215,8 @@
       });
       detail.appendChild(jump);
     }
-    detail.appendChild(node("p", "ab-warning", e.group === "shared" ?
+    detail.appendChild(node("p", "ab-warning", e.group === "works" ?
+      "Notice documentaire à confirmer : ni canon vérifié, ni créature jouable, ni certification 1:1. Les statuts sont déclarés par le projet source." : e.group === "shared" ?
       "Référence commune : identité seulement, pas d'asset ni de valeurs de combat." :
       "Entrée provenant du jeu : aucune certification canonique 1:1. Les variantes originales ne sont pas des castes universelles."));
     if (snapshot?.sourceContent?.commit && e.group !== "shared") {
@@ -211,8 +230,8 @@
     if (!list || !snapshot) return;
     const q = normal(queryInput.value), group = typeFilter.value;
     const filtered = entries.filter(x => (group === "all" || x.group === group || (x.group === "shared" && group === "shared:" + x.kind)) &&
-      normal([x.name, x.id, x.entityId, x.role, x.faction, x.sharedId, x.title, x.classification, x.kind].join(" ")).includes(q));
-    count.textContent = filtered.length + " FICHE(S) • " + snapshot.records.length + " RÉFÉRENCES DU REGISTRE • " + snapshot.projectIntake.castes.length + " FORMES DU JEU";
+      normal([x.name, x.id, x.entityId, x.role, x.faction, x.sharedId, x.title, x.classification, x.kind, x.medium, x.continuity, x.year, x.publicationStatus].join(" ")).includes(q));
+    count.textContent = filtered.length + " FICHE(S) • " + snapshot.records.length + " RÉFÉRENCES DU REGISTRE • " + snapshot.projectIntake.castes.length + " FORMES DU JEU" + (workRecords.length ? " • " + workRecords.length + " ŒUVRES" : "");
     list.replaceChildren();
     if (!filtered.length) {
       list.appendChild(node("p", "ab-empty", "Aucune fiche pour cette recherche."));
@@ -232,6 +251,30 @@
     }
     describe(filtered.find(x => x.key === selected) || filtered[0]);
   }
+  // Catalogue média séparé du registre biologique, chargé depuis un fichier local.
+  async function loadWorks() {
+    workRecords = [];
+    try {
+      const response = await fetch(MEDIA_SOURCE, {cache: "no-cache"});
+      if (!response.ok) return;
+      const media = await response.json();
+      if (media?.schemaVersion !== "2.0.0" || media.scope !== "public-minimal-apex-media" ||
+          media.origin !== "darknigthmare/alien_base" || !Array.isArray(media.records) || media.records.length !== 29) return;
+      const keys = new Set(["id","localId","title","year","medium","continuity","provenanceTier","publicationStatus","sourceReview","fidelityVerified"]);
+      const ids = new Set();
+      for (const w of media.records) {
+        if (!w || typeof w.id !== "string" || w.id !== "work." + w.localId ||
+            typeof w.title !== "string" || !w.title.trim() || ids.has(w.id) ||
+            w.sourceReview !== "project-declared-not-primary-verified" || w.fidelityVerified !== false ||
+            Object.keys(w).some(k => !keys.has(k))) return;
+        ids.add(w.id);
+      }
+      workRecords = media.records.map(w => ({...w}));
+      for (const w of workRecords) entries.push({...w, name:w.title, group:"works", displayId:w.id, key:"works:"+w.id});
+    } catch (_error) {
+      // Un fichier documentaire manquant ne bloque ni la partie ni le Codex.
+    }
+  }
   async function load() {
     if (snapshot) return;
     if (!loadPromise) loadPromise = (async () => {
@@ -241,6 +284,7 @@
           const response = await fetch(url, {cache: "no-cache"});
           if (!response.ok) throw new Error("HTTP " + response.status + " : " + url);
           prepare(await response.json());
+          await loadWorks();
           return;
         } catch (error) { failure = error; }
       }
@@ -253,7 +297,7 @@
     previousFocus = document.activeElement;
     overlay.hidden = false; overlay.setAttribute("aria-hidden", "false");
     queryInput.focus(); count.textContent = "Lecture de la copie locale…";
-    try { await load(); renderList(); status.textContent = "Registre " + snapshot.schemaVersion + " • source " + snapshot.sourceContent.commit.slice(0, 12) + " • offline / sans GitHub privé"; }
+    try { await load(); renderList(); status.textContent = "Registre " + snapshot.schemaVersion + " • source " + snapshot.sourceContent.commit.slice(0, 12) + " • offline / sans GitHub privé" + (workRecords.length ? " • " + workRecords.length + " œuvres séparées" : " • œuvres indisponibles"); }
     catch (error) {
       count.textContent = "ARCHIVES INDISPONIBLES";
       list.replaceChildren();

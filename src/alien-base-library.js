@@ -170,7 +170,7 @@
     detail.replaceChildren();
     detail.appendChild(node("span", "ab-kicker", e.group === "shared" ? (SHARED_KINDS[e.kind] || "RÉFÉRENTIEL") : KIND[e.group]));
     detail.appendChild(node("h3", "", e.name));
-    detail.appendChild(node("p", "ab-detail-summary", e.role || e.title || (
+    detail.appendChild(node("p", "ab-detail-summary", e.group === "works" ? "Référence de média. Cette notice n’est pas une preuve de fidélité 1:1." : e.role || e.title || (
       e.group === "shared" ? "Identité bibliographique commune, sans statistiques de jeu." :
       "Dossier issu de la campagne originale MNEMOSYNE."
     )));
@@ -219,7 +219,7 @@
       "Notice documentaire à confirmer : ni canon vérifié, ni créature jouable, ni certification 1:1. Les statuts sont déclarés par le projet source." : e.group === "shared" ?
       "Référence commune : identité seulement, pas d'asset ni de valeurs de combat." :
       "Entrée provenant du jeu : aucune certification canonique 1:1. Les variantes originales ne sont pas des castes universelles."));
-    if (snapshot?.sourceContent?.commit && e.group !== "shared") {
+    if (snapshot?.sourceContent?.commit && e.group !== "shared" && e.group !== "works") {
       const a = node("a", "ab-source-link", "Consulter le fichier source épinglé");
       a.href = "https://github.com/darknigthmare/eager-curie/blob/" + snapshot.sourceContent.commit + "/src/content.js";
       a.target = "_blank"; a.rel = "noopener noreferrer";

@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, "..");
 const script = fs.readFileSync(path.join(root, "src/alien-base-library.js"), "utf8");
 const v2 = JSON.parse(fs.readFileSync(path.join(root, "data/alien-base.snapshot.v2.json"), "utf8"));
 const v1 = JSON.parse(fs.readFileSync(path.join(root, "data/alien-base.snapshot.v1.json"), "utf8"));
+const media = JSON.parse(fs.readFileSync(path.join(root,"data/alien-base.media.v2.json"),"utf8"));
 async function runCase(fallback) {
   let doc;
   class FakeElement {
@@ -49,6 +50,7 @@ async function runCase(fallback) {
   const calls = [];
   const fetch = async url => {
     calls.push(url);
+    if (url.includes("alien-base.media.v2.json")) return fallback ? {ok:false,status:404} : {ok:true,status:200,json:async()=>media};
     if (fallback && url.includes("v2")) return {ok:false,status:404};
     return {ok:true,status:200,json:async()=>url.includes("v2")?v2:v1};
   };
@@ -71,9 +73,14 @@ async function runCase(fallback) {
   if (!fallback) {
     assert.equal(win.AlienBaseReference.getCanonicalIdForCaste("runner"),"ha.bio.runner");
     assert.equal(win.AlienBaseReference.getCanonicalIdForCaste("ovomorphe"),"bio.xenomorph.ovomorph");
-    assert.equal(list.length,494 + 16 + 10 + 4 + 5 + 21);
+    assert.equal(list.length,494 + 16 + 10 + 4 + 5 + 21 + 29);
+    assert.equal(win.AlienBaseReference.listWorks().length,29);
+    assert.equal(win.AlienBaseReference.getWork("work.film_avp_2004")?.title,"Alien vs. Predator");
+    assert.equal(win.AlienBaseReference.getWork("missing"),null);
     const query = controls.children.find(x=>x.tag==="input");
     const filter = controls.children.find(x=>x.tag==="select");
+    filter.value="works"; await filter.send("change");
+    assert.equal(overlay.querySelectorAll("button.ab-record").length,29);
     filter.value="shared:opposition"; await filter.send("change");
     assert.equal(overlay.querySelectorAll("button.ab-record").length,10);
     filter.value="shared:source-equipment-profile"; await filter.send("change");
@@ -99,6 +106,7 @@ async function runCase(fallback) {
     assert.equal(first.getAttribute("aria-pressed"),"true");
   } else {
     assert.ok(calls[0].includes("v2") && calls[1].includes("v1"),"Fallback did not use the preserved v1 catalog");
+    assert.equal(win.AlienBaseReference.listWorks().length,0);
   }
   const close = overlay.querySelectorAll("button.ab-record");
   assert.ok(close.length>0);

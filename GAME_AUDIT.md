@@ -74,3 +74,9 @@ Une génération de texture avec OpenAI ImageGen a été tentée pendant la prod
 - Déploiement de production revérifié après publication.
 
 Le dossier `audit/current-flow/` conserve localement les captures de contrôle et n’est pas publié avec le jeu.
+
+## Harmonisation Alien Base — 1er novembre 2026 (PR en cours)
+
+Le correctif de contenu `dd3d417b103a56a2c9f3b6510040106df6693926` actualise neuf descriptions biologiques : le Facehugger royal et l'Offspring Z-01 sont classés comme références de variantes/campagne, sans être des facultés universelles. Les représentations de la perception, de l'ovipositeur, des ordres et de la protection de la Reine sont qualifiées comme mécaniques de jeu là où nécessaire.
+
+Le registre central partagé contient 494 identités documentaires consultables localement, distinctes des 16 formes, 10 ennemis, 4 boss et du contenu diégétique de MNEMOSYNE. Le contrôle `node tools/qa-alien-base-lore.cjs` vérifie les correspondances entre descriptions de la campagne et export central. Ces tests ne démontrent ni la fidélité visuelle 1:1 ni une campagne parcourue intégralement en vrai navigateur.

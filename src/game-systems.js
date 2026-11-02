@@ -1378,6 +1378,19 @@
         });
         container.appendChild(list);
       }
+      const casteId = String(entry.id || entry.key || '');
+      if (this.content.castes?.[casteId]) {
+        const referenceLink = document.createElement('button');
+        referenceLink.type = 'button';
+        referenceLink.className = 'ab-codex-link';
+        referenceLink.textContent = 'CONSULTER LA RÉFÉRENCE ALIEN BASE';
+        referenceLink.addEventListener('click', () => {
+          if (typeof window.AlienBaseOpenCaste === 'function') {
+            window.AlienBaseOpenCaste(casteId);
+          }
+        });
+        container.appendChild(referenceLink);
+      }
     }
 
     renderEvolution(container) {

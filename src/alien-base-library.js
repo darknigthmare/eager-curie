@@ -259,7 +259,7 @@
       if (!response.ok) return;
       const media = await response.json();
       if (media?.schemaVersion !== "2.0.0" || media.scope !== "public-minimal-apex-media" ||
-          media.origin !== "darknigthmare/alien_base" || !Array.isArray(media.records) || media.records.length !== 29) return;
+          media.origin !== "darknigthmare/alien_base" || !Array.isArray(media.records) || (media.records.length < 29 || media.records.length > 1000)) return;
       const keys = new Set(["id","localId","title","year","medium","continuity","provenanceTier","publicationStatus","sourceReview","fidelityVerified"]);
       const ids = new Set();
       for (const w of media.records) {

@@ -18,6 +18,8 @@ Le catalogue narratif et les règles biologiques sont centralisés dans `src/con
 
 **Nouveau :** le menu et le HUD proposent **Archives unifiées**, alimenté par une copie locale publique minimale du référentiel [alien_base](https://github.com/darknigthmare/alien_base) : 494 références documentaires v2 (compatibilité v1 de 58 fiches), 6 archétypes de référence et 52 fiches locales de MNEMOSYNE, personnages, armes, véhicules, organismes et opposition. Voir [ALIEN_BASE_SYNC.md](docs/ALIEN_BASE_SYNC.md). Le jeu ne requiert aucun accès GitHub privé pendant la partie.
 
+**Actualisation Alien Base :** 29 notices d’œuvres Alien/Predator/AVP consultables dans « ŒUVRES / MÉDIAS », séparées des 494 entités du catalogue principal. Ce sont des pistes documentaires sans certification 1:1 ni effet sur le gameplay.
+
 ## Cycle biologique jouable
 
 - L’Ovomorphe commence fermé, puis son ouverture est animée après l’arrivée réelle de l’hôte.

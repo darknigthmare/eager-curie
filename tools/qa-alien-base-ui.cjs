@@ -73,14 +73,14 @@ async function runCase(fallback) {
   if (!fallback) {
     assert.equal(win.AlienBaseReference.getCanonicalIdForCaste("runner"),"ha.bio.runner");
     assert.equal(win.AlienBaseReference.getCanonicalIdForCaste("ovomorphe"),"bio.xenomorph.ovomorph");
-    assert.equal(list.length,494 + 16 + 10 + 4 + 5 + 21 + 29);
-    assert.equal(win.AlienBaseReference.listWorks().length,29);
+    assert.equal(list.length,494 + 16 + 10 + 4 + 5 + 21 + media.records.length);
+    assert.equal(win.AlienBaseReference.listWorks().length,media.records.length);
     assert.equal(win.AlienBaseReference.getWork("work.film_avp_2004")?.title,"Alien vs. Predator");
     assert.equal(win.AlienBaseReference.getWork("missing"),null);
     const query = controls.children.find(x=>x.tag==="input");
     const filter = controls.children.find(x=>x.tag==="select");
     filter.value="works"; await filter.send("change");
-    assert.equal(overlay.querySelectorAll("button.ab-record").length,29);
+    assert.equal(overlay.querySelectorAll("button.ab-record").length,media.records.length);
     filter.value="shared:opposition"; await filter.send("change");
     assert.equal(overlay.querySelectorAll("button.ab-record").length,10);
     filter.value="shared:source-equipment-profile"; await filter.send("change");

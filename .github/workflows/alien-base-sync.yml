@@ -24,5 +24,9 @@ jobs:
         run: node tools/qa-alien-base-lore.cjs
       - name: Exactitude de l'export public local
         run: node tools/sync-alien-base.mjs --source data/alien-base.snapshot.v2.json --check
+      - name: Confidentalite des notices media
+        run: node tools/qa-alien-base-media.cjs
+      - name: Controle de l'export media hors ligne
+        run: node tools/sync-alien-base-media.mjs --source data/alien-base.media.v2.json --check
       - name: Comportement de l'interface archives (DOM simulé)
         run: node tools/qa-alien-base-ui.cjs

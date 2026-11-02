@@ -60,3 +60,26 @@ node tools/sync-alien-base.mjs --source ../alien_base/exports/hive-ascension.v2.
 La commande refuse un blob de contenu non correspondant, les cartes TCG de gameplay, les doublons et les champs de dossier non publics.
 
 **Chaîne de PR** : Alien Base #21 → Alien Base #23 → Eager-curie #2. Les anciens exports #6/#15 restent des jalons historiques : ne pas tenter des fusions parallèles vers main. Les essais graphiques et la fidélité 1:1 des modèles restent distincts des tests documentaires.
+
+## Vérification du 2 novembre 2026 : nouvel espace d'œuvres
+
+La branche `main` du référentiel est inchangée. La [PR Alien Base #22](https://github.com/darknigthmare/alien_base/pull/22) introduit 29 identités `work.*` (films, jeux, comics, romans, bonus et archives de production), séparées des 494 entités du jeu. Le snapshot `data/alien-base.media.v2.json` reproduit exactement son export public minimal.
+
+**Source épinglée** : Alien Base #22, commit `9f5cc1a40a7536047f256d3c391eb18800f99e94`, `data/works/yautja-apex.v1.json` (blob SHA `10b3d93e7b7e10ff1496e4cdb67fcea5bfcf6d0c`). Les 29 références restent déclaratives et non vérifiées individuellement ; aucune source privée, URL, asset, statistique ou clé de sauvegarde n'est exposé dans le fichier distribué.
+
+La [PR Alien Base #24](https://github.com/darknigthmare/alien_base/pull/24) apporte trois alias propres à Apex Hunter (Alpha, Samurai, Viking) sans modifier les 494 fiches ou les bindings Hive Ascension. Aucune conversion de caste ni d'équipement de Hive Ascension n'est requise.
+
+Le catalogue média fonctionne **hors ligne** dans le filtre « ŒUVRES / MÉDIAS ». Si le fichier média manque, la bibliothèque principale reste disponible. Ses notices n'activent pas de mission ou de créature et ne certifient pas une représentation fidèle 1:1.
+
+Pour un futur rafraîchissement depuis le checkout Alien Base :
+
+```sh
+cd ../alien_base
+node scripts/export-apex-media.mjs --out ../eager-curie/data/alien-base.media.v2.json
+cd ../eager-curie
+node tools/qa-alien-base-media.cjs
+node tools/qa-alien-base-ui.cjs
+node tools/sync-alien-base-media.mjs --source data/alien-base.media.v2.json --check
+```
+
+Les PR #22/#24 sont parallèles à #23 et restent non fusionnées. Leur réconciliation GitHub sera nécessaire avant de constituer un registre principal unique.

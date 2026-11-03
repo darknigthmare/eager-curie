@@ -23031,6 +23031,318 @@
       huntDamage: 275,
       jawDamage: 235,
       tailDamage: 225
+    }),
+    protomorph: Object.freeze({
+      key: 'protomorph',
+      label: 'PROTOMORPHE (ALIEN: COVENANT)',
+      maxHealth: 215,
+      speed: 0.52,
+      huntAction: 'BOND CARNASSIER PROTOMORPHE',
+      huntCost: 28,
+      huntRange: 72,
+      huntDamage: 118,
+      jawDamage: 160,
+      tailDamage: 115
+    }),
+    royal_facehugger: Object.freeze({
+      key: 'royal_facehugger',
+      label: 'SUPERFACEHUGGER ROYAL (ALIEN 3)',
+      maxHealth: 95,
+      speed: 0.62,
+      huntAction: 'IMPLANTATION EMBRYON ROYAL',
+      huntCost: 15,
+      huntRange: 45,
+      huntDamage: 25,
+      jawDamage: 40,
+      tailDamage: 15
+    }),
+    pathogen_popper: Object.freeze({
+      key: 'pathogen_popper',
+      label: 'POPPER PATHOGÃˆNE',
+      maxHealth: 90,
+      speed: 0.58,
+      huntAction: 'PULSATION EXPLOSIVE',
+      huntCost: 20,
+      huntRange: 60,
+      huntDamage: 140,
+      jawDamage: 70,
+      tailDamage: 60
+    }),
+    pathogen_blight: Object.freeze({
+      key: 'pathogen_blight',
+      label: 'BLIGHT PATHOGÃˆNE',
+      maxHealth: 210,
+      speed: 0.44,
+      huntAction: 'BRUME CORROSIVE',
+      huntCost: 30,
+      huntRange: 75,
+      huntDamage: 110,
+      jawDamage: 135,
+      tailDamage: 100
+    }),
+    pathogen_mimic: Object.freeze({
+      key: 'pathogen_mimic',
+      label: 'MIMIC PATHOGÃˆNE',
+      maxHealth: 230,
+      speed: 0.46,
+      huntAction: 'MIMÃ‰TISME BIOMÃ‰CANIQUE',
+      huntCost: 28,
+      huntRange: 68,
+      huntDamage: 115,
+      jawDamage: 142,
+      tailDamage: 105
+    }),
+    harbinger: Object.freeze({
+      key: 'harbinger',
+      label: 'HARBINGER PATHOGÃˆNE',
+      maxHealth: 310,
+      speed: 0.40,
+      huntAction: 'SIGNAL PATHOGÃˆNE',
+      huntCost: 35,
+      huntRange: 72,
+      huntDamage: 125,
+      jawDamage: 155,
+      tailDamage: 118
+    }),
+    engineer_hybrid: Object.freeze({
+      key: 'engineer_hybrid',
+      label: 'HYBRIDE INGÃ‰NIEUR PRIMORDIAL',
+      maxHealth: 420,
+      speed: 0.38,
+      huntAction: 'COLOSSE PRIMORDIAL',
+      huntCost: 40,
+      huntRange: 65,
+      huntDamage: 145,
+      jawDamage: 180,
+      tailDamage: 140
+    }),
+    arcology_lurker: Object.freeze({
+      key: 'arcology_lurker',
+      label: 'RÃ”DEUR Dâ€™ARCOLOGIE',
+      maxHealth: 185,
+      speed: 0.50,
+      huntAction: 'EMBUSCADE Dâ€™ARCOLOGIE',
+      huntCost: 25,
+      huntRange: 72,
+      huntDamage: 105,
+      jawDamage: 152,
+      tailDamage: 110
+    }),
+    atarax_ripper: Object.freeze({
+      key: 'atarax_ripper',
+      label: 'RIPPEUR ATARAX',
+      maxHealth: 290,
+      speed: 0.45,
+      huntAction: 'FAUCHAGE ATARAX',
+      huntCost: 35,
+      huntRange: 66,
+      huntDamage: 135,
+      jawDamage: 170,
+      tailDamage: 128
+    }),
+    caravan_stalker: Object.freeze({
+      key: 'caravan_stalker',
+      label: 'TRAQUEUR DE CARAVANE',
+      maxHealth: 200,
+      speed: 0.48,
+      huntAction: 'RAID DE CONVOI',
+      huntCost: 28,
+      huntRange: 74,
+      huntDamage: 108,
+      jawDamage: 145,
+      tailDamage: 108
+    }),
+    dust_runner: Object.freeze({
+      key: 'dust_runner',
+      label: 'RUNNER DES DUNES',
+      maxHealth: 150,
+      speed: 0.57,
+      huntAction: 'CHARGE DU DÃ‰SERT',
+      huntCost: 28,
+      huntRange: 70,
+      huntDamage: 98,
+      jawDamage: 126,
+      tailDamage: 90
+    }),
+    exploder: Object.freeze({
+      key: 'exploder',
+      label: 'EXPLODEUR ACIDE',
+      maxHealth: 140,
+      speed: 0.53,
+      huntAction: 'DÃ‰FLAGRATION CAUSTIQUE',
+      huntCost: 32,
+      huntRange: 66,
+      huntDamage: 160,
+      jawDamage: 98,
+      tailDamage: 82
+    }),
+    foundry_crusher: Object.freeze({
+      key: 'foundry_crusher',
+      label: 'CRUSHER DE FONDERIE',
+      maxHealth: 410,
+      speed: 0.37,
+      huntAction: 'CHARGE DE SCORIES',
+      huntCost: 40,
+      huntRange: 62,
+      huntDamage: 130,
+      jawDamage: 175,
+      tailDamage: 132
+    }),
+    foundry_drone: Object.freeze({
+      key: 'foundry_drone',
+      label: 'DRONE DE FONDERIE',
+      maxHealth: 195,
+      speed: 0.43,
+      huntAction: 'TRAQUE DE SUISSE',
+      huntCost: 25,
+      huntRange: 66,
+      huntDamage: 90,
+      jawDamage: 148,
+      tailDamage: 106
+    }),
+    k_series_yellow_xenomorph: Object.freeze({
+      key: 'k_series_yellow_xenomorph',
+      label: 'XÃ‰NOMORPHE SÃ‰RIE K',
+      maxHealth: 220,
+      speed: 0.44,
+      huntAction: 'ASSAUT SÃ‰PARATISTE',
+      huntCost: 30,
+      huntRange: 65,
+      huntDamage: 112,
+      jawDamage: 156,
+      tailDamage: 120
+    }),
+    monica_line: Object.freeze({
+      key: 'monica_line',
+      label: 'LIGNÃ‰E MONICA',
+      maxHealth: 390,
+      speed: 0.46,
+      huntAction: 'BOND CARMIN PRIORITAIRE',
+      huntCost: 38,
+      huntRange: 72,
+      huntDamage: 142,
+      jawDamage: 178,
+      tailDamage: 136
+    }),
+    neuro_xeno_drone: Object.freeze({
+      key: 'neuro_xeno_drone',
+      label: 'DRONE NEURO-CONTRÃ”LÃ‰',
+      maxHealth: 185,
+      speed: 0.41,
+      huntAction: 'DIRECTIVE SYNAPTIQUE FORCÃ‰E',
+      huntCost: 25,
+      huntRange: 68,
+      huntDamage: 92,
+      jawDamage: 144,
+      tailDamage: 104
+    }),
+    pale_crucible_hunter: Object.freeze({
+      key: 'pale_crucible_hunter',
+      label: 'CHASSEUR DU CREUSET PÃ‚LE',
+      maxHealth: 205,
+      speed: 0.47,
+      huntAction: 'TRAQUE DU CREUSET',
+      huntCost: 28,
+      huntRange: 70,
+      huntDamage: 110,
+      jawDamage: 154,
+      tailDamage: 112
+    }),
+    reef_spitter: Object.freeze({
+      key: 'reef_spitter',
+      label: 'CRACHEUR RÃ‰CIFAL',
+      maxHealth: 170,
+      speed: 0.41,
+      huntAction: 'JET HYDRO-ACIDE',
+      huntCost: 26,
+      huntRange: 82,
+      huntDamage: 96,
+      jawDamage: 122,
+      tailDamage: 95
+    }),
+    reef_stalker: Object.freeze({
+      key: 'reef_stalker',
+      label: 'TRAQUEUR RÃ‰CIFAL',
+      maxHealth: 190,
+      speed: 0.49,
+      huntAction: 'BOND SOUS-MARIN',
+      huntCost: 28,
+      huntRange: 72,
+      huntDamage: 104,
+      jawDamage: 148,
+      tailDamage: 106
+    }),
+    ripper_queen: Object.freeze({
+      key: 'ripper_queen',
+      label: 'REINE RIPPEUR',
+      maxHealth: 680,
+      speed: 0.30,
+      huntAction: 'CARNAGE Dâ€™Ã‰VISCÃ‰RATION',
+      huntCost: 45,
+      huntRange: 68,
+      huntDamage: 165,
+      jawDamage: 220,
+      tailDamage: 160
+    }),
+    salvage_hive_brute: Object.freeze({
+      key: 'salvage_hive_brute',
+      label: 'BRUTE DE RÃ‰CUPÃ‰RATION',
+      maxHealth: 340,
+      speed: 0.36,
+      huntAction: 'BROYAGE DE COQUE',
+      huntCost: 35,
+      huntRange: 60,
+      huntDamage: 138,
+      jawDamage: 168,
+      tailDamage: 125
+    }),
+    siege_royal: Object.freeze({
+      key: 'siege_royal',
+      label: 'GARDE SIÃˆGE ROYAL',
+      maxHealth: 540,
+      speed: 0.31,
+      huntAction: 'PAVOIS ROYAL',
+      huntCost: 40,
+      huntRange: 58,
+      huntDamage: 140,
+      jawDamage: 185,
+      tailDamage: 145
+    }),
+    specimen_six_line: Object.freeze({
+      key: 'specimen_six_line',
+      label: 'LIGNÃ‰E SPÃ‰CIMEN SIX',
+      maxHealth: 215,
+      speed: 0.54,
+      huntAction: 'FOUET CAUDAL VENDETTA',
+      huntCost: 30,
+      huntRange: 76,
+      huntDamage: 120,
+      jawDamage: 165,
+      tailDamage: 135
+    }),
+    warden: Object.freeze({
+      key: 'warden',
+      label: 'WARDEN DE CONFINEMENT',
+      maxHealth: 360,
+      speed: 0.35,
+      huntAction: 'VERROUILLAGE CHITINEUX',
+      huntCost: 36,
+      huntRange: 62,
+      huntDamage: 130,
+      jawDamage: 164,
+      tailDamage: 124
+    }),
+    ravager: Object.freeze({
+      key: 'ravager',
+      label: 'RAVAGEUR Dâ€™ASSAUT',
+      maxHealth: 370,
+      speed: 0.39,
+      huntAction: 'FAUCHAGE TRANCHANT',
+      huntCost: 36,
+      huntRange: 64,
+      huntDamage: 142,
+      jawDamage: 172,
+      tailDamage: 130
     })
   });
 
@@ -25947,6 +26259,17 @@
                                               : (['weyland_drone_operator'].includes(type)
                                                 ? 130
                                                 : (isCyberHound ? 180 : (['android', 'synthetic'].includes(type) ? 190 : (['uscm_sniper'].includes(type) ? 125 : (['smartgunner', 'gyro', 'commando'].includes(type) ? 140 : 110)))))))))))))))))))))))))))))));
+      if (['briareos_7', 'BRIAREOS_7'].includes(type)) this.hp = 520;
+      else if (['mantis_4', 'MANTIS_4'].includes(type)) this.hp = 460;
+      else if (['aster_rho', 'ASTER_RHO'].includes(type)) this.hp = 280;
+      else if (['bombardier', 'bulwark', 'huntsman', 'igniter', 'peacekeeper', 'capture_commando'].includes(type)) this.hp = 210;
+      else if (['argos_synthetic', 'combat_synthetic', 'detonator', 'enforcer', 'trooper'].includes(type)) this.hp = 200;
+      else if (['orbital_rifleman', 'thermal_operator', 'gyro_gunner'].includes(type)) this.hp = 160;
+      else if (['security_agent'].includes(type)) this.hp = 130;
+      else if (['xenobiologist'].includes(type)) this.hp = 120;
+      else if (['maintenance_technician'].includes(type)) this.hp = 100;
+      else if (['sentry_turret'].includes(type)) this.hp = 170;
+      else if (['security_drone'].includes(type)) this.hp = 80;
       this.maxHp = this.hp;
       this.reconLaserTimer = 0;
       this.medicHealCooldown = 3.0;
@@ -25975,9 +26298,9 @@
       this.cryoNetCooldown = 5.0;
       this.whitePhosphorusCooldown = 7.0 + Math.random() * 4.0;
       this.sadarRocketCooldown = 6.0 + Math.random() * 4.0;
-      this.hostEligibility = ['android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_heavy_mech', 'weyland_combat_android', 'seegson_industrial_joe', 'uscm_synthetic_bishop', 'weyland_corporate_synth_guard', 'weyland_bio_containment_synth', 'weyland_cyborg_enforcer', 'weyland_heavy_incinerator_synth', 'weyland_synth_overseer', 'weyland_android_infiltrator', 'weyland_praetorian_droid', 'weyland_combat_medic_synth', 'weyland_exec_security_synth', 'weyland_nano_repair_synth', 'weyland_sublevel_heavy_sentry_synth', 'weyland_cryo_containment_mech_suit', 'weyland_elite_combat_synth_centurion', 'weyland_apex_synthetic_executioner', 'weyland_strike_synth_infiltrator', 'weyland_sublevel_hunter_synth', 'weyland_elite_infiltrator_centurion'].includes(type)
+      this.hostEligibility = ['bombardier', 'bulwark', 'huntsman', 'igniter', 'peacekeeper', 'spider', 'detonator', 'enforcer', 'trooper', 'combat_synthetic', 'containment', 'heavy', 'sniper', 'incinerator', 'briareos_7', 'BRIAREOS_7', 'palimpseste', 'PALIMPSESTE', 'synthetic_detonator', 'synthetic_containment', 'synthetic_heavy', 'synthetic_trooper', 'synthetic_enforcer', 'synthetic_sniper', 'synthetic_incinerator', 'automaton_spider', 'automaton_bulwark', 'automaton_huntsman', 'automaton_peacekeeper', 'automaton_igniter', 'automaton_bombardier', 'sentry_turret', 'security_drone', 'argos_synthetic', 'android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_heavy_mech', 'weyland_combat_android', 'seegson_industrial_joe', 'uscm_synthetic_bishop', 'weyland_corporate_synth_guard', 'weyland_bio_containment_synth', 'weyland_cyborg_enforcer', 'weyland_heavy_incinerator_synth', 'weyland_synth_overseer', 'weyland_android_infiltrator', 'weyland_praetorian_droid', 'weyland_combat_medic_synth', 'weyland_exec_security_synth', 'weyland_nano_repair_synth', 'weyland_sublevel_heavy_sentry_synth', 'weyland_cryo_containment_mech_suit', 'weyland_elite_combat_synth_centurion', 'weyland_apex_synthetic_executioner', 'weyland_strike_synth_infiltrator', 'weyland_sublevel_hunter_synth', 'weyland_elite_infiltrator_centurion'].includes(type)
         ? 'none'
-        : (['commando', 'uscm_hazmat_tech', 'weyland_containment_squad', 'uscm_exosuit_commando', 'uscm_phalanx_shield', 'weyland_specimen_trapper', 'weyland_containment_commando', 'weyland_ape_suit_specialist', 'uscm_riot_suppressor', 'weyland_black_ops_assassin', 'uscm_cn20_nerve_gas_specialist', 'weyland_hazmat_incinerator', 'uscm_cryo_sweeper', 'weyland_apex_handler', 'uscm_cbrn_decon_sweeper', 'weyland_shock_enforcer', 'weyland_neomorph_researcher', 'weyland_mutagen_flamer_specialist', 'uscm_exo_rig_loader', 'weyland_cryo_containment_ward', 'uscm_command_apc_gunner', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'uscm_breach_torch_sapper', 'weyland_xeno_tamer_commando', 'uscm_heavy_plasma_gunner', 'weyland_black_goo_specialist', 'weyland_subzero_cryo_trooper', 'weyland_apex_containment_specialist', 'weyland_genetic_security_enforcer', 'weyland_sublevel_containment_marshal', 'weyland_sublevel_riot_infiltrator', 'weyland_sublevel_heavy_warden', 'weyland_containment_assault_enforcer', 'weyland_sublevel_breach_warden'].includes(type) ? 'protected' : 'viable');
+        : (['aster_rho', 'ASTER_RHO', 'mantis_4', 'MANTIS_4', 'capture_commando', 'commando', 'uscm_hazmat_tech', 'weyland_containment_squad', 'uscm_exosuit_commando', 'uscm_phalanx_shield', 'weyland_specimen_trapper', 'weyland_containment_commando', 'weyland_ape_suit_specialist', 'uscm_riot_suppressor', 'weyland_black_ops_assassin', 'uscm_cn20_nerve_gas_specialist', 'weyland_hazmat_incinerator', 'uscm_cryo_sweeper', 'weyland_apex_handler', 'uscm_cbrn_decon_sweeper', 'weyland_shock_enforcer', 'weyland_neomorph_researcher', 'weyland_mutagen_flamer_specialist', 'uscm_exo_rig_loader', 'weyland_cryo_containment_ward', 'uscm_command_apc_gunner', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'uscm_breach_torch_sapper', 'weyland_xeno_tamer_commando', 'uscm_heavy_plasma_gunner', 'weyland_black_goo_specialist', 'weyland_subzero_cryo_trooper', 'weyland_apex_containment_specialist', 'weyland_genetic_security_enforcer', 'weyland_sublevel_containment_marshal', 'weyland_sublevel_riot_infiltrator', 'weyland_sublevel_heavy_warden', 'weyland_containment_assault_enforcer', 'weyland_sublevel_breach_warden'].includes(type) ? 'protected' : (['maintenance_technician', 'orbital_rifleman', 'xenobiologist', 'security_agent', 'thermal_operator', 'gyro_gunner', 'atarax_controller', 'colonial_raider', 'cult_host', 'upp_vanguard', 'ceto_reef_predator', 'korari_stalker', 'tantalus_tunnel_vermin', 'wild_boar_host'].includes(type) ? 'viable' : 'viable'));
       this.usedAsHost = false;
       this.isConsumedByCycle = false;
       this.characterKey = null;
@@ -27608,7 +27931,31 @@
         offspring: { hp: 420, speed: 0.44, damage: 92, range: 2.2 },
         spitter: { hp: 150, speed: 0.31, damage: 36, range: 13 },
         drone: { hp: 190, speed: 0.4, damage: 42, range: 1.8 },
-        worker: { hp: 120, speed: 0.34, damage: 14, range: 1.6 }
+        worker: { hp: 120, speed: 0.34, damage: 14, range: 1.6 },
+        pathogen_popper: { hp: 90, speed: 0.58, damage: 45, range: 1.5 },
+        pathogen_blight: { hp: 210, speed: 0.44, damage: 48, range: 8.0 },
+        pathogen_mimic: { hp: 230, speed: 0.46, damage: 52, range: 1.8 },
+        harbinger: { hp: 310, speed: 0.40, damage: 65, range: 2.2 },
+        engineer_hybrid: { hp: 420, speed: 0.38, damage: 85, range: 2.4 },
+        arcology_lurker: { hp: 185, speed: 0.50, damage: 46, range: 1.8 },
+        atarax_ripper: { hp: 290, speed: 0.45, damage: 68, range: 2.0 },
+        caravan_stalker: { hp: 200, speed: 0.48, damage: 48, range: 2.0 },
+        dust_runner: { hp: 150, speed: 0.57, damage: 34, range: 1.8 },
+        exploder: { hp: 140, speed: 0.53, damage: 75, range: 2.0 },
+        foundry_crusher: { hp: 540, speed: 0.35, damage: 98, range: 2.2 },
+        foundry_drone: { hp: 195, speed: 0.43, damage: 44, range: 1.8 },
+        k_series_yellow_xenomorph: { hp: 220, speed: 0.44, damage: 50, range: 1.8 },
+        monica_line: { hp: 440, speed: 0.46, damage: 82, range: 2.2 },
+        neuro_xeno_drone: { hp: 185, speed: 0.41, damage: 42, range: 1.8 },
+        pale_crucible_hunter: { hp: 205, speed: 0.47, damage: 49, range: 1.8 },
+        reef_spitter: { hp: 170, speed: 0.41, damage: 40, range: 12.0 },
+        reef_stalker: { hp: 190, speed: 0.49, damage: 48, range: 1.8 },
+        ripper_queen: { hp: 750, speed: 0.30, damage: 105, range: 3.5 },
+        salvage_hive_brute: { hp: 340, speed: 0.36, damage: 72, range: 2.0 },
+        siege_royal: { hp: 560, speed: 0.31, damage: 88, range: 2.2 },
+        specimen_six_line: { hp: 215, speed: 0.54, damage: 56, range: 2.0 },
+        warden: { hp: 360, speed: 0.35, damage: 68, range: 2.0 },
+        ravager: { hp: 370, speed: 0.39, damage: 74, range: 2.0 }
       };
       const profile = profiles[caste] || profiles.drone;
       this.maxHp = profile.hp;

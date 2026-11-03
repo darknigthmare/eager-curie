@@ -1,4 +1,4 @@
-﻿/*
+/*
  * HIVE ASCENSION - Procedural model factory
  * Three.js r128, browser global build, no bundler required.
  *
@@ -253,7 +253,44 @@
     overseer: 'weyland_synth_overseer',
     weyland_mutagen_flamer_specialist: 'weyland_mutagen_flamer_specialist',
     mutagenflamer: 'weyland_mutagen_flamer_specialist',
-    pathogenflamer: 'weyland_mutagen_flamer_specialist'
+    pathogenflamer: 'weyland_mutagen_flamer_specialist',
+    // Alien Base Opposition & Bosses Aliases
+    maintenancetechnician: 'civilian',
+    maintenance_technician: 'civilian',
+    xenobiologist: 'scientist',
+    securityagent: 'guard',
+    security_agent: 'guard',
+    orbitalrifleman: 'marine',
+    orbital_rifleman: 'marine',
+    thermaloperator: 'incinerator',
+    thermal_operator: 'incinerator',
+    gyrogunner: 'smartgunner',
+    gyro_gunner: 'smartgunner',
+    capturecommando: 'commando',
+    capture_commando: 'commando',
+    argossynthetic: 'synthetic',
+    argos_synthetic: 'synthetic',
+    combatsynthetic: 'synthetic',
+    combat_synthetic: 'synthetic',
+    detonator: 'synthetic_detonator',
+    enforcer: 'synthetic_enforcer',
+    trooper: 'synthetic_trooper',
+    bombardier: 'automaton_bombardier',
+    bulwark: 'automaton_bulwark',
+    huntsman: 'automaton_huntsman',
+    igniter: 'automaton_igniter',
+    peacekeeper: 'automaton_peacekeeper',
+    asterrho: 'commando',
+    aster_rho: 'commando',
+    briareos7: 'powerloader',
+    briareos_7: 'powerloader',
+    mantis4: 'powerloader',
+    mantis_4: 'powerloader',
+    securitydrone: 'skimmer_scan_drone',
+    security_drone: 'skimmer_scan_drone',
+    sentryturret: 'sentryTurret',
+    sentry_turret: 'sentryTurret',
+    palimpseste: 'palimpseste'
   });
 
   // ---------------------------------------------------------------------------
@@ -1641,11 +1678,11 @@
         weapon.add(this._ellipsoid(laserMat, { x: 0.04, y: 0.04, z: 0.02 }, { x: 0, y: 0.3, z: 0.83 }, 'recon_scope_lens_glow', 8));
         weapon.add(this._box(dark, { x: 0.08, y: 0.1, z: 0.25 }, { x: 0, y: -0.12, z: 1.0 }, 'recon_laser_box'));
         weapon.add(this._segment(laserMat, new T.Vector3(0, -0.12, 1.13), new T.Vector3(0, -0.12, 1.8), 0.015, 0.005, 'recon_laser_beam', 6));
-        },
+      }
 
       weapon.userData.equipmentType = type;
       return weapon;
-        },
+    }
 
     // -------------------------------------------------------------------------
     // 7. HUMAN ROLE PROFILES & READABLE SILHOUETTES
@@ -3907,6 +3944,7 @@
     // 8. PUBLIC MODEL: PARASITIC CRAWLER
     // -------------------------------------------------------------------------
     createFacehugger(variant = 'standard') {
+      if (variant === 'royal' || variant === 'royal_facehugger') return this.createRoyalFacehugger();
       const T = this._three();
       const root = new T.Group();
       const isBlackGoo = variant === 'black_goo';
@@ -4133,7 +4171,7 @@
 
     createRoyalFacehugger() {
       const hugger = this.createFacehugger();
-      hugger.name = 'royal_superfacehugger';
+      hugger.name = 'royal_facehugger';
       hugger.scale.setScalar(1.28);
       const royalArmorMat = this._material('chitin', {
         color: 0x3b1d11,
@@ -4518,6 +4556,7 @@
       if (normalizedCaste === 'charger') return this._createUprightAdult('charger');
       if (normalizedCaste === 'infiltrator') return this._createUprightAdult('infiltrator');
       if (normalizedCaste === 'pathogen_stalker' || normalizedCaste === 'pathogen') return this._createUprightAdult('pathogen_stalker');
+      if (normalizedCaste === 'protomorph') return this.createCovenantXenomorph();
       if (normalizedCaste === 'snake_alien' || normalizedCaste === 'snake') return this._createUprightAdult('snake_alien');
       if (normalizedCaste === 'spider_alien' || normalizedCaste === 'spider') return this._createUprightAdult('spider_alien');
       if (normalizedCaste === 'flying_queen') return this._createUprightAdult('flying_queen');
@@ -4600,7 +4639,31 @@
       if (normalizedCaste === 'magma_crusher_behemoth_prime') return this._createUprightAdult('magma_crusher_behemoth_prime');
       if (normalizedCaste === 'shadow_stalker_phantom_apex') return this._createUprightAdult('shadow_stalker_phantom_apex');
       if (normalizedCaste === 'acid_queen_matriarch_omega') return this._createUprightAdult('acid_queen_matriarch_omega');
-      if (normalizedCaste === 'chitin_shield_crusher_juggernaut') return this._createUprightAdult('chitin_shield_crusher_juggernaut');
+if (normalizedCaste === 'chitin_shield_crusher_juggernaut') return this._createUprightAdult('chitin_shield_crusher_juggernaut');
+      if (normalizedCaste === 'pathogen_popper') return this._createUprightAdult('pathogen_popper');
+      if (normalizedCaste === 'pathogen_blight') return this._createUprightAdult('pathogen_blight');
+      if (normalizedCaste === 'pathogen_mimic') return this._createUprightAdult('pathogen_mimic');
+      if (normalizedCaste === 'harbinger') return this._createUprightAdult('harbinger');
+      if (normalizedCaste === 'engineer_hybrid') return this._createUprightAdult('engineer_hybrid');
+      if (normalizedCaste === 'arcology_lurker') return this._createUprightAdult('arcology_lurker');
+      if (normalizedCaste === 'atarax_ripper') return this._createUprightAdult('atarax_ripper');
+      if (normalizedCaste === 'caravan_stalker') return this._createUprightAdult('caravan_stalker');
+      if (normalizedCaste === 'dust_runner') return this._createUprightAdult('dust_runner');
+      if (normalizedCaste === 'exploder') return this._createUprightAdult('exploder');
+      if (normalizedCaste === 'foundry_crusher') return this._createUprightAdult('foundry_crusher');
+      if (normalizedCaste === 'foundry_drone') return this._createUprightAdult('foundry_drone');
+      if (normalizedCaste === 'k_series_yellow_xenomorph' || normalizedCaste === 'k_series') return this._createUprightAdult('k_series_yellow_xenomorph');
+      if (normalizedCaste === 'monica_line' || normalizedCaste === 'monica') return this._createUprightAdult('monica_line');
+      if (normalizedCaste === 'neuro_xeno_drone' || normalizedCaste === 'neuro_xeno') return this._createUprightAdult('neuro_xeno_drone');
+      if (normalizedCaste === 'pale_crucible_hunter' || normalizedCaste === 'crucible_hunter') return this._createUprightAdult('pale_crucible_hunter');
+      if (normalizedCaste === 'reef_spitter') return this._createUprightAdult('reef_spitter');
+      if (normalizedCaste === 'reef_stalker') return this._createUprightAdult('reef_stalker');
+      if (normalizedCaste === 'ripper_queen') return this._createUprightAdult('ripper_queen');
+      if (normalizedCaste === 'salvage_hive_brute') return this._createUprightAdult('salvage_hive_brute');
+      if (normalizedCaste === 'siege_royal') return this._createUprightAdult('siege_royal');
+      if (normalizedCaste === 'specimen_six_line' || normalizedCaste === 'specimen_six') return this._createUprightAdult('specimen_six_line');
+      if (normalizedCaste === 'warden') return this._createUprightAdult('warden');
+      if (normalizedCaste === 'ravager') return this._createUprightAdult('ravager');
       return this._createUprightAdult(normalizedCaste);
     }
 
@@ -4677,7 +4740,31 @@
       const magmaCrusherBehemothPrime = caste === 'magma_crusher_behemoth_prime';
       const shadowStalkerPhantomApex = caste === 'shadow_stalker_phantom_apex';
       const acidQueenMatriarchOmega = caste === 'acid_queen_matriarch_omega';
-      const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernaut';
+const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernaut';
+      const pathogenPopper = caste === 'pathogen_popper';
+      const pathogenBlight = caste === 'pathogen_blight';
+      const pathogenMimic = caste === 'pathogen_mimic';
+      const harbinger = caste === 'harbinger';
+      const engineerHybrid = caste === 'engineer_hybrid';
+      const arcologyLurker = caste === 'arcology_lurker';
+      const ataraxRipper = caste === 'atarax_ripper';
+      const caravanStalker = caste === 'caravan_stalker';
+      const dustRunner = caste === 'dust_runner';
+      const exploder = caste === 'exploder';
+      const foundryCrusher = caste === 'foundry_crusher';
+      const foundryDrone = caste === 'foundry_drone';
+      const kSeriesYellow = caste === 'k_series_yellow_xenomorph' || caste === 'k_series';
+      const monicaLine = caste === 'monica_line' || caste === 'monica';
+      const neuroXenoDrone = caste === 'neuro_xeno_drone' || caste === 'neuro_xeno';
+      const paleCrucibleHunter = caste === 'pale_crucible_hunter' || caste === 'crucible_hunter';
+      const reefSpitter = caste === 'reef_spitter';
+      const reefStalker = caste === 'reef_stalker';
+      const ripperQueen = caste === 'ripper_queen';
+      const salvageHiveBrute = caste === 'salvage_hive_brute';
+      const siegeRoyal = caste === 'siege_royal';
+      const specimenSixLine = caste === 'specimen_six_line' || caste === 'specimen_six';
+      const warden = caste === 'warden';
+      const ravager = caste === 'ravager';
       const pathogenBrute = caste === 'pathogen_brute';
       const gridAlien = caste === 'grid_alien';
       const defender = caste === 'defender';
@@ -4718,8 +4805,32 @@
       const lurker = caste === 'lurker';
       const gorillaAlien = caste === 'gorilla_alien';
 
-      const scale = acidQueenMatriarchOmega ? 1.74 : (magmaCrusherBehemothPrime ? 1.69 : (chitinShieldCrusherJuggernaut ? 1.41 : (shadowStalkerPhantomApex ? 1.15 : (acidBlisterBroodmother ? 1.73 : (obsidianSlagTitan ? 1.68 : (chitinArmoredCrusher ? 1.40 : (stalkerPhantomInfiltrator ? 1.15 : (corrosiveBileQueen ? 1.72 : (magmaCrustBehemoth ? 1.67 : (armoredSiegeStrider ? 1.39 : (stalkerShadowLurker ? 1.16 : (sporeBlisterMatriarch ? 1.70 : (obsidianMantleGoliath ? 1.66 : (chitinPlatedVanguard ? 1.38 : (spectralChameleonWraith ? 1.15 : (acidSporeCarrierQueen ? 1.71 : (pyroSlagJuggernaut ? 1.57 : (biomechDuneStrider ? 1.33 : (shadowCrawlerAmbusher ? 1.14 : (queenMother ? 1.75 : (ancientProgenitorQueen ? 1.74 : (myceliumQueenBroodmother ? 1.73 : (omegaPrimeEmpress ? 1.72 : (matriarchQueen ? 1.68 : (empress ? 1.65 : (primordialEngineerDeaconApex ? 1.55 : (synthChitinHybridXeno ? 1.35 : (radioactiveChernobylXeno ? 1.29 : (wingedNightStalker ? 1.25 : (titanCrusherBerserker ? 1.64 : (flyingQueen ? 1.58 : (king ? 1.62 : (ultramorph ? 1.56 : (deaconess ? 1.55 : (magmaCrustCrusher ? 1.55 : (wingedHarpyQueen ? 1.54 : (titanBoneBehemoth ? 1.53 : (goliathSiegeCrusher ? 1.52 : (cyberImplantRavager ? 1.49 : (chitinShieldPhalanx ? 1.48 : (raven ? 1.48 : (abomination ? 1.48 : (tungstenRibRavager ? 1.47 : (armoredJuggernaut ? 1.46 : (empressPraetorianVanguard ? 1.45 : (boneCrusherRavager ? 1.45 : (royalChestbursterAdult ? 1.44 : (pathogenBrute ? 1.44 : (obsidienneEmpressGuard ? 1.43 : (royal ? 1.42 : (acidBoilerMatriarch ? 1.41 : (berserkerAlien ? 1.4 : (praetorianExecutioner ? 1.39 : (alpha ? 1.38 : (pyroSlagXenomorph ? 1.37 : (gorillaAlien ? 1.36 : (newborn ? 1.35 : (irradiatedReactorXeno ? 1.34 : (plasmaFusedXeno ? 1.34 : (deaconAdult ? 1.34 : (royalGuard ? 1.33 : (parasiticCarrier ? 1.32 : (charger ? 1.32 : (corrosiveOvomorphCarrier ? 1.31 : (xenoborg ? 1.3 : (fungalMyceliumHost ? 1.29 : (anubiteXeno ? 1.28 : (bioMechanicalDefianceStalker ? 1.28 : (abyssalTrenchXeno ? 1.28 : (bullSpitter ? 1.28 : (palatine ? 1.28 : (voidVacuumStalker ? 1.27 : (razorWingGliderXeno ? 1.26 : (neomorphApex ? 1.26 : (causticBileBursterAdult ? 1.25 : (mutagenicSporeBurster ? 1.25 : (neomorphBloodbursterAlpha ? 1.25 : (cryoStalkerXeno ? 1.24 : (arachnidAlien ? 1.24 : (guardian ? 1.24 : (tarkatanStalker ? 1.23 : (neuroToxinWaspXeno ? 1.22 : (arachnoSpitter ? 1.22 : (carrier ? 1.22 : (bioElectricEelXeno ? 1.21 : (scorpionSpitter ? 1.21 : (predalien ? 1.32 : (chrysalisWarrior ? 1.25 : (defender ? 1.18 : (spiderAlien ? 1.2 : (snakeAlien ? 1.18 : (chameleonOpticStalker ? 1.16 : (pathogenStalker ? 1.16 : (gridAlien ? 1.15 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (phantomLurker ? 1.07 : (warrior ? 1.06 : (infiltrator ? 1.05 : (lurker ? 1.04 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+      const scale = pathogenPopper ? 0.28 : (ripperQueen ? 1.68 : (foundryCrusher ? 1.42 : (siegeRoyal ? 1.38 : (engineerHybrid ? 1.35 : (monicaLine ? 1.32 : (warden ? 1.30 : (salvageHiveBrute ? 1.28 : (ravager ? 1.26 : (ataraxRipper ? 1.22 : (harbinger ? 1.18 : (kSeriesYellow ? 1.08 : (specimenSixLine ? 1.08 : (pathogenMimic ? 1.08 : (caravanStalker ? 1.06 : (paleCrucibleHunter ? 1.06 : (reefStalker ? 1.06 : (foundryDrone ? 1.05 : (pathogenBlight ? 1.05 : (reefSpitter ? 1.05 : (arcologyLurker ? 1.04 : (neuroXenoDrone ? 1.02 : (exploder ? 1.02 : (dustRunner ? 0.95 : acidQueenMatriarchOmega ? 1.74 : (magmaCrusherBehemothPrime ? 1.69 : (chitinShieldCrusherJuggernaut ? 1.41 : (shadowStalkerPhantomApex ? 1.15 : (acidBlisterBroodmother ? 1.73 : (obsidianSlagTitan ? 1.68 : (chitinArmoredCrusher ? 1.40 : (stalkerPhantomInfiltrator ? 1.15 : (corrosiveBileQueen ? 1.72 : (magmaCrustBehemoth ? 1.67 : (armoredSiegeStrider ? 1.39 : (stalkerShadowLurker ? 1.16 : (sporeBlisterMatriarch ? 1.70 : (obsidianMantleGoliath ? 1.66 : (chitinPlatedVanguard ? 1.38 : (spectralChameleonWraith ? 1.15 : (acidSporeCarrierQueen ? 1.71 : (pyroSlagJuggernaut ? 1.57 : (biomechDuneStrider ? 1.33 : (shadowCrawlerAmbusher ? 1.14 : (queenMother ? 1.75 : (ancientProgenitorQueen ? 1.74 : (myceliumQueenBroodmother ? 1.73 : (omegaPrimeEmpress ? 1.72 : (matriarchQueen ? 1.68 : (empress ? 1.65 : (primordialEngineerDeaconApex ? 1.55 : (synthChitinHybridXeno ? 1.35 : (radioactiveChernobylXeno ? 1.29 : (wingedNightStalker ? 1.25 : (titanCrusherBerserker ? 1.64 : (flyingQueen ? 1.58 : (king ? 1.62 : (ultramorph ? 1.56 : (deaconess ? 1.55 : (magmaCrustCrusher ? 1.55 : (wingedHarpyQueen ? 1.54 : (titanBoneBehemoth ? 1.53 : (goliathSiegeCrusher ? 1.52 : (cyberImplantRavager ? 1.49 : (chitinShieldPhalanx ? 1.48 : (raven ? 1.48 : (abomination ? 1.48 : (tungstenRibRavager ? 1.47 : (armoredJuggernaut ? 1.46 : (empressPraetorianVanguard ? 1.45 : (boneCrusherRavager ? 1.45 : (royalChestbursterAdult ? 1.44 : (pathogenBrute ? 1.44 : (obsidienneEmpressGuard ? 1.43 : (royal ? 1.42 : (acidBoilerMatriarch ? 1.41 : (berserkerAlien ? 1.4 : (praetorianExecutioner ? 1.39 : (alpha ? 1.38 : (pyroSlagXenomorph ? 1.37 : (gorillaAlien ? 1.36 : (newborn ? 1.35 : (irradiatedReactorXeno ? 1.34 : (plasmaFusedXeno ? 1.34 : (deaconAdult ? 1.34 : (royalGuard ? 1.33 : (parasiticCarrier ? 1.32 : (charger ? 1.32 : (corrosiveOvomorphCarrier ? 1.31 : (xenoborg ? 1.3 : (fungalMyceliumHost ? 1.29 : (anubiteXeno ? 1.28 : (bioMechanicalDefianceStalker ? 1.28 : (abyssalTrenchXeno ? 1.28 : (bullSpitter ? 1.28 : (palatine ? 1.28 : (voidVacuumStalker ? 1.27 : (razorWingGliderXeno ? 1.26 : (neomorphApex ? 1.26 : (causticBileBursterAdult ? 1.25 : (mutagenicSporeBurster ? 1.25 : (neomorphBloodbursterAlpha ? 1.25 : (cryoStalkerXeno ? 1.24 : (arachnidAlien ? 1.24 : (guardian ? 1.24 : (tarkatanStalker ? 1.23 : (neuroToxinWaspXeno ? 1.22 : (arachnoSpitter ? 1.22 : (carrier ? 1.22 : (bioElectricEelXeno ? 1.21 : (scorpionSpitter ? 1.21 : (predalien ? 1.32 : (chrysalisWarrior ? 1.25 : (defender ? 1.18 : (spiderAlien ? 1.2 : (snakeAlien ? 1.18 : (chameleonOpticStalker ? 1.16 : (pathogenStalker ? 1.16 : (gridAlien ? 1.15 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (phantomLurker ? 1.07 : (warrior ? 1.06 : (infiltrator ? 1.05 : (lurker ? 1.04 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
       let chitinColor = 0x0b1518;
+      if (pathogenPopper) chitinColor = 0x4d7c0f; // Popper PathogÃ¨ne (Aliens: Fireteam Elite)
+      else if (pathogenBlight) chitinColor = 0x365314; // Blight PathogÃ¨ne Brume Acide (Aliens: Fireteam Elite)
+      else if (pathogenMimic) chitinColor = 0x111827; // Mimic PathogÃ¨ne ProtÃ©iforme (Prometheus / Fire & Stone)
+      else if (harbinger) chitinColor = 0x1e1b4b; // HÃ©raut PathogÃ¨ne Indigo Pur (Tantalus Frontier)
+      else if (engineerHybrid) chitinColor = 0xe2e8f0; // Hybride IngÃ©nieur Primordial MarbrÃ© (Prometheus / AFE2)
+      else if (arcologyLurker) chitinColor = 0x1e293b; // RÃ´deur d'Arcologie Furtif (Alien: Isolation / Tantalus)
+      else if (ataraxRipper) chitinColor = 0x172554; // Rippeur ATARAX Bleu Cobalt (Tantalus Frontier)
+      else if (caravanStalker) chitinColor = 0x78716c; // Traqueur de Caravane Gris PoussiÃ¨re (Tantalus Frontier)
+      else if (dustRunner) chitinColor = 0xa16207; // Runner des Dunes Ambre Ocre (Tantalus Frontier)
+      else if (exploder) chitinColor = 0xca8a04; // Explodeur Acide Bile Jaune Or (Fireteam Elite 2)
+      else if (foundryCrusher) chitinColor = 0x431407; // Crusher de Fonderie Scories & Lave Fiorina 161
+      else if (foundryDrone) chitinColor = 0x18181b; // Drone de Fonderie Noir Suie Fiorina 161
+      else if (kSeriesYellow) chitinColor = 0xeab308; // XÃ©nomorphe SÃ©rie K Jaune Moutarde (Warhammer / Extinction)
+      else if (monicaLine) chitinColor = 0x991b1b; // LignÃ©e Monica PrÃ©torienne Alpha Carmin (Aliens: Fireteam Elite)
+      else if (neuroXenoDrone) chitinColor = 0x0f172a; // Drone Neuro-ContrÃ´lÃ© avec Harnais TÃ©lÃ©mÃ©trique Weyland
+      else if (paleCrucibleHunter) chitinColor = 0xf8fafc; // Chasseur du Creuset PÃ¢le AlbÃ¢tre LV-223
+      else if (reefSpitter) chitinColor = 0x0d9488; // Cracheur RÃ©cifal OcÃ©anique Ceto Teal
+      else if (reefStalker) chitinColor = 0x06b6d4; // Traqueur RÃ©cifal Bioluminescent Cyan Ceto
+      else if (ripperQueen) chitinColor = 0x3b0764; // Reine Rippeur Pourpre FÃ©rale Royale (Tantalus Frontier)
+      else if (salvageHiveBrute) chitinColor = 0x57534e; // Brute de RÃ©cupÃ©ration Ferraille & Rouille Bronze
+      else if (siegeRoyal) chitinColor = 0x262626; // Garde SiÃ¨ge Royal Pavois d'Obsidienne ImpÃ©nÃ©trable
+      else if (specimenSixLine) chitinColor = 0x050505; // SpÃ©cimen Six Ã‰bÃ¨ne MarquÃ© au CrÃ¢ne (AvP 2010)
+      else if (warden) chitinColor = 0x334155; // Warden Sentinelle de Confinement Acier Bleu
+      else if (ravager) chitinColor = 0x292524; // Ravageur d'Assaut Os CalcifiÃ© Sombre (AvP Extinction)
       if (empress) chitinColor = 0x31102f; // Matriarche Ancienne Empress (AvP 2000 / 2010)
       else if (matriarchQueen) chitinColor = 0x1c1917; // Reine Matriarche Primordiale Calcifiée (Colonial Marines / Fireteam Elite)
       else if (ultramorph) chitinColor = 0x475569; // Ultramorph Titan Ingénieur (Prometheus Early Canon)
@@ -15269,7 +15380,82 @@
     createHadleyGeothermalWellheadValveTree() { return this.createIndustrialProp('hadley_geothermal_wellhead_valve_tree'); }
     createFiorinaFoundryCraneCab() { return this.createIndustrialProp('fiorina_foundry_crane_cab'); }
     createAurigaTransgenicIncubator() { return this.createIndustrialProp('auriga_transgenic_incubator'); }
-    createRomulusCryoExpansionTank() { return this.createIndustrialProp('romulus_cryo_expansion_tank'); }
+createRomulusCryoExpansionTank() { return this.createIndustrialProp('romulus_cryo_expansion_tank'); }
+    // Bestiaire Ã‰tendu ALIEN_BASE (XÃ©nomorphes & PathogÃ¨nes)
+    createPathogenPopper() { return this.createAdult('pathogen_popper'); }
+    createPathogenBlight() { return this.createAdult('pathogen_blight'); }
+    createPathogenMimic() { return this.createAdult('pathogen_mimic'); }
+    createHarbinger() { return this.createAdult('harbinger'); }
+    createEngineerHybrid() { return this.createAdult('engineer_hybrid'); }
+    createArcologyLurker() { return this.createAdult('arcology_lurker'); }
+    createAtaraxRipper() { return this.createAdult('atarax_ripper'); }
+    createCaravanStalker() { return this.createAdult('caravan_stalker'); }
+    createDustRunner() { return this.createAdult('dust_runner'); }
+    createExploder() { return this.createAdult('exploder'); }
+    createFoundryCrusher() { return this.createAdult('foundry_crusher'); }
+    createFoundryDrone() { return this.createAdult('foundry_drone'); }
+    createKSeriesYellowXenomorph() { return this.createAdult('k_series_yellow_xenomorph'); }
+    createMonicaLine() { return this.createAdult('monica_line'); }
+    createNeuroXenoDrone() { return this.createAdult('neuro_xeno_drone'); }
+    createPaleCrucibleHunter() { return this.createAdult('pale_crucible_hunter'); }
+    createReefSpitter() { return this.createAdult('reef_spitter'); }
+    createReefStalker() { return this.createAdult('reef_stalker'); }
+    createRipperQueen() { return this.createAdult('ripper_queen'); }
+    createSalvageHiveBrute() { return this.createAdult('salvage_hive_brute'); }
+    createSiegeRoyal() { return this.createAdult('siege_royal'); }
+    createSpecimenSixLine() { return this.createAdult('specimen_six_line'); }
+    createWarden() { return this.createAdult('warden'); }
+    createRavager() { return this.createAdult('ravager'); }
+    // UnitÃ©s d'Opposition SynthÃ©tiques, Automates, Humains & Faune ALIEN_BASE
+    createSyntheticDetonator(compact = false) { return this.createHuman('synthetic_detonator', compact); }
+    createSyntheticContainment(compact = false) { return this.createHuman('synthetic_containment', compact); }
+    createSyntheticHeavy(compact = false) { return this.createHuman('synthetic_heavy', compact); }
+    createSyntheticTrooper(compact = false) { return this.createHuman('synthetic_trooper', compact); }
+    createSyntheticEnforcer(compact = false) { return this.createHuman('synthetic_enforcer', compact); }
+    createSyntheticSniper(compact = false) { return this.createHuman('synthetic_sniper', compact); }
+    createSyntheticIncinerator(compact = false) { return this.createHuman('synthetic_incinerator', compact); }
+    createAutomatonSpider(compact = false) { return this.createHuman('automaton_spider', compact); }
+    createAutomatonBulwark(compact = false) { return this.createHuman('automaton_bulwark', compact); }
+    createAutomatonHuntsman(compact = false) { return this.createHuman('automaton_huntsman', compact); }
+    createAutomatonPeacekeeper(compact = false) { return this.createHuman('automaton_peacekeeper', compact); }
+    createAutomatonIgniter(compact = false) { return this.createHuman('automaton_igniter', compact); }
+    createAutomatonBombardier(compact = false) { return this.createHuman('automaton_bombardier', compact); }
+    createAtaraxController(compact = false) { return this.createHuman('atarax_controller', compact); }
+    createColonialRaider(compact = false) { return this.createHuman('colonial_raider', compact); }
+    createCultHost(compact = false) { return this.createHuman('cult_host', compact); }
+    createUppVanguard(compact = false) { return this.createHuman('upp_vanguard', compact); }
+    createCetoReefPredator(compact = false) { return this.createHuman('ceto_reef_predator', compact); }
+    createKorariStalker(compact = false) { return this.createHuman('korari_stalker', compact); }
+    createTantalusTunnelVermin(compact = false) { return this.createHuman('tantalus_tunnel_vermin', compact); }
+    createWildBoarHost(compact = false) { return this.createHuman('wild_boar_host', compact); }
+    // Opposition, Bosses & Aliases ALIEN_BASE
+    createMaintenanceTechnician(compact = false) { return this.createHuman('maintenance_technician', compact); }
+    createXenobiologist(compact = false) { return this.createHuman('xenobiologist', compact); }
+    createSecurityAgent(compact = false) { return this.createHuman('security_agent', compact); }
+    createOrbitalRifleman(compact = false) { return this.createHuman('orbital_rifleman', compact); }
+    createThermalOperator(compact = false) { return this.createHuman('thermal_operator', compact); }
+    createGyroGunner(compact = false) { return this.createHuman('gyro_gunner', compact); }
+    createCaptureCommando(compact = false) { return this.createHuman('capture_commando', compact); }
+    createArgosSynthetic(compact = false) { return this.createHuman('argos_synthetic', compact); }
+    createSecurityDrone() { return this.createIndustrialProp('skimmer_scan_drone'); }
+    createSentryTurret() { return this.createUA571CTurret(); }
+    createAsterRho(compact = false) { return this.createHuman('aster_rho', compact); }
+    createBriareos7(compact = false) { return this.createHuman('briareos_7', compact); }
+    createBriareosBoss(compact = false) { return this.createHuman('briareos_7', compact); }
+    createMantis4(compact = false) { return this.createHuman('mantis_4', compact); }
+    createMantisBoss(compact = false) { return this.createHuman('mantis_4', compact); }
+    createPalimpsesteTerminal() { return this.createIndustrialProp('data_terminal'); }
+    createPalimpseste() { return this.createIndustrialProp('data_terminal'); }
+    createProtomorph() { return this.createCovenantXenomorph(); }
+    createBombardier(compact = false) { return this.createHuman('automaton_bombardier', compact); }
+    createBulwark(compact = false) { return this.createHuman('automaton_bulwark', compact); }
+    createHuntsman(compact = false) { return this.createHuman('automaton_huntsman', compact); }
+    createIgniter(compact = false) { return this.createHuman('automaton_igniter', compact); }
+    createPeacekeeper(compact = false) { return this.createHuman('automaton_peacekeeper', compact); }
+    createCombatSynthetic(compact = false) { return this.createHuman('synthetic_trooper', compact); }
+    createDetonator(compact = false) { return this.createHuman('synthetic_detonator', compact); }
+    createEnforcer(compact = false) { return this.createHuman('synthetic_enforcer', compact); }
+    createTrooper(compact = false) { return this.createHuman('synthetic_trooper', compact); }
     createSevastopolApolloCoolingPlenum() { return this.createIndustrialProp('sevastopol_apollo_cooling_plenum'); }
     createUscmSulacoOrdnanceDolly() { return this.createIndustrialProp('uscm_sulaco_ordnance_dolly'); }
     createHadleyScrubberBlowerFan() { return this.createIndustrialProp('hadley_scrubber_blower_fan'); }

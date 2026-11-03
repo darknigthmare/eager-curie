@@ -1,4 +1,4 @@
-/* global window */
+﻿/* global window */
 
 (() => {
   "use strict";
@@ -1055,7 +1055,7 @@
         id: "royal_facehugger",
         name: "Superfacehugger Royal",
         priority: "P1",
-        loreStatus: "FILM_CORE",
+        loreStatus: "EXPANDED_COMPATIBLE",
         role: "Parasite royal blindé transportant la lignée royale",
         evolutionFrom: ["queen_ovipositor_royal_cycle"],
         evolvesTo: ["queenburster", "praetorian"],

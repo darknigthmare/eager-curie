@@ -8899,6 +8899,29 @@
         : null;
     }
 
+    applyOriginAtmosphere(origin) {
+      if (!origin) return;
+      if (this.scene?.fog) {
+        this.scene.fog.color.setHex(origin.fogColor);
+        this.scene.fog.density = origin.fogDensity;
+      }
+      if (this.renderer?.setClearColor) {
+        this.renderer.setClearColor(origin.fogColor);
+      }
+      if (this.lights) {
+        if (this.lights.ambient) this.lights.ambient.color.setHex(origin.ambientColor);
+        if (this.lights.dirLight) this.lights.dirLight.color.setHex(origin.dirLightColor);
+        if (this.lights.hemisphere) {
+          if (origin.hemisphereSkyColor) this.lights.hemisphere.color.setHex(origin.hemisphereSkyColor);
+          if (origin.hemisphereGroundColor) this.lights.hemisphere.groundColor.setHex(origin.hemisphereGroundColor);
+        }
+      }
+      if (origin.bgVfx && window.HiveSystems?.vfx?.burst) {
+        const burstColor = origin.id === 'juggernaut' ? 0x38bdf8 : (origin.id === 'hive' ? 0xa855f7 : (origin.id === 'colony' ? 0xf59e0b : 0x0284c7));
+        window.HiveSystems.vfx.burst(origin.eggPos.x, origin.eggPos.z, burstColor, 14, 0.1, 1.8);
+      }
+    }
+
     removeObject(object) {
       if (!object) return;
       if (object.parent) object.parent.remove(object);
@@ -21989,6 +22012,104 @@
   }
 
   // -------------------------------------------------------------
+  // MULTI-ORIGIN CAMPAIGN START (4 DISTINCT ENVIRONMENTS & HOSTS)
+  // -------------------------------------------------------------
+  const STARTING_CAMPAIGN_ORIGINS = Object.freeze({
+    juggernaut: Object.freeze({
+      id: 'juggernaut',
+      name: "Épave Derelict / Vaisseau Juggernaut (LV-426)",
+      locationName: "Chambre des Œufs fossilisée — Épave du Space Jockey",
+      eggPos: Object.freeze({ x: -55, z: 2 }),
+      hostSpawn: Object.freeze({ x: -55, z: 14 }),
+      hostType: 'spacesuit',
+      hostName: 'Explorateur Gilbert Kane (Scaphandre EVA Weyland)',
+      fogColor: 0x050c18,
+      fogDensity: 0.016,
+      ambientColor: 0x0f172a,
+      dirLightColor: 0x38bdf8,
+      hemisphereSkyColor: 0x1e293b,
+      hemisphereGroundColor: 0x020617,
+      prologueNarrativeSpeaker: "DERELICT / SPACE JOCKEY",
+      prologueNarrativeText: "Signal de détresse acoustique ultra-basse fréquence. Un explorateur en scaphandre pressurisé descend dans la caverne des œufs.",
+      lureLog: "[STIMULUS] L'explorateur Kane s'approche prudemment de l'ovomorphe dans son scaphandre étanche.",
+      lureNarrativeSpeaker: "GILBERT KANE",
+      lureNarrativeText: "Il y a des milliers d'organismes ici... On dirait une sorte de stase biologique. Attendez, celui-ci réagit...",
+      hatchLog: "[ÉCLOSION] L'ovomorphe déploie ses pétales sous le faisceau de la lampe frontale de Kane.",
+      leapLog: "[IMPLANTATION] Le Facehugger bondit ! L'acide organique perfore la visière dorée du scaphandre EVA de Kane !",
+      bgVfx: 'derelict_blue_mist'
+    }),
+    hive: Object.freeze({
+      id: 'hive',
+      name: "Ruche Bio-Résine / Nid Primaire (Sous-sol Acheron)",
+      locationName: "Cœur de la Ruche — Nurserie de Ponte Organique",
+      eggPos: Object.freeze({ x: 34, z: 38 }),
+      hostSpawn: Object.freeze({ x: 34, z: 50 }),
+      hostType: 'marine',
+      hostName: 'Caporal USCM Dietrich (Fusilier Section KAPPA)',
+      fogColor: 0x16051c,
+      fogDensity: 0.018,
+      ambientColor: 0x2e1065,
+      dirLightColor: 0xa855f7,
+      hemisphereSkyColor: 0x3b0764,
+      hemisphereGroundColor: 0x18052e,
+      prologueNarrativeSpeaker: "SECTION KAPPA USCM",
+      prologueNarrativeText: "Atmosphère saturée de sécrétions de résine et phéromones. Un fusilier colonial isolé cherche ses coéquipiers dans la nursery.",
+      lureLog: "[STIMULUS] Le Caporal Dietrich s'avance dans les boyaux de résine, fusil d'assaut pointé en avant.",
+      lureNarrativeSpeaker: "CPT DIETRICH",
+      lureNarrativeText: "Centre de commandement, ici Dietrich... Les cloisons sont couvertes d'une matière chitineuse. J'ai un contact biologique immobile à 12 heures.",
+      hatchLog: "[ÉCLOSION] L'ovomorphe se contracte dans la résine et entrouvre ses pétales organiques.",
+      leapLog: "[IMPLANTATION] Le Facehugger bondit à la gorge ! Il contourne le collet pare-éclats M3 du soldat et verrouille ses tentacules !",
+      bgVfx: 'hive_amber_glow'
+    }),
+    colony: Object.freeze({
+      id: 'colony',
+      name: "Colonie Hadley's Hope (Sous-sol Sub-Level 3)",
+      locationName: "Complexe Industriel et Drainage des Déchets — Hadley's Hope",
+      eggPos: Object.freeze({ x: 40, z: -42 }),
+      hostSpawn: Object.freeze({ x: 40, z: -30 }),
+      hostType: 'colonist',
+      hostName: 'Ouvrier colonial Russ Jorden (Salopette de Chantier)',
+      fogColor: 0x180f06,
+      fogDensity: 0.014,
+      ambientColor: 0x451a03,
+      dirLightColor: 0xf59e0b,
+      hemisphereSkyColor: 0x78350f,
+      hemisphereGroundColor: 0x1c1917,
+      prologueNarrativeSpeaker: "HADLEY'S HOPE / SOUS-SOL",
+      prologueNarrativeText: "Bruit de tuyauterie et condensation industrielle. Un ouvrier de maintenance colonial inspecte une anomalie de purge.",
+      lureLog: "[STIMULUS] L'ouvrier Jorden inspecte la gaine de drainage, intrigué par les pulsations de la coquille.",
+      lureNarrativeSpeaker: "RUSS JORDEN",
+      lureNarrativeText: "Allô la maintenance centrale ? C'est Jorden. C'est quoi ce truc organique qui bloque les canalisations au niveau -3 ?",
+      hatchLog: "[ÉCLOSION] Les valves de l'incubateur s'écartent dans les vapeurs de caloporteur.",
+      leapLog: "[IMPLANTATION] Le Facehugger bondit sur le visage de Russ Jorden ! Ses serres s'accrochent fermement à sa salopette de travail !",
+      bgVfx: 'colony_amber_beacon'
+    }),
+    starship: Object.freeze({
+      id: 'starship',
+      name: "Vaisseau Spatial USCSS Nostromo (Laboratoire Médical & Cryo)",
+      locationName: "Laboratoire Médical et Caissons Cryogéniques — Nostromo",
+      eggPos: Object.freeze({ x: -20, z: -35 }),
+      hostSpawn: Object.freeze({ x: -20, z: -23 }),
+      hostType: 'scientist',
+      hostName: 'Xénobiologiste Imani Kade (Blouse Médicale Nostromo)',
+      fogColor: 0x040810,
+      fogDensity: 0.012,
+      ambientColor: 0x0c4a6e,
+      dirLightColor: 0x38bdf8,
+      hemisphereSkyColor: 0x075985,
+      hemisphereGroundColor: 0x020617,
+      prologueNarrativeSpeaker: "MUTHUR 6000",
+      prologueNarrativeText: "Confinement médical actif. Température régulée. Le personnel médical examine l'échantillon d'ovomorphe en quarantaine.",
+      lureLog: "[STIMULUS] La xénobiologiste Imani Kade s'approche de la cuve d'incubation pour prélever une mesure.",
+      lureNarrativeSpeaker: "IMANI KADE",
+      lureNarrativeText: "Le capteur thermique enregistre une élévation métabolique soudaine. Je vais vérifier la chambre stérile.",
+      hatchLog: "[ÉCLOSION] L'incubateur stérile s'ouvre, libérant un nuage de gaz cryogénique et de spores.",
+      leapLog: "[IMPLANTATION] Le Facehugger s'échappe de la chambre et se plaque directement sur le visage d'Imani Kade !",
+      bgVfx: 'starship_clinical_frost'
+    })
+  });
+
+  // -------------------------------------------------------------
   // 8. ENTITIES WITH REAL HP COMBAT & COCOONING
   // -------------------------------------------------------------
   const ADULT_CASTE_PROFILES = Object.freeze({
@@ -29301,13 +29422,18 @@
       this.isCompleted = false;
     }
     init() {
+      const origin = window.gameInstance?.activeOrigin || STARTING_CAMPAIGN_ORIGINS.starship;
+      this.activeOrigin = origin;
       playerCreature.setAdultCaste('drone');
       if (window.gameInstance) window.gameInstance.hostProfile = null;
       playerCreature.setForm('egg');
       alarmSystem.setLevel(0);
       this.updateHUD();
-      this.log('[OVOMORPHE] La coquille perçoit chaleur, pression et vibrations.');
+      this.log(`[OVOMORPHE] La coquille perçoit chaleur et vibrations : ${origin.locationName}.`);
       window.HiveSystems?.setMission(1, 0, 'Calibrer les sens biologiques sur trois sources.');
+      if (origin.prologueNarrativeSpeaker && origin.prologueNarrativeText) {
+        window.HiveSystems?.narrative(origin.prologueNarrativeSpeaker, origin.prologueNarrativeText);
+      }
     }
     updateHUD() {
       document.getElementById('stage-badge').textContent = 'PHASE 1 : OVOMORPHE (INCUBATEUR)';
@@ -29336,12 +29462,13 @@
           audioManager.playHeartbeat();
           this.luredScientist = true;
           this.hostArrived = false;
-          this.log('[STIMULUS] La xénobiologiste Imani Kade s’approche de l’incubateur.');
+          const origin = this.activeOrigin || window.gameInstance?.activeOrigin || STARTING_CAMPAIGN_ORIGINS.starship;
+          this.log(origin.lureLog || '[STIMULUS] L’hôte s’approche de l’incubateur.');
           if (window.gameInstance && window.gameInstance.humans[0]) {
-            window.gameInstance.humans[0].lureTowards(playerCreature.x, playerCreature.z + 1.2);
+            window.gameInstance.humans[0].lureTowards(playerCreature.x, playerCreature.z);
           }
           window.HiveSystems?.updateObjective(1, 2, 'Attendre que la cible entre dans la fenêtre d’éclosion.');
-          window.HiveSystems?.narrative('IMANI KADE', 'Le capteur détecte un changement de pression. Je vais vérifier la chambre.');
+          window.HiveSystems?.narrative(origin.lureNarrativeSpeaker || 'HÔTE', origin.lureNarrativeText || 'Le capteur détecte un changement de pression.');
           this.updateHUD();
         };
         document.getElementById('btn-open-egg').onclick = () => {
@@ -29349,8 +29476,11 @@
           audioManager.playEggOpen();
           this.step = 'OPENED';
           playerCreature.openEgg();
-          window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0xf59e0b, 2.5);
+          const origin = this.activeOrigin || window.gameInstance?.activeOrigin || STARTING_CAMPAIGN_ORIGINS.starship;
+          const ringColor = origin.id === 'juggernaut' ? 0x38bdf8 : (origin.id === 'hive' ? 0xa855f7 : 0xf59e0b);
+          window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, ringColor, 2.5);
           window.HiveSystems?.updateObjective(1, 2, 'Libérer le Facehugger lorsque l’hôte est à portée.');
+          this.log(origin.hatchLog || '[ÉCLOSION] Les pétales s’ouvrent.');
           this.updateHUD();
           requestAnimationFrame(() => document.getElementById('btn-expel-facehugger')?.focus({ preventScroll: true }));
         };
@@ -29370,7 +29500,9 @@
     log(msg) { appendSensorLog(msg, 'bio'); }
     update() {
       if (!this.luredScientist || this.hostArrived || this.step !== 'CLOSED') return;
-      const host = window.gameInstance?.humans.find((human) => human.type === 'scientist');
+      const origin = this.activeOrigin || window.gameInstance?.activeOrigin;
+      const targetType = origin?.hostType || 'scientist';
+      const host = window.gameInstance?.humans.find((human) => (human.type === targetType || human.id === 1) && !human.isIncapacitated);
       if (!host) return;
       const distance = Math.hypot(host.x - playerCreature.x, host.z - playerCreature.z);
       if (
@@ -29551,6 +29683,10 @@
         this.implantProgress = this.isAttacking ? 15 : 0;
         audioManager.playFacehuggerGrip?.(closestHost.x, closestHost.z);
         window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0xd97706, 16, 0.11, 2.4);
+        const origin = window.gameInstance?.activeOrigin;
+        if (origin && closestHost.id === 1 && origin.leapLog) {
+          appendSensorLog(origin.leapLog, 'alert');
+        }
         window.HiveSystems?.updateObjective(2, 1, 'Maintenir l’agrippement jusqu’à implantation complète.');
         this.updateHUD();
       });
@@ -34453,7 +34589,8 @@
         difficulty: save?.difficulty || 'survivor',
         expandedLore: save?.expandedLore !== false,
         adultCaste: savedCaste,
-        hostProfile: savedHostProfile
+        hostProfile: savedHostProfile,
+        origin: save?.origin || 'random'
       };
       const savedAster = save?.campaignCharacters?.asterRho;
       const savedAttachments = Number(savedAster?.maskAttachments);
@@ -34477,8 +34614,9 @@
 
       playerCreature.clearMesh();
       playerCreature.form = 'egg';
-      playerCreature.x = -20;
-      playerCreature.z = -35;
+      const origin = this.activeOrigin || STARTING_CAMPAIGN_ORIGINS.starship;
+      playerCreature.x = origin.eggPos.x;
+      playerCreature.z = origin.eggPos.z;
       playerCreature.speed = 0.25;
       playerCreature.eggIsOpen = false;
       playerCreature.isLeaping = false;
@@ -34511,9 +34649,20 @@
 
     startCampaign(stage = 1) {
       const targetStage = Math.max(1, Math.min(5, Number(stage) || 1));
+      if (targetStage === 1) {
+        let originKey = this.campaignConfig.origin || 'random';
+        if (originKey === 'random' || !STARTING_CAMPAIGN_ORIGINS[originKey]) {
+          const keys = Object.keys(STARTING_CAMPAIGN_ORIGINS);
+          originKey = keys[Math.floor(Math.random() * keys.length)];
+        }
+        this.activeOrigin = STARTING_CAMPAIGN_ORIGINS[originKey];
+      }
       this.resetWorldState();
       if (targetStage === 1) {
         this.resetCampaignCharacters();
+        rendererEngine.applyOriginAtmosphere(this.activeOrigin);
+        rendererEngine.snapCameraTarget(playerCreature.x, playerCreature.z);
+        this.ensureStageOneHost(true);
       } else {
         playerCreature.setAdultCaste(this.campaignConfig.adultCaste || 'drone');
         this.hostProfile = this.campaignConfig.hostProfile || null;
@@ -34523,7 +34672,8 @@
       this.lastTimestamp = null;
       const log = document.getElementById('sensor-log');
       if (log) log.replaceChildren();
-      appendSensorLog('[SYSTÈME] Réseau sensoriel de campagne initialisé.', 'info');
+      const originLabel = this.activeOrigin ? this.activeOrigin.name : 'Nostromo';
+      appendSensorLog(`[SYSTÈME] Réseau sensoriel initialisé. Origine : ${originLabel}.`, 'info');
       this.loadStage(targetStage);
       this.setSystemPaused(false);
       audioManager.startAmbience();
@@ -34534,6 +34684,8 @@
       this.campaignActive = false;
       this.setSystemPaused(true);
       audioManager.stopAmbience();
+      this.activeOrigin = STARTING_CAMPAIGN_ORIGINS.starship;
+      rendererEngine.applyOriginAtmosphere(this.activeOrigin);
       this.resetWorldState();
       this.resetCampaignCharacters();
       this.ensureStageOneHost(true);
@@ -34560,12 +34712,14 @@
     }
 
     ensureStageOneHost(force = false) {
-      const hasHost = this.humans.some((human) => human.type === 'scientist' && !human.isIncapacitated);
+      const origin = this.activeOrigin || STARTING_CAMPAIGN_ORIGINS.starship;
+      const targetType = origin.hostType || 'scientist';
+      const hasHost = this.humans.some((human) => (human.type === targetType || human.id === 1) && !human.isIncapacitated);
       if (hasHost && !force) return;
       if (force) this.clearHumans();
-      const scientist = new HumanAI(1, 'scientist', -20, -10, 'Xénobiologiste Imani Kade');
-      scientist.createMesh();
-      this.humans.push(scientist);
+      const host = new HumanAI(1, targetType, origin.hostSpawn.x, origin.hostSpawn.z, origin.hostName);
+      host.createMesh();
+      this.humans.push(host);
     }
 
     setSystemPaused(paused) {

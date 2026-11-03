@@ -1,4 +1,4 @@
-﻿/*
+/*
  * HIVE ASCENSION - Procedural model factory
  * Three.js r128, browser global build, no bundler required.
  *
@@ -13,8 +13,19 @@
   const HUMAN_TYPE_ALIASES = Object.freeze({
     civilian: 'civilian',
     civil: 'civilian',
-    colonist: 'civilian',
-    worker: 'civilian',
+    spacesuit: 'spacesuit',
+    scaphandre: 'spacesuit',
+    astronaut: 'spacesuit',
+    eva: 'spacesuit',
+    kane: 'spacesuit',
+    derelict_suit: 'spacesuit',
+    colonist: 'colonist',
+    miner: 'colonist',
+    mineur: 'colonist',
+    jorden: 'colonist',
+    hadley_worker: 'colonist',
+    worker: 'colonist',
+    ouvrier: 'colonist',
     scientist: 'scientist',
     scientifique: 'scientist',
     researcher: 'scientist',
@@ -1330,6 +1341,62 @@
         return weapon;
       }
 
+      if (type === 'spacesuit') {
+        weapon.add(this._segment(
+          dark,
+          new T.Vector3(0, -0.22, 0),
+          new T.Vector3(0, 0.35, 0),
+          0.09,
+          0.12,
+          'eva_scanner_body',
+          10
+        ));
+        weapon.add(this._ellipsoid(
+          accent,
+          { x: 0.12, y: 0.06, z: 0.12 },
+          { x: 0, y: 0.4, z: 0 },
+          'eva_scanner_emitter',
+          10
+        ));
+        weapon.add(this._box(
+          metal,
+          { x: 0.28, y: 0.18, z: 0.08 },
+          { x: 0, y: 0.1, z: 0.12 },
+          'eva_telemetry_display',
+          true
+        ));
+        weapon.userData.equipmentType = 'evaScanner';
+        return weapon;
+      }
+
+      if (type === 'colonist') {
+        weapon.add(this._segment(
+          dark,
+          new T.Vector3(0, -0.3, 0),
+          new T.Vector3(0, 0.35, 0),
+          0.08,
+          0.09,
+          'mining_torch_handle',
+          8
+        ));
+        weapon.add(this._box(
+          metal,
+          { x: 0.22, y: 0.26, z: 0.18 },
+          { x: 0, y: 0.42, z: 0 },
+          'mining_torch_head',
+          true
+        ));
+        weapon.add(this._ellipsoid(
+          accent,
+          { x: 0.08, y: 0.08, z: 0.08 },
+          { x: 0, y: 0.52, z: 0 },
+          'mining_torch_arc',
+          8
+        ));
+        weapon.userData.equipmentType = 'miningTorch';
+        return weapon;
+      }
+
       const weaponProfiles = {
         guard: {
           receiverWidth: 0.26,
@@ -1699,6 +1766,28 @@
           shoulderX: 0.56,
           hipX: 0.29,
           helmetScale: 0.92
+        },
+        spacesuit: {
+          uniformColor: 0xd4d4d8,
+          armorColor: 0x64748b,
+          torso: { x: 0.72, y: 0.96, z: 0.44 },
+          pelvis: { x: 0.54, y: 0.35, z: 0.36 },
+          chest: { x: 1.15, y: 0.92, z: 0.32 },
+          pack: { x: 0.92, y: 1.12, z: 0.48 },
+          shoulderX: 0.72,
+          hipX: 0.36,
+          helmetScale: 1.25
+        },
+        colonist: {
+          uniformColor: 0x9a3412,
+          armorColor: 0xd97706,
+          torso: { x: 0.6, y: 0.86, z: 0.35 },
+          pelvis: { x: 0.48, y: 0.3, z: 0.31 },
+          chest: { x: 0.88, y: 0.65, z: 0.14 },
+          pack: { x: 0.52, y: 0.62, z: 0.22 },
+          shoulderX: 0.6,
+          hipX: 0.31,
+          helmetScale: 0.96
         },
         scientist: {
           uniformColor: 0x2563eb,
@@ -3379,9 +3468,9 @@
       const dark = this._material('darkMetal', { color: 0x111827 });
       const skin = this._material('skin', { color: type === 'synthetic' ? 0xe5e7eb : 0xb7795b });
       const visor = this._material('glass', {
-        color: type === 'incinerator' ? 0xfbbf24 : 0x67e8f9,
-        emissive: type === 'synthetic' ? 0x38bdf8 : 0x000000,
-        emissiveIntensity: type === 'synthetic' ? 0.55 : 0
+        color: type === 'incinerator' ? 0xfbbf24 : (type === 'spacesuit' ? 0xf59e0b : 0x67e8f9),
+        emissive: type === 'synthetic' ? 0x38bdf8 : (type === 'spacesuit' ? 0xd97706 : 0x000000),
+        emissiveIntensity: type === 'synthetic' ? 0.55 : (type === 'spacesuit' ? 0.45 : 0)
       });
       const accent = this._material(
         type === 'incinerator' ? 'emissiveAmber' : 'emissiveGreen',
@@ -3542,6 +3631,10 @@
           6
         ));
       }
+      if (type === 'spacesuit') {
+        helmet.add(this._box(accent, { x: 0.12, y: 0.12, z: 0.16 }, { x: -0.42 * profile.helmetScale, y: 0.3, z: 0.26 }, 'eva_headlight_l'));
+        helmet.add(this._box(accent, { x: 0.12, y: 0.12, z: 0.16 }, { x: 0.42 * profile.helmetScale, y: 0.3, z: 0.26 }, 'eva_headlight_r'));
+      }
       root.add(helmet);
 
       root.add(this._box(
@@ -3551,6 +3644,19 @@
         'equipment_pack',
         true
       ));
+      if (type === 'spacesuit') {
+        for (let side = -1; side <= 1; side += 2) {
+          root.add(this._segment(
+            armor,
+            new T.Vector3(side * 0.22, torsoY - 0.3, -(profile.torso.z + profile.pack.z * 0.55)),
+            new T.Vector3(side * 0.22, torsoY + 0.4, -(profile.torso.z + profile.pack.z * 0.55)),
+            0.11,
+            0.11,
+            `eva_o2_tank_${side < 0 ? 'l' : 'r'}`,
+            10
+          ));
+        }
+      }
       root.add(this._box(
         accent,
         { x: 0.16, y: 0.1, z: 0.04 },

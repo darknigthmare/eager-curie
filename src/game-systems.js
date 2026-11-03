@@ -113,12 +113,13 @@
       return this.normalize(next);
     }
 
-    startNew(difficulty, expandedLore) {
+    startNew(difficulty, expandedLore, origin = 'random') {
       const previous = this.read();
       return this.write({
         ...this.defaultSave,
         difficulty,
         expandedLore,
+        origin,
         campaignStarted: true,
         unlockedCodex: previous?.unlockedCodex || ['ovomorphe'],
         completedEndings: previous?.completedEndings || []
@@ -916,10 +917,12 @@
       const boot = document.getElementById('boot-screen');
       const prologue = document.getElementById('prologue-screen');
       const difficulty = document.getElementById('difficulty-select');
+      const originSelect = document.getElementById('origin-select');
       const expandedLore = document.getElementById('expanded-lore-toggle');
 
       document.getElementById('btn-new-campaign')?.addEventListener('click', () => {
-        const save = this.saveManager.startNew(difficulty?.value || 'survivor', !!expandedLore?.checked);
+        const originVal = originSelect?.value || 'random';
+        const save = this.saveManager.startNew(difficulty?.value || 'survivor', !!expandedLore?.checked, originVal);
         this.game?.configureCampaign?.(save);
         this.hideLayer(boot, false);
         this.showLayer(prologue, false);

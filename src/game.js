@@ -7496,6 +7496,246 @@
       osc.stop(now + 1.4);
     }
   }
+    // Chantier 33 : Servomoteur de Caméra de Surveillance CCTV Seegson / Weyland (Alien: Isolation)
+    playCameraServoPan(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 14);
+      if (panNode === false) return;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1180, now);
+      osc.frequency.exponentialRampToValueAtTime(940, now + 0.18);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1050, now);
+      filter.Q.setValueAtTime(4.2, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.065, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(filter);
+      filter.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      osc.start(now);
+      osc.stop(now + 0.18);
+    }
+
+    // Chantier 33 : Bip d'Alerte Optique Caméra de Sécurité (Alien: Isolation)
+    playCameraAlertBeep(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 22);
+      if (panNode === false) return;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      osc1.type = 'square';
+      osc2.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(2480, now);
+      osc1.frequency.setValueAtTime(3120, now + 0.06);
+      osc2.frequency.setValueAtTime(1240, now);
+      osc2.frequency.setValueAtTime(1560, now + 0.06);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      osc1.start(now); osc2.start(now);
+      osc1.stop(now + 0.15); osc2.stop(now + 0.15);
+    }
+
+    // Chantier 23 : Servomoteur Pas-à-Pas et Pivotement Tourelle UA 571-C (Aliens 1986)
+    playTurretSwivel(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 18);
+      if (panNode === false) return;
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(420, now);
+      osc.frequency.linearRampToValueAtTime(360, now + 0.16);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(390, now);
+      filter.Q.setValueAtTime(3.5, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      osc.connect(filter);
+      filter.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      osc.start(now);
+      osc.stop(now + 0.16);
+    }
+
+    // Chantier 23 : Bip de Verrouillage Cible Radar Tourelle UA 571-C (Aliens 1986)
+    playTurretLock(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 20);
+      if (panNode === false) return;
+      [0, 0.08].forEach((delay) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(1760, now + delay);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.18, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.06);
+        osc.connect(gain);
+        if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+        else { gain.connect(this.sfxGain); }
+        osc.start(now + delay);
+        osc.stop(now + delay + 0.06);
+      });
+    }
+
+    // Chantier 40 : Claquement Mécanique Clavier Terminal Seegson CRT (Alien: Isolation)
+    playTerminalKeyboardClick(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 10);
+      if (panNode === false) return;
+      const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.035), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.3));
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(2200, now);
+      filter.Q.setValueAtTime(2.8, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.16, now);
+      src.connect(filter);
+      filter.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      src.start(now);
+    }
+
+    // Chantier 41 : Ronronnement Électrique Haute Tension Transformateur Industriel (Alien 1979)
+    playHighVoltageHum(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 16);
+      if (panNode === false) return;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc2.type = 'sine';
+      osc1.frequency.setValueAtTime(60, now);
+      osc2.frequency.setValueAtTime(120, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      osc1.start(now); osc2.start(now);
+      osc1.stop(now + 0.45); osc2.stop(now + 0.45);
+    }
+
+    // Chantier 42 : Vérin Hydraulique Sous Pression & Actionneur Industriel (Aliens 1986)
+    playHydraulicServo(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 15);
+      if (panNode === false) return;
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.32);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(800, now);
+      filter.frequency.exponentialRampToValueAtTime(350, now + 0.32);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      osc.connect(filter);
+      filter.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      osc.start(now);
+      osc.stop(now + 0.32);
+    }
+
+    // Chantier 43 : Pas Mécanique Lourd d'Automate / Working Joe Seegson (Alien: Isolation)
+    playAutomatonFootstep(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 16);
+      if (panNode === false) return;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(135, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.16);
+      const oscRing = ctx.createOscillator();
+      oscRing.type = 'triangle';
+      oscRing.frequency.setValueAtTime(560, now);
+      oscRing.frequency.exponentialRampToValueAtTime(220, now + 0.12);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      const ringGain = ctx.createGain();
+      ringGain.gain.setValueAtTime(0.07, now);
+      ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain);
+      oscRing.connect(ringGain);
+      ringGain.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      osc.start(now); oscRing.start(now);
+      osc.stop(now + 0.16); oscRing.stop(now + 0.16);
+    }
+
+    // Chantier 44 : Fuite Pressurisée de Fluide Blanc Synthétique Weyland / Seegson (Alien 1979 / Isolation)
+    playSyntheticFluidLeak(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 14);
+      if (panNode === false) return;
+      const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.32), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.5));
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1600, now);
+      filter.frequency.exponentialRampToValueAtTime(780, now + 0.32);
+      filter.Q.setValueAtTime(2.2, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.26, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      src.connect(filter);
+      filter.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
+      else { gain.connect(this.sfxGain); }
+      src.start(now);
+    }
 
   const audioManager = new AudioManager();
 
@@ -9562,16 +9802,17 @@
         }
       });
 
-      // Chantier 28 : Stations Médicales Murales Medikit Weyland-Yutani
+      // Chantier 28 : Stations Médicales Murales Medikit Weyland-Yutani (Ancrage mural flush)
       this.medikits = [
-        { id: 'med_cryo', name: 'Station Médicale Cryo', x: -42, z: -26, uses: 3, isSabotaged: false, mesh: null },
-        { id: 'med_armory', name: 'Station Médicale Armurerie', x: 38, z: -26, uses: 3, isSabotaged: false, mesh: null },
-        { id: 'med_corridor', name: 'Station Médicale Couloir Central', x: -16, z: 2, uses: 3, isSabotaged: false, mesh: null }
+        { id: 'med_cryo', name: 'Station Médicale Cryo', x: -42, z: -24.1, rotY: Math.PI, uses: 3, isSabotaged: false, mesh: null },
+        { id: 'med_armory', name: 'Station Médicale Armurerie', x: 38, z: -24.1, rotY: Math.PI, uses: 3, isSabotaged: false, mesh: null },
+        { id: 'med_corridor', name: 'Station Médicale Couloir Central', x: -14.1, z: 2, rotY: Math.PI / 2, uses: 3, isSabotaged: false, mesh: null }
       ];
       this.medikits.forEach((med) => {
         const mesh = window.HiveModelFactory?.createIndustrialProp?.('medikit');
         if (mesh) {
           mesh.position.set(med.x, 0, med.z);
+          if (med.rotY) mesh.rotation.y = med.rotY;
           rendererEngine.propsGroup.add(mesh);
           med.mesh = mesh;
         }
@@ -9632,18 +9873,24 @@
       };
       this.floatingAcidOrbs = [];
 
-      // Chantier 33 : Caméras de Sécurité Motorisées CRT Seegson / Weyland-Yutani (Alien: Isolation)
+      // Chantier 33 : Caméras de Sécurité Motorisées CRT Seegson / Weyland-Yutani (Alien: Isolation - Ancrage mural 1:1)
       this.securityCameras = [
-        { id: 'cam_nord', name: 'Caméra Couloir Nord', x: 0, z: -22, baseAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
-        { id: 'cam_airlock', name: 'Caméra Sas Est EVA', x: 52, z: 0, baseAngle: 0, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
-        { id: 'cam_armory', name: 'Caméra Armurerie', x: 28, z: -45, baseAngle: Math.PI, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false }
+        { id: 'cam_nord', name: 'Caméra Couloir Nord', x: -14.1, z: -22, wallAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_airlock', name: 'Caméra Sas Est EVA', x: 55.0, z: -17.1, wallAngle: 0, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_armory', name: 'Caméra Armurerie', x: 16.1, z: -45, wallAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_reactor', name: 'Caméra Réacteur Mantis', x: -16.1, z: 35, wallAngle: -Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_nursery', name: 'Caméra Ruche Nurserie', x: 16.1, z: 35, wallAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false }
       ];
       this.securityCameras.forEach((cam) => {
         const mesh = window.HiveModelFactory?.createSecurityCamera?.();
         if (mesh) {
           mesh.position.set(cam.x, 3.8, cam.z);
+          mesh.rotation.y = cam.wallAngle || 0;
           rendererEngine.propsGroup.add(mesh);
           cam.mesh = mesh;
+          cam.swivelHead = mesh.getObjectByName('camera_swivel_head');
+          cam.fovCone = mesh.getObjectByName('camera_fov_cone');
+          cam.sensorMesh = mesh.getObjectByName('camera_starlight_sensor');
         }
       });
 
@@ -13964,37 +14211,58 @@
       for (const turret of this.sentryTurrets) {
         if (turret.isDestroyed || turret.ammo <= 0) continue;
         turret.burstCooldown = Math.max(0, turret.burstCooldown - safeDelta);
+        turret.recoil = Math.max(0, (turret.recoil || 0) - safeDelta * 4.8);
 
-        if (playerCreature.isInVent || playerCreature.isCeilingProwling) continue;
+        // Recul amorti des canons jumelés
+        const b1 = turret.barrel1 || turret.mesh?.getObjectByName('turret_barrel_1');
+        const b2 = turret.barrel2 || turret.mesh?.getObjectByName('turret_barrel_2');
+        if (b1) b1.position.z = -turret.recoil * 0.16;
+        if (b2) b2.position.z = -turret.recoil * 0.16;
 
+        const head = turret.swivelHead || turret.mesh?.getObjectByName('turret_swivel_head');
+        const canTarget = !playerCreature.isInVent && !playerCreature.isCeilingProwling;
         const dist = Math.hypot(playerCreature.x - turret.x, playerCreature.z - turret.z);
-        if (dist > 16.5) continue;
 
-        const targetAngle = Math.atan2(playerCreature.x - turret.x, playerCreature.z - turret.z);
-        const diff = Math.abs((((targetAngle - turret.angle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
-
-        if (diff <= Math.PI * 0.35 && this.hasLineOfSight(turret.x, turret.z, playerCreature.x, playerCreature.z)) {
-          if (turret.mesh) {
-            const head = turret.mesh.getObjectByName('turret_swivel_head');
+        let isLocked = false;
+        if (canTarget && dist <= 16.5) {
+          const targetAngle = Math.atan2(playerCreature.x - turret.x, playerCreature.z - turret.z);
+          const diff = Math.abs((((targetAngle - turret.angle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+          // Cône d'acquisition radar 70 degrés
+          if (diff <= Math.PI * 0.38 && this.hasLineOfSight(turret.x, turret.z, playerCreature.x, playerCreature.z)) {
+            isLocked = true;
             if (head) head.rotation.y = targetAngle - turret.angle;
-          }
-          if (turret.burstCooldown <= 0) {
-            turret.burstCooldown = 0.22;
-            const rounds = Math.min(turret.ammo, 6);
-            turret.ammo -= rounds;
-            audioManager.playSentryBurst?.(turret.x, turret.z);
-            rendererEngine.addScreenShake?.(0.12, 0.08);
-            window.HiveSystems?.vfx?.burst?.(turret.x, turret.z, 0xf59e0b, 12, 0.1, 0.8);
-            window.HiveSystems?.vfx?.beam?.(turret.x, 0.95, turret.z, playerCreature.x, 1.2, playerCreature.z, 0xef4444);
-
-            playerCreature.takeDamage?.(12, turret);
-            window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.2, playerCreature.z, `-12 MITRAILLEUSE UA 571-C (${turret.ammo})`, '#ef4444', true);
-
-            if (turret.ammo <= 0) {
-              showToast(`${turret.name} : MUNITIONS ÉPUISÉES (000 CART.) ! Clac d'enrayement.`);
-              audioManager.playSyntheticGlitchedVoice?.(turret.x, turret.z);
-              window.HiveSystems?.vfx?.floatingText?.(turret.x, 1.8, turret.z, '000 RDS - EMPTY', '#ef4444', true);
+            if (!turret.wasLocked) {
+              turret.wasLocked = true;
+              audioManager.playTurretLock?.(turret.x, turret.z);
             }
+            if (turret.burstCooldown <= 0) {
+              turret.burstCooldown = 0.22;
+              turret.recoil = 1.0;
+              const rounds = Math.min(turret.ammo, 6);
+              turret.ammo -= rounds;
+              audioManager.playSentryBurst?.(turret.x, turret.z);
+              rendererEngine.addScreenShake?.(0.12, 0.08);
+              window.HiveSystems?.vfx?.burst?.(turret.x, turret.z, 0xf59e0b, 12, 0.1, 0.8);
+              window.HiveSystems?.vfx?.beam?.(turret.x, 0.95, turret.z, playerCreature.x, 1.2, playerCreature.z, 0xef4444);
+
+              playerCreature.takeDamage?.(12, turret);
+              window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.2, playerCreature.z, `-12 MITRAILLEUSE UA 571-C (${turret.ammo})`, '#ef4444', true);
+
+              if (turret.ammo <= 0) {
+                showToast(`${turret.name} : MUNITIONS ÉPUISÉES (000 CART.) ! Clac d'enrayement.`);
+                audioManager.playSyntheticGlitchedVoice?.(turret.x, turret.z);
+                window.HiveSystems?.vfx?.floatingText?.(turret.x, 1.8, turret.z, '000 RDS - EMPTY', '#ef4444', true);
+              }
+            }
+          }
+        }
+
+        if (!isLocked) {
+          turret.wasLocked = false;
+          turret.idleTimer = (turret.idleTimer || 0) + safeDelta * 1.15;
+          if (head) head.rotation.y = Math.sin(turret.idleTimer) * 0.44;
+          if (Math.abs(Math.sin(turret.idleTimer)) < 0.038) {
+            audioManager.playTurretSwivel?.(turret.x, turret.z);
           }
         }
       }
@@ -14189,28 +14457,40 @@
       this.securityCameras.forEach((cam) => {
         if (cam.isDestroyed || !cam.mesh) return;
         cam.sweep += safeDelta * 0.65;
-        const currentAngle = cam.baseAngle + Math.sin(cam.sweep) * 0.75;
-        cam.mesh.rotation.y = currentAngle;
+        const localPan = Math.sin(cam.sweep) * 0.72;
+        const currentAngle = (cam.wallAngle || 0) + localPan;
 
-        // Cône de vision de 11 mètres, ouverture 45 degrés
+        // Rotation motorisée découplée de la tête pivotante et inclinaison tilt réactive
+        const head = cam.swivelHead || cam.mesh.getObjectByName('camera_swivel_head');
+        if (head) {
+          head.rotation.y = localPan;
+          head.rotation.x = -0.12 + (cam.alertTimer > 0 ? 0.22 : 0.0);
+        }
+
+        // Bruitage subtil de servomoteur pas-à-pas aux inversions de balayage
+        if (Math.abs(Math.cos(cam.sweep)) < 0.038) {
+          audioManager.playCameraServoPan?.(cam.x, cam.z);
+        }
+
+        // Cône de vision de 11 mètres, ouverture 48 degrés
         const dx = playerCreature.x - cam.x;
         const dz = playerCreature.z - cam.z;
         const dist = Math.hypot(dx, dz);
         if (dist <= 11 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
           const angleToPlayer = Math.atan2(dx, dz);
           const angleDiff = Math.abs((((angleToPlayer - currentAngle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
-          if (angleDiff <= 0.45) {
+          if (angleDiff <= 0.48) {
             cam.alertTimer = (cam.alertTimer || 0) + safeDelta;
-            if (cam.alertTimer >= 0.8 && cam.state !== 'alert') {
+            if (cam.alertTimer >= 0.75 && cam.state !== 'alert') {
               cam.state = 'alert';
-              audioManager.playSecurityAlarmBeep?.(cam.x, cam.z);
+              audioManager.playCameraAlertBeep?.(cam.x, cam.z);
               window.HiveSystems?.vfx?.ring?.(cam.x, cam.z, 0xef4444, 9.0);
               showToast(`ALERTE CAMÉRA : ${cam.name} a détecté l'organisme !`);
               window.alarmSystem?.setLevel(Math.max((window.alarmSystem.level || 0), 3));
 
-              // Alerte les patrouilles les plus proches vers la caméra
+              // Convergence tactique de tous les combattants de sécurité vers la caméra
               (window.gameInstance?.humans || []).forEach((h) => {
-                if (['guard', 'marine', 'synthetic'].includes(h.type) && !h.isIncapacitated) {
+                if (h.isCombatant && !h.isIncapacitated) {
                   h.aiState = 'CHASE';
                   h.targetPos = { x: cam.x, z: cam.z };
                 }
@@ -14219,6 +14499,25 @@
           } else {
             cam.alertTimer = Math.max(0, (cam.alertTimer || 0) - safeDelta * 0.5);
             if (cam.alertTimer <= 0) cam.state = 'idle';
+          }
+        }
+
+        // VFX diégétique volumétrique : Cône semi-transparent vert -> ambre -> rouge clignotant
+        const cone = cam.fovCone || cam.mesh.getObjectByName('camera_fov_cone');
+        const led = cam.sensorMesh || cam.mesh.getObjectByName('camera_starlight_sensor');
+        if (cone && cone.material) {
+          if (cam.state === 'alert') {
+            cone.material.color.setHex(0xef4444);
+            cone.material.opacity = 0.22 + Math.sin(cam.sweep * 8) * 0.1;
+            if (led?.material) { led.material.color.setHex(0xef4444); led.material.emissive?.setHex(0xef4444); }
+          } else if (cam.alertTimer > 0) {
+            cone.material.color.setHex(0xf59e0b);
+            cone.material.opacity = 0.13 + (cam.alertTimer / 0.75) * 0.08;
+            if (led?.material) { led.material.color.setHex(0xf59e0b); led.material.emissive?.setHex(0xf59e0b); }
+          } else {
+            cone.material.color.setHex(0x22c55e);
+            cone.material.opacity = 0.065 + Math.sin(cam.sweep * 2) * 0.025;
+            if (led?.material) { led.material.color.setHex(0x22c55e); led.material.emissive?.setHex(0x22c55e); }
           }
         }
       });
@@ -20894,14 +21193,24 @@
       const t = performance.now() * 0.003;
       (this.wave31Props || []).forEach((p, idx) => {
         if (!p.mesh) return;
+        const animMesh = p.mesh.children?.find((c) => c.name === p.anim);
         if (p.isTriggered) {
           p.resetTimer -= safeDelta;
-          const animMesh = p.mesh.children?.find((c) => c.name === p.anim);
           if (animMesh) {
             if (p.spin) animMesh.rotation.y += safeDelta * 9.0;
             else animMesh.position.y += Math.sin(t * 6 + idx) * safeDelta * 0.6;
           }
           if (p.resetTimer <= 0) p.isTriggered = false;
+        } else if (animMesh) {
+          // Animation mécanique continue d'ambiance industrielle (turbines, ventilateurs, tambours, antennes, pistons)
+          if (p.spin) {
+            animMesh.rotation.y += safeDelta * 1.5;
+          } else if (p.anim && (p.anim.includes('fan') || p.anim.includes('blade') || p.anim.includes('rotor') || p.anim.includes('turbine') || p.anim.includes('centrifuge') || p.anim.includes('dish') || p.anim.includes('drum'))) {
+            animMesh.rotation.y += safeDelta * 2.0;
+          } else if (p.anim && (p.anim.includes('rod') || p.anim.includes('piston') || p.anim.includes('needle') || p.anim.includes('indicator') || p.anim.includes('arm'))) {
+            if (p.baseAnimY === undefined) p.baseAnimY = animMesh.position.y;
+            animMesh.position.y = p.baseAnimY + Math.sin(t * 2.2 + idx * 1.4) * 0.06;
+          }
         }
         if (!p.mesh.visible) return;
         // Audit QA #102 : Pulsation émissive diégétique (voyants, fluides et métal en fusion)
@@ -26477,6 +26786,23 @@
       return primary;
     }
 
+    isSynthetic() {
+      return this.isCyberHound || [
+        'synthetic', 'android', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid',
+        'weyland_cyber_hound', 'cyberhound', 'cyber_hound',
+        'synthetic_trooper', 'automaton_peacekeeper', 'automaton_worker', 'automaton_igniter', 'automaton_shock_warden',
+        'automaton_miner', 'automaton_bombardier', 'automaton_bulwark', 'automaton_huntsman', 'automaton_spider',
+        'argos_synthetic', 'security_drone', 'seegson_security_synth', 'combat_synth',
+        'working_joe', 'working_joe_hazmat', 'working_joe_electric', 'seegson_hazmat_joe', 'seegson_security_joe',
+        'seegson_industrial_joe', 'weyland_strike_synth', 'weyland_combat_android', 'uscm_synthetic_bishop',
+        'weyland_corporate_synth_guard', 'weyland_bio_containment_synth', 'weyland_heavy_incinerator_synth',
+        'weyland_synth_overseer', 'weyland_android_infiltrator', 'weyland_praetorian_droid', 'weyland_combat_medic_synth',
+        'weyland_exec_security_synth', 'weyland_nano_repair_synth', 'weyland_sublevel_heavy_sentry_synth',
+        'weyland_elite_combat_synth_centurion', 'weyland_apex_synthetic_executioner', 'weyland_strike_synth_infiltrator',
+        'weyland_sublevel_hunter_synth', 'weyland_sublevel_riot_infiltrator', 'weyland_sublevel_breach_warden',
+        'weyland_elite_infiltrator_centurion'
+      ].includes(this.type);
+    }
     takeDamage(dmg, attacker = null) {
       if (this.isCocooned || this.isIncapacitated) return false;
       let appliedDamage = Math.max(0, dmg);
@@ -26541,8 +26867,9 @@
         return false;
       }
 
-      // Chantier 34 : Vulnérabilité 1:1 canon — Déflagration thermobarique du réservoir dorsal M240
-      if (['cleaner', 'incinerator'].includes(this.type) && attacker && !this.tankExploded) {
+      // Chantier 34 : Vulnérabilité 1:1 canon — Déflagration thermobarique du réservoir dorsal M240 / napalm
+      const isFlamer = ['cleaner', 'incinerator', 'thermal_operator', 'automaton_igniter', 'weyland_heavy_incinerator_synth', 'uscm_heavy_flamer', 'uscm_smartgun_flamer', 'uscm_combat_flamethrower_sapper', 'weyland_mutagen_flamer_specialist'].includes(this.type);
+      if (isFlamer && attacker && !this.tankExploded) {
         const humanFacing = this.mesh ? this.mesh.rotation.y : 0;
         const angleToAttacker = Math.atan2(attacker.x - this.x, attacker.z - this.z);
         const angleDiff = Math.abs((((angleToAttacker - humanFacing) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
@@ -26555,9 +26882,9 @@
           window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf97316, 45, 0.3, 2.8);
           window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xff8a16, 35, 0.25, 2.2);
           window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0xf97316, 8.5);
-          window.HiveSystems?.vfx?.floatingText?.(this.x, 3.4, this.z, 'DÉFLAGRATION DU RÉSERVOIR DORSAL M240 !', '#f97316', true);
-          showToast(`POINT FAIBLE EXPLOITÉ (1:1 LORE) : Le réservoir de napalm de ${this.name} a explosé dans son dos !`);
-          appendSensorLog(`[EXPLOSION] Réservoir de napalm dorsal M240 éventré par frappe arrière. Déflagration thermobarique.`, 'alert');
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 3.4, this.z, 'DÉFLAGRATION DU RÉSERVOIR DORSAL !', '#f97316', true);
+          showToast(`POINT FAIBLE EXPLOITÉ (1:1 LORE) : Le réservoir de carburant de ${this.name} a explosé dans son dos !`);
+          appendSensorLog(`[EXPLOSION] Réservoir inflammable dorsal perforé par frappe arrière. Déflagration en chaîne.`, 'alert');
 
           const nearby = (window.gameInstance?.humans || []).filter((h) => h !== this && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 7.5);
           nearby.forEach((victim) => {
@@ -26578,7 +26905,7 @@
 
       // 1. Flash émissif vif sur l'ensemble des maillages de l'entité
       const isSteel = ['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type);
-      const isSynth = this.type === 'synthetic' || this.type === 'android' || isSteel || this.isCyberHound || ['seegson_hazmat_joe', 'seegson_security_joe', 'seegson_industrial_joe', 'weyland_strike_synth', 'weyland_combat_android', 'uscm_synthetic_bishop', 'weyland_corporate_synth_guard', 'weyland_bio_containment_synth'].includes(this.type);
+      const isSynth = this.isSynthetic();
       const flashColor = isSynth ? 0xffffff : 0xef233c;
       const trackedMaterials = [];
       this.mesh?.traverse((child) => {
@@ -26621,9 +26948,14 @@
       }
 
       // 3. Effets de particules, texte de combat 3D et secousse
-      const bloodColor = isSynth ? 0xe2e8f0 : 0xb91c1c;
+      const bloodColor = isSynth ? 0xf8fafc : 0xb91c1c;
       window.HiveSystems?.vfx?.burst(this.x, this.z, bloodColor, 14, 0.12, 1.4);
-      window.HiveSystems?.vfx?.fleshImpact?.(this.x, this.z, bloodColor, 16);
+      if (isSynth) {
+        audioManager.playSyntheticFluidLeak?.(this.x, this.z);
+        window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 8, 0.08, 0.8);
+      } else {
+        window.HiveSystems?.vfx?.fleshImpact?.(this.x, this.z, bloodColor, 16);
+      }
       window.HiveSystems?.vfx?.floatingText(
         this.x,
         3.2,
@@ -26649,7 +26981,7 @@
         this.skimmerDroneMesh = null;
       }
       const isSteel = ['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type);
-      const isSynth = this.type === 'synthetic' || this.type === 'android' || isSteel || ['seegson_hazmat_joe', 'seegson_security_joe', 'seegson_industrial_joe', 'weyland_strike_synth', 'weyland_combat_android', 'uscm_synthetic_bishop', 'weyland_corporate_synth_guard', 'weyland_bio_containment_synth'].includes(this.type);
+      const isSynth = this.isSynthetic();
       if (isSynth) {
         if (this.mesh) {
           this.mesh.rotation.z = Math.PI / 2;
@@ -26657,7 +26989,9 @@
           this.mesh.scale.y = 0.65;
         }
         audioManager.playSyntheticGlitchedVoice?.(this.x, this.z);
+        audioManager.playSyntheticFluidLeak?.(this.x, this.z);
         window.HiveSystems?.vfx?.burst(this.x, this.z, 0xf8fafc, 26, 0.18, 1.8);
+        window.HiveSystems?.vfx?.burst(this.x, this.z, 0x38bdf8, 14, 0.1, 1.0);
         if (isSteel) {
           const steelQuotes = [
             "Steel Team : Échec de la capture du spécimen... Protocole Weyland-Yutani compromis...",
@@ -26676,7 +27010,7 @@
           ];
           const quote = synthQuotes[Math.floor(Math.random() * synthQuotes.length)];
           window.HiveSystems?.narrative('ROOK-7 (DÉFAILLANT)', quote, 5000);
-          showToast('SYNTHÉTIQUE SECTIONNÉ : Fuite de fluide blanc laiteux. Incompatible avec Facehuggers.');
+          showToast(`SYNTHÉTIQUE NEUTRALISÉ : Déconnexion de l'unité ${this.name} et déversement de fluide de synthèse.`);
           appendSensorLog(`[SYNTHÉTIQUE] ${this.name} démembré. Châssis inerte, fluide de synthèse au sol.`, 'bio');
         }
         return;
@@ -26866,7 +27200,8 @@
         combatTarget.z
       );
 
-      const isCombatant = !this.isInfected && [
+      const isSyntheticEntity = this.isSynthetic();
+      const isCombatant = !this.isInfected && (isSyntheticEntity || [
         'guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator',
         'commando', 'android', 'synthetic', 'powerloader', 'exosuit', 'weyland_commando_mk2',
         'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid',
@@ -26883,13 +27218,11 @@
         'uscm_heavy_plasma_gunner', 'uscm_orbital_drop_medic', 'weyland_black_goo_specialist', 'weyland_exec_security_synth',
         'uscm_combat_cyberneticist', 'uscm_recon_drone_handler', 'weyland_subzero_cryo_trooper', 'weyland_nano_repair_synth',
         'uscm_combat_synapse_operator', 'uscm_orbital_defense_gunner', 'weyland_apex_containment_specialist', 'weyland_sublevel_heavy_sentry_synth',
-        'uscm_point_defense_technician', 'uscm_heavy_mortar_spotter', 'weyland_genetic_security_enforcer', 'weyland_cryo_containment_mech_suit', 'uscm_forward_sensor_operator', 'uscm_heavy_anti_armor_gunner', 'weyland_sublevel_containment_marshal', 'weyland_elite_combat_synth_centurion'
-      ].includes(this.type);
-      const isSyntheticEntity = [
-        'synthetic', 'android', 'weyland_steel_team_synth', 'steelteam',
-        'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound',
-        'cyberhound', 'cyber_hound'
-      ].includes(this.type);
+        'uscm_point_defense_technician', 'uscm_heavy_mortar_spotter', 'weyland_genetic_security_enforcer', 'weyland_cryo_containment_mech_suit', 'uscm_forward_sensor_operator', 'uscm_heavy_anti_armor_gunner', 'weyland_sublevel_containment_marshal', 'weyland_elite_combat_synth_centurion',
+        'atarax_controller', 'colonial_raider', 'seegson_security', 'upp_vanguard', 'weyland_yutani_commando', 'capture_commando', 'gyro_gunner', 'orbital_rifleman', 'security_agent', 'thermal_operator',
+        'automaton_bombardier', 'automaton_bulwark', 'automaton_huntsman', 'automaton_igniter', 'automaton_peacekeeper', 'automaton_spider', 'argos_synthetic', 'security_drone',
+        'synthetic_trooper', 'automaton_worker', 'automaton_shock_warden', 'automaton_miner', 'working_joe', 'working_joe_hazmat', 'working_joe_electric', 'seegson_security_synth', 'combat_synth'
+      ].includes(this.type));
       const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
       const currentStageStep = window.gameInstance?.currentStage?.step;
       const inVentStealth = combatTarget === playerCreature && playerCreature.isInVent;
@@ -26959,6 +27292,28 @@
       const attackRangeDist = inDarkness ? (isPlayerProwling ? 5.5 : 9) : (isPlayerProwling ? 7.5 : 12);
       const shootDist = inDarkness ? (isPlayerProwling ? 6.5 : 10) : (isPlayerProwling ? 9.5 : 14);
 
+      // Fuite et panique des civils et scientifiques désarmés à la vue du prédateur
+      if (!this.isLured && !isCombatant && biologicalTargetDetectable && targetInVisualField && distToPlayer <= 16) {
+        this.panicTimer = (this.panicTimer || 0) + safeDelta;
+        if (this.panicTimer >= 2.2) {
+          this.panicTimer = 0;
+          const civilianScreams = [
+            "NON ! NE M'APPROCHEZ PAS !",
+            "AU SECOURS ! UNE CRÉATURE DANS LA STATION !",
+            "SÉCURITÉ ! ALERTE BRÈCHE !",
+            "CONFINEMENT ROMPU ! IL ARRIVE !"
+          ];
+          const scream = civilianScreams[Math.floor(Math.random() * civilianScreams.length)];
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 2.7, this.z, scream, '#f87171', true);
+        }
+        const panicAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
+        const fleeStepX = this.x + Math.cos(panicAngle) * 4.8;
+        const fleeStepZ = this.z + Math.sin(panicAngle) * 4.8;
+        if (!stationMap.checkCollision(fleeStepX, fleeStepZ)) {
+          this.targetPos = { x: fleeStepX, z: fleeStepZ };
+          this.aiState = 'FLEE';
+        }
+      }
       if (!this.isLured && isCombatant && biologicalTargetDetectable && targetInVisualField && distToPlayer <= maxDetectionDist) {
         this.aiState = hasLineOfSight && distToPlayer <= attackRangeDist ? 'ATTACK' : 'CHASE';
         this.targetPos = { x: combatTarget.x, z: combatTarget.z };

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * HIVE ASCENSION - Procedural model factory
  * Three.js r128, browser global build, no bundler required.
  *
@@ -7067,20 +7067,69 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       } else if (normalizedType === 'terminal' || normalizedType === 'seegson_terminal') {
         // Chantier 33 & 40 : Terminal mural Seegson / Weyland-Yutani 9 pouces CRT (Alien: Isolation)
         const casing = this._material('synthetic', { color: 0x94a3b8, roughness: 0.42, metalness: 0.2 });
-        const crtAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 1.6 });
-        root.add(this._box(casing, { x: 1.1, y: 1.4, z: 0.35 }, { x: 0, y: 0.7, z: 0 }, 'terminal_housing', true));
-        root.add(this._box(crtAmber, { x: 0.68, y: 0.52, z: 0.06 }, { x: 0, y: 0.92, z: 0.18 }, 'crt_screen_9inch'));
-        root.add(this._box(dark, { x: 0.8, y: 0.28, z: 0.22 }, { x: 0, y: 0.28, z: 0.22 }, 'keyboard_bevel', true));
-        root.add(this._box(warning, { x: 0.2, y: 0.04, z: 0.05 }, { x: 0, y: 0.55, z: 0.18 }, 'cassette_drive_slot'));
+        const crtAmber = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 1.6 });
+        const mountMat = this._material('darkMetal', { color: 0x1e293b, roughness: 0.35, metalness: 0.88 });
+
+        // Platine murale d'ancrage lourd et chemin de cÃ¢bles vertical sol-plafond
+        root.add(this._box(mountMat, { x: 1.25, y: 1.6, z: 0.08 }, { x: 0, y: 0.7, z: -0.1 }, 'terminal_wall_mount', true));
+        root.add(this._segment(mountMat, new T.Vector3(0, 0, -0.06), new T.Vector3(0, 4.2, -0.06), 0.045, 0.045, 'terminal_cable_trunking', 8));
+        root.add(this._box(mountMat, { x: 0.3, y: 0.7, z: 0.25 }, { x: 0, y: 0.35, z: 0.05 }, 'terminal_pedestal_stand', true));
+
+        // BoÃ®tier principal 9 pouces CRT et clavier inclinÃ©
+        root.add(this._box(casing, { x: 1.1, y: 1.4, z: 0.35 }, { x: 0, y: 0.7, z: 0.1 }, 'terminal_housing', true));
+        root.add(this._box(crtAmber, { x: 0.68, y: 0.52, z: 0.06 }, { x: 0, y: 0.92, z: 0.28 }, 'crt_screen_9inch'));
+        root.add(this._box(dark, { x: 0.8, y: 0.28, z: 0.22 }, { x: 0, y: 0.28, z: 0.32 }, 'keyboard_bevel', true));
+        root.add(this._box(warning, { x: 0.2, y: 0.04, z: 0.05 }, { x: 0, y: 0.55, z: 0.28 }, 'cassette_drive_slot'));
       } else if (normalizedType === 'camera' || normalizedType === 'security_camera') {
-        // Chantier 33 : Caméra de sécurité motorisée CRT Weyland-Yutani (Alien: Isolation)
-        const camMetal = this._material('darkMetal', { color: 0x0f172a, roughness: 0.3 });
-        const lensLed = this._material('emissiveGreen', { color: 0x22c55e, emissiveIntensity: 2.0 });
-        root.add(this._box(camMetal, { x: 0.3, y: 0.4, z: 0.18 }, { x: 0, y: 0.2, z: 0 }, 'camera_wall_bracket', true));
-        root.add(this._segment(camMetal, new T.Vector3(0, 0.2, 0.1), new T.Vector3(0, 0.2, 0.5), 0.06, 0.06, 'camera_swivel_arm', 10));
-        root.add(this._box(camMetal, { x: 0.28, y: 0.32, z: 0.75 }, { x: 0, y: 0.2, z: 0.85 }, 'camera_casing', true));
-        root.add(this._ring(dark, 0.16, 0.03, { x: 0, y: 0.2, z: 1.24 }, { x: 0, y: 0, z: 0 }, 'camera_lens_hood'));
-        root.add(this._ellipsoid(lensLed, { x: 0.08, y: 0.08, z: 0.05 }, { x: 0, y: 0.2, z: 1.25 }, 'camera_starlight_sensor', 12));
+        // Chantier 33 : CamÃ©ra de sÃ©curitÃ© motorisÃ©e CRT Weyland-Yutani (Alien: Isolation)
+        const camMetal = this._material('darkMetal', { color: 0x0f172a, roughness: 0.3, metalness: 0.85 });
+        const lensLed = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 2.2 });
+        const conduitMat = this._material('industrial', { color: 0x334155, roughness: 0.45, metalness: 0.8 });
+
+        // 1. Platine d'ancrage murale lourde et boÃ®tier de jonction fixe (NE TOURNE PAS avec le balayage)
+        root.add(this._box(camMetal, { x: 0.45, y: 0.52, z: 0.12 }, { x: 0, y: 0.2, z: -0.06 }, 'camera_wall_bracket', true));
+        this._addBolt(root, conduitMat, { x: -0.16, y: 0.4, z: 0.01 }, 0.035, 'cam_bolt_tl');
+        this._addBolt(root, conduitMat, { x: 0.16, y: 0.4, z: 0.01 }, 0.035, 'cam_bolt_tr');
+        this._addBolt(root, conduitMat, { x: -0.16, y: 0.02, z: 0.01 }, 0.035, 'cam_bolt_bl');
+        this._addBolt(root, conduitMat, { x: 0.16, y: 0.02, z: 0.01 }, 0.035, 'cam_bolt_br');
+
+        // Gaine de cÃ¢blage blindÃ©e remontant vers le plafond (4.6m pour rejoindre les poutrelles Ã  y=8.4)
+        root.add(this._segment(conduitMat, new T.Vector3(0, 0.46, -0.04), new T.Vector3(0, 4.6, -0.04), 0.035, 0.035, 'camera_ceiling_conduit', 8));
+        root.add(this._ring(conduitMat, 0.065, 0.02, { x: 0, y: 4.58, z: -0.04 }, { x: Math.PI / 2, y: 0, z: 0 }, 'camera_conduit_collar'));
+
+        // Bras support fixe en col de cygne et pivot
+        root.add(this._segment(camMetal, new T.Vector3(0, 0.2, 0.0), new T.Vector3(0, 0.2, 0.45), 0.065, 0.065, 'camera_swivel_arm', 10));
+        root.add(this._cylinder(camMetal, 0.08, 0.08, 0.15, { x: 0, y: 0.2, z: 0.45 }, { x: 0, y: 0, z: 0 }, 'camera_swivel_pin'));
+
+        // 2. TÃªte pivotante motorisÃ©e (seul ce groupe pivote en balayage !)
+        const swivelHead = new T.Group();
+        swivelHead.name = 'camera_swivel_head';
+        swivelHead.position.set(0, 0.2, 0.45);
+
+        // ChÃ¢ssis de la camÃ©ra et dissipateur thermique
+        swivelHead.add(this._box(camMetal, { x: 0.32, y: 0.34, z: 0.72 }, { x: 0, y: 0, z: 0.36 }, 'camera_casing', true));
+        swivelHead.add(this._box(dark, { x: 0.34, y: 0.04, z: 0.5 }, { x: 0, y: 0.18, z: 0.36 }, 'camera_heatsink_fin'));
+        swivelHead.add(this._ring(dark, 0.17, 0.035, { x: 0, y: 0, z: 0.73 }, { x: 0, y: 0, z: 0 }, 'camera_lens_hood'));
+        const sensorMesh = this._ellipsoid(lensLed, { x: 0.09, y: 0.09, z: 0.05 }, { x: 0, y: 0, z: 0.74 }, 'camera_starlight_sensor', 12);
+        swivelHead.add(sensorMesh);
+
+        // 3. CÃ´ne de vision volumÃ©trique semi-transparent (VFX diÃ©gÃ©tique visualisant le champ surveillÃ©)
+        const coneMat = new T.MeshBasicMaterial({
+          color: 0x22c55e,
+          transparent: true,
+          opacity: 0.09,
+          wireframe: false,
+          depthWrite: false,
+          side: T.DoubleSide
+        });
+        const coneGeo = new T.ConeGeometry(4.6, 11.0, 16, 1, true);
+        const fovCone = new T.Mesh(coneGeo, coneMat);
+        fovCone.name = 'camera_fov_cone';
+        fovCone.rotation.x = -Math.PI / 2 + 0.28;
+        fovCone.position.set(0, -1.8, 5.8);
+        swivelHead.add(fovCone);
+
+        root.add(swivelHead);
       } else if (normalizedType === 'trap' || normalizedType === 'tripwire_trap') {
         // Chantier 35 : Piège au sol à harpons pneumatiques et filet électrifié (Alien 3 / Isolation)
         const baseMat = this._material('darkMetal', { color: 0x18181b, roughness: 0.4, metalness: 0.8 });

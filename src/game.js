@@ -1,4 +1,4 @@
-﻿/* HIVE ASCENSION
+/* HIVE ASCENSION
  * Complete campaign pass: lore-safe castes, original characters, detailed models,
  * mission tracking, save data, accessibility, expanded enemies, bosses and endings.
  */
@@ -13412,6 +13412,120 @@
         this.colliders.push({ minX: def.x - def.hx, maxX: def.x + def.hx, minZ: def.z - def.hz, maxZ: def.z + def.hz, isWave31Prop: true, propRef: prop });
         this.wave31Props.push(prop);
       });
+      this.syncPropsToStage(window.gameInstance?.currentStageIndex || 1);
+    }
+
+    getPropMinStage(prop, col) {
+      if (!prop) return 1;
+      if (typeof prop.minStage === 'number') return prop.minStage;
+      const id = String(prop.id || prop.name || '').toLowerCase();
+      const x = prop.x ?? col?.minX ?? 0;
+      const z = prop.z ?? col?.minZ ?? 0;
+
+      // Phase 1 : Laboratoire Médical & Cryogénique (Incubateur Ovomorphe)
+      if (
+        id.includes('cryo_sleep') || id.includes('cryopod') || id.includes('biomonitor') ||
+        id.includes('autodoc') || id.includes('stasis_pod') || id.includes('transgenic_incubator') ||
+        id.includes('specimen_decanter') || id.includes('decanter') || id.includes('centrifuge_specimen') ||
+        id.includes('specimen_rack') || id.includes('surgical') || id.includes('umbilical_reel') ||
+        (id.includes('cryo') && x < 0 && z < 0)
+      ) {
+        return 1;
+      }
+
+      // Phase 2 : Réseau de drainage, Vannes sous-pont & Conduits de ventilation (Facehugger)
+      if (
+        id.includes('subdeck') || id.includes('coolant_pipe') || id.includes('drainage') ||
+        id.includes('culvert') || id.includes('scrubber') || id.includes('vent_duct') ||
+        id.includes('duct_splitter') || id.includes('plenum') || id.includes('frost_purge') ||
+        id.includes('decon_shower') || id.includes('hepa') || id.includes('expansion_bellows') ||
+        id.includes('carbon_bed') || id.includes('filter_skid') || id.includes('airlock') ||
+        id.includes('brine_evaporator')
+      ) {
+        return 2;
+      }
+
+      // Phase 3 : Coursives de quarantaine, transit monorail, consignes de sécurité Seegson (Chestburster)
+      if (
+        id.includes('security_lockbox') || id.includes('transit_rail') || id.includes('battery_bank') ||
+        id.includes('monorail') || id.includes('hoist') || id.includes('ether_anesthesia') ||
+        id.includes('delousing') || id.includes('pager_rack') || id.includes('vocoder') ||
+        id.includes('wheel_lift') || id.includes('steam_kettle') || id.includes('shutter_winch') ||
+        id.includes('meat_hook') || id.includes('electrolyte_cart') || id.includes('hydro_dosing') ||
+        id.includes('skin_molding') || id.includes('seismic_fault')
+      ) {
+        return 3;
+      }
+
+      // Phase 4 : Armurerie USCM, Serveurs APOLLO, Baies de télécoms & Réacteur primaire (Drone / Guerrier)
+      if (
+        id.includes('uscm') || id.includes('m41a') || id.includes('m577') || id.includes('ordnance') ||
+        id.includes('ammo') || id.includes('turret') || id.includes('apollo') || id.includes('plasma') ||
+        id.includes('hyperdrive') || id.includes('field_coil') || id.includes('dt_injector') ||
+        id.includes('flux_damper') || id.includes('muthur') || id.includes('klystron') ||
+        id.includes('waveguide') || id.includes('halon') || id.includes('smoke_discharger') ||
+        id.includes('perimeter_sensor') || id.includes('barometer') || id.includes('floodlight') ||
+        id.includes('joe_recond') || id.includes('android_limb')
+      ) {
+        return 4;
+      }
+
+      // Phase 5 : Fonderie lourde Fiorina 161, Scories en fusion, Puits géothermiques, Hangar Dropship & Processeur ATP (Reine / Conquête RTS)
+      if (
+        id.includes('foundry') || id.includes('smelter') || id.includes('slag') || id.includes('ladle') ||
+        id.includes('kiln') || id.includes('baler') || id.includes('crane_cab') || id.includes('quench') ||
+        id.includes('ingot') || id.includes('pig_iron') || id.includes('windbelt') || id.includes('tuyere') ||
+        id.includes('dropship') || id.includes('ud4l') || id.includes('cheyenne') || id.includes('scaffold') ||
+        id.includes('geothermal') || id.includes('wellhead') || id.includes('atp_') || id.includes('washdown') ||
+        id.includes('preheat') || id.includes('coal_pulverizer') || id.includes('ovipositor') || id.includes('black_goo')
+      ) {
+        return 5;
+      }
+
+      return 4;
+    }
+
+    syncPropsToStage(stageIndex) {
+      this.currentStageIndex = stageIndex;
+
+      // 1. Mise à jour de tous les colliders et de leurs props associés
+      for (const col of this.colliders) {
+        const prop = col.propRef || col.hoistRef || col.batteryRef || col.basketRef || col.centrifugeRef || col.manifoldRef || col.scannerRef || col.turboRef || col.sledRef || col.trayRef || col.tuyereRef || col.dispenserRef || col.stationRef || col.tokamakRef || col.pipeRef || col.consoleRef || col.sarcophagusRef || col.chamberRef || col.furnaceRef || col.termRef || col.vaultRef || col.cartRef || col.extRef || col.mineRef || col.ventRef || col.wallRef || col.hatchRef || col.flumeRef || col.pistonRef || col.domeRef || col.gantryRef || col.boothRef || col.rackRef || col.bunkerRef || col.shutterRef || col.weirRef || col.blowerRef || col.tableRef || col.sluiceRef || col.cageRef || col.carouselRef || col.bufferRef || col.heaterRef || col.intakeRef;
+        if (prop) {
+          const minStage = this.getPropMinStage(prop, col);
+          prop.minStage = minStage;
+          const isActive = minStage <= stageIndex;
+          col.disabled = !isActive;
+          if (prop.mesh) prop.mesh.visible = isActive;
+        }
+      }
+
+      // 2. Synchronisation de la vague 31 à 60 (300 props)
+      (this.wave31Props || []).forEach((prop) => {
+        const minStage = this.getPropMinStage(prop);
+        prop.minStage = minStage;
+        const isActive = minStage <= stageIndex;
+        if (prop.mesh) prop.mesh.visible = isActive;
+      });
+
+      // 3. Synchronisation des vagues 1 à 30 (props industriels spécifiques)
+      const allPropArrays = [
+        this.overheadMonorailHoists, this.emergencyBatteryBanks, this.heavyQuenchBaskets,
+        this.surgicalCryoCentrifuges, this.fuelTransferManifolds, this.baggageInspectionScanners,
+        this.steamTurbogenerators, this.ballisticTestSleds, this.apolloCableTrays,
+        this.blastFurnaceTuyeres, this.coolingBlowers, this.tacticalHoloTables,
+        this.leadDrainageSluices, this.specimenHoldingCages, this.stasisCarousels,
+        this.monorailBufferStops, this.steamSuperheaters, this.uscmWeaponRacks,
+        this.syntheticAssemblyStations, this.furnaceAirIntakes
+      ];
+      allPropArrays.forEach((arr) => {
+        (arr || []).forEach((prop) => {
+          const minStage = this.getPropMinStage(prop);
+          prop.minStage = minStage;
+          const isActive = minStage <= stageIndex;
+          if (prop.mesh) prop.mesh.visible = isActive;
+        });
+      });
     }
 
     setBlastDoorState(door, open, silent = false) {
@@ -21460,6 +21574,7 @@
       if (!Number.isFinite(nextX) || !Number.isFinite(nextZ)) return true;
       if (Math.abs(nextX) >= 73.4 - padding || Math.abs(nextZ) >= 73.4 - padding) return true;
       for (const col of this.colliders) {
+        if (col.disabled) continue;
         const minX = col.minX - padding;
         const maxX = col.maxX + padding;
         const minZ = col.minZ - padding;
@@ -29692,6 +29807,8 @@
       window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0xef334f, 34, 0.16, 1.2);
       window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0xef334f, 2.2);
       this.spawnRodents();
+      this.investigationTimer = 14.0;
+      this.investigatorSpawned = false;
       window.HiveSystems?.updateObjective(3, 1, 'Traquer et mordre directement trois rongeurs de laboratoire.');
       window.HiveSystems?.narrative('ELIAN TORV', 'Rupture biologique au bloc médical. Confinement KAPPA immédiat.');
       this.updateHUD();
@@ -29927,10 +30044,39 @@
       }
       this.rations = [];
     }
+
+    spawnInvestigator() {
+      if (!window.gameInstance || this.investigator) return;
+      const spawnX = playerCreature.x > 0 ? playerCreature.x - 14 : playerCreature.x + 14;
+      const spawnZ = playerCreature.z > 0 ? playerCreature.z - 12 : playerCreature.z + 12;
+      const tech = new HumanAI(340, 'scientist', spawnX, spawnZ, 'Technicien de garde Brett');
+      tech.hp = tech.maxHp = 60;
+      tech.hostEligibility = 'viable';
+      tech.patrolOrigin = { x: spawnX, z: spawnZ };
+      tech.createMesh();
+      tech.lureTowards(playerCreature.x, playerCreature.z);
+      this.investigator = tech;
+      window.gameInstance.humans.push(tech);
+      audioManager.playRadioChatter?.();
+      showToast('INTRUSION AUDITIVE : Un technicien s\'approche du laboratoire médical !');
+      appendSensorLog('[ÉCOUTEURS] Pas précipités dans le couloir d\'accès. Un membre d\'équipage investigue les bruits.', 'bio');
+      window.HiveSystems?.narrative('TECHNICIEN BRETT', 'Dr Kade ? Votre transpondeur clignote en anomalie... Hé, qu\'est-ce que c\'est que cette flaque ?! Mon dieu...');
+    }
+
     update(deltaSeconds = 1 / 60) {
       const safeDelta = Math.max(0, deltaSeconds);
       this.biteCooldown = Math.max(0, this.biteCooldown - safeDelta);
       this.huntRepathCooldown = Math.max(0, this.huntRepathCooldown - safeDelta);
+
+      if (this.step === 'HUNT_FAUNA') {
+        if (this.investigationTimer > 0) {
+          this.investigationTimer -= safeDelta;
+          if (this.investigationTimer <= 0 && !this.investigatorSpawned) {
+            this.investigatorSpawned = true;
+            this.spawnInvestigator();
+          }
+        }
+      }
 
       if (this.step === 'HUNT_FAUNA' && this.huntedRodentTarget && !this.biteTarget) {
         const target = this.huntedRodentTarget;
@@ -30041,28 +30187,19 @@
 
       if (window.gameInstance) {
         window.gameInstance.clearHumans();
-        const enemies = [
-          new HumanAI(98, 'smartgunner', -14, -12, 'Artilleuse Lena Ortiz'),
-          new HumanAI(97, 'incinerator', 24, -2, 'Opérateur thermique Juno Pike'),
+        // Échelonnement narratif cohérent (Spawn progressif par vagues tactiques)
+        // Patrouille initiale restreinte : le secteur n'est pas encore en état de siège total
+        const initialOccupants = [
           new HumanAI(96, 'guard', -30, 18, 'Agent Arden Cole'),
           new HumanAI(95, 'synthetic', 28, 25, 'Synthétique de sécurité Rook-7'),
-          new HumanAI(94, 'labhound', 36, -22, 'Animal de service Q-4'),
-          new HumanAI(93, 'weyland_security_taser', 12, -26, 'Garde Taser Weyland-Yutani Briggs'),
-          new HumanAI(92, 'powerloader', -45, 35, 'Chef de pont Jansen - Caterpillar P-5000 Power Loader'),
-          new HumanAI(91, 'weyland_commando_mk2', -35, -20, 'Commando Lourd Weyland-Yutani Vance - Armure MK-II & XM99'),
-          new HumanAI(90, 'weyland_steel_team_synth', -40, 40, 'Synthétique Steel Team T-01 - Lame Plasma & Concussion'),
-          new HumanAI(89, 'weyland_steel_team_synth', 38, -32, 'Synthétique Steel Team T-02 - Lame Plasma & Concussion'),
-          new HumanAI(88, 'weyland_cyber_hound', -22, -30, 'Molosse Cybernétique Weyland-Yutani Cerberus-1'),
           new HumanAI(87, 'uscm_hazmat_tech', -18, 15, 'Technicien Hazmat USCM Perez - Mousse Ignifuge & Neutralisante'),
-          new HumanAI(86, 'weyland_drone_operator', 16, -10, 'Opérateur Drones Weyland Giger - Scan Sonar Skimmer & EMP'),
-          new HumanAI(85, 'uscm_sniper', 35, 25, 'Tireur d\'Élite USCM Dietrich - Fusil Sniper M42A Laser'),
-          new HumanAI(84, 'weyland_containment_squad', -25, -15, 'Commando Confinement Miller - Filets Cryogéniques Weyland'),
-          new HumanAI(83, 'uscm_heavy_flamer', -10, 20, 'Sergent-Chef Ferro - Heavy Flamer M240A1'),
-          new HumanAI(82, 'uscm_combat_engineer', -6, 16, 'Caporal-Chef Vance - Ingénieur de Combat USCM')
+          new HumanAI(94, 'labhound', 36, -22, 'Animal de service Q-4')
         ];
-        enemies[4].hp = enemies[4].maxHp = 80;
-        enemies.forEach((enemy) => enemy.createMesh());
-        window.gameInstance.humans.push(...enemies);
+        initialOccupants[3].hp = initialOccupants[3].maxHp = 80;
+        initialOccupants.forEach((occupant) => occupant.createMesh());
+        window.gameInstance.humans.push(...initialOccupants);
+        this.spawnedWaves = { wave1Security: false, wave2USCM: false, wave3HeavyPurge: false };
+        this.waveTimer = 0;
       }
 
       this.updateHUD();
@@ -32969,7 +33106,83 @@
 
     log(msg) { appendSensorLog(msg, 'bio'); }
 
+    checkReinforcementWaves(safeDelta) {
+      if (!window.gameInstance || !this.spawnedWaves) return;
+      this.waveTimer = (this.waveTimer || 0) + safeDelta;
+      const allHumans = window.gameInstance.humans || [];
+      const neutralized = allHumans.filter((h) => h.isIncapacitated || h.isCocooned || h.isDestroyed).length;
+      const alarmLvl = alarmSystem?.level || 0;
+
+      // VAGUE 1 : Équipe d'interception et de contention Weyland-Yutani
+      // Se déclenche si : 1 ennemi neutralisé OU Alarme >= 3 après 15s OU après 45s de traque
+      if (!this.spawnedWaves.wave1Security && (neutralized >= 1 || (alarmLvl >= 3 && this.waveTimer >= 15) || this.waveTimer >= 45)) {
+        this.spawnedWaves.wave1Security = true;
+        const wave1 = [
+          new HumanAI(93, 'weyland_security_taser', 12, -26, 'Garde Taser Weyland-Yutani Briggs'),
+          new HumanAI(84, 'weyland_containment_squad', -25, -15, 'Commando Confinement Miller - Filets Cryogéniques Weyland'),
+          new HumanAI(86, 'weyland_drone_operator', 16, -10, 'Opérateur Drones Weyland Giger - Scan Sonar Skimmer & EMP'),
+          new HumanAI(88, 'weyland_cyber_hound', -22, -30, 'Molosse Cybernétique Weyland-Yutani Cerberus-1')
+        ];
+        wave1.forEach((e) => {
+          e.createMesh();
+          e.lureTowards?.(playerCreature.x, playerCreature.z);
+        });
+        window.gameInstance.humans.push(...wave1);
+        audioManager.playRadioChatter?.();
+        audioManager.playSecurityAlarmBeep?.();
+        showToast('ALERTE SÉCURITÉ : Équipe de contention et filets cryogéniques Weyland-Yutani déployée !');
+        appendSensorLog('[RENFORTS SÉCURITÉ] Miller, Briggs et l\'opérateur Giger entrent par le sas de quarantaine.', 'alert');
+        window.HiveSystems?.narrative('WEYLAND SÉCURITÉ', 'Miller à toutes les unités. Organisme hostile repéré. Préparez les filets, Ordre 937 en vigueur !');
+      }
+
+      // VAGUE 2 : Section de choc USCM (Smartgunner, Incinérateur, Sniper & Génie)
+      // Se déclenche si : 3 ennemis neutralisés OU 1 cocon établi OU Alarme >= 4 OU après 90s
+      if (!this.spawnedWaves.wave2USCM && (neutralized >= 3 || this.capturedHosts >= 1 || alarmLvl >= 4 || this.waveTimer >= 90)) {
+        this.spawnedWaves.wave2USCM = true;
+        const wave2 = [
+          new HumanAI(98, 'smartgunner', -14, -12, 'Artilleuse Lena Ortiz'),
+          new HumanAI(97, 'incinerator', 24, -2, 'Opérateur thermique Juno Pike'),
+          new HumanAI(85, 'uscm_sniper', 35, 25, 'Tireur d\'Élite USCM Dietrich - Fusil Sniper M42A Laser'),
+          new HumanAI(82, 'uscm_combat_engineer', -6, 16, 'Caporal-Chef Vance - Ingénieur de Combat USCM')
+        ];
+        wave2.forEach((e) => {
+          e.createMesh();
+          e.lureTowards?.(playerCreature.x, playerCreature.z);
+        });
+        window.gameInstance.humans.push(...wave2);
+        audioManager.playAlarmSiren?.();
+        audioManager.playSmartgunServo?.(playerCreature.x, playerCreature.z);
+        showToast('SECTION DE COMBAT USCM : Déploiement tactique M56 Smartgun & M240 Incinerator !');
+        appendSensorLog('[SECTION USCM] Ortiz, Pike, Dietrich et Vance prennent position dans les coursives.', 'alert');
+        window.HiveSystems?.narrative('LENA ORTIZ', 'Contact radar confirmé sur le tracker M56 ! Pike, sécurise les angles au lance-flammes !');
+      }
+
+      // VAGUE 3 : Purge d'extermination lourde Weyland & Caterpillar P-5000 Power Loader
+      // Se déclenche si : 6 ennemis neutralisés OU Cocon royal / Pépinière fondée OU Alarme 5 OU après 140s
+      if (!this.spawnedWaves.wave3HeavyPurge && (neutralized >= 6 || this.royalCycle?.isActive || alarmLvl >= 5 || this.waveTimer >= 140)) {
+        this.spawnedWaves.wave3HeavyPurge = true;
+        const wave3 = [
+          new HumanAI(92, 'powerloader', -45, 35, 'Chef de pont Jansen - Caterpillar P-5000 Power Loader'),
+          new HumanAI(91, 'weyland_commando_mk2', -35, -20, 'Commando Lourd Weyland-Yutani Vance - Armure MK-II & XM99'),
+          new HumanAI(83, 'uscm_heavy_flamer', -10, 20, 'Sergent-Chef Ferro - Heavy Flamer M240A1'),
+          new HumanAI(90, 'weyland_steel_team_synth', -40, 40, 'Synthétique Steel Team T-01 - Lame Plasma & Concussion'),
+          new HumanAI(89, 'weyland_steel_team_synth', 38, -32, 'Synthétique Steel Team T-02 - Lame Plasma & Concussion')
+        ];
+        wave3.forEach((e) => {
+          e.createMesh();
+          e.lureTowards?.(playerCreature.x, playerCreature.z);
+        });
+        window.gameInstance.humans.push(...wave3);
+        audioManager.playPowerloaderBeep?.(-45, 35);
+        audioManager.playKlaxonAlarm?.();
+        showToast('PROTOCOLE PURGE TOTALE : Déploiement Power Loader P-5000 et escouade Steel Team !');
+        appendSensorLog('[EXÉCUTION SPÉCIALE 937] Jansen en Power Loader et les synthétiques Steel Team engagent le combat.', 'alert');
+        window.HiveSystems?.narrative('JANSEN (P-5000)', 'Chef de pont Jansen paré. Servomoteurs hydrauliques verrouillés, je vais broyer cette créature !');
+      }
+    }
+
     update(deltaSeconds = 1 / 60) {
+      this.checkReinforcementWaves(deltaSeconds);
       this.royalCycle?.update(deltaSeconds);
       if (this.huntReserve < 100) {
         this.huntReserve = Math.min(100, this.huntReserve + Math.max(0, deltaSeconds) * 15);
@@ -33409,14 +33622,11 @@
           new HumanAI(202, 'incinerator', -24, 34, 'Opératrice thermique Sava Rhee'),
           new HumanAI(204, 'smartgunner', 38, -26, 'Artilleur gyro Kade Mercer'),
           new HumanAI(205, 'marine', -6, 18, 'Fusilier orbital Niko Vale'),
-          new HumanAI(206, 'exosuit', 22, -42, 'MANTIS-4 — exosquelette KAPPA'),
-          new HumanAI(207, 'powerloader', -36, 12, 'Élévateur P-5000 Caterpillar — Chef de pont Jansen'),
           new HumanAI(208, 'marine', 12, -28, 'Tourelle sentinelle UA 571-C (Opérateur Novak)')
         ];
-        this.mantisBoss = responseForce[4];
-        this.mantisBoss.bossId = 'MANTIS_4';
-        this.mantisBoss.bossPhase = 1;
-        this.mantisBoss.bossShield = 260;
+        this.mantisBoss = null;
+        this.heavyBossForceSpawned = false;
+        this.rtsWaveTimer = 0;
         const asterState = window.gameInstance.campaignCharacters.asterRho;
         if (asterState.alive && !asterState.usedAsHost) {
           const aster = new HumanAI(203, 'commando', 2, -48, 'Surveillante Aster Rho');
@@ -33435,7 +33645,6 @@
           occupiedSpawns.push(spawn);
           enemy.createMesh();
         });
-        this.decorateMantisBoss();
         window.gameInstance.humans.push(...responseForce);
       }
 
@@ -33712,7 +33921,7 @@
         const activeThreats = (window.gameInstance?.humans || []).filter((human) => !human.isCocooned && !human.isIncapacitated).length;
         const bossStatus = this.mantisBoss?.isIncapacitated
           ? 'MANTIS NEUTRALISÉ'
-          : `MANTIS PHASE ${this.mantisBoss?.bossPhase || 1}`;
+          : (this.mantisBoss ? `MANTIS PHASE ${this.mantisBoss?.bossPhase || 1}` : 'EN APPROCHE ORBITALE');
         const purgeStatus = this.relayCount >= 3 ? 'PURGE INTERROMPUE' : `PURGE ${Math.ceil(this.purgeRemaining)}s`;
         conquestButton.textContent = `ISOLER PALIMPSESTE — RELAIS ${this.relayCount}/3 · ${bossStatus} · MENACES ${activeThreats} · ${purgeStatus}`;
         conquestButton.title = conquestButton.disabled
@@ -33899,7 +34108,35 @@
       pheromoneSystem.clearZones();
     }
 
+    checkRtsReinforcements(safeDelta) {
+      if (this.heavyBossForceSpawned || !window.gameInstance) return;
+      this.rtsWaveTimer = (this.rtsWaveTimer || 0) + safeDelta;
+      const relayThreatened = (this.relayMeshes || []).some((r) => r.userData?.isolated);
+      if (this.rtsWaveTimer >= 22 || relayThreatened) {
+        this.heavyBossForceSpawned = true;
+        const mantis = new HumanAI(206, 'exosuit', 22, -42, 'MANTIS-4 — exosquelette KAPPA');
+        mantis.bossId = 'MANTIS_4';
+        mantis.bossPhase = 1;
+        mantis.bossShield = 260;
+        mantis.createMesh();
+        this.mantisBoss = mantis;
+        this.decorateMantisBoss();
+
+        const jansen = new HumanAI(207, 'powerloader', -36, 12, 'Élévateur P-5000 Caterpillar — Chef de pont Jansen');
+        jansen.createMesh();
+
+        window.gameInstance.humans.push(mantis, jansen);
+        rendererEngine.addScreenShake?.(0.45, 0.3);
+        audioManager.playPowerloaderBeep?.(-36, 12);
+        audioManager.playSelfDestructKlaxon?.();
+        showToast('LARGAGE D\'URGENCE PALIMPSESTE : Exosquelette de siège MANTIS-4 & Power Loader P-5000 déployés !');
+        appendSensorLog('[DÉPLOIEMENT TERMINAL] MANTIS-4 et le Power Loader P-5000 descendent du sas de maintenance.', 'alert');
+        window.HiveSystems?.narrative('PALIMPSESTE', 'Menace de ruche confirmée. Châssis MANTIS-4 déployé en interception terminale.');
+      }
+    }
+
     update(deltaSeconds = 1 / 60) {
+      this.checkRtsReinforcements(deltaSeconds);
       const humans = window.gameInstance ? window.gameInstance.humans : [];
       this.incubationCycles.forEach((cycle) => cycle.update(deltaSeconds));
       if (pheromoneSystem.possessionMode && this.possessedUnit) {
@@ -34171,6 +34408,7 @@
         document.getElementById('rts-control-bar')?.classList.add('hidden');
         pheromoneSystem.clearZones();
       }
+      stationMap.syncPropsToStage?.(index);
       if (index === 1) this.currentStage = new StageEgg();
       else if (index === 2) this.currentStage = new StageFacehugger();
       else if (index === 3) this.currentStage = new StageChestburster();

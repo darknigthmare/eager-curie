@@ -21981,7 +21981,20 @@
       }
       const el = document.getElementById('hive-resin');
       if (el) el.textContent = `${this.totalCoverage}%`;
+      window.HiveSystems?.unlockCodex?.(['codex_nursery', 'codex_economie_ruche']);
       return true;
+    }
+    // Chantier 112 : Réseau Synaptique de Bio-Résine — Détection de présence sur nappe organique
+    getResin(x, z) {
+      if (!this.nodes || this.nodes.length === 0) return 0;
+      for (let i = 0; i < this.nodes.length; i++) {
+        const node = this.nodes[i];
+        const dist = Math.hypot(node.x - x, node.z - z);
+        if (dist <= (node.radius || 6)) {
+          return Math.max(0.25, 1 - dist / ((node.radius || 6) * 1.15));
+        }
+      }
+      return 0;
     }
     // Audit QA #83 : Dégradation Structurelle de la Résine Organique sous Impact Acide / Flammes
     damageResinNodes(x, z, radius = 5.0, damageType = 'acid') {
@@ -21993,12 +22006,16 @@
       const textColor = isAcid ? '#84cc16' : '#f97316';
 
       affectedNodes.forEach((node) => {
+        node.radius = Math.max(1.5, (node.radius || 6) * 0.82);
         if (node.mesh) {
           node.mesh.scale.multiplyScalar(0.82);
           window.HiveSystems?.vfx?.burst?.(node.x, node.z, vfxColor, 20, 0.25, 1.8);
           window.HiveSystems?.vfx?.floatingText?.(node.x, 1.5, node.z, textLabel, textColor, false);
         }
       });
+      this.totalCoverage = Math.max(0, this.totalCoverage - affectedNodes.length * 2);
+      const el = document.getElementById('hive-resin');
+      if (el) el.textContent = `${this.totalCoverage}%`;
       if (isAcid) {
         audioManager.playAcidBurnSizzle?.(x, z);
       } else {
@@ -24054,6 +24071,7 @@
       this.moveTarget = null;
       this.moveWaypoints = [];
       this.adultCaste = 'drone';
+      this.embryoMutation = 'carapace';
       this.isInVent = false;
       this.currentVent = null;
       this.salivaTimer = 0;
@@ -24695,10 +24713,12 @@
       this.triggerAttack('acid');
 
       const applyAcidImpact = () => {
-        const poolRadius = isSpitter ? 4.2 : 2.2;
+        const acidMutBonus = this.embryoMutation === 'acid' ? 1.35 : 1.0;
+        const poolRadius = (isSpitter ? 4.2 : 2.2) * (this.embryoMutation === 'acid' ? 1.3 : 1.0);
         const poolDuration = isSpitter ? 15.0 : 9.0;
         const acidColor = isSpitter ? 0x84cc16 : 0x39ff14;
-        const baseDamage = isSpitter ? 68 : 42;
+        const baseDamage = Math.round((isSpitter ? 68 : 42) * acidMutBonus);
+        window.HiveSystems?.unlockCodex?.(['codex_sang_acide']);
 
         window.HiveSystems?.vfx?.spawnAcidPool?.(targetPos.x, targetPos.z, poolRadius, poolDuration);
         window.HiveSystems?.vfx?.burst(targetPos.x, targetPos.z, acidColor, isSpitter ? 32 : 22, 0.18, 1.8);
@@ -26140,14 +26160,34 @@
       return ADULT_CASTE_PROFILES[this.adultCaste] || ADULT_CASTE_PROFILES.drone;
     }
 
+    // Chantier 110 : Adaptation Embryonnaire & Mutations Génétiques Actives (agility / acid / carapace)
+    setEmbryoMutation(mutation = 'carapace') {
+      const valid = ['agility', 'acid', 'carapace'].includes(mutation) ? mutation : 'carapace';
+      this.embryoMutation = valid;
+      if (this.form === 'drone') {
+        const profile = this.getAdultProfile();
+        const prevRatio = this.maxHealth > 0 ? this.health / this.maxHealth : 1;
+        this.maxHealth = profile.maxHealth + (valid === 'carapace' ? 45 : 0);
+        this.speed = profile.speed * (valid === 'agility' ? 1.18 : 1.0);
+        this.health = Math.max(1, Math.min(this.maxHealth, Math.round(this.maxHealth * prevRatio)));
+      } else if (this.form === 'chestburster') {
+        this.maxHealth = 100 + (valid === 'carapace' ? 25 : 0);
+        this.speed = 0.45 * (valid === 'agility' ? 1.18 : 1.0);
+        this.health = Math.min(this.maxHealth, this.health);
+      }
+      window.HiveSystems?.unlockCodex?.(['codex_reflexe_adn']);
+      return this.embryoMutation;
+    }
+
     setAdultCaste(caste, restoreHealth = true) {
       this.adultCaste = ADULT_CASTE_PROFILES[caste] ? caste : 'drone';
+      window.HiveSystems?.unlockCodex?.([this.adultCaste, 'codex_castes_etendues']);
       // Selecting the future morphology during implantation must not grant
       // adult statistics to the egg, Facehugger or juvenile forms.
       if (this.form !== 'drone') return;
       const profile = this.getAdultProfile();
-      this.maxHealth = profile.maxHealth;
-      this.speed = profile.speed;
+      this.maxHealth = profile.maxHealth + (this.embryoMutation === 'carapace' ? 45 : 0);
+      this.speed = profile.speed * (this.embryoMutation === 'agility' ? 1.18 : 1.0);
       if (restoreHealth) this.health = this.maxHealth;
       if (this.mesh) this.createMesh();
     }
@@ -26369,12 +26409,12 @@
         this.maxHealth = 100;
         this.speed = 0.50;
       } else if (form === 'chestburster') {
-        this.maxHealth = 100;
-        this.speed = 0.45;
+        this.maxHealth = 100 + (this.embryoMutation === 'carapace' ? 25 : 0);
+        this.speed = 0.45 * (this.embryoMutation === 'agility' ? 1.18 : 1.0);
       } else if (form === 'drone') {
         const profile = this.getAdultProfile();
-        this.maxHealth = profile.maxHealth;
-        this.speed = profile.speed;
+        this.maxHealth = profile.maxHealth + (this.embryoMutation === 'carapace' ? 45 : 0);
+        this.speed = profile.speed * (this.embryoMutation === 'agility' ? 1.18 : 1.0);
       }
       this.health = this.maxHealth;
       this.createMesh();
@@ -26384,6 +26424,11 @@
       if (this.isDefeated || this.form === 'egg' || !this.mesh?.visible) return;
       if (this.isWallMimic) this.toggleResinWallMimicry(false);
       let actualDmg = Math.max(0, amount);
+
+      // Chantier 110 : Mutation Embryonnaire "Carapace Chitineuse Renforcée" (-25% dégâts subis)
+      if (this.embryoMutation === 'carapace') {
+        actualDmg = Math.round(actualDmg * 0.75);
+      }
 
       // Audit QA #43 : Résistance aux Munitions Incendiaires selon la Caste (Mantis & Crusher -30% feu/napalm)
       const isFireDamage = damageType === 'fire' || damageType === 'napalm' || attacker?.type === 'incinerator' || (attacker?.weapon && attacker.weapon.includes('incinerator'));
@@ -26511,13 +26556,16 @@
         appendSensorLog('[INFIRMERIE 1979] Réflexe d\'autopréservation du parasite : constriction laryngée accrue et hémorragie acide sous pression.', 'bio');
       }
 
-      // Canon 1:1 Lore — Projection de sang acide pressurisé sur les assaillants proches
+      // Canon 1:1 Lore & Chantier 110 — Projection de sang acide pressurisé sur les assaillants proches (amplifié par mutation 'acid')
+      window.HiveSystems?.unlockCodex?.(['codex_sang_acide']);
+      const acidMutSplashRadius = this.embryoMutation === 'acid' ? 5.6 : 4.0;
+      const acidMutDamageMult = this.embryoMutation === 'acid' ? 1.4 : 1.0;
       const nearbyHumans = (window.gameInstance?.humans || []).filter((h) => (
-        !h.isIncapacitated && !h.isCocooned && h !== this.attachedHost && Math.hypot(h.x - this.x, h.z - this.z) <= 4.0
+        !h.isIncapacitated && !h.isCocooned && h !== this.attachedHost && Math.hypot(h.x - this.x, h.z - this.z) <= acidMutSplashRadius
       ));
       nearbyHumans.forEach((human) => {
         const isSurgicalDefense = this.form === 'facehugger' && Boolean(this.attachedHost);
-        const acidDamage = isSurgicalDefense ? 38 : Math.round(Math.max(12, actualDmg * 0.95));
+        const acidDamage = Math.round((isSurgicalDefense ? 38 : Math.max(12, actualDmg * 0.95)) * acidMutDamageMult);
         human.takeDamage(acidDamage, this);
         human.staggerTimer = isSurgicalDefense ? 2.2 : 0.45;
         if (isSurgicalDefense && !human.isSynthetic?.()) {
@@ -28934,7 +28982,19 @@
       const holdMaxDist = this.type === 'powerloader' ? 3.5 : 12;
       const shouldHoldAttackPosition = !this.isCyberHound && this.aiState === 'ATTACK' && hasLineOfSight && distToPlayer <= holdMaxDist;
       if (dist > 0.5 && !shouldHoldAttackPosition) {
-        const speed = this.isLured ? 0.12 : (this.type === 'powerloader' ? (this.aiState === 'ATTACK' ? 0.078 : 0.06) : (this.isCyberHound ? 0.16 : 0.08));
+        const baseSpeed = this.isLured ? 0.12 : (this.type === 'powerloader' ? (this.aiState === 'ATTACK' ? 0.078 : 0.06) : (this.isCyberHound ? 0.16 : 0.08));
+        const onResinSlow = (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0 && !['powerloader', 'exosuit', 'weyland_heavy_mech'].includes(this.type)) ? 0.75 : 1.0;
+        const speed = baseSpeed * onResinSlow;
+        if (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0) {
+          this.resinTremorCooldown = (this.resinTremorCooldown || 0) - safeDelta;
+          if (this.resinTremorCooldown <= 0) {
+            this.resinTremorCooldown = 5.0;
+            window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x9333ea, 8, 0.1, 0.8);
+            if (window.gameInstance?.currentStageIndex >= 4) {
+              appendSensorLog(`[SYNAPSE RUCHE] Frémissement dans la bio-résine : intrus (${this.name}) détecté.`, 'stealth');
+            }
+          }
+        }
         const frameScale = safeDelta * 60;
         const directionX = (this.targetPos.x - this.x) / dist;
         const directionZ = (this.targetPos.z - this.z) / dist;
@@ -29745,7 +29805,9 @@
 
     update(deltaSeconds = 1 / 60) {
       if (!this.isActive) return;
-      this.progress = Math.min(100, this.progress + (Math.max(0, deltaSeconds) / this.duration) * 100);
+      // Chantier 112 : Bonus d'incubation +25% sur nappe de bio-résine synaptique
+      const onResinBoost = (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0) ? 1.25 : 1.0;
+      this.progress = Math.min(100, this.progress + ((Math.max(0, deltaSeconds) * onResinBoost) / this.duration) * 100);
       const nextIndex = Math.min(
         this.states.length - 1,
         Math.floor((this.progress / 100) * this.states.length)
@@ -30532,8 +30594,24 @@
       const actionsContainer = document.getElementById('action-buttons-container');
       const instructions = document.getElementById('stage-instructions');
       if (this.step === 'INTERNAL_GESTATION') {
-        instructions.innerHTML = '<strong>Incubation silencieuse :</strong><br><br>• Aucun organisme n’est visible sur l’hôte.<br>• L’hôte se réveille et recommence à circuler.<br>• À maturité, la perception basculera dans sa cage thoracique.';
-        actionsContainer.innerHTML = `<button type="button" class="act-btn" disabled>GESTATION INTERNE — ${Math.floor(this.gestationProgress)}%</button>`;
+        const activeMut = playerCreature.embryoMutation || 'carapace';
+        instructions.innerHTML = '<strong>Incubation silencieuse & Adaptation génétique :</strong><br><br>• Aucun organisme n’est visible sur l’hôte.<br>• Sélectionnez la mutation embryonnaire active.<br>• À maturité, la perception basculera dans la cage thoracique.';
+        actionsContainer.innerHTML = `
+          <button type="button" class="act-btn" disabled>GESTATION INTERNE — ${Math.floor(this.gestationProgress)}%</button>
+          <div style="display:flex;gap:6px;margin-top:6px;width:100%;justify-content:center;flex-wrap:wrap;">
+            <button type="button" class="act-btn btn-mut" data-mutation="agility" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'agility' ? '#38bdf8' : '#334155'};background:${activeMut === 'agility' ? 'rgba(56,189,248,0.22)' : 'transparent'};">AGILITÉ (+18% VIT)</button>
+            <button type="button" class="act-btn btn-mut" data-mutation="acid" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'acid' ? '#84cc16' : '#334155'};background:${activeMut === 'acid' ? 'rgba(132,204,22,0.22)' : 'transparent'};">SANG ACIDE (+40% DEG)</button>
+            <button type="button" class="act-btn btn-mut" data-mutation="carapace" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'carapace' ? '#f59e0b' : '#334155'};background:${activeMut === 'carapace' ? 'rgba(245,158,11,0.22)' : 'transparent'};">CHITINE (+45 PV, -25%)</button>
+          </div>
+        `;
+        actionsContainer.querySelectorAll('.btn-mut').forEach((btn) => {
+          btn.onclick = () => {
+            const mut = btn.getAttribute('data-mutation');
+            playerCreature.setEmbryoMutation(mut);
+            showToast(`MUTATION EMBRYONNAIRE : ${mut.toUpperCase()} active !`);
+            this.updateHUD();
+          };
+        });
       } else if (this.step === 'READY_TO_BURST') {
         instructions.innerHTML = '<strong>Vue intra-thoracique :</strong><br><br>• Le sternum remplit le champ de vision.<br>• Déclenchez la poussée lorsque les contractions culminent.';
         actionsContainer.innerHTML = '<button type="button" id="btn-erupt-now" class="act-btn" style="border-color: #ef4444;">PERFORER LE STERNUM [ESPACE]</button>';
@@ -30564,8 +30642,24 @@
       } else if (this.step === 'CHRYSALIS') {
         const isMature = this.chrysalisTimer >= 100;
         const adultLabel = playerCreature.getAdultProfile().label;
-        instructions.innerHTML = '<strong>Chrysalide métamorphique (Cocon Romulus) :</strong><br><br>• Le juvénile tisse un cocon biomécanique ancré aux conduits et parois métalliques.<br>• À travers la membrane amniotique translucide, le crâne adulte et les côtes se structurent.<br>• À 100%, la suture longitudinale se déchire pour libérer le prédateur adulte.';
-        actionsContainer.innerHTML = `<button type="button" id="btn-emerge-drone" class="act-btn" ${!isMature ? 'disabled' : ''} style="border-color: #39ff14; ${isMature ? 'background: rgba(57,255,20,0.22); box-shadow: 0 0 16px rgba(57,255,20,0.5);' : ''}">${isMature ? `DÉCHIRER LE COCON ROMULUS & ÉMERGER EN ${adultLabel} [ESPACE]` : `MATURATION DU COCON ROMULUS... (${Math.round(this.chrysalisTimer)}%)`}</button>`;
+        const activeMut = playerCreature.embryoMutation || 'carapace';
+        instructions.innerHTML = `<strong>Chrysalide métamorphique (Cocon Romulus) :</strong><br><br>• Le juvénile tisse un cocon biomécanique ancré aux conduits et parois.<br>• Mutation active : <strong>${activeMut.toUpperCase()}</strong>.<br>• À 100%, la suture longitudinale se déchire pour libérer le prédateur adulte.`;
+        actionsContainer.innerHTML = `
+          <button type="button" id="btn-emerge-drone" class="act-btn" ${!isMature ? 'disabled' : ''} style="border-color: #39ff14; ${isMature ? 'background: rgba(57,255,20,0.22); box-shadow: 0 0 16px rgba(57,255,20,0.5);' : ''}">${isMature ? `DÉCHIRER LE COCON ROMULUS & ÉMERGER EN ${adultLabel} [ESPACE]` : `MATURATION DU COCON ROMULUS... (${Math.round(this.chrysalisTimer)}%)`}</button>
+          <div style="display:flex;gap:6px;margin-top:6px;width:100%;justify-content:center;flex-wrap:wrap;">
+            <button type="button" class="act-btn btn-mut" data-mutation="agility" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'agility' ? '#38bdf8' : '#334155'};background:${activeMut === 'agility' ? 'rgba(56,189,248,0.22)' : 'transparent'};">AGILITÉ</button>
+            <button type="button" class="act-btn btn-mut" data-mutation="acid" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'acid' ? '#84cc16' : '#334155'};background:${activeMut === 'acid' ? 'rgba(132,204,22,0.22)' : 'transparent'};">ACIDE</button>
+            <button type="button" class="act-btn btn-mut" data-mutation="carapace" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'carapace' ? '#f59e0b' : '#334155'};background:${activeMut === 'carapace' ? 'rgba(245,158,11,0.22)' : 'transparent'};">CHITINE</button>
+          </div>
+        `;
+        actionsContainer.querySelectorAll('.btn-mut').forEach((btn) => {
+          btn.onclick = () => {
+            const mut = btn.getAttribute('data-mutation');
+            playerCreature.setEmbryoMutation(mut);
+            showToast(`MUTATION SOUCHE : ${mut.toUpperCase()} active !`);
+            this.updateHUD();
+          };
+        });
         if (isMature) document.getElementById('btn-emerge-drone').onclick = () => this.emergeAdultForm();
       }
     }
@@ -34448,8 +34542,11 @@
 
       // PALIMPSESTE activates a final mixed response force.
       if (window.gameInstance) {
+        const briareos = new HumanAI(201, 'synthetic', -42, -38, 'BRIAREOS-7 — synthétique de siège');
+        briareos.bossId = 'BRIAREOS_7';
+        window.HiveSystems?.unlockCodex?.(['briareos_7', 'codex_palimpseste']);
         const responseForce = [
-          new HumanAI(201, 'synthetic', -42, -38, 'BRIAREOS-7 — synthétique de siège'),
+          briareos,
           new HumanAI(202, 'incinerator', -24, 34, 'Opératrice thermique Sava Rhee'),
           new HumanAI(204, 'smartgunner', 38, -26, 'Artilleur gyro Kade Mercer'),
           new HumanAI(205, 'marine', -6, 18, 'Fusilier orbital Niko Vale'),
@@ -34465,6 +34562,7 @@
           aster.maskAttachments = asterState.maskAttachments;
           aster.hostEligibility = aster.maskAttachments > 0 ? 'protected' : 'viable';
           responseForce.push(aster);
+          window.HiveSystems?.unlockCodex?.(['aster_rho', 'codex_mnemosyne', 'codex_reseau_securite']);
         }
         const occupiedSpawns = [];
         responseForce.forEach((enemy, index) => {
@@ -34915,11 +35013,21 @@
       }
       this.isCompleted = true;
       window.HiveSystems?.updateObjective(5, 5, 'Choisir le destin de la ruche.');
+      window.HiveSystems?.unlockCodex?.(['palimpseste', 'codex_irise']);
       window.HiveSystems?.ending((ending) => {
         if (!window.gameInstance) return;
+        const aster = window.gameInstance.campaignCharacters?.asterRho;
+        const asterStatus = aster?.usedAsHost
+          ? 'Assimilée comme hôte royal'
+          : (aster?.alive ? 'Épargnée dans les coursives' : 'Neutralisée');
+        const coverage = resinGrid?.totalCoverage || 0;
+        const caste = playerCreature.adultCaste?.toUpperCase?.() || 'DRONE';
+        const mutation = (playerCreature.embryoMutation || 'carapace').toUpperCase();
+        const epilogueText = ending.epilogue || ending.description || 'MNEMOSYNE appartient désormais à la lignée royale.';
+        const synthesis = `${epilogueText}\n\nBILAN TACTIQUE DE CAMPAGNE :\n• Phénotype dominant : ${caste}\n• Mutation embryonnaire : ${mutation}\n• Couverture de résine : ${coverage}%\n• Statut Surveillante Aster Rho : ${asterStatus}`;
         window.gameInstance.showEndModal(
-          ending.title || 'VICTOIRE DE LA RUCHE',
-          ending.epilogue || ending.description || 'MNEMOSYNE appartient désormais à la lignée royale.'
+          `${ending.title || 'VICTOIRE DE LA RUCHE'}${ending.tone ? ' [' + ending.tone + ']' : ''}`,
+          synthesis
         );
       });
     }
@@ -34952,6 +35060,7 @@
         mantis.createMesh();
         this.mantisBoss = mantis;
         this.decorateMantisBoss();
+        window.HiveSystems?.unlockCodex?.(['mantis_4', 'codex_protocole_kappa']);
 
         const jansen = new HumanAI(207, 'powerloader', -36, 12, 'Élévateur P-5000 Caterpillar — Chef de pont Jansen');
         jansen.createMesh();
@@ -35267,6 +35376,7 @@
       };
       window.HiveSystems?.checkpoint(nextStage, unlocksByStage[nextStage] || [], {
         adultCaste: playerCreature.adultCaste,
+        embryoMutation: playerCreature.embryoMutation || 'carapace',
         hostProfile: this.hostProfile,
         origin: this.activeOrigin?.id || 'random',
         campaignCharacters: Object.fromEntries(
@@ -35289,6 +35399,7 @@
         difficulty: save?.difficulty || 'survivor',
         expandedLore: save?.expandedLore !== false,
         adultCaste: savedCaste,
+        embryoMutation: ['agility', 'acid', 'carapace'].includes(save?.embryoMutation) ? save.embryoMutation : 'carapace',
         hostProfile: savedHostProfile,
         origin: save?.origin || 'random'
       };
@@ -35327,6 +35438,7 @@
       playerCreature.moveTarget = null;
       playerCreature.moveWaypoints = [];
       playerCreature.adultCaste = 'drone';
+      playerCreature.setEmbryoMutation(this.campaignConfig?.embryoMutation || 'carapace');
       this.hostProfile = null;
       this.lastTimestamp = null;
 
@@ -35365,6 +35477,7 @@
         this.ensureStageOneHost(true);
       } else {
         playerCreature.setAdultCaste(this.campaignConfig.adultCaste || 'drone');
+        playerCreature.setEmbryoMutation(this.campaignConfig.embryoMutation || 'carapace');
         this.hostProfile = this.campaignConfig.hostProfile || null;
       }
       this.campaignActive = true;

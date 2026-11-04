@@ -30,7 +30,9 @@
         campaignStarted: false,
         difficulty: 'survivor',
         expandedLore: true,
+        origin: 'random',
         adultCaste: 'drone',
+        embryoMutation: 'carapace',
         hostProfile: null,
         campaignCharacters: {
           asterRho: {
@@ -49,6 +51,9 @@
       const parsed = isRecord(value) ? value : {};
       const character = isRecord(parsed.campaignCharacters?.asterRho)
         ? parsed.campaignCharacters.asterRho : {};
+      const validCaste = typeof parsed.adultCaste === 'string' && /^[a-z0-9_]{2,40}$/.test(parsed.adultCaste)
+        ? parsed.adultCaste
+        : 'drone';
       return {
         ...this.defaultSave,
         version: 2,
@@ -57,8 +62,11 @@
         difficulty: ['story', 'survivor', 'nightmare'].includes(parsed.difficulty)
           ? parsed.difficulty : 'survivor',
         expandedLore: typeof parsed.expandedLore === 'boolean' ? parsed.expandedLore : true,
-        adultCaste: ['drone', 'runner', 'warrior', 'worker', 'spitter', 'praetorian'].includes(parsed.adultCaste)
-          ? parsed.adultCaste : 'drone',
+        origin: typeof parsed.origin === 'string' && /^[a-z0-9_]{2,32}$/.test(parsed.origin)
+          ? parsed.origin : 'random',
+        adultCaste: validCaste,
+        embryoMutation: ['agility', 'acid', 'carapace'].includes(parsed.embryoMutation)
+          ? parsed.embryoMutation : 'carapace',
         hostProfile: typeof parsed.hostProfile === 'string' && parsed.hostProfile.length < 100
           ? parsed.hostProfile : null,
         unlockedCodex: stringList(parsed.unlockedCodex, ['ovomorphe']),
@@ -1388,19 +1396,19 @@
       const branches = [
         {
           label: 'CYCLE REPRODUCTIF OBLIGATOIRE',
-          ids: ['ovomorphe', 'facehugger', 'chestburster']
+          ids: ['ovomorphe', 'facehugger', 'royal_facehugger', 'chestburster']
         },
         {
           label: 'FORMES ADULTES · PHÉNOTYPES LIÉS À L’HÔTE',
-          ids: ['drone', 'runner']
+          ids: ['drone', 'runner', 'prowler']
         },
         {
           label: 'CASTES FONCTIONNELLES · BRANCHES DE L’UNIVERS ÉTENDU',
-          ids: ['worker', 'warrior', 'spitter']
+          ids: ['worker', 'warrior', 'spitter', 'burster', 'crusher']
         },
         {
-          label: 'LIGNÉE ROYALE · BRANCHE DISTINCTE',
-          ids: ['praetorian', 'queen']
+          label: 'LIGNÉE ROYALE & MUTATIONS EXPÉRIMENTALES',
+          ids: ['praetorian', 'palatine', 'queen', 'offspring']
         }
       ];
       const names = this.entriesForCategory('castes').reduce((map, entry) => {
@@ -1446,8 +1454,18 @@
         const title = document.createElement('strong');
         title.textContent = ending.title || ending.name || ending.id;
         const description = document.createElement('span');
-        description.textContent = ending.description || ending.summary || ending.choiceLabel || ending.epilogue || '';
+        const labelPart = ending.choiceLabel || ending.description || ending.summary || '';
+        const tonePart = ending.tone ? ` [${ending.tone}]` : '';
+        description.textContent = `${labelPart}${tonePart}`;
         button.append(title, description);
+        if (ending.epilogue) {
+          const epilogueNode = document.createElement('small');
+          epilogueNode.style.display = 'block';
+          epilogueNode.style.marginTop = '6px';
+          epilogueNode.style.opacity = '0.82';
+          epilogueNode.textContent = ending.epilogue;
+          button.appendChild(epilogueNode);
+        }
         button.addEventListener('click', () => {
           this.saveManager.completeEnding(ending.id);
           this.hideLayer(overlay, false);
@@ -1472,11 +1490,13 @@
       if (category === 'threats') return [...toArray(this.content.enemies), ...toArray(this.content.bosses)];
       if (category === 'archives') {
         const journals = toArray(this.content.archives || this.content.logs || this.content.journals);
-        return journals.map((entry) => ({
+        const codexEntries = toArray(this.content.codex?.entries);
+        return [...journals, ...codexEntries].map((entry) => ({
           ...entry,
           id: entry.id,
           title: entry.title || entry.subject || entry.id,
-          text: entry.text || entry.body || entry.transcript || entry.summary
+          text: entry.text || entry.body || entry.transcript || entry.summary,
+          source: entry.source || entry.category || 'Archive ORPHEUS'
         }));
       }
       return [];
@@ -1532,6 +1552,13 @@
     },
     checkpoint(stage, unlockIds, additions) {
       ui.checkpoint(stage, unlockIds, additions);
+    },
+    unlockCodex(unlockIds = []) {
+      const list = Array.isArray(unlockIds) ? unlockIds : [unlockIds];
+      if (!list.length) return [];
+      const unlocked = saveManager.unlock(list.filter(Boolean));
+      ui.renderCodex(ui.activeCodexCategory);
+      return unlocked;
     },
     narrative(speaker, line, duration) {
       ui.narrative(speaker, line, duration);

@@ -6909,6 +6909,8 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       if (normalizedType === 'powerloader') return this._createExosuit();
       if (normalizedType === 'labhound' || normalizedType === 'weyland_cyber_hound') return this._createServiceAnimal(requestedType);
       if (normalizedType === 'labrodent') return this._createLaboratoryRodent(requestedType);
+      if (normalizedType === 'sentry_turret' || normalizedType === 'turret' || normalizedType === 'sentry_gun') return this.createUA571CTurret();
+      if (normalizedType === 'security_drone' || normalizedType === 'skimmer_scan_drone') return this.createSecurityDrone();
 
       const imported = global.HiveAssetLibrary?.instantiate?.(normalizedType, { height: 4.25 });
       if (imported) {

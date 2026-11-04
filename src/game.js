@@ -14351,13 +14351,64 @@
       }
     }
 
-    // Chantier 23 : Tourelles Automatiques UA 571-C Sentry Guns (Aliens 1986)
+    // Chantier 23 & 96 : Tourelles Automatiques UA 571-C Sentry Guns (Aliens 1986)
     updateSentryTurrets(safeDelta) {
       if (!this.sentryTurrets) return;
       for (const turret of this.sentryTurrets) {
         if (turret.isDestroyed || turret.ammo <= 0) continue;
         turret.burstCooldown = Math.max(0, turret.burstCooldown - safeDelta);
         turret.recoil = Math.max(0, (turret.recoil || 0) - safeDelta * 4.8);
+
+        // Chantier 96 : Aveuglement optique des tourelles UA 571-C par aspersion d'acide (Aliens 1986)
+        if (turret.isOpticsBlinded) {
+          turret.blindTimer = Math.max(0, (turret.blindTimer || 0) - safeDelta);
+          if (turret.blindTimer <= 0) {
+            turret.isOpticsBlinded = false;
+            window.HiveSystems?.vfx?.floatingText?.(turret.x, 2.0, turret.z, 'RÉALIGNEMENT OPTIQUE UA 571-C !', '#38bdf8', false);
+          } else {
+            if (Math.random() < 0.22) {
+              window.HiveSystems?.vfx?.burst?.(turret.x, turret.z, 0x84cc16, 5, 0.08, 0.5);
+            }
+            turret.angle = (turret.angle || 0) + safeDelta * 4.5;
+            const head = turret.swivelHead || turret.mesh?.getObjectByName('turret_swivel_head');
+            if (head) head.rotation.y = turret.angle;
+            if (turret.burstCooldown <= 0 && turret.ammo > 0) {
+              turret.burstCooldown = 0.32;
+              turret.ammo = Math.max(0, turret.ammo - 4);
+              audioManager.playSentryBurst?.(turret.x, turret.z);
+              rendererEngine.addScreenShake?.(0.08, 0.05);
+              window.HiveSystems?.vfx?.burst?.(turret.x, turret.z, 0xf59e0b, 8, 0.08, 0.6);
+              const blindAngle = turret.angle;
+              const blindEndX = turret.x + Math.sin(blindAngle) * 14;
+              const blindEndZ = turret.z + Math.cos(blindAngle) * 14;
+              window.HiveSystems?.vfx?.beam?.(turret.x, 0.95, turret.z, blindEndX, 0.95, blindEndZ, 0xf59e0b);
+              const allTargets = [playerCreature, ...(window.gameInstance?.humans || [])];
+              allTargets.forEach((t) => {
+                if (!t || t.isIncapacitated) return;
+                const distT = Math.hypot(t.x - turret.x, t.z - turret.z);
+                if (distT <= 14) {
+                  const toT = Math.atan2(t.x - turret.x, t.z - turret.z);
+                  const diffT = Math.abs((((toT - blindAngle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+                  if (diffT < 0.24) {
+                    t.takeDamage?.(10, turret);
+                    window.HiveSystems?.vfx?.floatingText?.(t.x, 2.2, t.z, '-10 BALLE PERDUE TOURELLE', '#ef4444', true);
+                  }
+                }
+              });
+            }
+            continue;
+          }
+        } else {
+          const acidNearby = (this.acidPools || []).some((p) => Math.hypot(p.x - turret.x, p.z - turret.z) <= 3.2);
+          if (acidNearby) {
+            turret.isOpticsBlinded = true;
+            turret.blindTimer = 12.0;
+            audioManager.playAcidBurn?.(turret.x, turret.z);
+            window.HiveSystems?.vfx?.burst?.(turret.x, turret.z, 0x84cc16, 20, 0.18, 1.4);
+            window.HiveSystems?.vfx?.floatingText?.(turret.x, 2.4, turret.z, 'OPTIQUES CORRODÉES PAR L\'ACIDE !', '#84cc16', true);
+            showToast('TOURELLE AVEUGLÉE : Lentilles UA 571-C aspergées d\'acide ! Tirs erratiques.');
+          }
+        }
 
         // Recul amorti des canons jumelés
         const b1 = turret.barrel1 || turret.mesh?.getObjectByName('turret_barrel_1');
@@ -14530,9 +14581,19 @@
       });
     }
 
-    // Chantier 32 : Mise à jour de la gravité zéro & orbes d'acide flottantes (Alien: Romulus)
+    // Chantier 32 & 99 : Mise à jour de la gravité zéro & orbes d'acide flottantes (Alien: Romulus)
+    isZeroGActive(x = null, z = null) {
+      if (this.zeroGZone && this.zeroGZone.active) {
+        if (x !== null && z !== null) return this.isInZeroGZone(x, z);
+        return true;
+      }
+      if ((this.zeroGGenerators || []).some((g) => (g.activeTimer || 0) > 0)) return true;
+      if ((this.gravityInversionChambers || []).some((gc) => gc.isZeroG && (gc.zeroGTimer || 0) > 0)) return true;
+      return false;
+    }
+
     spawnFloatingAcidOrb(x, y, z) {
-      if (!this.zeroGZone || !this.zeroGZone.active) return;
+      if (!this.isZeroGActive(x, z)) return;
       const orbMat = new THREE.MeshStandardMaterial({
         color: 0x39ff14,
         emissive: 0x22c55e,
@@ -14555,12 +14616,13 @@
     }
 
     updateZeroGZone(safeDelta) {
-      if (!this.zeroGZone || !this.zeroGZone.active) return;
-      this.zeroGZone.humTimer -= safeDelta;
-      if (this.zeroGZone.humTimer <= 0) {
-        this.zeroGZone.humTimer = 5.0;
-        if (this.isInZeroGZone(playerCreature.x, playerCreature.z)) {
-          audioManager.playZeroGHum?.(playerCreature.x, playerCreature.z);
+      if (this.zeroGZone && this.zeroGZone.active) {
+        this.zeroGZone.humTimer -= safeDelta;
+        if (this.zeroGZone.humTimer <= 0) {
+          this.zeroGZone.humTimer = 5.0;
+          if (this.isInZeroGZone(playerCreature.x, playerCreature.z)) {
+            audioManager.playZeroGHum?.(playerCreature.x, playerCreature.z);
+          }
         }
       }
 
@@ -24312,7 +24374,7 @@
       return true;
     }
 
-    // Chantier 59 : Implantation Oviducte Directe sur Proie Agonique (Alien: Romulus / Comics)
+    // Chantier 59 & 97 : Implantation Oviducte Directe sur Proie Agonique & Predalien Multi-Embryons (Alien: Romulus / AvP: Requiem)
     executeDirectInoculation(target = null) {
       const humans = window.gameInstance?.humans || [];
       const victim = target || humans.find((h) => (
@@ -24324,6 +24386,22 @@
       if (!victim) {
         showToast('Aucune proie agonique ou terrorisée à portée (4.2m) pour l’Inoculation Directe [G].');
         return false;
+      }
+
+      // Chantier 97 : Inoculation forcée par la gorge multi-embryons du Predalien (AvP: Requiem)
+      if (this.adultCaste === 'predalien' || this.caste === 'predalien') {
+        victim.predalienMultiEmbryos = 3;
+        victim.directInoculated = true;
+        victim.isIncapacitated = true;
+        victim.directInoculationTimer = 8.0;
+        audioManager.playPredalienRoar?.(this.x, this.z);
+        audioManager.playOviductInoculation?.(victim.x, victim.z);
+        rendererEngine.addScreenShake?.(0.42, 0.28);
+        window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0xf59e0b, 35, 0.25, 2.0);
+        window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.8, victim.z, 'INOCULATION PREDALIEN TRIPLE EMBRYONS (8s) !', '#f59e0b', true);
+        showToast(`IMPLANTATION PREDALIEN [G] : 3 embryons inséminés directement dans la gorge de ${victim.name} (Éclosion en 8s) !`);
+        appendSensorLog(`[PREDALIEN] Mandibules déployées : inoculation forcée de 3 embryons dans la gorge de ${victim.name}. Éclosion ultra-rapide.`, 'bio');
+        return true;
       }
 
       audioManager.playOviductInoculation?.(victim.x, victim.z);
@@ -24562,6 +24640,13 @@
         window.HiveSystems?.vfx?.spawnAcidPool?.(targetPos.x, targetPos.z, poolRadius, poolDuration);
         window.HiveSystems?.vfx?.burst(targetPos.x, targetPos.z, acidColor, isSpitter ? 32 : 22, 0.18, 1.8);
         audioManager.playAcidSizzle?.(targetPos.x, targetPos.z);
+
+        // Chantier 99 : Projection de globules d'acide lévitants en apesanteur (Alien: Romulus)
+        if (stationMap?.isZeroGActive?.(targetPos.x, targetPos.z)) {
+          for (let o = 0; o < (isSpitter ? 5 : 3); o++) {
+            stationMap.spawnFloatingAcidOrb?.(targetPos.x + (Math.random() - 0.5) * 1.4, 1.2 + Math.random() * 1.0, targetPos.z + (Math.random() - 0.5) * 1.4);
+          }
+        }
 
         const humans = window.gameInstance?.humans || [];
         humans.forEach((h) => {
@@ -26310,6 +26395,14 @@
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, 18, 0.14, 1.25);
       window.HiveSystems?.vfx?.spawnAcidPool?.(this.x, this.z, 1.45, 9.0);
       stationMap.addAcidCorrosion?.(this.x, this.z, 1.8, 12.0);
+
+      // Chantier 99 : Projection de globules d'acide flottants en apesanteur (Alien: Romulus)
+      if (stationMap?.isZeroGActive?.(this.x, this.z)) {
+        for (let o = 0; o < 3; o++) {
+          stationMap.spawnFloatingAcidOrb?.(this.x + (Math.random() - 0.5) * 1.0, 1.2 + Math.random() * 0.8, this.z + (Math.random() - 0.5) * 1.0);
+        }
+      }
+
       window.HiveSystems?.vfx?.floatingText?.(this.x, 2.0, this.z, `-${Math.ceil(actualDmg)}`, '#ef4444', false);
 
       // Canon 1:1 Lore — Projection de sang acide pressurisé sur les assaillants proches
@@ -26880,6 +26973,12 @@
       this.lastStressQuoteTime = 0;
       this.grenadeCooldown = 5.0 + Math.random() * 5.0; // Chantier 4 : Grenades M40 30mm commando
       this.powerloaderBeepTimer = 1.0 + Math.random() * 2.0; // Chantier 10 : Avertisseur P-5000
+      this.breakdownCooldown = 6.0 + Math.random() * 6.0; // Chantier 95 : Crises de panique / décompensation
+      this.catatonicTimer = 0;
+      this.isOpticsBlinded = false; // Chantier 96 : Aveuglement optique par acide
+      this.blindTimer = 0;
+      this.hasF44AA = ['colonial_raider', 'security_agent', 'weyland_yutani_commando', 'orbital_rifleman'].includes(type); // Chantier 98 : Fusil F44AA
+      this.f44aaLockTimer = 0;
       this.choosePatrolWaypoint();
     }
 
@@ -27105,6 +27204,17 @@
       if (this.type === 'uscm_phalanx_shield' && attacker) {
         appliedDamage *= 0.35;
         window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 8, 0.1, 0.8);
+      }
+
+      // Chantier 96 : Aveuglement optique des tourelles UA 571-C par aspersion d'acide (Aliens 1986)
+      if (['sentry_turret', 'turret', 'sentry_gun'].includes(this.type) && (attacker === 'acid' || attacker?.isAcidSpit || attacker === playerCreature)) {
+        this.isOpticsBlinded = true;
+        this.blindTimer = 12.0;
+        audioManager.playAcidBurn?.(this.x, this.z);
+        window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x84cc16, 25, 0.2, 1.5);
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 2.5, this.z, 'OPTIQUES FONDUES PAR L\'ACIDE (12s) !', '#84cc16', true);
+        showToast('OPTIQUES TOURELLE AVEUGLÉES : Le sang acide a corrodé les lentilles de visée UA 571-C !');
+        appendSensorLog(`[UA 571-C] Capteurs optiques vitrifiés par l'acide moléculaire. Tirs erratiques.`, 'alert');
       }
 
       // Chantier 80 : Bonus de dégâts critiques +200% à l'embuscade depuis le mimétisme de résine
@@ -27382,12 +27492,56 @@
 
     update(deltaSeconds = 1 / 60) {
       if (!this.mesh || this.isBursting || this.isCocooned || this.isIncapacitated) return;
+      const safeDelta = Math.max(0, deltaSeconds);
       if (this.isDocileCatatonic) {
+        if (this.catatonicTimer > 0) {
+          this.catatonicTimer -= safeDelta;
+          if (this.catatonicTimer <= 0) {
+            this.isDocileCatatonic = false;
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'FIN DU BLOCAGE CATATONIQUE !', '#38bdf8', false);
+          }
+        }
         this.aiState = 'PATROL';
         this.targetPos = { x: this.x, z: this.z };
         return;
       }
-      const safeDelta = Math.max(0, deltaSeconds);
+
+      // Chantier 96 : Aveuglement optique des tourelles UA 571-C / sentinelles
+      if (this.isOpticsBlinded) {
+        this.blindTimer -= safeDelta;
+        if (this.blindTimer <= 0) {
+          this.isOpticsBlinded = false;
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'RÉTABLISSEMENT OPTIQUE !', '#38bdf8', false);
+        } else {
+          if (this.mesh) this.mesh.rotation.y += safeDelta * 4.5;
+          if (Math.random() < 0.2) {
+            window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x84cc16, 4, 0.08, 0.5);
+          }
+          if (this.shootCooldown <= 0) {
+            this.shootCooldown = 0.35;
+            audioManager.playSentryBurst?.(this.x, this.z);
+            window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf59e0b, 8, 0.08, 0.6);
+            const blindAngle = this.mesh ? this.mesh.rotation.y : 0;
+            const blindEndX = this.x + Math.sin(blindAngle) * 12;
+            const blindEndZ = this.z + Math.cos(blindAngle) * 12;
+            window.HiveSystems?.vfx?.beam?.(this.x, 1.2, this.z, blindEndX, 1.2, blindEndZ, 0xf59e0b);
+            const targets = [playerCreature, ...(window.gameInstance?.humans || [])];
+            targets.forEach((t) => {
+              if (!t || t === this || t.isIncapacitated) return;
+              const dt = Math.hypot(t.x - this.x, t.z - this.z);
+              if (dt <= 12) {
+                const toT = Math.atan2(t.x - this.x, t.z - this.z);
+                const diffT = Math.abs((((toT - blindAngle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+                if (diffT < 0.24) {
+                  t.takeDamage?.(12, this);
+                  window.HiveSystems?.vfx?.floatingText?.(t.x, 2.2, t.z, '-12 TIR DÉRÉGLÉ', '#ef4444', true);
+                }
+              }
+            });
+          }
+          return;
+        }
+      }
       this.attackAnimation = Math.max(0, this.attackAnimation - safeDelta * 2.8);
 
       // Audit QA #98 : Réaction Panique des Civils face aux Dangers Industriels Actifs
@@ -27804,6 +27958,45 @@
               this.targetPos = { x: fleeX, z: fleeZ };
             }
           }
+
+          // Chantier 95 : Crises Psychiatriques & Décompensations Sous Terreur Extrême (Aliens 1986 / Dark Descent)
+          if (this.stress >= 90 && !this.isIncapacitated && !this.isCocooned) {
+            this.breakdownCooldown = (this.breakdownCooldown || 0) - safeDelta;
+            if (this.breakdownCooldown <= 0) {
+              this.breakdownCooldown = 12.0 + Math.random() * 8.0;
+              const breakdownRoll = Math.random();
+              if (breakdownRoll < 0.35) {
+                // 1. FRIENDLY FIRE PANIC (Tirs Frénétiques Fratricides à 360°)
+                audioManager.playM41APulseBurst?.(this.x, this.z);
+                rendererEngine.addScreenShake?.(0.22, 0.14);
+                window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf59e0b, 20, 0.2, 1.4);
+                window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'PANIQUE : RAFALE FRATRICIDE 360° !', '#ef4444', true);
+                showToast(`CRISE DE PANIQUE : ${this.name} décharge son arme à l'aveugle dans la coursive !`);
+                appendSensorLog(`[PSYCHOSE] ${this.name} perd le contrôle : tir fratricide sous panique aiguë.`, 'alert');
+                const nearbySquad = (window.gameInstance?.humans || []).filter((h) => h !== this && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 5.5);
+                nearbySquad.forEach((ally) => {
+                  ally.takeDamage?.(14, this);
+                  ally.stress = Math.min(100, (ally.stress || 0) + 25);
+                  window.HiveSystems?.vfx?.floatingText?.(ally.x, 2.5, ally.z, '-14 TIR AMI !', '#ef4444', true);
+                });
+              } else if (breakdownRoll < 0.70) {
+                // 2. WEAPON JAM (Tremblements & Enrayement d'Arme sous Choc Nerveux)
+                this.shootCooldown = 4.5;
+                audioManager.playTurretLock?.(this.x, this.z);
+                window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x94a3b8, 8, 0.08, 0.6);
+                window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, 'ENRAYEMENT D\'ARME (PANIQUE 4.5s) !', '#f59e0b', true);
+                showToast(`ENRAYEMENT NERVEUX : Les mains tremblantes de ${this.name} bloquent la culasse !`);
+                appendSensorLog(`[ENRAYEMENT] ${this.name} fustige sa culasse : arme enrayée sous stress extrême.`, 'alert');
+              } else {
+                // 3. CATATONIC FREEZE (Syndrome de Gorman - Tétanie & Prostration Totale)
+                this.isDocileCatatonic = true;
+                this.catatonicTimer = 6.0;
+                window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, 'TÉTANIE CATATONIQUE (6.0s) !', '#38bdf8', true);
+                showToast(`CHOC CATATONIQUE : ${this.name} est pétrifié de terreur, incapable de réagir !`);
+                appendSensorLog(`[CATATONIE] ${this.name} entre en état de choc dissociatif. Cible immobile.`, 'alert');
+              }
+            }
+          }
         }
       }
 
@@ -27954,6 +28147,34 @@
           }
 
           this.attackAnimation = 1;
+
+          // Chantier 98 : Fusil à Impulsion F44AA avec Viseur Gyroscopique Assisté (Alien: Romulus)
+          if (this.hasF44AA && distToPlayer <= 16 && hasLineOfSight) {
+            const hostTemp = combatTarget === playerCreature ? (playerCreature.isCryoRegulated ? 18.0 : 37.0) : (combatTarget.getTemperature?.() || 37.0);
+            const isDodging = combatTarget === playerCreature && (playerCreature.isLeaping || playerCreature.isInVent || playerCreature.isCeilingProwling || playerCreature.isWallMimic);
+            if (hostTemp < 20.0 || isDodging) {
+              if (this.f44aaLockTimer > 0) {
+                this.f44aaLockTimer = 0;
+                window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, 'PERTE DE VERROUILLAGE F44AA !', '#94a3b8', false);
+              }
+            } else {
+              this.f44aaLockTimer = (this.f44aaLockTimer || 0) + safeDelta;
+              if (Math.random() < 0.28) {
+                window.HiveSystems?.vfx?.beam?.(this.x, 2.4, this.z, combatTarget.x, 1.4, combatTarget.z, 0x38bdf8);
+              }
+              if (this.f44aaLockTimer >= 0.8 && this.shootCooldown <= 0) {
+                this.shootCooldown = 1.1;
+                this.f44aaLockTimer = 0.25;
+                audioManager.playM41APulseBurst?.(this.x, this.z);
+                rendererEngine.addScreenShake?.(0.18, 0.1);
+                window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.65, this.z, 0x38bdf8, 0.3);
+                window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0x38bdf8, 14, 0.12, 1.2);
+                window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'VERROUILLAGE GYRO F44AA (+80%) !', '#38bdf8', true);
+                applyWeaponDamage(1.8);
+                return;
+              }
+            }
+          }
 
           // Chantier 4 : Grenades M40 30mm à shrapnel du Commando (Aliens 1986)
           if (this.type === 'commando' && this.grenadeCooldown <= 0 && distToPlayer >= 5.5 && distToPlayer <= 22) {
@@ -28567,7 +28788,7 @@
         }
       }
 
-      // Chantier 59 : Gestation ultra-rapide et éclosion in-situ d'inoculation oviducte (Alien: Romulus)
+      // Chantier 59 & 97 : Gestation ultra-rapide et éclosion in-situ d'inoculation oviducte (Alien: Romulus / AvP: Requiem)
       if (this.directInoculated && !this.isConsumedByCycle) {
         this.directInoculationTimer -= safeDelta;
         if (Math.random() < 0.15) {
@@ -28578,13 +28799,27 @@
           this.isConsumedByCycle = true;
           this.takeDamage(this.hp || 100);
           audioManager.playBloodbursterErupt?.(this.x, this.z);
-          rendererEngine.addScreenShake?.(0.35, 0.25);
-          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xef4444, 45, 0.35, 2.5);
-          window.HiveSystems?.vfx?.floatingText?.(this.x, 3.0, this.z, 'ÉMERGENCE DU CHESTBURSTER IN-SITU !', '#ef4444', true);
-          showToast(`CHESTBURSTER NOUVEAU-NÉ : Jaillissement sternal direct sur ${this.name} sans transport au nid !`);
-          appendSensorLog(`[ROMULUS 1:1] Émergence thoracique foudroyante sur ${this.name}. Chestburster opérationnel.`, 'bio');
-          if (window.gameInstance?.currentStage?.spawnChestburster) {
-            window.gameInstance.currentStage.spawnChestburster(this.x, this.z);
+          const embryoCount = this.predalienMultiEmbryos || 1;
+          rendererEngine.addScreenShake?.(embryoCount > 1 ? 0.48 : 0.35, embryoCount > 1 ? 0.35 : 0.25);
+          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xef4444, embryoCount > 1 ? 65 : 45, 0.4, 2.8);
+          if (embryoCount > 1) {
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, `ÉMERGENCE TRIPLE BLOODBURSTER (${embryoCount}x) !`, '#f59e0b', true);
+            showToast(`ÉCLOSION MULTIPLE PREDALIEN : ${embryoCount} Chestbursters jaillissent simultanément de la gorge de ${this.name} !`);
+            appendSensorLog(`[AVP: REQUIEM] Éclosion multiple de ${embryoCount} Chestbursters sur ${this.name}.`, 'bio');
+            for (let i = 0; i < embryoCount; i++) {
+              const offX = (Math.random() - 0.5) * 1.6;
+              const offZ = (Math.random() - 0.5) * 1.6;
+              if (window.gameInstance?.currentStage?.spawnChestburster) {
+                window.gameInstance.currentStage.spawnChestburster(this.x + offX, this.z + offZ);
+              }
+            }
+          } else {
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.0, this.z, 'ÉMERGENCE DU CHESTBURSTER IN-SITU !', '#ef4444', true);
+            showToast(`CHESTBURSTER NOUVEAU-NÉ : Jaillissement sternal direct sur ${this.name} sans transport au nid !`);
+            appendSensorLog(`[ROMULUS 1:1] Émergence thoracique foudroyante sur ${this.name}. Chestburster opérationnel.`, 'bio');
+            if (window.gameInstance?.currentStage?.spawnChestburster) {
+              window.gameInstance.currentStage.spawnChestburster(this.x, this.z);
+            }
           }
         }
       }

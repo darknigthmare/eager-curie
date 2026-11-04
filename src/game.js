@@ -13644,12 +13644,34 @@
       return true;
     }
 
-    // Chantier 5 : Le sang acide perce le pont (Alien 1979 — Kane / Ash percent trois ponts).
+    // Chantier 5 & 106 : Le sang acide perce les ponts successifs et ouvre une brèche d'évasion (Alien 1979 / Alien: Resurrection).
     addAcidCorrosion(x, z, radius = 1.8, duration = 12.0) {
-      // Fusionne les impacts rapprochés pour éviter l'accumulation de maillages.
-      const existing = this.acidCorrosions.find((corr) => Math.hypot(corr.x - x, corr.z - z) < corr.radius);
+      // Fusionne les impacts rapprochés et approfondit la perforation des ponts (acidDepth).
+      const existing = this.acidCorrosions.find((corr) => Math.hypot(corr.x - x, corr.z - z) < corr.radius + 0.6);
       if (existing) {
-        existing.timer = Math.max(existing.timer, duration);
+        existing.timer = Math.max(existing.timer, duration + 6.0);
+        existing.acidDepth = (existing.acidDepth || 1) + 1;
+        if (existing.acidDepth >= 2 && !existing.isDeckBreached) {
+          existing.isDeckBreached = true;
+          existing.radius = Math.max(existing.radius, 2.3);
+          audioManager.playAcidSizzle?.();
+          audioManager.playMetalImpact?.(existing.x, existing.z);
+          rendererEngine.addScreenShake?.(0.32, 0.22);
+          window.HiveSystems?.vfx?.burst?.(existing.x, existing.z, 0x39ff14, 32, 0.24, 2.2);
+          window.HiveSystems?.vfx?.ring?.(existing.x, existing.z, 0x84cc16, 3.2);
+          window.HiveSystems?.vfx?.floatingText?.(existing.x, 2.6, existing.z, 'BRÈCHE ACIDE MULTI-PONTS [C : CONDUIT] !', '#39ff14', true);
+          showToast('PERCÉE ACIDE MULTI-PONTS (Alien 1979 / Resurrection) : Le plancher cède ! Brèche ouverte vers les conduits inférieurs [C] !');
+          appendSensorLog(`[ACIDE MOLÉCULAIRE] Blindage de pont dissous en (${Math.round(existing.x)}, ${Math.round(existing.z)}). Accès direct au réseau sous-plancher ouvert.`, 'bio');
+          if (this.vents && !this.vents.some((v) => Math.hypot(v.x - existing.x, v.z - existing.z) < 3.0)) {
+            this.vents.push({
+              id: `acid_breach_${Date.now()}`,
+              name: 'Brèche de Pont Acide (Sous-Pont)',
+              x: existing.x,
+              z: existing.z,
+              isAcidBreach: true
+            });
+          }
+        }
         return;
       }
       if (this.acidCorrosions.length >= 14) {
@@ -13663,7 +13685,7 @@
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set(x, 0.035, z);
       rendererEngine.propsGroup.add(mesh);
-      this.acidCorrosions.push({ x, z, radius, timer: duration, maxTimer: duration, tick: 0, mesh });
+      this.acidCorrosions.push({ x, z, radius, timer: duration, maxTimer: duration, tick: 0, acidDepth: 1, isDeckBreached: false, mesh });
 
       // Audit QA #64 : Éclaboussures d'Acide Murales Caustiques avec Fumée Persistante
       const nearCollider = (this.colliders || []).find((c) => (
@@ -13829,7 +13851,7 @@
         if (Math.random() < 0.2) window.HiveSystems?.vfx?.spawnSteamCloud?.(sas.x - 4, 1.8, sas.z, 3.2);
       }
 
-      // Corrosion acide : brûlure par impulsions (0,5 s) sans figer les victimes.
+      // Corrosion acide : brûlure par impulsions (0,5 s) et effondrement de pont si percé (Chantier 106).
       for (let i = this.acidCorrosions.length - 1; i >= 0; i--) {
         const corr = this.acidCorrosions[i];
         corr.timer -= safeDelta;
@@ -13840,8 +13862,14 @@
           (window.gameInstance?.humans || []).forEach((h) => {
             if (h.isIncapacitated || h.isCocooned || h.type === 'labrodent') return;
             if (Math.hypot(h.x - corr.x, h.z - corr.z) > corr.radius) return;
-            h.takeDamage?.(8);
-            window.HiveSystems?.vfx?.floatingText?.(h.x, 2.2, h.z, '-8 ACIDE AU SOL', '#39ff14', false);
+            const dmg = corr.isDeckBreached ? 28 : 8;
+            h.takeDamage?.(dmg);
+            if (corr.isDeckBreached) {
+              h.staggerTimer = Math.max(h.staggerTimer || 0, 1.4);
+              window.HiveSystems?.vfx?.floatingText?.(h.x, 2.4, h.z, '-28 BRÈCHE DE PONT ACIDE !', '#39ff14', true);
+            } else {
+              window.HiveSystems?.vfx?.floatingText?.(h.x, 2.2, h.z, '-8 ACIDE AU SOL', '#39ff14', false);
+            }
           });
         }
         if (corr.timer <= 0) {
@@ -26468,14 +26496,34 @@
 
       window.HiveSystems?.vfx?.floatingText?.(this.x, 2.0, this.z, `-${Math.ceil(actualDmg)}`, '#ef4444', false);
 
+      // Chantier 105 : Défense Chirurgicale Acide & Strangulation Réflexe du Collet du Facehugger (Alien 1979 Infirmerie)
+      if (this.form === 'facehugger' && this.attachedHost) {
+        const stg = window.gameInstance?.currentStage;
+        if (stg && typeof stg.implantProgress === 'number') {
+          stg.implantProgress = Math.min(100, stg.implantProgress + 18);
+          stg.finishImplantationIfReady?.();
+        }
+        audioManager.playFacehuggerGrip?.(this.x, this.z);
+        audioManager.playAcidSizzle?.();
+        stationMap.addAcidCorrosion?.(this.x, this.z, 2.2, 16.0);
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 2.7, this.z, 'STRANGULATION RÉFLEXE & DÉFENSE CHIRURGICALE ACIDE (+18%) !', '#39ff14', true);
+        showToast('DÉFENSE DU FACEHUGGER (Alien 1979) : La queue resserre la gorge de l\'hôte et un jet d\'acide moléculaire repousse les assaillants !');
+        appendSensorLog('[INFIRMERIE 1979] Réflexe d\'autopréservation du parasite : constriction laryngée accrue et hémorragie acide sous pression.', 'bio');
+      }
+
       // Canon 1:1 Lore — Projection de sang acide pressurisé sur les assaillants proches
       const nearbyHumans = (window.gameInstance?.humans || []).filter((h) => (
-        !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 4.0
+        !h.isIncapacitated && !h.isCocooned && h !== this.attachedHost && Math.hypot(h.x - this.x, h.z - this.z) <= 4.0
       ));
       nearbyHumans.forEach((human) => {
-        const acidDamage = Math.round(Math.max(12, actualDmg * 0.95));
+        const isSurgicalDefense = this.form === 'facehugger' && Boolean(this.attachedHost);
+        const acidDamage = isSurgicalDefense ? 38 : Math.round(Math.max(12, actualDmg * 0.95));
         human.takeDamage(acidDamage, this);
-        human.staggerTimer = 0.45;
+        human.staggerTimer = isSurgicalDefense ? 2.2 : 0.45;
+        if (isSurgicalDefense && !human.isSynthetic?.()) {
+          human.stress = 100;
+          human.isPanicking = true;
+        }
         window.HiveSystems?.vfx?.floatingText?.(human.x, 2.4, human.z, `-${acidDamage} ACIDE`, '#39ff14', true);
         window.HiveSystems?.vfx?.burst(human.x, human.z, 0x39ff14, 12, 0.12, 1.0);
         if (human.type === 'synthetic' || human.type === 'android') {
@@ -28346,18 +28394,48 @@
               onGrenadeImpact();
             }
           } else if (['powerloader', 'exosuit'].includes(this.type) && distToPlayer <= 3.8) {
-            // Chantier 10 & 41 : Broyage hydraulique & projection par les pinces Caterpillar P-5000 (Aliens 1986)
+            // Chantier 10, 41 & 107 : Duel Biomécanique Caterpillar P-5000 — Étau Hydraulique aux Pinces & Broyage (Aliens 1986 Ripley vs Queen)
             this.shootCooldown = 2.1;
             audioManager.playPowerLoaderPincerClaw?.(this.x, this.z);
             audioManager.playMetalImpact?.(this.x, this.z);
-            rendererEngine.addScreenShake?.(0.35, 0.22);
-            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf59e0b, 22, 0.16, 1.6);
-            window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 2.8, combatTarget.z, 'BROYAGE & PROJECTION P-5000 !', '#f59e0b', true);
-            const pushDirX = (combatTarget.x - this.x) / (distToPlayer || 1);
-            const pushDirZ = (combatTarget.z - this.z) / (distToPlayer || 1);
-            combatTarget.x += pushDirX * 3.8;
-            combatTarget.z += pushDirZ * 3.8;
-            applyWeaponDamage(1.8);
+            rendererEngine.addScreenShake?.(0.38, 0.24);
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf59e0b, 24, 0.16, 1.6);
+            window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 2.8, combatTarget.z, 'PRISE D\'ÉTAU HYDRAULIQUE & BROYAGE P-5000 !', '#f59e0b', true);
+            if (combatTarget === playerCreature && playerCreature.actionAnimation > 0.2) {
+              this.staggerTimer = 1.5;
+              window.HiveSystems?.vfx?.floatingText?.(this.x, 3.3, this.z, 'CONTRE-DÉGAGEMENT CAUDAL : PINCES P-5000 REPOUSSÉES !', '#39ff14', true);
+              showToast('CONTRE-DÉGAGEMENT P-5000 : Votre frappe repousse les pinces hydrauliques du Power Loader !');
+            } else {
+              combatTarget.isPincerGrappled = true;
+              combatTarget.pincerGrappleTimer = 1.6;
+              if (combatTarget.staggerTimer !== undefined) combatTarget.staggerTimer = 1.2;
+              const pushDirX = (combatTarget.x - this.x) / (distToPlayer || 1);
+              const pushDirZ = (combatTarget.z - this.z) / (distToPlayer || 1);
+              combatTarget.x += pushDirX * 3.8;
+              combatTarget.z += pushDirZ * 3.8;
+              applyWeaponDamage(1.8);
+            }
+          } else if (this.type === 'powerloader' && distToPlayer <= 6.8) {
+            // Chantier 107 : Chalumeau de Soudage Industriel Intégré du Caterpillar P-5000 (Aliens 1986)
+            this.shootCooldown = 1.6;
+            audioManager.playWelderSparks?.(this.x, this.z);
+            audioManager.playNapalmFlameStream?.(this.x, this.z);
+            window.HiveSystems?.vfx?.flameJet?.(
+              this.x,
+              2.5,
+              this.z,
+              combatTarget.x,
+              combatTarget.caste === 'queen' ? 3.2 : 1.4,
+              combatTarget.z
+            );
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 20, 0.15, 1.5);
+            window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 2.9, combatTarget.z, 'CHALUMEAU DE SOUDAGE P-5000 !', '#f97316', true);
+            applyWeaponDamage(1.35);
+          } else if (this.type === 'powerloader') {
+            // Chantier 107 : Marche hydraulique lourde d'approche (le P-5000 n'a pas de fusil M41A)
+            this.shootCooldown = 0.9;
+            audioManager.playPowerloaderBeep?.(this.x, this.z);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'CHARGE HYDRAULIQUE P-5000 !', '#eab308', false);
           } else if (['weyland_security_taser', 'taser_guard'].includes(this.type) && distToPlayer <= 3.0) {
             // Chantier 45 : Bâton à choc 100kV Weyland-Yutani (Alien 3 / Isolation)
             this.shootCooldown = 2.2;
@@ -28853,9 +28931,10 @@
       }
 
       const dist = Math.hypot(this.targetPos.x - this.x, this.targetPos.z - this.z);
-      const shouldHoldAttackPosition = !this.isCyberHound && this.aiState === 'ATTACK' && hasLineOfSight && distToPlayer <= 12;
+      const holdMaxDist = this.type === 'powerloader' ? 3.5 : 12;
+      const shouldHoldAttackPosition = !this.isCyberHound && this.aiState === 'ATTACK' && hasLineOfSight && distToPlayer <= holdMaxDist;
       if (dist > 0.5 && !shouldHoldAttackPosition) {
-        const speed = this.isLured ? 0.12 : (this.type === 'powerloader' ? 0.06 : (this.isCyberHound ? 0.16 : 0.08));
+        const speed = this.isLured ? 0.12 : (this.type === 'powerloader' ? (this.aiState === 'ATTACK' ? 0.078 : 0.06) : (this.isCyberHound ? 0.16 : 0.08));
         const frameScale = safeDelta * 60;
         const directionX = (this.targetPos.x - this.x) / dist;
         const directionZ = (this.targetPos.z - this.z) / dist;
@@ -29231,9 +29310,23 @@
       this.attackAnimation = Math.max(0, this.attackAnimation - Math.max(0, deltaSeconds) * 3);
       this.movementBlend = Math.max(0, this.movementBlend - Math.max(0, deltaSeconds) * 4.5);
 
-      // Chantier 7 : Régénération biologique passive sur la bio-résine de la ruche
+      // Chantier 7 & 109 : Régénération biologique passive sur la bio-résine de la ruche
       if (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0) {
-        this.health = Math.min(this.maxHealth, this.health + 6 * Math.max(0, deltaSeconds));
+        this.hp = Math.min(this.maxHp, this.hp + 6 * Math.max(0, deltaSeconds));
+      }
+
+      // Chantier 109 : Aura Phéromonale de Garde Royale (Praetorian / Palatine) régénérant l'essaim proche
+      if ((this.caste === 'praetorian' || this.caste === 'palatine') && !this.isDestroyed) {
+        this.royalAuraTimer = (this.royalAuraTimer || 0) - deltaSeconds;
+        if (this.royalAuraTimer <= 0) {
+          this.royalAuraTimer = 2.5;
+          const allUnits = window.gameInstance?.currentStage?.rtsUnits || [];
+          allUnits.forEach((ally) => {
+            if (ally !== this && !ally.isDestroyed && ally.hp < ally.maxHp && Math.hypot(ally.x - this.x, ally.z - this.z) <= 8.0) {
+              ally.hp = Math.min(ally.maxHp, ally.hp + 10);
+            }
+          });
+        }
       }
 
       // Canon Giger — Salive visqueuse perlant continuellement des mâchoires
@@ -29350,14 +29443,35 @@
           ? this.attackRange
           : (activeZone.command === 'DEFEND' ? 4 : (activeZone.command === 'CAPTURE' ? 1.5 : 2));
         if (dist > stopRadius) {
-          const speedMultiplier = isRush ? 1.45 : (activeZone.command === 'HUNT' ? 1.15 : (activeZone.command === 'DEFEND' ? 0.75 : 1));
-          this.moveDirect(
-            (target.x - this.x) / dist,
-            (target.z - this.z) / dist,
-            deltaSeconds,
-            dist,
-            speedMultiplier
-          );
+          // Chantier 109 : Bond Prédateur du Prowler (Aliens: Fireteam Elite) à moyenne portée
+          this.leapCooldown = Math.max(0, (this.leapCooldown || 0) - deltaSeconds);
+          if (this.caste === 'prowler' && target.human && isAttackOrder && dist <= 5.8 && dist >= 2.4 && this.leapCooldown <= 0 && stationMap.hasLineOfSight(this.x, this.z, target.human.x, target.human.z, 0.3)) {
+            this.leapCooldown = 4.2;
+            this.attackCooldown = 0.75;
+            this.attackAnimation = 1;
+            const landX = target.human.x - ((target.human.x - this.x) / dist) * 1.1;
+            const landZ = target.human.z - ((target.human.z - this.z) / dist) * 1.1;
+            if (!stationMap.checkCollision(landX, landZ)) {
+              this.x = landX;
+              this.z = landZ;
+              this.mesh?.position.set(this.x, 0, this.z);
+            }
+            const leapDmg = Math.round(this.damage * 1.35);
+            target.human.takeDamage(leapDmg, this);
+            target.human.staggerTimer = 1.0;
+            audioManager.playLeapAttack?.();
+            window.HiveSystems?.vfx?.burst(target.human.x, target.human.z, 0xef4444, 16, 0.14, 1.3);
+            window.HiveSystems?.vfx?.floatingText?.(target.human.x, 2.7, target.human.z, `-${leapDmg} BOND PRÉDATEUR PROWLER !`, '#ef4444', true);
+          } else {
+            const speedMultiplier = isRush ? 1.45 : (activeZone.command === 'HUNT' ? 1.15 : (activeZone.command === 'DEFEND' ? 0.75 : 1));
+            this.moveDirect(
+              (target.x - this.x) / dist,
+              (target.z - this.z) / dist,
+              deltaSeconds,
+              dist,
+              speedMultiplier
+            );
+          }
         } else if (target.human) {
           if (activeZone.command === 'CAPTURE' && target.human.isIncapacitated) {
             if (target.human.cocoonInResin()) resinGrid.addResinPatch(target.human.x, target.human.z);
@@ -29393,6 +29507,22 @@
                 }
               } else {
                 target.human.takeDamage(bonusDmg, this);
+                // Chantier 109 : Charge Bélier Sismique du Crusher & Siphon Métabolique Z-01 de l'Offspring
+                if (this.caste === 'crusher') {
+                  target.human.staggerTimer = 1.1;
+                  rendererEngine.addScreenShake?.(0.26, 0.16);
+                  humans.forEach((extraH) => {
+                    if (extraH !== target.human && !extraH.isCocooned && !extraH.isIncapacitated && Math.hypot(extraH.x - this.x, extraH.z - this.z) <= 3.2) {
+                      extraH.takeDamage(Math.round(bonusDmg * 0.6), this);
+                      extraH.staggerTimer = 0.8;
+                    }
+                  });
+                  window.HiveSystems?.vfx?.floatingText?.(target.human.x, 2.7, target.human.z, `-${bonusDmg} CHARGE BÉLIER CRUSHER !`, '#f59e0b', true);
+                } else if (this.caste === 'offspring') {
+                  this.hp = Math.min(this.maxHp, this.hp + 18);
+                  if (!target.human.isSynthetic?.()) target.human.stress = Math.min(100, (target.human.stress || 0) + 25);
+                  window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, '+18 PV SIPHON Z-01 OFFSPRING !', '#39ff14', false);
+                }
                 window.HiveSystems?.vfx?.organicTrail(
                   this.x,
                   this.caste === 'praetorian' ? 2.8 : 1.4,
@@ -30153,13 +30283,15 @@
         return;
       }
 
-      // Le masque d'Aster doit perdre ses deux attaches avant de rendre le visage viable.
+      // Chantier 105 : Perforation Caustique de Casque / Visière Scaphandre par Sécrétion Acide (Alien 1979 — Casque de Kane)
+      // Le masque d'Aster doit perdre ses deux attaches avant de rendre le visage viable (dissoutes d'un coup si Facehugger Royal).
       if (closestHost.hostEligibility === 'protected' && closestHost.maskAttachments > 0) {
         this.isBonding = true;
         audioManager.playFacehuggerLeap();
         this.updateHUD();
         playerCreature.startLeapTo(closestHost, () => {
-          closestHost.maskAttachments--;
+          const attachmentsMelted = this.isRoyal ? 2 : 1;
+          closestHost.maskAttachments = Math.max(0, closestHost.maskAttachments - attachmentsMelted);
           playerCreature.x = closestHost.x + 2.4;
           playerCreature.z = closestHost.z + 1.4;
           playerCreature.mesh?.position.set(playerCreature.x, 0.35, playerCreature.z);
@@ -30167,12 +30299,14 @@
           playerCreature.isLeaping = false;
           this.isBonding = false;
           audioManager.playMetalImpact?.(closestHost.x, closestHost.z);
-          window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0x38bdf8, 14, 0.1, 1.4);
+          audioManager.playAcidSizzle?.();
+          window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0x39ff14, 18, 0.12, 1.5);
+          window.HiveSystems?.vfx?.floatingText?.(closestHost.x, 2.7, closestHost.z, 'FUSION ACIDE DE LA VISIÈRE (ALIEN 1979) !', '#39ff14', true);
           if (closestHost.maskAttachments <= 0) {
             closestHost.hostEligibility = 'viable';
-            appendSensorLog('[MASQUE] Deuxième attache arrachée : Aster est désormais implantable.', 'alert');
+            appendSensorLog('[VISIÈRE CORRODÉE] Le casque respiratoire a fondu sous l\'acide moléculaire : l\'hôte est désormais implantable.', 'alert');
           } else {
-            appendSensorLog('[MASQUE] Première attache arrachée : une fixation protège encore Aster.', 'bio');
+            appendSensorLog('[MASQUE] Première attache dissoute à l\'acide : une fixation protège encore Aster.', 'bio');
           }
           window.gameInstance?.syncCampaignCharacter?.(closestHost);
           this.updateHUD();
@@ -30674,10 +30808,11 @@
       if (key === 'c') {
         const closestVent = stationMap?.findClosestVent?.(playerCreature.x, playerCreature.z);
         if (closestVent) {
+          const ventObj = closestVent.vent || closestVent;
           if (playerCreature.isInVent) {
-            playerCreature.exitVent(closestVent.vent);
+            playerCreature.exitVent(ventObj);
           } else if (closestVent.distance <= 4.8) {
-            playerCreature.enterVent(closestVent.vent);
+            playerCreature.enterVent(ventObj);
           } else {
             showToast(`Conduit trop éloigné (${Math.round(closestVent.distance)}m) pour infiltration [C].`);
           }
@@ -33901,12 +34036,31 @@
         );
       }
 
-      // Canon 1:1 Lore — Détection et éclosion des ovomorphs issus de l'eggmorphing
+      // Chantier 108 : Supplice de Dallas (Alien 1979 Director's Cut / Aliens 1986) — Murmures d'agonie des hôtes en cocon
+      if (window.gameInstance?.humans) {
+        for (const cocoonedHost of window.gameInstance.humans) {
+          if (!cocoonedHost.isCocooned || cocoonedHost.isEggmorphed || cocoonedHost.usedAsHost || cocoonedHost.isSynthetic?.()) continue;
+          cocoonedHost.dallasPleaCooldown = (cocoonedHost.dallasPleaCooldown || 9.0) - deltaSeconds;
+          if (cocoonedHost.dallasPleaCooldown <= 0) {
+            cocoonedHost.dallasPleaCooldown = 14.0 + Math.random() * 8.0;
+            audioManager.playHostCough?.(cocoonedHost.x, cocoonedHost.z);
+            window.HiveSystems?.vfx?.floatingText?.(cocoonedHost.x, 2.4, cocoonedHost.z, '« Tuez-moi... Pitié, brûlez-moi... » (DALLAS 1979)', '#a855f7', false);
+            appendSensorLog(`[COCON DALLAS 1979] ${cocoonedHost.name} gémit dans la résine : « Tuez-moi... »`, 'bio');
+            window.gameInstance.humans.forEach((ally) => {
+              if (!ally.isIncapacitated && !ally.isCocooned && !ally.isSynthetic?.() && Math.hypot(ally.x - cocoonedHost.x, ally.z - cocoonedHost.z) <= 16.0) {
+                ally.stress = Math.min(100, (ally.stress || 0) + 15);
+              }
+            });
+          }
+        }
+      }
+
+      // Canon 1:1 Lore & Chantier 108 — Détection, éclosion et implantation sauvage des ovomorphs issus de l'eggmorphing
       if (this.ovomorphs && window.gameInstance?.humans) {
         for (const egg of this.ovomorphs) {
           if (egg.isOpen) continue;
           const intruder = window.gameInstance.humans.find((h) => (
-            !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - egg.x, h.z - egg.z) <= 4.2
+            !h.isIncapacitated && !h.isCocooned && !h.isSynthetic?.() && Math.hypot(h.x - egg.x, h.z - egg.z) <= 4.2
           ));
           if (intruder) {
             egg.isOpen = true;
@@ -33925,10 +34079,16 @@
               onImpact: () => {
                 intruder.takeDamage(45);
                 intruder.staggerTimer = 1.2;
-                window.HiveSystems?.vfx?.floatingText(intruder.x, 2.8, intruder.z, 'FACEHUGGER SAUVAGE !', '#f59e0b', true);
+                if (!intruder.isSynthetic?.() && intruder.hostEligibility !== 'none') {
+                  intruder.directInoculated = true;
+                  intruder.directInoculationTimer = 10.0;
+                  window.HiveSystems?.vfx?.floatingText(intruder.x, 2.8, intruder.z, 'FACEHUGGER SAUVAGE : IMPLANTATION IN-SITU (10s) !', '#f59e0b', true);
+                } else {
+                  window.HiveSystems?.vfx?.floatingText(intruder.x, 2.8, intruder.z, 'FACEHUGGER SAUVAGE !', '#f59e0b', true);
+                }
               }
             });
-            appendSensorLog(`[ÉCLOSION PÉRIMÉTRIQUE] L'ovomorphe issu de ${egg.hostName} a éclos et bondi sur ${intruder.name} !`, 'bio');
+            appendSensorLog(`[ÉCLOSION PÉRIMÉTRIQUE] L'ovomorphe issu de ${egg.hostName} a éclos et fécondé ${intruder.name} !`, 'bio');
           }
         }
       }

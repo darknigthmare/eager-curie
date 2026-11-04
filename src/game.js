@@ -14337,6 +14337,7 @@
             sj.loreDiscovered = true;
             showToast("RELIQUE DU SPACE JOCKEY : La carcasse de l'Ingénieur résonne du signal Derelict (+Régénération).");
             appendSensorLog("[RELIC 1979] Siège de navigation stellaire fossilisé. Cage thoracique explosée de l'intérieur.", 'bio');
+            window.HiveSystems?.saveManager?.unlock?.(['journal_01', 'palimpseste']);
           }
         }
       }
@@ -26846,6 +26847,9 @@
       this.hostEligibility = ['bombardier', 'bulwark', 'huntsman', 'igniter', 'peacekeeper', 'spider', 'detonator', 'enforcer', 'trooper', 'combat_synthetic', 'containment', 'heavy', 'sniper', 'incinerator', 'briareos_7', 'BRIAREOS_7', 'palimpseste', 'PALIMPSESTE', 'synthetic_detonator', 'synthetic_containment', 'synthetic_heavy', 'synthetic_trooper', 'synthetic_enforcer', 'synthetic_sniper', 'synthetic_incinerator', 'automaton_spider', 'automaton_bulwark', 'automaton_huntsman', 'automaton_peacekeeper', 'automaton_igniter', 'automaton_bombardier', 'sentry_turret', 'security_drone', 'argos_synthetic', 'android', 'synthetic', 'powerloader', 'exosuit', 'turret', 'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid', 'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'seegson_hazmat_joe', 'seegson_security_joe', 'weyland_strike_synth', 'weyland_heavy_mech', 'weyland_combat_android', 'seegson_industrial_joe', 'uscm_synthetic_bishop', 'weyland_corporate_synth_guard', 'weyland_bio_containment_synth', 'weyland_cyborg_enforcer', 'weyland_heavy_incinerator_synth', 'weyland_synth_overseer', 'weyland_android_infiltrator', 'weyland_praetorian_droid', 'weyland_combat_medic_synth', 'weyland_exec_security_synth', 'weyland_nano_repair_synth', 'weyland_sublevel_heavy_sentry_synth', 'weyland_cryo_containment_mech_suit', 'weyland_elite_combat_synth_centurion', 'weyland_apex_synthetic_executioner', 'weyland_strike_synth_infiltrator', 'weyland_sublevel_hunter_synth', 'weyland_elite_infiltrator_centurion'].includes(type)
         ? 'none'
         : (['aster_rho', 'ASTER_RHO', 'mantis_4', 'MANTIS_4', 'capture_commando', 'commando', 'uscm_hazmat_tech', 'weyland_containment_squad', 'uscm_exosuit_commando', 'uscm_phalanx_shield', 'weyland_specimen_trapper', 'weyland_containment_commando', 'weyland_ape_suit_specialist', 'uscm_riot_suppressor', 'weyland_black_ops_assassin', 'uscm_cn20_nerve_gas_specialist', 'weyland_hazmat_incinerator', 'uscm_cryo_sweeper', 'weyland_apex_handler', 'uscm_cbrn_decon_sweeper', 'weyland_shock_enforcer', 'weyland_neomorph_researcher', 'weyland_mutagen_flamer_specialist', 'uscm_exo_rig_loader', 'weyland_cryo_containment_ward', 'uscm_command_apc_gunner', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'uscm_breach_torch_sapper', 'weyland_xeno_tamer_commando', 'uscm_heavy_plasma_gunner', 'weyland_black_goo_specialist', 'weyland_subzero_cryo_trooper', 'weyland_apex_containment_specialist', 'weyland_genetic_security_enforcer', 'weyland_sublevel_containment_marshal', 'weyland_sublevel_riot_infiltrator', 'weyland_sublevel_heavy_warden', 'weyland_containment_assault_enforcer', 'weyland_sublevel_breach_warden'].includes(type) ? 'protected' : (['maintenance_technician', 'orbital_rifleman', 'xenobiologist', 'security_agent', 'thermal_operator', 'gyro_gunner', 'atarax_controller', 'colonial_raider', 'cult_host', 'upp_vanguard', 'ceto_reef_predator', 'korari_stalker', 'tantalus_tunnel_vermin', 'wild_boar_host'].includes(type) ? 'viable' : 'viable'));
+      if (this.isSynthetic()) {
+        this.hostEligibility = 'none';
+      }
       this.usedAsHost = false;
       this.isConsumedByCycle = false;
       this.characterKey = null;
@@ -28522,6 +28526,8 @@
         offspring: { hp: 420, speed: 0.44, damage: 92, range: 2.2 },
         spitter: { hp: 150, speed: 0.31, damage: 36, range: 13 },
         drone: { hp: 190, speed: 0.4, damage: 42, range: 1.8 },
+        swarmers: { hp: 65, speed: 0.65, damage: 18, range: 1.2 },
+        swarmer: { hp: 65, speed: 0.65, damage: 18, range: 1.2 },
         worker: { hp: 120, speed: 0.34, damage: 14, range: 1.6 },
         pathogen_popper: { hp: 90, speed: 0.58, damage: 45, range: 1.5 },
         pathogen_blight: { hp: 210, speed: 0.44, damage: 48, range: 8.0 },
@@ -28582,8 +28588,10 @@
         this.mesh = group;
         return;
       }
-      let geo = new THREE.SphereGeometry(this.caste === 'queen' ? 2.5 : (['praetorian', 'palatine', 'crusher'].includes(this.caste) ? 1.6 : 1.0), 12, 12);
+      let geo = new THREE.SphereGeometry(this.caste === 'queen' ? 2.5 : (['praetorian', 'palatine', 'crusher'].includes(this.caste) ? 1.6 : (['swarmers', 'swarmer'].includes(this.caste) ? 0.6 : 1.0)), 12, 12);
       let color = 0x0f172a;
+      if (this.caste === 'drone') color = 0x0f172a;
+      if (this.caste === 'swarmers' || this.caste === 'swarmer') color = 0x64748b;
       if (this.caste === 'runner') color = 0x7c2d12;
       if (this.caste === 'warrior') color = 0x1e1b4b;
       if (this.caste === 'worker') color = 0x14532d;
@@ -28707,7 +28715,7 @@
       }
       if (moved) {
         this.mesh.position.set(this.x, 0, this.z);
-        this.animationPhase += Math.max(0, deltaSeconds) * (this.caste === 'queen' ? 5.5 : (this.caste === 'runner' ? 13 : 8));
+        this.animationPhase += Math.max(0, deltaSeconds) * (this.caste === 'queen' ? 5.5 : (this.caste === 'runner' ? 13 : (this.caste === 'swarmers' || this.caste === 'swarmer' ? 15 : 8)));
         this.movementBlend = 1;
         animateProceduralModel(this.mesh, {
           phase: this.animationPhase,
@@ -28892,7 +28900,7 @@
             if (target.human.cocoonInResin()) resinGrid.addResinPatch(target.human.x, target.human.z);
           } else if (isAttackOrder) {
             if (this.attackCooldown <= 0) {
-              const baseCooldown = this.caste === 'runner' ? 0.62 : (this.caste === 'spitter' ? 1.45 : 0.86);
+              const baseCooldown = (this.caste === 'swarmers' || this.caste === 'swarmer') ? 0.45 : (this.caste === 'runner' ? 0.62 : (this.caste === 'spitter' ? 1.45 : 0.86));
               this.attackCooldown = isRush ? baseCooldown * 0.68 : baseCooldown;
               this.attackAnimation = 1;
               const bonusDmg = isRush ? Math.round(this.damage * 1.35) : this.damage;
@@ -28977,7 +28985,7 @@
               1.1
             );
           } else if (this.attackCooldown <= 0) {
-            this.attackCooldown = this.caste === 'runner' ? 0.65 : 0.9;
+            this.attackCooldown = (this.caste === 'swarmers' || this.caste === 'swarmer') ? 0.45 : (this.caste === 'runner' ? 0.65 : 0.9);
             this.attackAnimation = 1;
             localThreat.takeDamage(this.damage, this);
             audioManager.playBoneCrunch?.();
@@ -29606,7 +29614,7 @@
 
       // Canon 1:1 Lore — Détection et rejet absolu des androïdes / synthétiques (fluide blanc / pas d'appareil respiratoire)
       const nearbySynth = humans.find((h) => (
-        ['synthetic', 'android'].includes(h.type) &&
+        (['synthetic', 'android'].includes(h.type) || h.isSynthetic?.()) &&
         !h.isIncapacitated &&
         Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 7.0
       ));
@@ -29666,7 +29674,7 @@
       this.targetHost = closestHost;
       if (window.gameInstance) {
         window.gameInstance.hostProfile = closestHost.type;
-        const armoredHostTypes = ['commando', 'smartgunner', 'gyro', 'marine'];
+        const armoredHostTypes = ['commando', 'smartgunner', 'gyro', 'marine', 'heavy', 'guard', 'uscm_sniper', 'weyland_commando_mk2', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic', 'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander', 'uscm_breacher_shotgun', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_smartgun_flamer'];
         const adultCaste = closestHost.type === 'labhound'
           ? 'runner'
           : (armoredHostTypes.includes(closestHost.type) ? 'warrior' : 'drone');
@@ -33860,7 +33868,7 @@
     }
 
     isArmoredHost(host) {
-      return ['commando', 'smartgunner', 'gyro', 'marine'].includes(host?.type);
+      return ['commando', 'smartgunner', 'gyro', 'marine', 'heavy', 'guard', 'uscm_sniper', 'weyland_commando_mk2', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic', 'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander', 'uscm_breacher_shotgun', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_smartgun_flamer'].includes(host?.type);
     }
 
     findCompatibleHost(caste) {
@@ -34569,6 +34577,7 @@
       window.HiveSystems?.checkpoint(nextStage, unlocksByStage[nextStage] || [], {
         adultCaste: playerCreature.adultCaste,
         hostProfile: this.hostProfile,
+        origin: this.activeOrigin?.id || 'random',
         campaignCharacters: Object.fromEntries(
           Object.entries(this.campaignCharacters).map(([key, value]) => [key, { ...value }])
         )
@@ -34688,6 +34697,7 @@
       rendererEngine.applyOriginAtmosphere(this.activeOrigin);
       this.resetWorldState();
       this.resetCampaignCharacters();
+      rendererEngine.snapCameraTarget(playerCreature.x, playerCreature.z);
       this.ensureStageOneHost(true);
       this.loadStage(1);
     }

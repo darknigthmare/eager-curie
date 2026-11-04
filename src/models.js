@@ -45,6 +45,21 @@
     gunner: 'smartgunner',
     heavygunner: 'smartgunner',
     heavyweapon: 'smartgunner',
+    gyro: 'smartgunner',
+    heavy: 'smartgunner',
+    weyland_plasma_gunner: 'uscm_heavy_plasma_gunner',
+    weyland_yutani_commando: 'weyland_commando_mk2',
+    uscm_smartgun_flamer: 'uscm_heavy_flamer',
+    uscm_m42b_marksman: 'uscm_sniper',
+    surveyor: 'scientist',
+    automaton_worker: 'synthetic',
+    automaton_miner: 'colonist',
+    automaton_shock_warden: 'weyland_shock_enforcer',
+    working_joe: 'seegson_security_joe',
+    working_joe_hazmat: 'seegson_hazmat_joe',
+    working_joe_electric: 'seegson_industrial_joe',
+    seegson_security: 'seegson_security_joe',
+    seegson_security_synth: 'seegson_security_joe',
     cleaner: 'incinerator',
     incinerator: 'incinerator',
     flametrooper: 'incinerator',
@@ -4648,6 +4663,7 @@
     // -------------------------------------------------------------------------
     createAdult(caste) {
       const normalizedCaste = String(caste || 'drone').toLowerCase();
+      if (normalizedCaste === 'swarmers' || normalizedCaste === 'swarmer' || normalizedCaste === 'swarmer_pack') return this.createSwarmerPack();
       if (normalizedCaste === 'runner') return this._createRunner();
       if (normalizedCaste === 'crusher') return this._createCrusher();
       if (normalizedCaste === 'mantis_drone' || normalizedCaste === 'mantis') return this.createMantisDrone();
@@ -12860,6 +12876,12 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
     // -------------------------------------------------------------------------
     createSwarmerPack() {
       return this.createIndustrialProp('swarmer_pack');
+    }
+    createSwarmers() {
+      return this.createSwarmerPack();
+    }
+    createSwarmer() {
+      return this.createSwarmerPack();
     }
 
     // -------------------------------------------------------------------------

@@ -9024,6 +9024,10 @@
       });
     }
 
+    toggleThermal() {
+      this.setMode(this.currentMode === 'thermal' ? 'normal' : 'thermal');
+    }
+
     update(deltaSeconds) {
       if (this.currentMode === 'acoustic') {
         this.sonarTimer = (this.sonarTimer || 0) - deltaSeconds;
@@ -9067,17 +9071,21 @@
           const humans = window.gameInstance?.humans || [];
           humans.forEach((h) => {
             if (!h.isIncapacitated && h.hp > 0) {
-              const isSynth = h.type === 'synthetic' || h.type === 'android';
-              // Audit QA #82 : Silhouette Thermique Infrarouge Pulsante pour Cibles Blessées (Hémorragie/Trauma)
+              const isSynth = h.isSynthetic ? h.isSynthetic() : (h.type === 'synthetic' || h.type === 'android');
+              const actualTemp = h.getTemperature ? h.getTemperature() : (isSynth ? 18.5 : 37.0);
+              const isCold = actualTemp < 22.0;
+              const isHot = actualTemp > 38.5;
               const isWounded = (h.hp < (h.maxHp || 100) * 0.5) || (h.staggerTimer > 0);
               const tempLabel = isSynth
-                ? (isWounded ? '18.2°C [SYNTH-FUITE LIQUIDE]' : '21.5°C [SYNTH]')
-                : (isWounded ? '39.8°C [TRAUMA VASCULAIRE]' : '37.2°C [ENDO]');
-              const tempColor = isSynth ? '#38bdf8' : (isWounded ? '#ef4444' : '#f97316');
+                ? `${actualTemp}°C [SYNTHÉTIQUE INERTE]`
+                : (isCold
+                  ? `${actualTemp}°C [CRYO-RÉGULATION / FROID]`
+                  : (isHot ? `${actualTemp}°C [TACHYCARDIE / SURCHAUFFE]` : `${actualTemp}°C [HOMÉOSTASIE]`));
+              const tempColor = isSynth ? '#38bdf8' : (isCold ? '#06b6d4' : (isHot ? '#ef4444' : '#f97316'));
               window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, tempLabel, tempColor, false);
-              window.HiveSystems?.vfx?.ring?.(h.x, h.z, isSynth ? 0x38bdf8 : (isWounded ? 0xef4444 : 0xf97316), isWounded ? 2.6 : 1.8);
-              if (isWounded) {
-                window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0xef4444, 8, 0.2, 1.2);
+              window.HiveSystems?.vfx?.ring?.(h.x, h.z, isSynth ? 0x38bdf8 : (isCold ? 0x06b6d4 : (isHot ? 0xef4444 : 0xf97316)), isHot ? 2.6 : 1.8);
+              if (isWounded || isHot) {
+                window.HiveSystems?.vfx?.burst?.(h.x, h.z, isHot ? 0xef4444 : 0xf97316, 8, 0.2, 1.2);
               }
             }
           });
@@ -26899,6 +26907,52 @@
       this.patrolWait = 0;
     }
 
+    getFaction() {
+      if (this.factionOverride) return this.factionOverride;
+      const t = String(this.type || '').toLowerCase();
+      if (t.includes('seegson') || t.includes('working_joe') || t.includes('security_drone') || t.includes('sentry_turret')) {
+        return 'SEEGSON';
+      }
+      if (t.includes('weyland') || t.includes('steelteam') || t.includes('steel_team') || t.includes('cyber_hound') || t.includes('cyberhound') || t.includes('specimen_trapper') || t.includes('capture_commando') || t.includes('xenoborg')) {
+        return 'WEYLAND';
+      }
+      if (t.includes('uscm') || t.includes('marine') || t.includes('smartgunner') || t.includes('gyro') || t.includes('dropship_pilot') || t.includes('colonial_marshal')) {
+        return 'USCM';
+      }
+      if (t.includes('upp') || t.includes('mercenary_smuggler')) {
+        return 'UPP';
+      }
+      if (t.includes('cult') || t.includes('atarax_controller') || t.includes('colonial_raider')) {
+        return 'CULT';
+      }
+      return 'COLONIST';
+    }
+
+    isFactionHostile(other) {
+      if (!other || other === this || other.isIncapacitated || other.isCocooned) return false;
+      const myFac = this.getFaction();
+      const otherFac = other.getFaction ? other.getFaction() : 'COLONIST';
+      if (myFac === otherFac) return false;
+      if (myFac === 'CULT' || otherFac === 'CULT') return true;
+      if (myFac === 'SEEGSON' && !other.isSynthetic?.()) return true;
+      if (otherFac === 'SEEGSON' && !this.isSynthetic?.()) return true;
+      if (myFac === 'WEYLAND' && (otherFac === 'COLONIST' || otherFac === 'UPP')) return true;
+      if (myFac === 'UPP' && (otherFac === 'USCM' || otherFac === 'WEYLAND')) return true;
+      return false;
+    }
+
+    getTemperature() {
+      if (this.isSynthetic?.()) return 18.5;
+      let temp = 37.0;
+      if ((this.stress || 0) > 50) temp += (this.stress / 100) * 4.5;
+      if ((this.shootCooldown || 0) > 0) temp += 8.0;
+      const nearCryo = (stationMap?.cryoExpansionTanks || []).some((ct) => !ct.isVented && Math.hypot(ct.x - this.x, ct.z - this.z) <= 6.0) ||
+                       (stationMap?.cryoStorageDewars || []).some((cd) => cd.isVented && Math.hypot(cd.x - this.x, cd.z - this.z) <= 5.0) ||
+                       (stationMap?.cryoPods || []).some((cp) => !cp.isBroken && Math.hypot(cp.x - this.x, cp.z - this.z) <= 4.0);
+      if (nearCryo) temp = Math.max(12.0, temp - 22.0);
+      return Math.round(temp * 10) / 10;
+    }
+
     createMesh() {
       const group = new THREE.Group();
       const detailedModel = window.HiveModelFactory?.createHuman?.(this.type);
@@ -27415,6 +27469,7 @@
       if (this.isLured) this.updateNavigation(safeDelta);
 
       let combatTarget = playerCreature;
+      let isEngagingHostileFaction = false;
       if (window.gameInstance?.currentStageIndex === 4) {
         const royalTarget = window.gameInstance.currentStage?.royalCycle;
         if (royalTarget?.isActive) {
@@ -27432,8 +27487,8 @@
           return closest;
         }, null)?.unit || playerCreature;
       }
-      const distToPlayer = Math.hypot(combatTarget.x - this.x, combatTarget.z - this.z);
-      const hasLineOfSight = stationMap.hasLineOfSight(
+      let distToPlayer = Math.hypot(combatTarget.x - this.x, combatTarget.z - this.z);
+      let hasLineOfSight = stationMap.hasLineOfSight(
         this.x,
         this.z,
         combatTarget.x,
@@ -27470,6 +27525,21 @@
       const biologicalTargetDetectable = (currentStageIndex !== 3 ||
         currentStageStep === 'HUNT_FAUNA' ||
         currentStageStep === 'CHRYSALIS') && !inVentStealth && !inCeilingStealth;
+
+      // Chantier 92 : Escarmouche Inter-Factions si le prédateur est hors de portée ou furtif
+      if (isCombatant && (!hasLineOfSight || distToPlayer > 18 || inVentStealth || inCeilingStealth || currentStageIndex === 1)) {
+        const nearbyHostile = (window.gameInstance?.humans || []).find((other) => (
+          other !== this && !other.isIncapacitated && !other.isCocooned && this.isFactionHostile(other) &&
+          Math.hypot(other.x - this.x, other.z - this.z) <= 16 &&
+          stationMap.hasLineOfSight(this.x, this.z, other.x, other.z)
+        ));
+        if (nearbyHostile) {
+          combatTarget = nearbyHostile;
+          distToPlayer = Math.hypot(combatTarget.x - this.x, combatTarget.z - this.z);
+          hasLineOfSight = true;
+          isEngagingHostileFaction = true;
+        }
+      }
 
       this.motionPingCooldown -= safeDelta;
       if (this.radioAlertCooldown > 0) this.radioAlertCooldown -= safeDelta;
@@ -27844,6 +27914,12 @@
         this.shootCooldown <= 0
       ) {
           const applyWeaponDamage = (multiplier = 1) => {
+            if (isEngagingHostileFaction && combatTarget?.takeDamage) {
+              const factionDmg = 14 * multiplier;
+              combatTarget.takeDamage(factionDmg, this);
+              window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 2.5, combatTarget.z, `-${Math.round(factionDmg)} TIR INTER-FACTIONS`, '#f97316', false);
+              return;
+            }
             const stageIndex = window.gameInstance?.currentStageIndex;
             if ([2, 3, 4].includes(stageIndex)) {
               const baseDamage = ['powerloader', 'exosuit'].includes(this.type)
@@ -27864,6 +27940,18 @@
               stationMap.detonateNapalmBarrel(closeNapalm, this);
             }
           };
+
+          if (isEngagingHostileFaction && Math.random() < 0.35 && (!this.lastFactionBark || Date.now() - this.lastFactionBark > 6000)) {
+            this.lastFactionBark = Date.now();
+            const myFac = this.getFaction();
+            let bark = 'FEU SUR LA FACTION HOSTILE !';
+            if (myFac === 'SEEGSON') bark = 'Protocole Apollo : intrus non synthétique engagé.';
+            else if (myFac === 'WEYLAND') bark = 'Directive 937 : neutralisation des témoins !';
+            else if (myFac === 'USCM') bark = 'Hostiles identifiés ! Ouvrez le feu !';
+            else if (myFac === 'UPP') bark = 'Feu sur les mercenaires corporatifs !';
+            else if (myFac === 'CULT') bark = 'Pour la Ruche sacrée ! Purgez les intrus !';
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, bark, '#f59e0b', false);
+          }
 
           this.attackAnimation = 1;
 
@@ -29539,10 +29627,15 @@
       this.isBonding = false;
       this.implantProgress = 0;
       this.lastImplantPercent = -1;
+      this.isRoyal = false;
     }
     init() {
       playerCreature.setForm('facehugger');
       alarmSystem.setLevel(1);
+      this.isRoyal = window.gameInstance?.activeOrigin?.id === 'hive' || window.gameInstance?.activeOrigin?.id === 'juggernaut';
+      if (this.isRoyal) {
+        this.applyRoyalMutation(true);
+      }
       if (window.gameInstance) {
         const asterState = window.gameInstance.campaignCharacters.asterRho;
         if (
@@ -29595,8 +29688,40 @@
       const actionsContainer = document.getElementById('action-buttons-container');
       actionsContainer.innerHTML = this.isAttacking
         ? `<button type="button" id="btn-action-leap" class="act-btn" style="border-color: #f59e0b;">RESSERRER L’ÉTREINTE — ${Math.round(this.implantProgress)}% [ESPACE]</button>`
-        : `<button type="button" id="btn-action-leap" class="act-btn" ${this.isBonding ? 'disabled' : ''} style="border-color: #39ff14;">${this.isBonding ? 'BOND EN COURS…' : 'BONDIR SUR LE VISAGE [ESPACE]'}</button>`;
+        : `
+          <button type="button" id="btn-action-leap" class="act-btn" ${this.isBonding ? 'disabled' : ''} style="border-color: #39ff14;">${this.isBonding ? 'BOND EN COURS…' : 'BONDIR SUR LE VISAGE [ESPACE]'}</button>
+          <button type="button" id="btn-thermal-vision" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.15);"><span class="key-badge">I</span>VISION THERMIQUE</button>
+          ${!this.isRoyal ? '<button type="button" id="btn-royal-mutate" class="act-btn" style="border-color: #9333ea; background: rgba(147,51,234,0.18);"><span class="key-badge">R</span>MUTATION ROYALE (Alien 3)</button>' : '<button type="button" class="act-btn" disabled style="border-color: #a855f7; color: #c084fc;">FACEHUGGER ROYAL ACTIF</button>'}
+        `;
       document.getElementById('btn-action-leap').onclick = () => this.isAttacking ? this.tightenGrip() : this.attemptLeap();
+      const btnThermal = document.getElementById('btn-thermal-vision');
+      if (btnThermal) btnThermal.onclick = () => visionSystem.toggleThermal();
+      const btnRoyal = document.getElementById('btn-royal-mutate');
+      if (btnRoyal) btnRoyal.onclick = () => this.applyRoyalMutation();
+    }
+
+    applyRoyalMutation(silent = false) {
+      this.isRoyal = true;
+      playerCreature.maxHealth = 220;
+      playerCreature.health = 220;
+      if (playerCreature.mesh) {
+        rendererEngine.removeObject(playerCreature.mesh);
+      }
+      const royalModel = window.HiveModelFactory?.createRoyalFacehugger?.();
+      if (royalModel) {
+        playerCreature.mesh = royalModel;
+        playerCreature.mesh.position.set(playerCreature.x, 0.35, playerCreature.z);
+        rendererEngine.scene.add(playerCreature.mesh);
+      }
+      if (!silent) {
+        audioManager.playXenoRoar?.();
+        audioManager.playAcidSizzle?.();
+        window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0x9333ea, 26, 0.16, 1.4);
+        window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0xa855f7, 3.2);
+        showToast('MUTATION FACEHUGGER ROYAL (Alien 3) : Palmures chitineuses blindées, portée de bond +35% et inoculation embryonnaire Royale !');
+        appendSensorLog('[MUTATION ROYALE] Facehugger surdéveloppé à palmures d\'acier. Porteur de l\'embryon Prétorien/Reine.', 'bio');
+      }
+      this.updateHUD();
     }
     attemptLeap() {
       if (this.isAttacking || this.isBonding || this.isCompleted) return;
@@ -29634,7 +29759,16 @@
         return;
       }
 
-      if (!closestHost || closestDistance > 16) {
+      // Chantier 93 : Détection Thermique Canon Romulus (Pit Organs Thermorécepteurs)
+      const hostTemp = closestHost?.getTemperature ? closestHost.getTemperature() : 37.0;
+      if (hostTemp < 20.0 && closestDistance > 4.5) {
+        showToast(`TEMPÉRATURE CRYOGÉNIQUE : ${closestHost.name} est trop froid (${hostTemp}°C) pour être détecté à distance. Rapprochez-vous !`);
+        appendSensorLog(`[THERMORÉCEPTION] Signature thermique de ${closestHost.name} inférieure à 20°C. Les fossettes thermiques du Facehugger ne peuvent le verrouiller de loin.`, 'alert');
+        return;
+      }
+
+      const maxDistanceLeap = this.isRoyal ? 21.6 : 16;
+      if (!closestHost || closestDistance > maxDistanceLeap) {
         showToast('Aucun hôte à portée : rapprochez-vous du secteur ciblé.');
         appendSensorLog('[FACEHUGGER] Bond impossible : aucun visage à portée.', 'alert');
         return;
@@ -29675,9 +29809,14 @@
       if (window.gameInstance) {
         window.gameInstance.hostProfile = closestHost.type;
         const armoredHostTypes = ['commando', 'smartgunner', 'gyro', 'marine', 'heavy', 'guard', 'uscm_sniper', 'weyland_commando_mk2', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic', 'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander', 'uscm_breacher_shotgun', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_smartgun_flamer'];
-        const adultCaste = closestHost.type === 'labhound'
+        let adultCaste = closestHost.type === 'labhound'
           ? 'runner'
           : (armoredHostTypes.includes(closestHost.type) ? 'warrior' : 'drone');
+        if (this.isRoyal) {
+          adultCaste = 'praetorian';
+          window.gameInstance.hostProfile = 'royal_host';
+          appendSensorLog(`[LIGNÉE ROYALE] Embryon royal inoculé dans ${closestHost.name} : émergence garantie d'un Prétorien de la Ruche !`, 'bio');
+        }
         playerCreature.setAdultCaste(adultCaste);
       }
       this.isBonding = true;
@@ -29702,7 +29841,8 @@
 
     tightenGrip() {
       if (!this.isAttacking || this.isCompleted) return;
-      this.implantProgress = Math.min(100, this.implantProgress + 14);
+      const gripPower = this.isRoyal ? 24 : 14;
+      this.implantProgress = Math.min(100, this.implantProgress + gripPower);
       audioManager.playHeartbeat(1.2);
       this.updateHUD();
       this.finishImplantationIfReady();
@@ -29732,6 +29872,14 @@
     }
 
     handleKeyDown(key) {
+      if (key === 'i') {
+        visionSystem.toggleThermal();
+        return;
+      }
+      if (key === 'r' && !this.isRoyal && !this.isAttacking && !this.isBonding) {
+        this.applyRoyalMutation();
+        return;
+      }
       if (key === 'c') {
         const vent = stationMap.findClosestVent(playerCreature.x, playerCreature.z);
         if (vent) {
@@ -30144,6 +30292,10 @@
       if (window.gameInstance) window.gameInstance.advanceStage(this);
     }
     handleKeyDown(key) {
+      if (key === 'i') {
+        visionSystem.toggleThermal();
+        return;
+      }
       if (key === 'c') {
         const closestVent = stationMap?.findClosestVent?.(playerCreature.x, playerCreature.z);
         if (closestVent) {
@@ -34526,6 +34678,10 @@
         } else {
           stationMap.toggleBlueprintOverlay?.();
         }
+        return;
+      }
+      if (key === 'i') {
+        visionSystem?.toggleThermal?.();
         return;
       }
       const visionByKey = { f1: 'normal', f2: 'thermal', f3: 'acoustic' };

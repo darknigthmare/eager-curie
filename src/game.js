@@ -554,6 +554,32 @@
       noise.start(now);
     }
 
+    // Chantier 116 : Brouillage Radio et Parasitage Électromagnétique de Portée (Aliens 1986 / Isolation)
+    playRadioStatic(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.28);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * (0.35 + Math.sin(i * 0.08) * 0.25);
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1450, now);
+      filter.Q.setValueAtTime(2.6, now);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.36, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      noise.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 45);
+      noise.start(now);
+    }
+
     playBlastDoorHydraulics(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
@@ -14878,6 +14904,7 @@
         audioManager.playVacuumWhoosh?.(airlock.x, airlock.z);
         rendererEngine.addScreenShake?.(0.18, 0.12);
         window.HiveSystems?.vfx?.burst?.(airlock.x, airlock.z, 0x38bdf8, 18, 0.15, 1.8);
+        window.HiveSystems?.vfx?.airlockVortex?.(airlock.x - 14, airlock.z - 12, airlock.x, airlock.z, 20);
       }
 
       // Aspiration physique de toutes les entités dans le secteur Sud-Est vers le sas
@@ -14890,10 +14917,19 @@
           const dirZ = (airlock.z - ent.z) / (dist || 1);
 
           if (ent === playerCreature) {
-            // Le xénomorphe résiste en plantant ses griffes s'il est au sol ou suspendu
-            if (!playerCreature.isCeilingProwling && !playerCreature.isProwling) {
+            // Chantier 119 : Ancrage des griffes au caillebotis (résistance à la décompression du vide)
+            const isAnchored = playerCreature.isClawAnchored || playerCreature.isCeilingProwling || playerCreature.isProwling || playerCreature.isWallMimic;
+            if (!isAnchored) {
               playerCreature.x += dirX * 6.5 * safeDelta;
               playerCreature.z += dirZ * 6.5 * safeDelta;
+              if (dist <= 3.0) {
+                playerCreature.takeDamage?.(25 * safeDelta);
+                window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.8, playerCreature.z, 'ASPIRATION DU VIDE (-25) !', '#0284c7', true);
+              }
+            } else {
+              if (Math.random() < 0.25) {
+                window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0xf59e0b, 5, 0.08, 0.6);
+              }
             }
           } else {
             // Humains aspirés vers le sas
@@ -16551,6 +16587,23 @@
       return true;
     }
 
+    // Chantier 118 : Dissolution Caustique de Barbelés USCM par Acide Moléculaire
+    meltBarbedWireWithAcid(spool) {
+      if (!spool || spool.isCut) return false;
+      spool.hp = 0;
+      spool.isCut = true;
+      if (spool.mesh) rendererEngine.removeObject(spool.mesh);
+      const idx = this.colliders.indexOf(spool.collider);
+      if (idx >= 0) this.colliders.splice(idx, 1);
+      audioManager.playAcidBurn?.(spool.x, spool.z);
+      rendererEngine.addScreenShake?.(0.22, 0.14);
+      window.HiveSystems?.vfx?.burst?.(spool.x, spool.z, 0x84cc16, 28, 0.22, 1.8);
+      window.HiveSystems?.vfx?.floatingText?.(spool.x, 2.6, spool.z, "BARBELÉS FONDOIR D'ACIDE !", '#84cc16', true);
+      showToast("BARBELÉS DISSOUS À L'ACIDE : Les fils d'acier trempé se liquéfient en scories caustiques !");
+      appendSensorLog(`[CORROSION CAUSTIQUE] Concertina barbelé dissous au sang acide à (${Math.round(spool.x)}, ${Math.round(spool.z)}). Voie dégagée.`, 'alert');
+      return true;
+    }
+
     deployBarbedWire(x, z) {
       const spool = {
         id: `wire_${Date.now()}`,
@@ -16583,14 +16636,37 @@
 
     updateBarbedWireSpools(safeDelta) {
       if (!this.barbedWireSpools) return;
+      const acidEffects = window.HiveSystems?.vfx?.effects || [];
       for (const bw of this.barbedWireSpools) {
         if (bw.isCut) continue;
+
+        // Chantier 118 : Dissolution automatique au contact d'une flaque ou gerbe d'acide
+        const touchingAcid = acidEffects.some((ef) => ef.acidPool && Math.hypot(ef.x - bw.x, ef.z - bw.z) <= (ef.radius + 1.2));
+        if (touchingAcid) {
+          this.meltBarbedWireWithAcid(bw);
+          continue;
+        }
+
         if (!playerCreature.isCeilingProwling && !playerCreature.isInVent) {
           if (Math.hypot(playerCreature.x - bw.x, playerCreature.z - bw.z) <= 2.2) {
             audioManager.playBarbedWireElectrocution?.(playerCreature.x, playerCreature.z);
             playerCreature.takeDamage?.(18 * safeDelta);
             playerCreature.speed = playerCreature.getAdultProfile().speed * 0.5;
             window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.5, playerCreature.z, '-18 BARBELÉ RASOIR !', '#38bdf8', false);
+          }
+        }
+
+        // Chantier 118 : Entrave et lacération des humains non-synthétiques
+        const humans = window.gameInstance?.humans || [];
+        for (const h of humans) {
+          if (h.isIncapacitated || h.isCocooned) continue;
+          if (Math.hypot(h.x - bw.x, h.z - bw.z) <= 1.8) {
+            const isSynth = h.isSynthetic ? h.isSynthetic() : false;
+            if (!isSynth) {
+              h.takeDamage(14 * safeDelta);
+              h.stress = Math.min(100, (h.stress || 0) + 20 * safeDelta);
+              window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0xb91c1c, 2, 0.05, 0.4);
+            }
           }
         }
       }
@@ -24078,6 +24154,21 @@
       this.isProwling = false;
       this.isCeilingProwling = false;
       this.draggedHost = null;
+      this.isClawAnchored = false;
+    }
+
+    // Chantier 119 : Ancrage des Griffes Chitiniques au Pont Métallique (Alien: Isolation / Aliens)
+    toggleClawDeckAnchor(forceState = null) {
+      this.isClawAnchored = forceState !== null ? !!forceState : !this.isClawAnchored;
+      if (this.isClawAnchored) {
+        audioManager.playMetalClawSparks?.(this.x, this.z) || audioManager.playMetalImpact?.(this.x, this.z);
+        window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf59e0b, 16, 0.12, 1.0);
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'GRIFFES ANCRÉES AU PONT (RÉSISTE AU VIDE)', '#f59e0b', true);
+        showToast("ANCRAGE DE GRIFFES [Pont Métallique] : Immunité totale à l'aspiration et au souffle de décompression !");
+      } else {
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'DÉVERROUILLAGE DES GRIFFES', '#94a3b8', false);
+      }
+      return this.isClawAnchored;
     }
 
     toggleCeilingProwl() {
@@ -24785,6 +24876,13 @@
           }
         });
 
+        // Chantier 118 : Dissolution Caustique de Barbelés USCM par le Crachat Acide
+        stationMap.barbedWireSpools?.forEach((bw) => {
+          if (!bw.isCut && Math.hypot(bw.x - targetPos.x, bw.z - targetPos.z) <= (poolRadius + 1.5)) {
+            stationMap.meltBarbedWireWithAcid(bw);
+          }
+        });
+
         // Chantier 33 : Destruction des caméras par le jet d'acide
         stationMap.securityCameras?.forEach((cam) => {
           if (!cam.isDestroyed && Math.hypot(cam.x - targetPos.x, cam.z - targetPos.z) <= 4.2) {
@@ -25360,6 +25458,59 @@
       this.health = Math.min(this.maxHealth, this.health + 35);
       showToast(`VENT SNATCH & DRAG (ISOLATION 1:1) : ${victim.name} happé sous le plancher sans donner l'alerte (+35 PV) !`);
       appendSensorLog(`[FURTIVITÉ CONDUIT] Cible ${victim.name} entraînée sous les grilles techniques. Zéro témoin acoustique.`, 'stealth');
+      return true;
+    }
+
+    // Chantier 117 : Attaque Furtive de Conduite Descendante "Vent Ceiling Grab" (Alien 1979 Brett Death / Alien: Isolation)
+    executeCeilingVentDropAmbush(target = null) {
+      if (!this.isInVent && !this.isCeilingProwling) {
+        showToast("Montez dans une bouche de ventilation [C] ou rampez au plafond pour une embuscade descendante [E].");
+        return false;
+      }
+      const victim = target || (window.gameInstance?.humans || []).find((h) => (
+        !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 4.2
+      ));
+      if (!victim) {
+        showToast("Aucune proie directement sous la trappe de ventilation (4.2m).");
+        return false;
+      }
+
+      // Descente fulgurante depuis la bouche d'aération
+      if (this.isInVent) {
+        this.isInVent = false;
+        if (this.mesh) this.mesh.position.y = 0;
+      }
+      this.isCeilingProwling = false;
+      this.x = victim.x;
+      this.z = victim.z;
+      if (this.mesh) this.mesh.position.set(this.x, 0, this.z);
+
+      audioManager.playVentSnatchSnap?.(victim.x, victim.z);
+      audioManager.playWetImpact?.(victim.x, victim.z);
+      rendererEngine.addScreenShake?.(0.48, 0.32);
+      window.HiveSystems?.vfx?.salivaDrip?.(victim.x, 3.2, victim.z, 6);
+      window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0xef4444, 38, 0.26, 2.2);
+      window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.8, victim.z, '-280 CHUTE DES CONDUITS (AMBUSH MORTELLE) !', '#ef4444', true);
+
+      victim.takeDamage(280, this);
+      victim.hp = 0;
+      victim.isIncapacitated = true;
+      victim.isCocooned = true;
+
+      // Terreur extrême pour les témoins proches
+      const witnesses = (window.gameInstance?.humans || []).filter((h) => (
+        h !== victim && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 12
+      ));
+      witnesses.forEach((w) => {
+        if (!w.isSynthetic?.()) {
+          w.stress = Math.min(100, (w.stress || 0) + 40);
+          window.HiveSystems?.vfx?.floatingText?.(w.x, 2.4, w.z, 'IL EST SORTI DU PLAFOND !', '#ef4444', false);
+        }
+      });
+
+      this.health = Math.min(this.maxHealth, this.health + 45);
+      showToast(`VENT CEILING GRAB (ALIEN 1979 / ISOLATION) : ${victim.name} écrasé depuis le conduit (+45 PV) !`);
+      appendSensorLog(`[AMBUSH VERTICALE] Descente fulgurante depuis l'overhead vent sur ${victim.name}. Élimination instantanée.`, 'stealth');
       return true;
     }
 
@@ -27536,7 +27687,9 @@
       window.HiveSystems?.vfx?.burst(this.x, this.z, bloodColor, 14, 0.12, 1.4);
       if (isSynth) {
         audioManager.playSyntheticFluidLeak?.(this.x, this.z);
+        window.HiveSystems?.vfx?.syntheticBleed?.(this.x, this.mesh ? this.mesh.position.y + 1.2 : 1.2, this.z, 20);
         window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 8, 0.08, 0.8);
+        this.stress = 0;
       } else {
         window.HiveSystems?.vfx?.fleshImpact?.(this.x, this.z, bloodColor, 16);
       }
@@ -27567,6 +27720,8 @@
       const isSteel = ['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type);
       const isSynth = this.isSynthetic();
       if (isSynth) {
+        this.stress = 0;
+        window.HiveSystems?.vfx?.syntheticBleed?.(this.x, 0.4, this.z, 28);
         if (this.mesh) {
           this.mesh.rotation.z = Math.PI / 2;
           this.mesh.position.y = 0.22;
@@ -27721,6 +27876,11 @@
         return;
       }
       if (!this.mesh || this.isBursting || this.isCocooned || this.isIncapacitated) return;
+      // Chantier 115 : Les synthétiques ont un sang laiteux et sont totalement insensibles au stress, à la panique et à la catatonie
+      if (this.isSynthetic()) {
+        this.stress = 0;
+        this.isDocileCatatonic = false;
+      }
       if (this.isDocileCatatonic) {
         if (this.catatonicTimer > 0) {
           this.catatonicTimer -= safeDelta;
@@ -28053,47 +28213,75 @@
         // Lorsqu'un marine repère le prédateur, il alerte ses coéquipiers proches sur la fréquence radio
         if (!this.radioAlertCooldown || this.radioAlertCooldown <= 0) {
           this.radioAlertCooldown = 4.5;
-          audioManager.playRadioSquelch?.(this.x, this.z);
 
-          // Audit QA #19 : Barks de terreur diégétiques spécifiques aux castes hybrides et exotiques
-          const currentCaste = playerCreature?.adultCaste || playerCreature?.caste || 'drone';
-          let radioBark = 'RADIO: ENNEMI EN VUE !';
-          let barkColor = '#f59e0b';
-          if (currentCaste === 'abomination') {
-            const abomQuotes = [
-              'RADIO: C\'est quoi ce monstre géant au visage d\'enfant ?!',
-              'RADIO: L\'Abomination est là ! Peau blanche d\'albâtre !',
-              'RADIO: Il fait trois mètres de haut ! Tirez !'
+          // Chantier 116 : Brouillage Radio et Parasitage Électromagnétique de Portée
+          const isJammed = distToPlayer <= 9.5 || playerCreature.isInVent || playerCreature.isWallMimic;
+          if (isJammed) {
+            audioManager.playRadioStatic?.(this.x, this.z);
+            const jammedQuotes = [
+              "RADIO: *KRZZZT* ...trop de parasites... *CHHHHH* ...aucun contact !",
+              "RADIO: *KSHHHH* ...fréquence saturée... *BZZZZ* ...dans les parois !",
+              "RADIO: *SQUELCH* ...porteuse coupée... *KZZZZ* ...brouillage RF !"
             ];
-            radioBark = abomQuotes[Math.floor(Math.random() * abomQuotes.length)];
-            barkColor = '#f8fafc';
-            this.stress = Math.min(100, (this.stress || 0) + 35);
-          } else if (currentCaste === 'predalien') {
-            radioBark = 'RADIO: Mon Dieu ces mandibules ! Un hybride Yautja !';
-            barkColor = '#f59e0b';
-            this.stress = Math.min(100, (this.stress || 0) + 30);
-          } else if (currentCaste === 'deacon' || currentCaste === 'deacon_adult') {
-            radioBark = 'RADIO: Spécimen bleu ardoise ! Mâchoire prémaxillaire !';
-            barkColor = '#38bdf8';
-            this.stress = Math.min(100, (this.stress || 0) + 25);
-          } else if (currentCaste === 'belugamorph') {
-            radioBark = 'RADIO: Bloodburster blanc rapide ! Il rampe à toute allure !';
-            barkColor = '#e2e8f0';
-            this.stress = Math.min(100, (this.stress || 0) + 25);
-          }
+            const radioBark = jammedQuotes[Math.floor(Math.random() * jammedQuotes.length)];
+            const barkColor = '#94a3b8';
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, radioBark, barkColor, false);
 
-          const allies = (window.gameInstance?.humans || []).filter((h) => (
-            h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
-            ['guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator', 'commando', 'android', 'synthetic', 'weyland_cyber_hound'].includes(h.type) &&
-            Math.hypot(h.x - this.x, h.z - this.z) <= 35
-          ));
-          allies.forEach((ally) => {
-            if (ally.aiState === 'PATROL') {
-              ally.aiState = 'CHASE';
-              ally.targetPos = { x: combatTarget.x, z: combatTarget.z };
-              window.HiveSystems?.vfx?.floatingText?.(ally.x, 2.6, ally.z, radioBark, barkColor, false);
+            // Portée d'alerte étouffée : seuls les alliés directs à proximité (< 6.5m) entendent les cris
+            const nearbyAllies = (window.gameInstance?.humans || []).filter((h) => (
+              h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
+              Math.hypot(h.x - this.x, h.z - this.z) <= 6.5
+            ));
+            nearbyAllies.forEach((ally) => {
+              if (ally.aiState === 'PATROL') {
+                ally.aiState = 'CHASE';
+                ally.targetPos = { x: combatTarget.x, z: combatTarget.z };
+                window.HiveSystems?.vfx?.floatingText?.(ally.x, 2.6, ally.z, 'APPEL VOCAL DIRECT !', '#cbd5e1', false);
+              }
+            });
+          } else {
+            audioManager.playRadioSquelch?.(this.x, this.z);
+
+            // Audit QA #19 : Barks de terreur diégétiques spécifiques aux castes hybrides et exotiques
+            const currentCaste = playerCreature?.adultCaste || playerCreature?.caste || 'drone';
+            let radioBark = 'RADIO: ENNEMI EN VUE !';
+            let barkColor = '#f59e0b';
+            if (currentCaste === 'abomination') {
+              const abomQuotes = [
+                'RADIO: C\'est quoi ce monstre géant au visage d\'enfant ?!',
+                'RADIO: L\'Abomination est là ! Peau blanche d\'albâtre !',
+                'RADIO: Il fait trois mètres de haut ! Tirez !'
+              ];
+              radioBark = abomQuotes[Math.floor(Math.random() * abomQuotes.length)];
+              barkColor = '#f8fafc';
+              if (!isSyntheticEntity) this.stress = Math.min(100, (this.stress || 0) + 35);
+            } else if (currentCaste === 'predalien') {
+              radioBark = 'RADIO: Mon Dieu ces mandibules ! Un hybride Yautja !';
+              barkColor = '#f59e0b';
+              if (!isSyntheticEntity) this.stress = Math.min(100, (this.stress || 0) + 30);
+            } else if (currentCaste === 'deacon' || currentCaste === 'deacon_adult') {
+              radioBark = 'RADIO: Spécimen bleu ardoise ! Mâchoire prémaxillaire !';
+              barkColor = '#38bdf8';
+              if (!isSyntheticEntity) this.stress = Math.min(100, (this.stress || 0) + 25);
+            } else if (currentCaste === 'belugamorph') {
+              radioBark = 'RADIO: Bloodburster blanc rapide ! Il rampe à toute allure !';
+              barkColor = '#e2e8f0';
+              if (!isSyntheticEntity) this.stress = Math.min(100, (this.stress || 0) + 25);
             }
-          });
+
+            const allies = (window.gameInstance?.humans || []).filter((h) => (
+              h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
+              ['guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator', 'commando', 'android', 'synthetic', 'weyland_cyber_hound'].includes(h.type) &&
+              Math.hypot(h.x - this.x, h.z - this.z) <= 35
+            ));
+            allies.forEach((ally) => {
+              if (ally.aiState === 'PATROL') {
+                ally.aiState = 'CHASE';
+                ally.targetPos = { x: combatTarget.x, z: combatTarget.z };
+                window.HiveSystems?.vfx?.floatingText?.(ally.x, 2.6, ally.z, radioBark, barkColor, false);
+              }
+            });
+          }
         }
 
         // 2. REPLI TACTIQUE SOUS TIRS / SANTÉ CRITIQUE (< 35% PV)
@@ -30290,6 +30478,41 @@
       }
       this.updateHUD();
     }
+    // Chantier 117 : Chute Verticale Directe du Facehugger depuis la Bouche de Ventilation (Alien 1979 / Isolation)
+    executeVentDropAmbush(target) {
+      if (!target || target.isIncapacitated || target.isCocooned) return;
+      playerCreature.isInVent = false;
+      playerCreature.currentVent = null;
+      playerCreature.x = target.x;
+      playerCreature.z = target.z;
+      if (playerCreature.mesh) playerCreature.mesh.position.set(target.x, 0.35, target.z);
+
+      audioManager.playFacehuggerLeap?.();
+      audioManager.playWetImpact?.(target.x, target.z);
+      rendererEngine.addScreenShake?.(0.35, 0.22);
+      window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xef4444, 24, 0.18, 1.4);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 2.8, target.z, 'CHUTE VERTICALE DEPUIS LE CONDUIT !', '#ef4444', true);
+      showToast(`CHUTE VERTICALE : Le Facehugger tombe directement du plafond sur le visage de ${target.name} !`);
+      appendSensorLog(`[EMBUSCADE VERTICALE] Descente par gravité depuis le conduit sur ${target.name}. Latch immédiat.`, 'stealth');
+
+      if (target.hostEligibility === 'protected' && target.maskAttachments > 0) {
+        target.maskAttachments = Math.max(0, target.maskAttachments - (this.isRoyal ? 2 : 1));
+        audioManager.playAcidSizzle?.();
+        window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0x39ff14, 20, 0.15, 1.6);
+        if (target.maskAttachments <= 0) target.hostEligibility = 'viable';
+        window.gameInstance?.syncCampaignCharacter?.(target);
+        this.updateHUD();
+      } else {
+        this.targetHost = target;
+        this.isAttacking = playerCreature.attachToFace(target);
+        this.implantProgress = this.isAttacking ? 25 : 0;
+        audioManager.playFacehuggerGrip?.(target.x, target.z);
+        window.HiveSystems?.vfx?.burst(target.x, target.z, 0xd97706, 20, 0.12, 2.4);
+        window.HiveSystems?.updateObjective(2, 1, 'Maintenir l’agrippement jusqu’à implantation complète.');
+        this.updateHUD();
+      }
+    }
+
     attemptLeap() {
       if (this.isAttacking || this.isBonding || this.isCompleted) return;
       const humans = window.gameInstance ? window.gameInstance.humans : [];
@@ -30302,6 +30525,12 @@
           closestHost = human;
           closestDistance = distance;
         }
+      }
+
+      // Chantier 117 : Si le Facehugger est dans un conduit et qu'une proie passe sous lui, attaque verticale immédiate
+      if (playerCreature.isInVent && closestHost && closestDistance <= 4.2) {
+        this.executeVentDropAmbush(closestHost);
+        return;
       }
 
       // Canon 1:1 Lore — Détection et rejet absolu des androïdes / synthétiques (fluide blanc / pas d'appareil respiratoire)
@@ -31360,8 +31589,15 @@
       if (btnVentSnatch) {
         btnVentSnatch.onclick = () => {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
-          if (target) playerCreature.executeVentSnatchAndDrag(target);
-          else showToast('Aucune cible à portée d\'aspiration sous conduit (4.5m).');
+          if (target) {
+            if (playerCreature.isInVent && Math.hypot(target.x - playerCreature.x, target.z - playerCreature.z) <= 4.2) {
+              playerCreature.executeCeilingVentDropAmbush(target);
+            } else {
+              playerCreature.executeVentSnatchAndDrag(target);
+            }
+          } else {
+            showToast('Aucune cible à portée d\'aspiration sous conduit (4.5m).');
+          }
         };
       }
 
@@ -33207,7 +33443,8 @@
         if (playerCreature.caste === 'carrier' || playerCreature.adultCaste === 'carrier') {
           playerCreature.executeCarrierFacehuggerSwarm();
         } else {
-          playerCreature.toggleAquaticImmersion();
+          // Chantier 119 : Ancrage des griffes au pont (résistance décompression du vide)
+          playerCreature.toggleClawDeckAnchor();
         }
       }
       if (key === 'j') playerCreature.executeSubfloorAmbush();
@@ -33288,6 +33525,15 @@
         if (playerCreature.isInVent || (stationMap?.findClosestVent?.(playerCreature.x, playerCreature.z)?.distance <= 4.0)) {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
           if (target) {
+            // Chantier 117 : Priorité à l'attaque descendante directe si le joueur est dans un conduit de plafond
+            if (playerCreature.isInVent && Math.hypot(target.x - playerCreature.x, target.z - playerCreature.z) <= 4.2) {
+              const dropped = playerCreature.executeCeilingVentDropAmbush(target);
+              if (dropped) {
+                this.updateCooldownBadges();
+                this.updateRoyalButton();
+                return;
+              }
+            }
             const snatched = playerCreature.executeVentSnatchAndDrag(target);
             if (snatched) {
               this.updateCooldownBadges();

@@ -620,6 +620,74 @@
       this.effects.push({ group, age: 0, lifetime: 0.65 });
     }
 
+    // Chantier 115 : Épanchement de Fluide Blanc Laiteux des Synthétiques (Ash Alien 1979 / Bishop Aliens 1986 / Rook Romulus)
+    syntheticBleed(x, y, z, count = 20) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const whiteColors = [0xf8fafc, 0xffffff, 0xe2e8f0, 0xf1f5f9];
+      for (let i = 0; i < count; i++) {
+        const radius = 0.11 * (0.6 + Math.random() * 0.7);
+        const geo = new THREE.SphereGeometry(radius, 6, 6);
+        const color = whiteColors[Math.floor(Math.random() * whiteColors.length)];
+        const mat = new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.95,
+          depthWrite: false
+        });
+        const p = new THREE.Mesh(geo, mat);
+        p.position.set(
+          (Math.random() - 0.5) * 0.3,
+          (y || 1.3) + (Math.random() - 0.5) * 0.35,
+          (Math.random() - 0.5) * 0.3
+        );
+        p.userData.velocity = new THREE.Vector3(
+          (Math.random() - 0.5) * 8.5,
+          1.8 + Math.random() * 4.2,
+          (Math.random() - 0.5) * 8.5
+        );
+        group.add(p);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: 0.75 });
+    }
+
+    // Chantier 119 : Vortex Aérien de Dépressurisation de Sas Vers le Vide Spatial
+    airlockVortex(x, z, targetX, targetZ, count = 16) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const dx = targetX - x;
+      const dz = targetZ - z;
+      const dist = Math.hypot(dx, dz) || 1;
+      const dirX = dx / dist;
+      const dirZ = dz / dist;
+      for (let i = 0; i < count; i++) {
+        const geo = new THREE.SphereGeometry(0.14 * (0.7 + Math.random() * 0.6), 6, 6);
+        const mat = new THREE.MeshBasicMaterial({
+          color: Math.random() < 0.65 ? 0xbae6fd : 0x38bdf8,
+          transparent: true,
+          opacity: 0.85,
+          depthWrite: false
+        });
+        const p = new THREE.Mesh(geo, mat);
+        p.position.set(
+          (Math.random() - 0.5) * 2.5,
+          0.8 + Math.random() * 2.2,
+          (Math.random() - 0.5) * 2.5
+        );
+        p.userData.velocity = new THREE.Vector3(
+          dirX * (14 + Math.random() * 8) + (Math.random() - 0.5) * 3,
+          (Math.random() - 0.5) * 2.0,
+          dirZ * (14 + Math.random() * 8) + (Math.random() - 0.5) * 3
+        );
+        group.add(p);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: 0.6 });
+    }
+
     salivaDrip(x, y, z, count = 2) {
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
       const group = new THREE.Group();

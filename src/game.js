@@ -14561,7 +14561,7 @@
              z >= this.zeroGZone.minZ && z <= this.zeroGZone.maxZ;
     }
 
-    // Chantier 31 : Mise à jour de la zone inondée Sub-Level 3 (Aliens 1986 / Resurrection)
+    // Chantier 31 & 100 : Mise à jour de la zone inondée Sub-Level 3 & Choc Thermique Plomb / Eau Froide (Aliens 1986 / Alien 3)
     updateFloodedZone(safeDelta) {
       if (!this.floodedZone) return;
       const entities = [playerCreature, ...(window.gameInstance?.humans || [])];
@@ -14569,6 +14569,22 @@
         if (!ent || ent.isIncapacitated || ent.isCocooned) return;
         if (this.isInFloodedZone(ent.x, ent.z)) {
           ent.isInWater = true;
+          // Chantier 100 : Choc Thermique Exothermique (Plomb en Fusion + Immersion Eau Froide — Alien 3 Fiorina 161)
+          if (ent.isMoltenLeadCoated) {
+            ent.isMoltenLeadCoated = false;
+            ent.moltenLeadTimer = 0;
+            const shockDmg = ent === playerCreature ? 85 : 240;
+            audioManager.playSteamVentHiss?.(ent.x, ent.z);
+            audioManager.playCryoFreezeShatter?.(ent.x, ent.z);
+            rendererEngine.addScreenShake?.(0.65, 0.45);
+            window.HiveSystems?.vfx?.spawnSteamCloud?.(ent.x, 1.8, ent.z, 5.5);
+            window.HiveSystems?.vfx?.burst?.(ent.x, ent.z, 0xf97316, 45, 0.35, 2.8);
+            window.HiveSystems?.vfx?.burst?.(ent.x, ent.z, 0x38bdf8, 45, 0.35, 2.8);
+            window.HiveSystems?.vfx?.floatingText?.(ent.x, 3.2, ent.z, `CHOC THERMIQUE PLOMB / EAU FROIDE (-${shockDmg}) !`, '#38bdf8', true);
+            showToast('CHOC THERMIQUE EXOTHERMIQUE (ALIEN 3) : Le plomb en fusion refroidi brutalement fait éclater la carapace !');
+            appendSensorLog('[CHOC THERMIQUE] Rupture mécanique par trempe brutale du plomb en fusion dans l\'eau froide.', 'alert');
+            ent.takeDamage?.(shockDmg, null);
+          }
           ent.waterSplashTimer = (ent.waterSplashTimer || 0) - safeDelta;
           if (ent.waterSplashTimer <= 0) {
             ent.waterSplashTimer = 0.55;
@@ -15044,7 +15060,7 @@
       }
     }
 
-    // Chantier 51 : Sacs de Spores Fongiques Pathogènes & Incubation Bloodburster (Alien: Covenant 2017)
+    // Chantier 51 & 102 : Sacs de Spores Fongiques Pathogènes A0-3959X.91–15 & Éclosion Dorsale / Pharyngienne (Alien: Covenant 2017)
     updateSporePods(safeDelta) {
       if (!this.sporePods) return;
       const humans = window.gameInstance?.humans || [];
@@ -15059,10 +15075,10 @@
           continue;
         }
 
-        // Proximité humaine provoquant l'éclatement du sac
+        // Proximité humaine organique provoquant l'éclatement du sac de spores
         for (const h of humans) {
           if (h.isIncapacitated || h.isCocooned || h.isEscaped || h.bloodbursterIncubating) continue;
-          if (['synthetic', 'android'].includes(h.type)) continue;
+          if (h.isSynthetic?.() || ['synthetic', 'android'].includes(h.type) || h.hostEligibility === 'none') continue;
 
           const dist = Math.hypot(h.x - pod.x, h.z - pod.z);
           if (dist <= 3.8) {
@@ -15076,10 +15092,11 @@
 
             h.bloodbursterIncubating = true;
             h.bloodbursterTimer = 12.0;
+            h.neomorphExitSite = Math.random() < 0.65 ? 'COLONNE DORSALE' : 'GORGE PHARYNGIENNE';
             h.stress = 100;
 
-            showToast(`SPORES PATHOGÈNES ÉJECTÉS : ${h.name} a inhalé le nuage fongique ! Bloodburster en gestation interne rapide (12s) !`);
-            appendSensorLog(`[PATHOGÈNE] Spores aéroportées inhalées par ${h.name}. Incubation interne immédiate.`, 'bio');
+            showToast(`SPORES PATHOGÈNES A0-3959X : ${h.name} a inhalé les particules noires ! Gestation Néomorphe (${h.neomorphExitSite}, 12s) !`);
+            appendSensorLog(`[PATHOGÈNE A0-3959X] Spores mutagènes inhalées par ${h.name}. Éclosion prévue via ${h.neomorphExitSite}.`, 'bio');
             break;
           }
         }
@@ -15090,22 +15107,29 @@
         if (!h.bloodbursterIncubating || h.isIncapacitated || h.isCocooned) return;
         h.bloodbursterTimer -= safeDelta;
         if (Math.random() < 0.15) {
-          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.2, h.z, '*SPASMES VISCÉRAUX*', '#ef4444', false);
+          window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0x1e293b, 6, 0.08, 0.7);
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.2, h.z, '*TOUX DE MUCUS NOIR A0-3959X*', '#ef4444', false);
           audioManager.playHostCough?.(h.x, h.z);
         }
 
         if (h.bloodbursterTimer <= 0) {
+          const exitSite = h.neomorphExitSite || 'COLONNE DORSALE';
           h.bloodbursterIncubating = false;
           h.takeDamage?.(h.hp || 100);
           audioManager.playBloodbursterErupt?.(h.x, h.z);
-          rendererEngine.addScreenShake?.(0.28, 0.2);
-          window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0xef4444, 40, 0.35, 2.5);
-          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.8, h.z, 'ÉMERGENCE DU BLOODBURSTER (COVENANT) !', '#ef4444', true);
-          showToast(`BLOODBURSTER : Jaillissement dorsal féroce à travers la colonne de ${h.name} !`);
-          appendSensorLog(`[BLOODBURSTER] Organisme juvénile néomorphe émergé du dos de ${h.name}.`, 'bio');
+          audioManager.playNeomorphBloodbursterScreech?.(h.x, h.z);
+          rendererEngine.addScreenShake?.(0.32, 0.24);
+          window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0xef4444, 45, 0.35, 2.5);
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.8, h.z, `ÉCLOSION NÉOMORPHE (${exitSite}) !`, '#f8fafc', true);
+          showToast(`BLOODBURSTER NÉOMORPHE : Rupture fulgurante par la ${exitSite.toLowerCase()} de ${h.name} !`);
+          appendSensorLog(`[COVENANT 1:1] Bloodburster néomorphe émergé via ${exitSite} de ${h.name}.`, 'bio');
 
           if (window.gameInstance?.currentStage?.spawnChestburster) {
             window.gameInstance.currentStage.spawnChestburster(h.x, h.z);
+          }
+          if (window.gameInstance?.currentStage?.rtsUnits && typeof HiveUnit !== 'undefined') {
+            const neoUnit = new HiveUnit(`neo_spore_${Date.now()}`, 'neomorph', h.x + 0.6, h.z + 0.6);
+            window.gameInstance.currentStage.rtsUnits.push(neoUnit);
           }
         }
       });
@@ -20615,11 +20639,18 @@
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {
         if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - sluice.x, h.z - sluice.z) <= 8.0) {
+          h.isMoltenLeadCoated = true;
+          h.moltenLeadTimer = 14.0;
           h.takeDamage?.(380, playerCreature);
           h.staggerTimer = 5.0;
           window.HiveSystems?.vfx?.floatingText?.(h.x, 3.4, h.z, '-380 COULÉE DE PLOMB EN FUSION !', '#f97316', true);
         }
       });
+      if (Math.hypot(playerCreature.x - sluice.x, playerCreature.z - sluice.z) <= 8.0) {
+        playerCreature.isMoltenLeadCoated = true;
+        playerCreature.moltenLeadTimer = 14.0;
+        window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 3.2, playerCreature.z, 'MANTEAU DE PLOMB EN FUSION (14s) !', '#f97316', true);
+      }
       this.applyHullStress(4.5);
       resinGrid.damageResinNodes?.(sluice.x, sluice.z, 8.0, 'fire');
       showToast('VANNE DE COULÉE OUVERTE : Torrents de plomb liquide incinérant le secteur bas !');
@@ -20631,6 +20662,10 @@
       (this.leadDrainageSluices || []).forEach((ls) => {
         if (ls.isOpen && ls.openTimer > 0) {
           ls.openTimer -= safeDelta;
+          if (Math.hypot(playerCreature.x - ls.x, playerCreature.z - ls.z) <= 4.5) {
+            playerCreature.isMoltenLeadCoated = true;
+            playerCreature.moltenLeadTimer = 14.0;
+          }
           if (ls.openTimer <= 0) ls.isOpen = false;
         }
       });
@@ -25317,7 +25352,7 @@
       return true;
     }
 
-    // Chantier 131 : The Abomination / Anomaly Hybrid — Broyage Sternal & Projection Caudale (Alien: Romulus 2024)
+    // Chantier 131 & 103 : The Abomination / Anomaly Hybrid — Broyage Sternal, Cri Dissonant & Siphon Z-01 (Alien: Romulus 2024 / Resurrection)
     executeAbominationSternalCrush(target) {
       if (!target || target.isIncapacitated || target.isCocooned) return false;
       audioManager.playAbominationShriek?.(target.x, target.z);
@@ -25337,8 +25372,20 @@
         target.isIncapacitated = true;
         if (target.mesh) target.mesh.rotation.x = Math.PI / 2;
       }
-      showToast(`L'ABOMINATION : Cage thoracique de ${target.name} broyée à mains nues et projection caudale !`);
-      appendSensorLog(`[L'ABOMINATION] Broyage sternal et projection cinétique brutale sur cible.`, 'alert');
+
+      // Chantier 103 : Siphon Métabolique Z-01 & Onde de Terreur Dissonante (Alien: Resurrection / Romulus)
+      this.health = Math.min(this.maxHealth, this.health + 40);
+      window.HiveSystems?.vfx?.floatingText?.(this.x, 3.5, this.z, '+40 SIPHON MÉTABOLIQUE Z-01 !', '#22c55e', true);
+      (window.gameInstance?.humans || []).forEach((h) => {
+        if (h !== target && !h.isIncapacitated && !h.isCocooned && !h.isSynthetic?.() && Math.hypot(h.x - this.x, h.z - this.z) <= 12.0) {
+          h.stress = Math.min(100, (h.stress || 0) + 45);
+          h.staggerTimer = Math.max(h.staggerTimer || 0, 1.4);
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.7, h.z, 'TERREUR DISSONANTE HYBRIDE (+45 STRESS)', '#f43f5e', false);
+        }
+      });
+
+      showToast(`L'ABOMINATION : Cage thoracique de ${target.name} broyée, cri dissonant et drainage Z-01 (+40 PV) !`);
+      appendSensorLog(`[L'ABOMINATION] Broyage sternal, siphon métabolique Z-01 et onde d'effroi hybride.`, 'alert');
       return true;
     }
 
@@ -26386,6 +26433,22 @@
         }
       }
 
+      // Chantier 100 : Carapace enrobée de plomb en fusion & Choc Thermique Cryo (Alien 3 Fiorina 161)
+      if (this.isMoltenLeadCoated) {
+        const isColdHit = damageType === 'cryo' || attacker?.type?.includes('cryo');
+        if (isColdHit) {
+          this.isMoltenLeadCoated = false;
+          this.moltenLeadTimer = 0;
+          actualDmg += 85;
+          audioManager.playCryoFreezeShatter?.(this.x, this.z);
+          window.HiveSystems?.vfx?.spawnSteamCloud?.(this.x, 1.8, this.z, 5.0);
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 3.3, this.z, 'CHOC THERMIQUE EXOTHERMIQUE (-85) !', '#38bdf8', true);
+        } else {
+          actualDmg = Math.round(actualDmg * 0.8);
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 2.7, this.z, 'MANTEAU DE PLOMB (-20%)', '#f97316', false);
+        }
+      }
+
       this.health = Math.max(0, this.health - actualDmg);
 
       // Feedback d'impact viscéral
@@ -26806,6 +26869,27 @@
             window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0x38bdf8, 3.2);
           }
         }
+
+        // Chantier 100 : Décroissance et incandescence du manteau de plomb en fusion (Alien 3 Fiorina 161)
+        if (this.isMoltenLeadCoated) {
+          this.moltenLeadTimer = Math.max(0, (this.moltenLeadTimer || 0) - safeDelta);
+          if (Math.random() < 0.22) {
+            window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf97316, 4, 0.08, 0.6);
+          }
+          if (this.moltenLeadTimer <= 0) {
+            this.isMoltenLeadCoated = false;
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'PLOMB SOLIDIFIÉ ET ÉCAILLÉ', '#94a3b8', false);
+          }
+        }
+
+        // Chantier 104 : Furtivité Doppler par Immobilité Absolue face au Détecteur M314 (Aliens 1986 / Isolation)
+        const isCompletelyStill = dx === 0 && dy === 0 && !this.moveTarget && this.actionAnimation <= 0.05;
+        if (isCompletelyStill) {
+          this.stationaryTimer = (this.stationaryTimer || 0) + safeDelta;
+        } else {
+          this.stationaryTimer = 0;
+        }
+        this.isDopplerInvisible = (this.stationaryTimer || 0) >= 0.65;
 
         // Chantier 7 & Audit QA #93 : Régénération biologique passive sur la bio-résine et Cocon Mural Autonome
         if (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0) {
@@ -27392,6 +27476,13 @@
           this.mesh.position.y = 0.22;
           this.mesh.scale.y = 0.65;
         }
+        // Chantier 101 : Survie Bionique Post-Démembrement des Synthétiques (Ash Alien 1979 / Bishop Aliens 1986 / Rook Romulus)
+        if (!['sentry_turret', 'turret', 'sentry_gun', 'security_drone', 'skimmer_scan_drone'].includes(this.type)) {
+          this.isBionicCrawl = true;
+          this.bionicCrawlTimer = 18.0;
+          this.bionicGrabCooldown = 1.5;
+          this.bionicTelemetryCooldown = 4.0;
+        }
         audioManager.playSyntheticGlitchedVoice?.(this.x, this.z);
         audioManager.playSyntheticFluidLeak?.(this.x, this.z);
         window.HiveSystems?.vfx?.burst(this.x, this.z, 0xf8fafc, 26, 0.18, 1.8);
@@ -27491,8 +27582,49 @@
     }
 
     update(deltaSeconds = 1 / 60) {
-      if (!this.mesh || this.isBursting || this.isCocooned || this.isIncapacitated) return;
       const safeDelta = Math.max(0, deltaSeconds);
+      // Chantier 101 : Survie Bionique Post-Démembrement des Synthétiques (Ash 1979 / Bishop 1986 / Rook Romulus)
+      if (this.mesh && this.isIncapacitated && this.isBionicCrawl && !this.isCocooned) {
+        this.bionicCrawlTimer = (this.bionicCrawlTimer || 0) - safeDelta;
+        this.bionicGrabCooldown = Math.max(0, (this.bionicGrabCooldown || 0) - safeDelta);
+        this.bionicTelemetryCooldown = (this.bionicTelemetryCooldown || 0) - safeDelta;
+        if (this.bionicCrawlTimer <= 0) {
+          this.isBionicCrawl = false;
+          return;
+        }
+        this.mesh.rotation.y += Math.sin(Date.now() * 0.014) * 0.035;
+        if (Math.random() < 0.12) {
+          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf8fafc, 3, 0.06, 0.45);
+          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 2, 0.05, 0.4);
+        }
+        const distPlayer = Math.hypot(playerCreature.x - this.x, playerCreature.z - this.z);
+        if (distPlayer <= 2.2) {
+          if (playerCreature.actionAnimation > 0.2) {
+            this.isBionicCrawl = false;
+            audioManager.playBoneCrunch?.(this.x, this.z);
+            window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf8fafc, 22, 0.18, 1.5);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.5, this.z, 'CHÂSSIS SYNTHÉTIQUE DÉFINITIVEMENT BROYÉ !', '#cbd5e1', true);
+            return;
+          } else if (this.bionicGrabCooldown <= 0) {
+            this.bionicGrabCooldown = 5.5;
+            playerCreature.suppressionTimer = Math.max(playerCreature.suppressionTimer || 0, 2.2);
+            audioManager.playSyntheticGlitchedVoice?.(this.x, this.z);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.4, this.z, 'SAISIE BIONIQUE AU TENDON (ASH / BISHOP) !', '#38bdf8', true);
+            showToast(`SURVIE BIONIQUE : Le torse sectionné de ${this.name} agrippe votre cheville et entrave votre course !`);
+            appendSensorLog(`[SURVIE BIONIQUE] Châssis démembré ${this.name} toujours actif : saisie réflexe sur le spécimen.`, 'alert');
+          }
+        }
+        if (this.bionicTelemetryCooldown <= 0) {
+          this.bionicTelemetryCooldown = 6.0;
+          (window.gameInstance?.humans || []).forEach((ally) => {
+            if (ally !== this && !ally.isIncapacitated && Math.hypot(ally.x - this.x, ally.z - this.z) <= 26) {
+              ally.targetPos = { x: playerCreature.x, z: playerCreature.z };
+            }
+          });
+        }
+        return;
+      }
+      if (!this.mesh || this.isBursting || this.isCocooned || this.isIncapacitated) return;
       if (this.isDocileCatatonic) {
         if (this.catatonicTimer > 0) {
           this.catatonicTimer -= safeDelta;
@@ -27697,13 +27829,21 @@
 
       this.motionPingCooldown -= safeDelta;
       if (this.radioAlertCooldown > 0) this.radioAlertCooldown -= safeDelta;
-      if (biologicalTargetDetectable && distToPlayer < 24 && this.motionPingCooldown <= 0) {
+      // Chantier 104 : Cécité Doppler du Détecteur M314 par Immobilité Absolue (Aliens 1986 / Isolation)
+      const isTargetDopplerStill = combatTarget === playerCreature && playerCreature.isDopplerInvisible;
+      if (biologicalTargetDetectable && !isTargetDopplerStill && distToPlayer < 24 && this.motionPingCooldown <= 0) {
         if (this.type !== 'scientist' && this.type !== 'labhound' && this.type !== 'labrodent') {
           audioManager.playMotionTrackerPing(distToPlayer);
         }
         // Cadence dynamique fidèle au tracker M314 (Aliens / Isolation)
         const pingInterval = distToPlayer < 4.5 ? 0.35 : (distToPlayer < 8.5 ? 0.65 : (distToPlayer < 14 ? 1.05 : 1.75));
         this.motionPingCooldown = pingInterval + Math.random() * 0.12;
+      } else if (isTargetDopplerStill && !hasLineOfSight && distToPlayer < 16 && this.aiState === 'CHASE') {
+        this.dopplerLostCooldown = (this.dopplerLostCooldown || 0) - safeDelta;
+        if (this.dopplerLostCooldown <= 0) {
+          this.dopplerLostCooldown = 9.0;
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 2.7, this.z, 'LECTURE DOPPLER M314 : 0.00 m/s (SIGNAL PERDU)', '#38bdf8', false);
+        }
       }
 
       // Canon 1:1 Lore — Directive 937 : Les synthétiques protègent le spécimen biologique au détriment de l'équipage

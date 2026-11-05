@@ -10104,6 +10104,27 @@
         { id: 'trans_2', name: 'Cuve Hybridation Génétique Romulus', x: 36, z: 40, isRuptured: false, mesh: null }
       ];
 
+      // Chantier 125 : Brume de Refroidissement Cryogénique LN2 & Visibilité Zéro-Infrarouge (Alien: Romulus)
+      this.cryoCoolingMistVents = [
+        { id: 'cryo_mist_1', name: 'Buse de Décharge LN2 Laboratoire', x: -24, z: 14, isPunctured: false, mistTimer: 0, mistRadius: 6.5, mesh: null },
+        { id: 'cryo_mist_2', name: 'Soupape Cryo-Coolant Baie Moteurs', x: 18, z: -32, isPunctured: false, mistTimer: 0, mistRadius: 6.5, mesh: null }
+      ];
+
+      // Chantier 126 : Surchauffe de Bobines Magnétiques Mag-Lev & Décharge IEM (Alien: Isolation)
+      this.maglevCoilStations = [
+        { id: 'maglev_1', name: 'Bobine Magnétique Transit Nord', x: -12, z: -38, isDischarged: false, cooldown: 0, mesh: null },
+        { id: 'maglev_2', name: 'Générateur Linéaire Mag-Lev Quai Sud', x: 30, z: 10, isDischarged: false, cooldown: 0, mesh: null }
+      ];
+
+      // Chantier 127 : Nappes de Napalm Persistant au Sol (Aliens 1986 — Lance-flammes M240)
+      this.napalmGroundFires = [];
+
+      // Chantier 129 : Capsule de Survie Cryogénique EEV Type 37 & Sabotage de Verrouillage (Alien 3)
+      this.eevEscapePods = [
+        { id: 'eev_1', name: 'Capsule EEV Type 37 Baie Alpha', x: -36, z: 26, isSabotaged: false, isEjected: false, countdown: 0, occupant: null, mesh: null },
+        { id: 'eev_2', name: 'Capsule EEV Type 37 Passerelle Bêta', x: 34, z: -28, isSabotaged: false, isEjected: false, countdown: 0, occupant: null, mesh: null }
+      ];
+
       // Chantier 49 : Éventration de Planchers & Grilles de Sol (Aliens 1986 / Alien 3)
       this.subfloorGrates = [
         { id: 'grate_1', x: -12, z: 8, mesh: null },
@@ -14242,6 +14263,10 @@
       this.updateIndustrialSearchlights(safeDelta);
       this.updateAmmoCrates(safeDelta);
       this.updateTransgenicIncubators(safeDelta);
+      this.updateCryoCoolingMist(safeDelta);
+      this.updateMaglevCoilStations(safeDelta);
+      this.updateNapalmGroundFires(safeDelta);
+      this.updateEEVPods(safeDelta);
       this.updateFoundryGantryHoists(safeDelta);
       this.updateWaterPuddleSplashes(safeDelta);
       this.updateNostromoCoolantHatches(safeDelta);
@@ -15505,6 +15530,203 @@
       for (const inc of this.transgenicIncubators) {
         if (!inc.isRuptured && Math.random() < 0.1) {
           window.HiveSystems?.vfx?.burst?.(inc.x, inc.z, 0xa855f7, 3, 0.05, 0.4);
+        }
+      }
+    }
+
+    // Chantier 125 : Brume de Refroidissement Cryogénique LN2 & Visibilité Zéro-Infrarouge (Alien: Romulus)
+    punctureCryoMistVent(vent) {
+      if (!vent || vent.isPunctured) return false;
+      vent.isPunctured = true;
+      vent.mistTimer = 16.0;
+      audioManager.playCryoVent?.(vent.x, vent.z);
+      rendererEngine.addScreenShake?.(0.25, 0.2);
+      window.HiveSystems?.vfx?.burst?.(vent.x, vent.z, 0x38bdf8, 32, 0.35, 2.5);
+      showToast(`${vent.name.toUpperCase()} PERFORÉE : Nappe de brume cryogénique LN2 à -196°C libérée !`);
+      appendSensorLog(`[BRUME CRYOGÉNIQUE] ${vent.name} éventrée. Chute thermique brutale et brouillage infrarouge.`, 'bio');
+      return true;
+    }
+
+    updateCryoCoolingMist(safeDelta) {
+      if (!this.cryoCoolingMistVents) return;
+      const player = window.gameInstance?.playerCreature;
+      let inAnyMist = false;
+
+      for (const vent of this.cryoCoolingMistVents) {
+        if (!vent.isPunctured || vent.mistTimer <= 0) continue;
+        vent.mistTimer -= safeDelta;
+
+        if (Math.random() < 0.3) {
+          window.HiveSystems?.vfx?.burst?.(vent.x + (Math.random() - 0.5) * vent.mistRadius, vent.z + (Math.random() - 0.5) * vent.mistRadius, 0xbae6fd, 4, 0.1, 0.8);
+        }
+
+        // Camouflage thermique et couverture du joueur dans la brume
+        if (player && Math.hypot(player.x - vent.x, player.z - vent.z) <= vent.mistRadius) {
+          inAnyMist = true;
+        }
+
+        // Refroidissement brutal des humains
+        const humans = window.gameInstance?.humans || [];
+        for (const h of humans) {
+          if (h.isIncapacitated || h.isCocooned) continue;
+          if (Math.hypot(h.x - vent.x, h.z - vent.z) <= vent.mistRadius) {
+            h.bodyTemperature = Math.max(10, (h.bodyTemperature || 37) - 15 * safeDelta);
+            if (!h.isSynthetic?.()) {
+              h.speedMultiplier = 0.8;
+            }
+          }
+        }
+      }
+
+      if (player) {
+        player.isCryoThermalCloaked = inAnyMist;
+      }
+    }
+
+    // Chantier 126 : Surchauffe de Bobines Magnétiques Mag-Lev & Décharge IEM (Alien: Isolation)
+    overchargeMaglevCoil(station) {
+      if (!station || (station.cooldown && station.cooldown > 0)) return false;
+      station.cooldown = 24.0;
+      station.isDischarged = true;
+      audioManager.playPowerHum?.(station.x, station.z);
+      rendererEngine.addScreenShake?.(0.35, 0.25);
+      window.HiveSystems?.vfx?.ring?.(station.x, station.z, 0x38bdf8, 14);
+      window.HiveSystems?.vfx?.burst?.(station.x, station.z, 0x60a5fa, 40, 0.4, 3.2);
+
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (h.isIncapacitated || h.isCocooned) return;
+        const dist = Math.hypot(h.x - station.x, h.z - station.z);
+        if (dist <= 14) {
+          if (h.isSynthetic?.()) {
+            h.staggerTimer = 4.5;
+            window.HiveSystems?.vfx?.burst?.(h.x, h.z, 0x38bdf8, 16, 0.15, 1.2);
+            window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, 'SURCHARGE IEM SYNTHÉTIQUE !', '#38bdf8', true);
+          } else {
+            h.stress = Math.min(100, (h.stress || 0) + 25);
+            h.flashlightActive = false;
+            window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, 'ÉCLAIRAGE & TRACKER HORS-SERVICE !', '#eab308', true);
+          }
+        }
+      });
+
+      showToast(`DÉCHARGE IEM DU MAG-LEV DÉCLENCHÉE : Panne générale d'équipements et choc synthétique !`);
+      appendSensorLog(`[IEM MAG-LEV] Arc électromagnétique 14m. Synthétiques court-circuités et capteurs brouillés.`, 'alert');
+      return true;
+    }
+
+    updateMaglevCoilStations(safeDelta) {
+      if (!this.maglevCoilStations) return;
+      for (const st of this.maglevCoilStations) {
+        if (st.cooldown && st.cooldown > 0) {
+          st.cooldown -= safeDelta;
+          if (st.cooldown <= 0) st.isDischarged = false;
+        }
+      }
+    }
+
+    // Chantier 127 : Nappes de Napalm Persistant au Sol (Aliens 1986 — Lance-flammes M240)
+    spawnNapalmFire(x, z, duration = 10.0, radius = 2.8) {
+      if (!this.napalmGroundFires) this.napalmGroundFires = [];
+      this.napalmGroundFires.push({ x, z, duration, radius });
+      window.HiveSystems?.vfx?.burst?.(x, z, 0xf97316, 22, 0.25, radius);
+    }
+
+    extinguishNapalmFiresInRadius(x, z, radius = 4.0) {
+      if (!this.napalmGroundFires || this.napalmGroundFires.length === 0) return;
+      const initialCount = this.napalmGroundFires.length;
+      this.napalmGroundFires = this.napalmGroundFires.filter((fire) => {
+        const dist = Math.hypot(fire.x - x, fire.z - z);
+        if (dist <= (radius + fire.radius)) {
+          window.HiveSystems?.vfx?.burst?.(fire.x, fire.z, 0x94a3b8, 14, 0.15, 1.2);
+          return false;
+        }
+        return true;
+      });
+      if (this.napalmGroundFires.length < initialCount) {
+        showToast("NAPALM ÉTEINT PAR L'ACIDE / LE FROID : Nuage de scories et vapeur étouffée !");
+      }
+    }
+
+    updateNapalmGroundFires(safeDelta) {
+      if (!this.napalmGroundFires || this.napalmGroundFires.length === 0) return;
+      const player = window.gameInstance?.playerCreature;
+      const humans = window.gameInstance?.humans || [];
+
+      for (let i = this.napalmGroundFires.length - 1; i >= 0; i--) {
+        const fire = this.napalmGroundFires[i];
+        fire.duration -= safeDelta;
+        if (fire.duration <= 0) {
+          this.napalmGroundFires.splice(i, 1);
+          continue;
+        }
+
+        if (Math.random() < 0.25) {
+          window.HiveSystems?.vfx?.burst?.(fire.x + (Math.random() - 0.5) * fire.radius, fire.z + (Math.random() - 0.5) * fire.radius, 0xef4444, 3, 0.1, 0.5);
+        }
+
+        // Dégâts de brûlure sur le joueur s'il est au sol
+        if (player && !player.isCeilingProwling && !player.isInVent) {
+          if (Math.hypot(player.x - fire.x, player.z - fire.z) <= fire.radius) {
+            player.takeDamage?.(10 * safeDelta, null);
+          }
+        }
+
+        // Dégâts sur les humains non-protégés
+        for (const h of humans) {
+          if (h.isIncapacitated || h.isCocooned) continue;
+          if (Math.hypot(h.x - fire.x, h.z - fire.z) <= fire.radius) {
+            h.takeDamage(15 * safeDelta, null);
+            h.stress = Math.min(100, (h.stress || 0) + 10 * safeDelta);
+          }
+        }
+      }
+    }
+
+    // Chantier 129 : Capsule de Survie Cryogénique EEV Type 37 & Sabotage de Verrouillage (Alien 3)
+    sabotageEEVPod(pod) {
+      if (!pod || pod.isSabotaged || pod.isEjected) return false;
+      pod.isSabotaged = true;
+      audioManager.playElevatorCableSnap?.(pod.x, pod.z);
+      rendererEngine.addScreenShake?.(0.28, 0.2);
+      window.HiveSystems?.vfx?.burst?.(pod.x, pod.z, 0xef4444, 25, 0.25, 2.0);
+      showToast(`${pod.name.toUpperCase()} SABOTÉE : Verrous hydrauliques scellés, fuite d'évacuation impossible !`);
+      appendSensorLog(`[EEV TYPE 37] Système de largage neutralisé. Trappes de survie condamnées par l'acide.`, 'alert');
+      return true;
+    }
+
+    updateEEVPods(safeDelta) {
+      if (!this.eevEscapePods) return;
+      const humans = window.gameInstance?.humans || [];
+
+      for (const pod of this.eevEscapePods) {
+        if (pod.isSabotaged || pod.isEjected) continue;
+
+        if (pod.countdown > 0) {
+          pod.countdown -= safeDelta;
+          if (Math.random() < 0.2) {
+            window.HiveSystems?.vfx?.ring?.(pod.x, pod.z, 0xeab308, 3.5);
+          }
+          if (pod.countdown <= 0) {
+            pod.isEjected = true;
+            audioManager.playDepressurizationRoar?.(pod.x, pod.z);
+            showToast(`${pod.name.toUpperCase()} ÉJECTÉE DANS L'ESPACE : Les occupants ont échappé à la Ruche !`);
+            appendSensorLog(`[ÉJECTION EEV] Capsule de survie propulsée dans le vide.`, 'alert');
+          }
+          continue;
+        }
+
+        // Détection de survivants paniqués tentant l'évacuation
+        for (const h of humans) {
+          if (h.isIncapacitated || h.isCocooned || h.isSynthetic?.()) continue;
+          if ((h.stress || 0) >= 80 && Math.hypot(h.x - pod.x, h.z - pod.z) <= 4.5) {
+            pod.occupant = h;
+            pod.countdown = 20.0;
+            h.isIncapacitated = true;
+            if (h.mesh) rendererEngine.removeObject(h.mesh);
+            showToast(`ALERTE ÉVACUATION : Un survivant s'est barricadé dans la ${pod.name} ! Éjection imminente (20s) !`);
+            break;
+          }
         }
       }
     }
@@ -24430,6 +24652,7 @@
       this.isClawAnchored = false;
       this.isPhotophobicBlinded = false;
       this.transgenicSurgeTimer = 0;
+      this.isCryoThermalCloaked = false;
     }
 
     // Chantier 123 : Surtension Bio-Génétique Z-01 (Alien: Resurrection / Romulus)
@@ -24882,6 +25105,43 @@
       return true;
     }
 
+    // Chantier 128 : Éclosion Ventrale Accélérée & Rupture de Cage Thoracique Silencieuse en Mimétisme (Alien: Covenant)
+    triggerAcceleratedBirth() {
+      const humans = window.gameInstance?.humans || [];
+      const host = humans.find((h) => (h.directInoculated || h.isCocooned) && Math.hypot(h.x - this.x, h.z - this.z) <= 6.0);
+      if (!host) {
+        showToast('Aucun hôte inoculé ou en cocon à proximité immédiate (<6m) pour accélérer la gestation.');
+        return false;
+      }
+
+      window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0x10b981, 5.0);
+      window.HiveSystems?.vfx?.burst?.(host.x, host.z, 0xef4444, 28, 0.2, 1.8);
+      audioManager.playChestburst?.(host.x, host.z);
+
+      host.directInoculated = false;
+      host.isIncapacitated = true;
+      host.hp = 0;
+
+      // Éclosion silencieuse si le joueur est camouflé ou dans un conduit
+      const isMuffled = this.isWallMimic || this.isInVent || this.isCeilingProwling;
+      if (isMuffled) {
+        showToast('RUPTURE THORACIQUE SILENCIEUSE DANS LA RÉSINE [B] : Chestburster allié né sans alerter les patrouilles !');
+        appendSensorLog(`[ÉCLOSION AMORTIE] Émergence accélérée dans la bio-résine. Absence d'onde sonore d'alerte.`, 'bio');
+      } else {
+        showToast('ÉCLOSION THORACIQUE FORCÉE [B] : Un Chestburster allié émerge de la cage thoracique !');
+        appendSensorLog(`[ÉCLOSION FORCÉE] Catalyse phéromonale. Naissance accélérée d'une unité juvénile.`, 'alert');
+        humans.forEach((other) => {
+          if (!other.isIncapacitated && Math.hypot(other.x - host.x, other.z - host.z) <= 10.0) {
+            other.stress = Math.min(100, (other.stress || 0) + 35);
+          }
+        });
+      }
+
+      // Ajout de l'unité alliée Chestburster à l'essaim
+      window.gameInstance?.stage?.spawnAlliedChestburster?.(host.x, host.z);
+      return true;
+    }
+
     // Caste Charger : Ruée Cinétique Fracassante (Aliens: Fireteam Elite)
     executeChargerRush() {
       if (this.adultCaste !== 'charger' && this.caste !== 'charger' && this.adultCaste !== 'crusher') {
@@ -25250,6 +25510,30 @@
         stationMap.transgenicIncubators?.forEach((inc) => {
           if (!inc.isRuptured && Math.hypot(inc.x - targetPos.x, inc.z - targetPos.z) <= (poolRadius + 2.0)) {
             stationMap.ruptureTransgenicIncubator(inc);
+          }
+        });
+
+        // Chantier 125 : Perforation corrosive des buses de décharge LN2
+        stationMap.cryoCoolingMistVents?.forEach((vent) => {
+          if (!vent.isPunctured && Math.hypot(vent.x - targetPos.x, vent.z - targetPos.z) <= (poolRadius + 2.0)) {
+            stationMap.punctureCryoMistVent(vent);
+          }
+        });
+
+        // Chantier 126 : Surcharge caustique des bobines magnétiques Mag-Lev
+        stationMap.maglevCoilStations?.forEach((st) => {
+          if ((!st.cooldown || st.cooldown <= 0) && Math.hypot(st.x - targetPos.x, st.z - targetPos.z) <= (poolRadius + 2.0)) {
+            stationMap.overchargeMaglevCoil(st);
+          }
+        });
+
+        // Chantier 127 : Neutralisation des flammes de napalm par l'acide
+        stationMap.extinguishNapalmFiresInRadius?.(targetPos.x, targetPos.z, poolRadius + 1.5);
+
+        // Chantier 129 : Sabotage acide des capsules de survie EEV Type 37
+        stationMap.eevEscapePods?.forEach((pod) => {
+          if (!pod.isSabotaged && Math.hypot(pod.x - targetPos.x, pod.z - targetPos.z) <= (poolRadius + 2.0)) {
+            stationMap.sabotageEEVPod(pod);
           }
         });
       };
@@ -27248,6 +27532,11 @@
         }
       }
 
+      // Chantier 125 : Effet visuel de camouflage thermique cryogénique
+      if (this.isCryoThermalCloaked && Math.random() < 0.2) {
+        window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xbae6fd, 2, 0.05, 0.3);
+      }
+
       // Chantier 67 : Fureur d'agonie berserk (Death Throes Acid Nova - Marvel Comics)
       if (this.inDeathThroes) {
         this.deathThroesTimer = (this.deathThroesTimer || 4.0) - safeDelta;
@@ -29234,6 +29523,7 @@
             window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 3.2, combatTarget.z, '-38 CÔNE NAPALM 1500°C M240A1 !', '#f97316', true);
             const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
             targetReceiver.takeDamage(38, this);
+            stationMap.spawnNapalmFire?.(combatTarget.x, combatTarget.z, 9.0, 2.6);
             if (combatTarget === playerCreature && playerCreature.isWallMimic) {
               playerCreature.toggleResinWallMimicry(false);
             }
@@ -33645,6 +33935,24 @@
         stationMap.ruptureTransgenicIncubator(nearIncubator);
         return true;
       }
+      // Chantier 125 : Buse de Décharge Cryogénique LN2
+      const nearMistVent = (stationMap.cryoCoolingMistVents || []).find((v) => !v.isPunctured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
+      if (nearMistVent) {
+        stationMap.punctureCryoMistVent(nearMistVent);
+        return true;
+      }
+      // Chantier 126 : Bobine Magnétique Mag-Lev
+      const nearMaglev = (stationMap.maglevCoilStations || []).find((s) => (!s.cooldown || s.cooldown <= 0) && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
+      if (nearMaglev) {
+        stationMap.overchargeMaglevCoil(nearMaglev);
+        return true;
+      }
+      // Chantier 129 : Capsule de Survie Cryogénique EEV Type 37
+      const nearEEV = (stationMap.eevEscapePods || []).find((p) => !p.isSabotaged && !p.isEjected && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 5.5);
+      if (nearEEV) {
+        stationMap.sabotageEEVPod(nearEEV);
+        return true;
+      }
       showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur, brouilleur m56, cryo c60, arc-furnace weyland, torche éthylène, casai seegson, bio-stasis pathogène noir, transit mag-lev, halon 1301, mine claymore m20, échangeur ap14, camouflage résine, sevastopol jack, charge 15kv working joe, sas bio-alpha, réacteur nostromo, vapeur géothermique, éjection pyrotechnique, plomb fiorina, gondole sevastopol, cellule synthétique, rotor ventilation, épurateur atmo, inversion gravité, barricade uscm, serveur apollo, théâtre dissection, matrice cryo nostromo, passerelle chasm, bassin trempe fiorina, baie sans tain auriga, centrifugeuse cryo, rail 750v sevastopol, incinérateur medlab, grue atelier uscm, antenne lorenz, sas corbel, rampe narcissus, piston sismique, soufflet fonderie, sarcophage stasique, siphon propergol, rideau roulant, puisard chimique, palette munitions, alcôve synthétique, treuil fonderie, sas cryo nostromo, flume caloporteur, contrepoids fiorina, bioréacteur auriga, portique remus, cabine seegson, couveuse medlab, bunker sandbags, persiennes sevastopol, déversoir fiorina, soufflerie cryo, table holo-tactique, rigole plomb, cage spécimen, carrousel romulus, butoir monorail, surchauffeur vapeur, râtelier uscm, banc seegson, prise venturi, palan nostromo, batterie hadley, trempe fiorina, centrifugeuse auriga, manifold romulus, scanner sevastopol, turbogénérateur hadley, banc balistique uscm, bus apollo, tuyère fiorina) à portée immédiate.');
       return false;
     }
@@ -33812,7 +34120,10 @@
         }
       }
       if (key === 'b') {
-        if (playerCreature.caste === 'neomorph') {
+        const nearHost = (window.gameInstance?.humans || []).some((h) => (h.directInoculated || h.isCocooned) && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 6.0);
+        if (nearHost) {
+          playerCreature.triggerAcceleratedBirth?.();
+        } else if (playerCreature.caste === 'neomorph') {
           playerCreature.executeNeomorphFrenzy();
         } else {
           const nearEnemy = (window.gameInstance?.humans || []).some((h) => !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 7.5);

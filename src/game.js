@@ -24653,6 +24653,7 @@
       this.isPhotophobicBlinded = false;
       this.transgenicSurgeTimer = 0;
       this.isCryoThermalCloaked = false;
+      this.acousticMaskTimer = 0;
     }
 
     // Chantier 123 : Surtension Bio-Génétique Z-01 (Alien: Resurrection / Romulus)
@@ -25534,6 +25535,34 @@
         stationMap.eevEscapePods?.forEach((pod) => {
           if (!pod.isSabotaged && Math.hypot(pod.x - targetPos.x, pod.z - targetPos.z) <= (poolRadius + 2.0)) {
             stationMap.sabotageEEVPod(pod);
+          }
+        });
+
+        // Chantier 130 : Sabotage acide du sas d'amarrage Narcissus
+        stationMap.narcissusDocks?.forEach((dock) => {
+          if (!dock.isSealed && Math.hypot(dock.x - targetPos.x, dock.z - targetPos.z) <= (poolRadius + 2.5)) {
+            stationMap.sabotageNarcissusDock(dock);
+          }
+        });
+
+        // Chantier 131 : Destruction caustique des tourelles mortier M40 USCM
+        stationMap.portableMortars?.forEach((mortar) => {
+          if (!mortar.isDestroyed && Math.hypot(mortar.x - targetPos.x, mortar.z - targetPos.z) <= (poolRadius + 2.0)) {
+            stationMap.destroyPortableMortar(mortar, 80);
+          }
+        });
+
+        // Chantier 132 : Sabotage caustique du transport blindé M577 APC USCM
+        stationMap.m577APCs?.forEach((apc) => {
+          if (!apc.isSabotaged && Math.hypot(apc.x - targetPos.x, apc.z - targetPos.z) <= (poolRadius + 2.5)) {
+            stationMap.sabotageM577APC(apc);
+          }
+        });
+
+        // Chantier 134 : Surcharge acide des défibrillateurs Seegson 5000V
+        stationMap.wallDefibrillators?.forEach((defib) => {
+          if (!defib.isOverloaded && Math.hypot(defib.x - targetPos.x, defib.z - targetPos.z) <= (poolRadius + 2.0)) {
+            stationMap.dischargeWallDefibrillator(defib);
           }
         });
       };
@@ -27537,6 +27566,14 @@
         window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xbae6fd, 2, 0.05, 0.3);
       }
 
+      // Chantier 133 : Masquage acoustique par condensation d'eau
+      if (this.acousticMaskTimer > 0) {
+        this.acousticMaskTimer -= safeDelta;
+        if (Math.random() < 0.15) {
+          window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 2, 0.05, 0.4);
+        }
+      }
+
       // Chantier 67 : Fureur d'agonie berserk (Death Throes Acid Nova - Marvel Comics)
       if (this.inDeathThroes) {
         this.deathThroesTimer = (this.deathThroesTimer || 4.0) - safeDelta;
@@ -28697,8 +28734,8 @@
 
       this.motionPingCooldown -= safeDelta;
       if (this.radioAlertCooldown > 0) this.radioAlertCooldown -= safeDelta;
-      // Chantier 104 : Cécité Doppler du Détecteur M314 par Immobilité Absolue (Aliens 1986 / Isolation)
-      const isTargetDopplerStill = combatTarget === playerCreature && playerCreature.isDopplerInvisible;
+      // Chantier 104 : Cécité Doppler du Détecteur M314 par Immobilité Absolue & Masquage Eau (Aliens 1986 / Isolation)
+      const isTargetDopplerStill = combatTarget === playerCreature && (playerCreature.isDopplerInvisible || (playerCreature.acousticMaskTimer && playerCreature.acousticMaskTimer > 0));
       if (biologicalTargetDetectable && !isTargetDopplerStill && distToPlayer < 24 && this.motionPingCooldown <= 0) {
         if (this.type !== 'scientist' && this.type !== 'labhound' && this.type !== 'labrodent') {
           audioManager.playMotionTrackerPing(distToPlayer);

@@ -580,6 +580,29 @@
       noise.start(now);
     }
 
+    // Chantier 124 : Résonance Métallique & Écho Sismique de Tuyauterie (Alien: Isolation)
+    playPipeClangDistortion(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(820, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.65);
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(680, now);
+      filter.Q.setValueAtTime(4.2, now);
+      gain.gain.setValueAtTime(0.48, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+      osc.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 60);
+      osc.start(now);
+      osc.stop(now + 0.65);
+    }
+
     playBlastDoorHydraulics(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
@@ -10052,6 +10075,35 @@
         mesh: null
       };
 
+      // Chantier 120 : Sas de Quarantaine KAPPA & Décontamination Halon/UV Automatisée
+      this.kappaQuarantineHub = {
+        x: 22,
+        z: -18,
+        radius: 8.5,
+        isActive: false,
+        activeTimer: 0,
+        isPunctured: false,
+        mesh: null
+      };
+
+      // Chantier 121 : Projecteurs Industriels Orientables & Vulnérabilité Photophobique
+      this.industrialSearchlights = [
+        { id: 'spot_1', name: 'Projecteur Halogène Passerelle Nord', x: -16, z: 24, angle: 0, speed: 0.7, sweepRange: 1.35, baseAngle: 0, range: 18.0, isBroken: false, mesh: null },
+        { id: 'spot_2', name: 'Projecteur Halogène Pont Fonderie Sud', x: 26, z: 16, angle: Math.PI, speed: -0.6, sweepRange: 1.25, baseAngle: Math.PI, range: 20.0, isBroken: false, mesh: null }
+      ];
+
+      // Chantier 122 : Ravitaillement Logistique d'Escouade & Caisses de Munitions M41A
+      this.m41aAmmoCrates = [
+        { id: 'ammo_1', name: 'Palette Munitions 10x24mm USCM Est', x: -34, z: 14, ammo: 120, isDestroyed: false, mesh: null },
+        { id: 'ammo_2', name: 'Caisse Munitions Déployée par Sapper Ouest', x: 14, z: -24, ammo: 120, isDestroyed: false, mesh: null }
+      ];
+
+      // Chantier 123 : Cuves Transgéniques Weyland-Yutani & Surtension Bio-Génétique Z-01
+      this.transgenicIncubators = [
+        { id: 'trans_1', name: 'Incubateur Transgénique Z-01 Auriga', x: -18, z: -42, isRuptured: false, mesh: null },
+        { id: 'trans_2', name: 'Cuve Hybridation Génétique Romulus', x: 36, z: 40, isRuptured: false, mesh: null }
+      ];
+
       // Chantier 49 : Éventration de Planchers & Grilles de Sol (Aliens 1986 / Alien 3)
       this.subfloorGrates = [
         { id: 'grate_1', x: -12, z: 8, mesh: null },
@@ -14186,6 +14238,10 @@
       this.updateProcessingSumpSiphons(safeDelta);
       this.updateMunitionsHeavyPallets(safeDelta);
       this.updateSyntheticRechargeBays(safeDelta);
+      this.updateKappaQuarantineHub(safeDelta);
+      this.updateIndustrialSearchlights(safeDelta);
+      this.updateAmmoCrates(safeDelta);
+      this.updateTransgenicIncubators(safeDelta);
       this.updateFoundryGantryHoists(safeDelta);
       this.updateWaterPuddleSplashes(safeDelta);
       this.updateNostromoCoolantHatches(safeDelta);
@@ -15199,28 +15255,33 @@
       });
     }
 
-    // Chantier 52 : Faux Échos Acoustiques sur le Radar M314 (Aliens 1986 / Isolation)
+    // Chantier 124 : Faux Échos Acoustiques & Brouillage Sismique du Radar M314 (Aliens 1986 / Isolation)
     createAcousticDecoy(x, z) {
+      if (!this.falseEchoes) this.falseEchoes = [];
       this.falseEchoes.push({
         x,
         z,
-        timer: 8.5
+        timer: 9.0,
+        maxTimer: 9.0
       });
-      audioManager.playMetalImpact?.(x, z);
-      showToast('LEURRE ACOUSTIQUE CRÉÉ [N] : Écho fantôme projeté sur les détecteurs de mouvement des Marines !');
-      appendSensorLog(`[M314] Signal acoustique suspect enregistré en (${Math.round(x)}, ${Math.round(z)}).`, 'alert');
+      audioManager.playPipeClangDistortion?.(x, z) || audioManager.playMetalImpact?.(x, z);
+      rendererEngine.addScreenShake?.(0.2, 0.12);
+      window.HiveSystems?.vfx?.burst?.(x, z, 0x38bdf8, 16, 0.15, 1.4);
+      showToast('LEURRE ACOUSTIQUE CRÉÉ [N] : Écho Doppler fantôme projeté sur les détecteurs de mouvement M314 !');
+      appendSensorLog(`[M314 DOPPLER] Signal acoustique suspect enregistré en (${Math.round(x)}, ${Math.round(z)}). Patrouilles déroutées.`, 'alert');
 
-      // Détournement des patrouilles de sécurité vers le leurre
+      // Détournement effectif des patrouilles de sécurité vers le leurre
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {
         if (h.isIncapacitated || h.isCocooned) return;
-        if (['marine', 'guard', 'smartgunner', 'commando'].includes(h.type)) {
+        if (['marine', 'guard', 'smartgunner', 'commando', 'synthetic', 'android'].includes(h.type)) {
           const d = Math.hypot(h.x - x, h.z - z);
-          if (d <= 32) {
-            h.targetX = x + (Math.random() * 4 - 2);
-            h.targetZ = z + (Math.random() * 4 - 2);
-            h.isInvestigating = true;
-            window.HiveSystems?.vfx?.floatingText?.(h.x, 2.4, h.z, 'CONTACT SUR LE TRACKER !', '#39ff14', false);
+          if (d <= 35) {
+            h.targetPos = { x: x + (Math.random() * 3 - 1.5), z: z + (Math.random() * 3 - 1.5) };
+            h.isLured = true;
+            h.aiState = 'LURED';
+            h.planNavigation(h.targetPos.x, h.targetPos.z, true);
+            window.HiveSystems?.vfx?.floatingText?.(h.x, 2.5, h.z, 'ÉCHO DOPPLER SUR TRACKER !', '#38bdf8', false);
           }
         }
       });
@@ -15232,6 +15293,218 @@
         this.falseEchoes[i].timer -= safeDelta;
         if (this.falseEchoes[i].timer <= 0) {
           this.falseEchoes.splice(i, 1);
+        }
+      }
+    }
+
+    // Chantier 120 : Sas de Quarantaine KAPPA & Décontamination Halon/UV Automatisée (Alien: Isolation)
+    triggerKappaQuarantineDecon() {
+      if (!this.kappaQuarantineHub) return;
+      const hub = this.kappaQuarantineHub;
+      hub.isActive = true;
+      hub.activeTimer = 16.0;
+      audioManager.playSecurityAlarmBeep?.();
+      audioManager.playHalonGasHiss?.(hub.x, hub.z);
+      rendererEngine.addScreenShake?.(0.3, 0.2);
+      window.HiveSystems?.vfx?.ring?.(hub.x, hub.z, 0xa855f7, hub.radius);
+      window.HiveSystems?.vfx?.spawnSteamCloud?.(hub.x, 1.8, hub.z, 12.0);
+      showToast('CONFINEMENT QUARANTAINE KAPPA : Décontamination chimique et rayonnement UV stérilisant activés !');
+      appendSensorLog('[KAPPA DECON] Sas de quarantaine scellé. Purge halon/UV en cours.', 'alert');
+    }
+
+    punctureQuarantineTank() {
+      if (!this.kappaQuarantineHub || this.kappaQuarantineHub.isPunctured) return false;
+      const hub = this.kappaQuarantineHub;
+      hub.isPunctured = true;
+      hub.isActive = false;
+      audioManager.playAcidBurn?.(hub.x, hub.z);
+      rendererEngine.addScreenShake?.(0.4, 0.25);
+      window.HiveSystems?.vfx?.burst?.(hub.x, hub.z, 0x84cc16, 36, 0.3, 2.8);
+      window.HiveSystems?.vfx?.floatingText?.(hub.x, 2.8, hub.z, 'COLLECTEUR DE DÉCONTAMINATION PERFORÉ !', '#84cc16', true);
+      showToast('QUARANTAINE KAPPA COMPROMISE : Réservoir de stérilisant dissous ! Les portes blindées se déverrouillent !');
+      appendSensorLog('[QUARANTAINE KAPPA] Réservoir chimique perforé. Confinement levé, projection d\'acide stérilisant.', 'alert');
+
+      // Dégâts chimiques sur les gardes dans le sas
+      (window.gameInstance?.humans || []).forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - hub.x, h.z - hub.z) <= hub.radius) {
+          h.takeDamage?.(90);
+          h.staggerTimer = 2.0;
+        }
+      });
+      return true;
+    }
+
+    updateKappaQuarantineHub(safeDelta) {
+      if (!this.kappaQuarantineHub || !this.kappaQuarantineHub.isActive) return;
+      const hub = this.kappaQuarantineHub;
+      hub.activeTimer -= safeDelta;
+      if (Math.random() < 0.2) {
+        window.HiveSystems?.vfx?.burst?.(hub.x, hub.z, 0xa855f7, 10, 0.12, 1.5);
+      }
+      if (hub.activeTimer <= 0) {
+        hub.isActive = false;
+        return;
+      }
+      const entities = [playerCreature, ...(window.gameInstance?.humans || [])];
+      entities.forEach((ent) => {
+        if (!ent || ent.isIncapacitated || ent.isCocooned) return;
+        const d = Math.hypot(ent.x - hub.x, ent.z - hub.z);
+        if (d <= hub.radius) {
+          if (ent === playerCreature) {
+            if (Math.random() < 0.1) {
+              window.HiveSystems?.vfx?.burst?.(ent.x, ent.z, 0xa855f7, 6, 0.08, 0.6);
+            }
+          } else {
+            const isSynth = ent.isSynthetic ? ent.isSynthetic() : false;
+            if (!isSynth) {
+              ent.takeDamage?.(10 * safeDelta);
+              ent.stress = 100;
+              if (Math.random() < 0.08) {
+                window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.4, ent.z, '*SUFFOCATION DÉCONTAMINATION*', '#c084fc', false);
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Chantier 121 : Projecteurs Industriels Orientables & Vulnérabilité Photophobique (Alien 3 / Aliens 1986)
+    shatterSearchlight(spot) {
+      if (!spot || spot.isBroken) return false;
+      spot.isBroken = true;
+      audioManager.playGlassShatter?.(spot.x, spot.z);
+      rendererEngine.addScreenShake?.(0.28, 0.18);
+      window.HiveSystems?.vfx?.burst?.(spot.x, spot.z, 0xfacc15, 28, 0.22, 2.0);
+      window.HiveSystems?.vfx?.floatingText?.(spot.x, 2.6, spot.z, 'PROJECTEUR HALOGÈNE PULVÉRISÉ !', '#facc15', true);
+      showToast('PROJECTEUR HALOGÈNE BRISÉ : Passerelle replongée dans l\'obscurité totale ! Les gardes paniquent !');
+      appendSensorLog(`[OBSCURITÉ] Ampoule 10 000 lumens ${spot.name} brisée. Perte du cône de surveillance.`, 'alert');
+
+      // Panique des gardes proches
+      (window.gameInstance?.humans || []).forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - spot.x, h.z - spot.z) <= 15) {
+          if (!h.isSynthetic?.()) h.stress = Math.min(100, (h.stress || 0) + 35);
+        }
+      });
+      return true;
+    }
+
+    updateIndustrialSearchlights(safeDelta) {
+      if (!this.industrialSearchlights) return;
+      let playerInBeam = false;
+      for (const spot of this.industrialSearchlights) {
+        if (spot.isBroken) continue;
+        spot.angle = spot.baseAngle + Math.sin(Date.now() * 0.001 * spot.speed) * spot.sweepRange;
+
+        // Test d'illumination du Xénomorphe
+        const dx = playerCreature.x - spot.x;
+        const dz = playerCreature.z - spot.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist <= spot.range && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
+          const angleToPlayer = Math.atan2(dx, dz);
+          const angleDiff = Math.abs((((angleToPlayer - spot.angle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+          if (angleDiff <= 0.36) {
+            playerInBeam = true;
+            if (Math.random() < 0.2) {
+              window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0xfacc15, 4, 0.08, 0.6);
+            }
+          }
+        }
+      }
+      playerCreature.isPhotophobicBlinded = playerInBeam;
+      if (playerInBeam) {
+        playerCreature.speed = playerCreature.getAdultProfile().speed * 0.75;
+      }
+    }
+
+    // Chantier 122 : Ravitaillement Logistique d'Escouade & Dépôt de Caisses de Munitions M41A (Aliens: Dark Descent)
+    deployAmmoCrate(x, z) {
+      const crate = {
+        id: `ammo_${Date.now()}`,
+        name: 'Caisse Munitions Déployée par Sapper USCM',
+        x, z,
+        ammo: 120,
+        isDestroyed: false,
+        mesh: null
+      };
+      if (!this.m41aAmmoCrates) this.m41aAmmoCrates = [];
+      this.m41aAmmoCrates.push(crate);
+      audioManager.playMetalImpact?.(x, z);
+      showToast('LOGISTIQUE USCM : Une caisse de chargeurs 10mm M41A a été déployée sur zone !');
+      return crate;
+    }
+
+    detonateAmmoCrate(crate) {
+      if (!crate || crate.isDestroyed) return false;
+      crate.isDestroyed = true;
+      audioManager.playGrenadeExplode?.(crate.x, crate.z);
+      audioManager.playSentryBurst?.(crate.x, crate.z);
+      rendererEngine.addScreenShake?.(0.48, 0.32);
+      window.HiveSystems?.vfx?.burst?.(crate.x, crate.z, 0xf97316, 45, 0.35, 2.8);
+      window.HiveSystems?.vfx?.burst?.(crate.x, crate.z, 0xfacc15, 30, 0.22, 2.0);
+      window.HiveSystems?.vfx?.floatingText?.(crate.x, 2.8, crate.z, 'DÉFLAGRATION EN CHAÎNE CHARGEURS M41A (-180) !', '#f97316', true);
+      showToast('DÉFLAGRATION EN CHAÎNE CHARGEURS M41A : La réserve de munitions a explosé en rafale !');
+      appendSensorLog(`[M41A CAISSE] Explosion en chaîne des 120 cartouches caseless à pointe explosive. Escouade balayée.`, 'alert');
+
+      // Dégâts AOE massifs sur les humains dans le rayon
+      (window.gameInstance?.humans || []).forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - crate.x, h.z - crate.z) <= 7.5) {
+          h.takeDamage?.(180);
+          h.staggerTimer = 2.8;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.5, h.z, '-180 SHRAPNEL M41A !', '#ef4444', true);
+        }
+      });
+      return true;
+    }
+
+    updateAmmoCrates(safeDelta) {
+      if (!this.m41aAmmoCrates) return;
+      for (const crate of this.m41aAmmoCrates) {
+        if (crate.isDestroyed) continue;
+        const humans = window.gameInstance?.humans || [];
+        for (const h of humans) {
+          if (h.isIncapacitated || h.isCocooned) continue;
+          if (['marine', 'smartgunner', 'commando'].includes(h.type) && Math.hypot(h.x - crate.x, h.z - crate.z) <= 3.2) {
+            if (!h.hasApRounds) {
+              h.hasApRounds = true;
+              h.apRoundsTimer = 16.0;
+              window.HiveSystems?.vfx?.floatingText?.(h.x, 2.4, h.z, '+MUNITIONS PERFORANTES M41A !', '#4ade80', false);
+            }
+          }
+        }
+      }
+    }
+
+    // Chantier 123 : Cuves Transgéniques Weyland-Yutani & Surtension Bio-Génétique Z-01 (Alien: Resurrection / Romulus)
+    ruptureTransgenicIncubator(inc) {
+      if (!inc || inc.isRuptured) return false;
+      inc.isRuptured = true;
+      audioManager.playGlassShatter?.(inc.x, inc.z);
+      audioManager.playWetImpact?.(inc.x, inc.z);
+      rendererEngine.addScreenShake?.(0.42, 0.28);
+      window.HiveSystems?.vfx?.burst?.(inc.x, inc.z, 0x8b5cf6, 42, 0.3, 2.6);
+      window.HiveSystems?.vfx?.burst?.(inc.x, inc.z, 0x1e1b4b, 28, 0.2, 1.8);
+      window.HiveSystems?.vfx?.floatingText?.(inc.x, 2.8, inc.z, 'SURTENSION TRANSGÉNIQUE Z-01 !', '#8b5cf6', true);
+      showToast('CUVE TRANSGÉNIQUE BRISÉE : Le composé Z-01 libéré provoque une surtension génétique (+40 PV) !');
+      appendSensorLog(`[Z-01 PATHOGÈNE] Cuve transgénique perforée en (${Math.round(inc.x)}, ${Math.round(inc.z)}). Surtension active.`, 'bio');
+
+      playerCreature.applyTransgenicSurge?.(14.0);
+
+      // Pétrification de terreur des scientifiques et gardes proches
+      (window.gameInstance?.humans || []).forEach((h) => {
+        if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - inc.x, h.z - inc.z) <= 9.0) {
+          h.staggerTimer = 3.5;
+          if (!h.isSynthetic?.()) h.stress = 100;
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.5, h.z, 'STASIS PATHOGÈNE !', '#a855f7', true);
+        }
+      });
+      return true;
+    }
+
+    updateTransgenicIncubators(safeDelta) {
+      if (!this.transgenicIncubators) return;
+      for (const inc of this.transgenicIncubators) {
+        if (!inc.isRuptured && Math.random() < 0.1) {
+          window.HiveSystems?.vfx?.burst?.(inc.x, inc.z, 0xa855f7, 3, 0.05, 0.4);
         }
       }
     }
@@ -24155,6 +24428,19 @@
       this.isCeilingProwling = false;
       this.draggedHost = null;
       this.isClawAnchored = false;
+      this.isPhotophobicBlinded = false;
+      this.transgenicSurgeTimer = 0;
+    }
+
+    // Chantier 123 : Surtension Bio-Génétique Z-01 (Alien: Resurrection / Romulus)
+    applyTransgenicSurge(duration = 14.0) {
+      this.transgenicSurgeTimer = duration;
+      this.health = Math.min(this.maxHealth, this.health + 40);
+      audioManager.playXenoRoar?.();
+      window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0xa855f7, 5.5);
+      window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x8b5cf6, 26, 0.2, 1.8);
+      window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'SURTENSION TRANSGÉNIQUE Z-01 (+40 PV / +25% VIT) !', '#a855f7', true);
+      showToast('SURTENSION TRANSGÉNIQUE ACTIVE : Chute de stress, +40 PV et vitesse décuplée pendant 14s !');
     }
 
     // Chantier 119 : Ancrage des Griffes Chitiniques au Pont Métallique (Alien: Isolation / Aliens)
@@ -24935,6 +25221,35 @@
             audioManager.playGlassShatter?.(beacon.x, beacon.z);
             showToast("BALISE ULTRASONIQUE ENNEMIE PULVÉRISÉE PAR L'ACIDE !");
             appendSensorLog("[NEUTRALISATION] Balise ultrasonique détruite. Clarté sensorielle rétablie.", 'bio');
+          }
+        });
+
+        // Chantier 120 : Perforation corrosive du réservoir de décontamination KAPPA
+        if (stationMap.kappaQuarantineHub && !stationMap.kappaQuarantineHub.isPunctured) {
+          const kh = stationMap.kappaQuarantineHub;
+          if (Math.hypot(kh.x - targetPos.x, kh.z - targetPos.z) <= (poolRadius + 2.5)) {
+            stationMap.punctureQuarantineTank();
+          }
+        }
+
+        // Chantier 121 : Destruction corrosive des projecteurs industriels
+        stationMap.industrialSearchlights?.forEach((spot) => {
+          if (!spot.isBroken && Math.hypot(spot.x - targetPos.x, spot.z - targetPos.z) <= (poolRadius + 2.0)) {
+            stationMap.shatterSearchlight(spot);
+          }
+        });
+
+        // Chantier 122 : Détonation en chaîne des caisses de munitions M41A
+        stationMap.m41aAmmoCrates?.forEach((crate) => {
+          if (!crate.isDestroyed && Math.hypot(crate.x - targetPos.x, crate.z - targetPos.z) <= (poolRadius + 1.8)) {
+            stationMap.detonateAmmoCrate(crate);
+          }
+        });
+
+        // Chantier 123 : Rupture caustique des cuves transgéniques Z-01
+        stationMap.transgenicIncubators?.forEach((inc) => {
+          if (!inc.isRuptured && Math.hypot(inc.x - targetPos.x, inc.z - targetPos.z) <= (poolRadius + 2.0)) {
+            stationMap.ruptureTransgenicIncubator(inc);
           }
         });
       };
@@ -26924,6 +27239,14 @@
       if (!this.mesh) return;
       const safeDelta = Math.max(0, deltaSeconds);
       this.actionAnimation = Math.max(0, this.actionAnimation - safeDelta * 3.4);
+
+      // Chantier 123 : Surtension Bio-Génétique Z-01
+      if (this.transgenicSurgeTimer > 0) {
+        this.transgenicSurgeTimer -= safeDelta;
+        if (Math.random() < 0.22) {
+          window.HiveSystems?.vfx?.organicTrail?.(this.x, 0.4, this.z, 0xa855f7);
+        }
+      }
 
       // Chantier 67 : Fureur d'agonie berserk (Death Throes Acid Nova - Marvel Comics)
       if (this.inDeathThroes) {
@@ -33294,6 +33617,32 @@
       const nearWave31 = (stationMap.wave31Props || []).find((wp) => !wp.isTriggered && Math.hypot(wp.x - playerCreature.x, wp.z - playerCreature.z) <= 6.0);
       if (nearWave31) {
         stationMap.triggerWave31Prop(nearWave31);
+        return true;
+      }
+      // Chantier 120 : Réservoir de Décontamination Sas Quarantaine KAPPA
+      if (stationMap.kappaQuarantineHub && !stationMap.kappaQuarantineHub.isPunctured) {
+        const hub = stationMap.kappaQuarantineHub;
+        if (Math.hypot(hub.x - playerCreature.x, hub.z - playerCreature.z) <= 5.5) {
+          stationMap.punctureQuarantineTank();
+          return true;
+        }
+      }
+      // Chantier 121 : Projecteur Industriel Orientable
+      const nearSearchlight = (stationMap.industrialSearchlights || []).find((s) => !s.isBroken && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
+      if (nearSearchlight) {
+        stationMap.shatterSearchlight(nearSearchlight);
+        return true;
+      }
+      // Chantier 122 : Caisse de Munitions M41A Explosive
+      const nearAmmoCrate = (stationMap.m41aAmmoCrates || []).find((c) => !c.isDestroyed && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+      if (nearAmmoCrate) {
+        stationMap.detonateAmmoCrate(nearAmmoCrate);
+        return true;
+      }
+      // Chantier 123 : Cuve Transgénique Z-01 Auriga/Romulus
+      const nearIncubator = (stationMap.transgenicIncubators || []).find((i) => !i.isRuptured && Math.hypot(i.x - playerCreature.x, i.z - playerCreature.z) <= 5.5);
+      if (nearIncubator) {
+        stationMap.ruptureTransgenicIncubator(nearIncubator);
         return true;
       }
       showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur, brouilleur m56, cryo c60, arc-furnace weyland, torche éthylène, casai seegson, bio-stasis pathogène noir, transit mag-lev, halon 1301, mine claymore m20, échangeur ap14, camouflage résine, sevastopol jack, charge 15kv working joe, sas bio-alpha, réacteur nostromo, vapeur géothermique, éjection pyrotechnique, plomb fiorina, gondole sevastopol, cellule synthétique, rotor ventilation, épurateur atmo, inversion gravité, barricade uscm, serveur apollo, théâtre dissection, matrice cryo nostromo, passerelle chasm, bassin trempe fiorina, baie sans tain auriga, centrifugeuse cryo, rail 750v sevastopol, incinérateur medlab, grue atelier uscm, antenne lorenz, sas corbel, rampe narcissus, piston sismique, soufflet fonderie, sarcophage stasique, siphon propergol, rideau roulant, puisard chimique, palette munitions, alcôve synthétique, treuil fonderie, sas cryo nostromo, flume caloporteur, contrepoids fiorina, bioréacteur auriga, portique remus, cabine seegson, couveuse medlab, bunker sandbags, persiennes sevastopol, déversoir fiorina, soufflerie cryo, table holo-tactique, rigole plomb, cage spécimen, carrousel romulus, butoir monorail, surchauffeur vapeur, râtelier uscm, banc seegson, prise venturi, palan nostromo, batterie hadley, trempe fiorina, centrifugeuse auriga, manifold romulus, scanner sevastopol, turbogénérateur hadley, banc balistique uscm, bus apollo, tuyère fiorina) à portée immédiate.');

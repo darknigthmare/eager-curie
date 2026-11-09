@@ -941,6 +941,92 @@
       window.setTimeout(() => app?.classList.remove('transformation-flash'), 750);
     }
 
+    // Mission Wave 4 : Onde de Choc Sismique au Sol pour Castes Lourdes (Reine, Crusher, Titan, Predalien)
+    groundSlamShockwave(x, z, radius = 5.5, color = 0x39ff14) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const ringGeo = new THREE.RingGeometry(0.18, 0.42, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      group.add(ring);
+      group.position.set(x, 0.04, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        groundShockwave: true,
+        ringMesh: ring,
+        maxRadius: radius,
+        age: 0,
+        lifetime: 0.55
+      });
+      this.burst(x, z, 0x64748b, 20, 0.12, 0.5);
+    }
+
+    // Mission Wave 4 : Rupture de Flexibles Hydrauliques Haute Pression (MANTIS-4 & Exosuit P-5000)
+    hydraulicSpurt(x, y = 1.4, z, count = 18) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const darkMat = this.getMaterial(0x0f172a);
+      const sparkMat = this.getMaterial(0xf59e0b);
+      for (let i = 0; i < count; i++) {
+        const isSpark = Math.random() < 0.25;
+        const mat = isSpark ? sparkMat : darkMat;
+        const p = this.getParticle(isSpark ? 0.06 : 0.12, isSpark ? 0xf59e0b : 0x0f172a);
+        p.position.set(0, 0, 0);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2.0 + Math.random() * 3.5;
+        p.userData.velocity = new THREE.Vector3(
+          Math.cos(angle) * speed,
+          1.5 + Math.random() * 2.5,
+          Math.sin(angle) * speed
+        );
+        group.add(p);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        burst: true,
+        age: 0,
+        lifetime: 0.65
+      });
+    }
+
+    // Mission Wave 4 : Fumée Thermique de Surchauffe Canon UA 571-C
+    barrelHeatSmoke(x, y = 1.0, z, count = 8) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const smokeMat = new THREE.MeshBasicMaterial({
+        color: 0x94a3b8,
+        transparent: true,
+        opacity: 0.45,
+        depthWrite: false
+      });
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), smokeMat);
+        p.position.set((Math.random() - 0.5) * 0.12, (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.12);
+        p.userData.vy = 0.65 + Math.random() * 0.55;
+        p.userData.vx = (Math.random() - 0.5) * 0.18;
+        p.userData.vz = (Math.random() - 0.5) * 0.18;
+        group.add(p);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        barrelSmoke: true,
+        age: 0,
+        lifetime: 0.85
+      });
+    }
+
     update(deltaSeconds) {
       for (let index = this.effects.length - 1; index >= 0; index--) {
         const effect = this.effects[index];
@@ -975,6 +1061,17 @@
               particle.position.y += deltaSeconds * (0.35 + progress);
               particle.scale.setScalar(1 + progress * 0.7);
             }
+          });
+        } else if (effect.groundShockwave) {
+          effect.group.scale.setScalar(0.2 + progress * (effect.maxRadius * 2.4));
+          if (effect.ringMesh?.material) effect.ringMesh.material.opacity = Math.max(0, 0.85 * (1 - progress));
+        } else if (effect.barrelSmoke) {
+          effect.group.children.forEach((p) => {
+            p.position.y += p.userData.vy * deltaSeconds;
+            p.position.x += p.userData.vx * deltaSeconds;
+            p.position.z += p.userData.vz * deltaSeconds;
+            p.scale.addScalar(deltaSeconds * 0.45);
+            if (p.material) p.material.opacity = Math.max(0, 0.45 * (1 - progress));
           });
         } else if (effect.steamCloud) {
           effect.group.children.forEach((p) => {
@@ -1827,6 +1924,30 @@
         return map;
       }, {});
       container.innerHTML = '<span class="codex-status">ROUTES BIOLOGIQUES</span><h3>ÉVOLUTION DE LA RUCHE</h3><p>Le cycle reproductif reste obligatoire. Les groupes suivants décrivent des branches possibles selon l’hôte et les sources étendues compatibles, pas une succession certaine de mues.</p>';
+      const casteIcons = {
+        ovomorphe: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><ellipse cx="10" cy="11" rx="6" ry="7" stroke-width="1.4"/><path d="M7 6 Q10 2 13 6" stroke-width="1.2"/><path d="M10 6 L10 11" stroke-width="1.2" stroke-dasharray="2 2"/></svg>',
+        facehugger: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><ellipse cx="10" cy="10" rx="3.5" ry="4.5" fill="rgba(57, 255, 20, 0.2)" stroke-width="1.4"/><path d="M6 7 Q2 5 2 9 M14 7 Q18 5 18 9 M6 11 Q2 12 3 15 M14 11 Q18 12 17 15" stroke-width="1.2"/><path d="M10 15 Q10 19 13 18" stroke-width="1.3"/></svg>',
+        royal_facehugger: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><ellipse cx="10" cy="10" rx="4" ry="5" fill="rgba(234, 179, 8, 0.2)" stroke="#eab308" stroke-width="1.4"/><path d="M5 6 Q1 4 1 9 M15 6 Q19 4 19 9 M5 11 Q1 12 2 16 M15 11 Q19 12 18 16" stroke="#facc15" stroke-width="1.2"/><path d="M10 5 L8 2 L10 3 L12 2 Z" fill="#eab308"/></svg>',
+        chestburster: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M7 17 Q8 12 11 10 Q13 8 13 5 Q13 3 10 3 Q8 4 8 6" stroke-width="1.4"/><circle cx="10" cy="4" r="1.5" fill="#ef4444"/><path d="M10 17 L12 19" stroke-width="1.3"/></svg>',
+        drone: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 11 C4 6 7 3 12 3 C16 3 17 6 17 10 C17 13 14 15 11 15 L8 15 Z" fill="rgba(56, 189, 248, 0.15)" stroke-width="1.4"/><line x1="6" y1="14" x2="8" y2="16" stroke-width="1.4"/></svg>',
+        runner: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M3 12 C4 8 8 5 15 4 C17 4 18 6 17 9 C15 12 12 14 8 14 Z" fill="rgba(245, 158, 11, 0.18)" stroke="#f59e0b" stroke-width="1.4"/><circle cx="6" cy="14" r="1" fill="#f59e0b"/></svg>',
+        prowler: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M3 13 C5 7 9 4 16 5 C17 7 16 11 13 13 C9 15 6 15 3 13 Z" fill="rgba(168, 85, 247, 0.2)" stroke="#c084fc" stroke-width="1.4"/><path d="M12 5 L14 3" stroke="#e879f9" stroke-width="1.2"/></svg>',
+        worker: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M5 12 C5 7 8 4 13 4 C16 4 17 7 16 11 C15 14 12 15 9 15 Z" stroke-width="1.4"/><line x1="9" y1="8" x2="13" y2="8" stroke-width="1.2"/><line x1="8" y1="11" x2="12" y2="11" stroke-width="1.2"/></svg>',
+        warrior: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 11 C4 6 7 3 13 3 C16 3 17 6 17 10 C17 13 14 15 11 15 L7 15 Z" stroke-width="1.4"/><path d="M7 5 L9 8 M10 4 L12 7 M13 4 L15 7" stroke="currentColor" stroke-width="1.2"/></svg>',
+        spitter: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 11 C4 6 8 3 13 3 C16 3 17 6 17 10 C16 13 13 15 10 15 Z" stroke="#39ff14" stroke-width="1.4"/><circle cx="8" cy="12" r="2" fill="rgba(57, 255, 20, 0.4)" stroke="#39ff14" stroke-width="1"/></svg>',
+        burster: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M5 12 C5 6 8 3 13 3 C16 3 17 6 16 11 C15 14 12 16 9 16 Z" stroke="#ef4444" stroke-width="1.4"/><circle cx="11" cy="7" r="1.5" fill="#ef4444"/><circle cx="8" cy="11" r="1.5" fill="#f97316"/><circle cx="13" cy="12" r="1.5" fill="#eab308"/></svg>',
+        crusher: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M2 14 L7 3 L16 3 L18 8 L13 15 Z" fill="rgba(148, 163, 184, 0.2)" stroke-width="1.5"/><path d="M7 3 L10 10 L13 15" stroke-width="1.2"/></svg>',
+        praetorian: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M5 15 L3 8 L6 4 L10 2 L14 4 L17 8 L15 15 Z" fill="rgba(56, 189, 248, 0.2)" stroke="#38bdf8" stroke-width="1.4"/><line x1="10" y1="2" x2="10" y2="15" stroke="#38bdf8" stroke-width="1.2"/></svg>',
+        palatine: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 16 L2 7 L6 3 L10 1 L14 3 L18 7 L16 16 Z" fill="rgba(168, 85, 247, 0.25)" stroke="#a855f7" stroke-width="1.4"/><polygon points="10,4 12,9 8,9" fill="#c084fc"/></svg>',
+        queen: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M2 15 L1 7 L5 2 L10 5 L15 2 L19 7 L18 15 Z" fill="rgba(236, 72, 153, 0.25)" stroke="#ec4899" stroke-width="1.5"/><line x1="10" y1="5" x2="10" y2="15" stroke="#f472b6" stroke-width="1.4"/><circle cx="7" cy="10" r="1" fill="#ec4899"/><circle cx="13" cy="10" r="1" fill="#ec4899"/></svg>',
+        offspring: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><ellipse cx="10" cy="9" rx="6" ry="7" fill="rgba(248, 250, 252, 0.2)" stroke="#e2e8f0" stroke-width="1.4"/><circle cx="8" cy="8" r="1.5" fill="#020617"/><circle cx="12" cy="8" r="1.5" fill="#020617"/><path d="M8 13 Q10 15 12 13" stroke="#e2e8f0" stroke-width="1.2"/></svg>'
+      };
+      const dnaTags = {
+        ovomorphe: 'XX121-OVO', facehugger: 'XX121-FHG', royal_facehugger: 'XX121-RFH', chestburster: 'XX121-BUR',
+        drone: 'XX121-DRN', runner: 'XX121-RUN', prowler: 'XX121-PRW',
+        worker: 'XX121-WRK', warrior: 'XX121-WAR', spitter: 'XX121-SPT', burster: 'XX121-BST', crusher: 'XX121-CRU',
+        praetorian: 'XX121-PRA', palatine: 'XX121-PAL', queen: 'XX121-QEN', offspring: 'XX121-OFF'
+      };
       const tree = document.createElement('div');
       tree.className = 'evolution-tree';
       branches.forEach((branch) => {
@@ -1836,12 +1957,25 @@
         branchLabel.className = 'evolution-branch-label';
         branchLabel.textContent = branch.label;
         row.appendChild(branchLabel);
+        const nodesGrid = document.createElement('div');
+        nodesGrid.className = 'evolution-nodes-grid';
         branch.ids.forEach((id) => {
-          const node = document.createElement('span');
-          node.className = `evolution-node${unlocked.has(id) ? ' unlocked' : ''}`;
-          node.textContent = String(names[id] || id).toUpperCase();
-          row.appendChild(node);
+          const isUnlocked = unlocked.has(id);
+          const node = document.createElement('div');
+          node.className = `evolution-node${isUnlocked ? ' unlocked' : ' locked'}`;
+          node.innerHTML = `
+            <div class="evolution-node-header">
+              <div class="evolution-node-icon" aria-hidden="true">${casteIcons[id] || casteIcons.drone}</div>
+              <span class="evolution-node-tag">${dnaTags[id] || 'XX121'}</span>
+            </div>
+            <div class="evolution-node-body">
+              <span class="evolution-node-name">${String(names[id] || id).toUpperCase()}</span>
+              <span class="evolution-node-status">${isUnlocked ? 'ACTIF / DÉCOUVERT' : 'GÉNOTYPE REQUIS'}</span>
+            </div>
+          `;
+          nodesGrid.appendChild(node);
         });
+        row.appendChild(nodesGrid);
         tree.appendChild(row);
       });
       container.appendChild(tree);

@@ -8225,6 +8225,166 @@
       osc.start(now);
       osc.stop(now + 1.2);
     }
+
+    // Mission Wave 4 : Impact Sismique Tellurique Castes Lourdes (Reine, Crusher, Titan, Predalien, Newborn)
+    playGroundSlamImpact(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this._calcSpatialPan(x, z, 40);
+      if (panNode === false) return;
+
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(52, now);
+      osc.frequency.exponentialRampToValueAtTime(16, now + 0.85);
+      const bassGain = ctx.createGain();
+      bassGain.gain.setValueAtTime(0.85, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+      osc.connect(bassGain);
+      if (panNode) { bassGain.connect(panNode); panNode.connect(this.sfxGain || this.masterGain); }
+      else { bassGain.connect(this.sfxGain || this.masterGain); }
+      osc.start(now);
+      osc.stop(now + 0.85);
+
+      const clatterDur = 0.45;
+      const clatterBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * clatterDur), ctx.sampleRate);
+      const clatterData = clatterBuf.getChannelData(0);
+      for (let i = 0; i < clatterData.length; i++) {
+        clatterData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.08));
+      }
+      const clatterSource = ctx.createBufferSource();
+      clatterSource.buffer = clatterBuf;
+      const clatterFilter = ctx.createBiquadFilter();
+      clatterFilter.type = 'bandpass';
+      clatterFilter.frequency.setValueAtTime(850, now);
+      clatterFilter.Q.setValueAtTime(4.0, now);
+      const clatterGain = ctx.createGain();
+      clatterGain.gain.setValueAtTime(0.5, now);
+      clatterGain.gain.exponentialRampToValueAtTime(0.001, now + clatterDur);
+      clatterSource.connect(clatterFilter);
+      clatterFilter.connect(clatterGain);
+      if (panNode) { clatterGain.connect(panNode); }
+      else { clatterGain.connect(this.sfxGain || this.masterGain); }
+      clatterSource.start(now);
+      clatterSource.stop(now + clatterDur);
+    }
+
+    // Mission Wave 4 : Rupture de Flexibles Hydrauliques Haute Pression (MANTIS-4 & Caterpillar P-5000 Exosuit)
+    playHydraulicHoseRupture(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const dur = 1.1;
+      const panNode = this._calcSpatialPan(x, z, 30);
+      if (panNode === false) return;
+
+      const bufLen = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.35));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(2200, now);
+      bpf.frequency.exponentialRampToValueAtTime(380, now + dur);
+      bpf.Q.setValueAtTime(3.5, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.68, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      noise.connect(bpf);
+      bpf.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain || this.masterGain); }
+      else { gain.connect(this.sfxGain || this.masterGain); }
+      noise.start(now);
+      noise.stop(now + dur);
+    }
+
+    // Mission Wave 4 : Sifflement Thermique & Vaporisation Surchauffe Canon UA 571-C
+    playTurretOverheatHiss(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const dur = 0.8;
+      const panNode = this._calcSpatialPan(x, z, 26);
+      if (panNode === false) return;
+
+      const bufLen = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.28));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      const hpf = ctx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.setValueAtTime(3200, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      noise.connect(hpf);
+      hpf.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain || this.masterGain); }
+      else { gain.connect(this.sfxGain || this.masterGain); }
+      noise.start(now);
+      noise.stop(now + dur);
+    }
+
+    // Mission Wave 4 : Servomoteur de Pivotement et Traque Tourelle UA 571-C
+    playTurretServoSwivel(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const dur = 0.14;
+      const panNode = this._calcSpatialPan(x, z, 24);
+      if (panNode === false) return;
+
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(540, now);
+      osc.frequency.linearRampToValueAtTime(680, now + dur * 0.6);
+      osc.frequency.linearRampToValueAtTime(480, now + dur);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain || this.masterGain); }
+      else { gain.connect(this.sfxGain || this.masterGain); }
+      osc.start(now);
+      osc.stop(now + dur);
+    }
+
+    // Mission Wave 4 : Avertisseur Klaxon d'Urgence Rotatif Bi-Tonal de Blackout
+    playEmergencyKlaxonPulse() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      [440, 554].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        const lpf = ctx.createBiquadFilter();
+        lpf.type = 'lowpass';
+        lpf.frequency.setValueAtTime(950, now);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.18, now + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.45);
+        osc.connect(lpf);
+        lpf.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.45);
+      });
+    }
   }
 
   const audioManager = new AudioManager();
@@ -9220,11 +9380,25 @@
 
       if (this.powerSabotagedTimer > 0) {
         this.powerSabotagedTimer -= Math.max(0, deltaSeconds);
-        if (this.lights.dirLight) this.lights.dirLight.intensity = 0.08;
-        if (this.lights.ambient) this.lights.ambient.intensity = 0.12;
+        const emergencyOsc = Math.sin(performance.now() * 0.0055);
+        if (this.lights.dirLight) this.lights.dirLight.intensity = 0.06;
+        if (this.lights.ambient) {
+          this.lights.ambient.intensity = 0.12 + Math.max(0, emergencyOsc) * 0.22;
+          if (this.lights.ambient.color) {
+            this.lights.ambient.color.setHex(emergencyOsc > 0.1 ? 0xef4444 : 0x0f172a);
+          }
+        }
         if (this.lights.hemisphere) this.lights.hemisphere.intensity = 0.08;
         if (this.renderer) this.renderer.toneMappingExposure = 0.72;
+
+        this.emergencyKlaxonTimer = (this.emergencyKlaxonTimer || 0) - Math.max(0, deltaSeconds);
+        if (this.emergencyKlaxonTimer <= 0) {
+          this.emergencyKlaxonTimer = 3.6;
+          audioManager.playEmergencyKlaxonPulse?.();
+        }
+
         if (this.powerSabotagedTimer <= 0) {
+          if (this.lights.ambient?.color) this.lights.ambient.color.setHex(0xffffff);
           audioManager.playGeneratorRestart?.();
           if (this.lights.dirLight) this.lights.dirLight.intensity = 1.2;
           if (this.lights.ambient) this.lights.ambient.intensity = 1.05;
@@ -9311,6 +9485,35 @@
       if (this.reduceMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || window.HiveSystems?.settings?.reducedMotion) return;
       this.screenShake = Math.min(1.4, (this.screenShake || 0) + intensity);
       this.shakeDuration = Math.max(this.shakeDuration || 0, duration);
+    }
+
+    // Mission Wave 4 : Décal de Cratère Tellurique d'Impact au Sol pour Castes Lourdes
+    addFloorCraterDecal(x, z, radius = 2.4) {
+      if (typeof THREE === 'undefined' || !this.scene) return;
+      const decalGeo = new THREE.RingGeometry(radius * 0.15, radius, 16);
+      const decalMat = new THREE.MeshBasicMaterial({
+        color: 0x05070c,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.75,
+        depthWrite: false
+      });
+      const decalMesh = new THREE.Mesh(decalGeo, decalMat);
+      decalMesh.rotation.x = -Math.PI / 2;
+      decalMesh.position.set(x, 0.02, z);
+      this.scene.add(decalMesh);
+      const startTime = performance.now();
+      const fadeInterval = setInterval(() => {
+        const elapsed = (performance.now() - startTime) / 1000;
+        if (elapsed >= 10) {
+          clearInterval(fadeInterval);
+          decalGeo.dispose();
+          decalMat.dispose();
+          if (decalMesh.parent) decalMesh.parent.remove(decalMesh);
+        } else {
+          decalMat.opacity = Math.max(0, 0.75 * (1 - elapsed / 10));
+        }
+      }, 500);
     }
 
     // Audit QA #114 : Impulsion de Secousse Directionnelle Alignée sur l'Onde de Choc
@@ -15030,10 +15233,29 @@
         }
 
         // Recul amorti des canons jumelés
-        const b1 = turret.barrel1 || turret.mesh?.getObjectByName('turret_barrel_1');
-        const b2 = turret.barrel2 || turret.mesh?.getObjectByName('turret_barrel_2');
+        const b1 = turret.barrel1 || turret.mesh?.getObjectByName('pulse_barrel_-1') || turret.mesh?.getObjectByName('turret_barrel_1');
+        const b2 = turret.barrel2 || turret.mesh?.getObjectByName('pulse_barrel_1') || turret.mesh?.getObjectByName('turret_barrel_2');
         if (b1) b1.position.z = -turret.recoil * 0.16;
-        if (b2) b2.position.z = -turret.recoil * 0.16;
+        if (b2) b2.position.z = -(turret.recoilAlt || turret.recoil) * 0.16;
+        turret.recoilAlt = Math.max(0, (turret.recoilAlt || 0) - safeDelta * 4.8);
+
+        // Afficheur digital LED dynamique des munitions (Aliens 1986 canon 500 cartouches)
+        const ammoDisplay = turret.mesh?.getObjectByName('digital_ammo_display');
+        if (ammoDisplay && ammoDisplay.material) {
+          if (turret.ammo <= 0) {
+            ammoDisplay.material.color?.setHex?.(0x020617);
+            if (ammoDisplay.material.emissive) ammoDisplay.material.emissive.setHex(Math.sin(performance.now() * 0.015) > 0 ? 0xef4444 : 0x020617);
+          } else if (turret.ammo <= 50) {
+            ammoDisplay.material.color?.setHex?.(0xef4444);
+            if (ammoDisplay.material.emissive) ammoDisplay.material.emissive.setHex(0xef4444);
+          } else if (turret.ammo <= 200) {
+            ammoDisplay.material.color?.setHex?.(0xf59e0b);
+            if (ammoDisplay.material.emissive) ammoDisplay.material.emissive.setHex(0xf59e0b);
+          } else {
+            ammoDisplay.material.color?.setHex?.(0x22c55e);
+            if (ammoDisplay.material.emissive) ammoDisplay.material.emissive.setHex(0x22c55e);
+          }
+        }
 
         const head = turret.swivelHead || turret.mesh?.getObjectByName('turret_swivel_head');
         const canTarget = !playerCreature.isInVent && !playerCreature.isCeilingProwling;
@@ -15050,16 +15272,23 @@
             if (!turret.wasLocked) {
               turret.wasLocked = true;
               audioManager.playTurretLock?.(turret.x, turret.z);
+              audioManager.playTurretServoSwivel?.(turret.x, turret.z);
             }
             if (turret.burstCooldown <= 0) {
               turret.burstCooldown = 0.22;
               turret.recoil = 1.0;
+              turret.recoilAlt = 0.8;
               const rounds = Math.min(turret.ammo, 6);
               turret.ammo -= rounds;
               audioManager.playSentryBurst?.(turret.x, turret.z);
               rendererEngine.addScreenShake?.(0.12, 0.08);
               window.HiveSystems?.vfx?.burst?.(turret.x, turret.z, 0xf59e0b, 12, 0.1, 0.8);
+              window.HiveSystems?.vfx?.barrelHeatSmoke?.(turret.x, 1.05, turret.z, 6);
               window.HiveSystems?.vfx?.beam?.(turret.x, 0.95, turret.z, playerCreature.x, 1.2, playerCreature.z, 0xef4444);
+
+              if (turret.ammo <= 250 && Math.random() < 0.45) {
+                audioManager.playTurretOverheatHiss?.(turret.x, turret.z);
+              }
 
               playerCreature.takeDamage?.(12, turret);
               window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.2, playerCreature.z, `-12 MITRAILLEUSE UA 571-C (${turret.ammo})`, '#ef4444', true);
@@ -29055,11 +29284,22 @@
         if (this.bossShield > 0) return true;
         this.bossPhase = 2;
         this.bossShield = 0;
+        audioManager.playHydraulicHoseRupture?.(this.x, this.z);
+        window.HiveSystems?.vfx?.hydraulicSpurt?.(this.x, 2.2, this.z, 24);
+        window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf59e0b, 28, 0.22, 2.2);
+        rendererEngine.addScreenShake?.(0.45, 0.3);
         window.gameInstance?.currentStage?.onMantisPhaseChange?.(this, 2);
         return true;
       }
       if (this.bossId === 'MANTIS_4' && this.bossPhase === 2) {
         appliedDamage *= 0.55;
+      }
+
+      if (['powerloader', 'exosuit', 'weyland_heavy_mech', 'weyland_cryo_containment_mech_suit'].includes(this.type)) {
+        if (Math.random() < 0.45) {
+          audioManager.playHydraulicHoseRupture?.(this.x, this.z);
+          window.HiveSystems?.vfx?.hydraulicSpurt?.(this.x, 1.6, this.z, 14);
+        }
       }
 
       // Chantier 84 : Statue de glace cassante LN2 brisée en mille morceaux (Alien: Romulus)
@@ -29124,6 +29364,10 @@
       this.hp = Math.max(0, this.hp - appliedDamage);
       if (this.bossId === 'MANTIS_4' && this.bossPhase === 2 && this.hp <= this.maxHp * 0.5) {
         this.bossPhase = 3;
+        audioManager.playHydraulicHoseRupture?.(this.x, this.z);
+        window.HiveSystems?.vfx?.hydraulicSpurt?.(this.x, 2.5, this.z, 30);
+        window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xef4444, 35, 0.28, 2.5);
+        rendererEngine.addScreenShake?.(0.55, 0.35);
         window.gameInstance?.currentStage?.onMantisPhaseChange?.(this, 3);
       }
 
@@ -35513,8 +35757,25 @@
         playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
         target.takeDamage(profile.huntDamage);
         audioManager.playWetImpact?.(target.x, target.z);
-        window.HiveSystems?.vfx?.ring(target.x, target.z, 0x39ff14, 2.4);
-        window.HiveSystems?.vfx?.burst(target.x, target.z, 0x39ff14, 18, 0.1, 1.4);
+
+        const caste = playerCreature.adultCaste || playerCreature.caste || 'drone';
+        const isHeavyCaste = ['queen', 'crusher', 'goliath_siege_crusher', 'titan_crusher_berserker', 'predalien', 'newborn', 'praetorian', 'bone_crusher_ravager', 'ancient_progenitor_queen', 'magma_crust_crusher', 'queen_mother', 'flying_queen', 'matriarch_queen', 'ravager'].includes(caste);
+        if (isHeavyCaste) {
+          audioManager.playGroundSlamImpact?.(landing.x, landing.z);
+          rendererEngine.addFloorCraterDecal?.(landing.x, landing.z, 3.2);
+          rendererEngine.addScreenShake?.(0.65, 0.45);
+          window.HiveSystems?.vfx?.groundSlamShockwave?.(landing.x, landing.z, 6.2, 0x39ff14);
+          const nearbyHumans = (window.gameInstance?.humans || []).filter((h) => h !== target && !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - landing.x, h.z - landing.z) <= 5.8);
+          nearbyHumans.forEach((h) => {
+            h.staggerTimer = 1.6;
+            h.takeDamage?.(28, playerCreature);
+            window.HiveSystems?.vfx?.floatingText?.(h.x, 2.6, h.z, '-28 CHOC SISMIQUE !', '#ef4444', true);
+          });
+        } else {
+          window.HiveSystems?.vfx?.ring(target.x, target.z, 0x39ff14, 2.4);
+          window.HiveSystems?.vfx?.burst(target.x, target.z, 0x39ff14, 18, 0.1, 1.4);
+        }
+
         this.log(`[${profile.huntAction}] ${target.name} désorienté — ${Math.max(0, target.hp)} PV.`);
         this.updateCooldownBadges();
       this.updateRoyalButton();

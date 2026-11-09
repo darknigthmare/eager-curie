@@ -2248,40 +2248,137 @@ button {
 
 .evolution-tree {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   margin-top: 18px;
 }
 
 .evolution-tier {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid #273449;
-  border-radius: 5px;
-  background: rgba(15, 23, 42, 0.45);
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.65) 0%, rgba(8, 14, 28, 0.85) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0, 0, 0, 0.35);
+  position: relative;
 }
 
 .evolution-branch-label {
   width: 100%;
   color: var(--color-hud-cyan);
-  font-size: 10px;
-  letter-spacing: 0.8px;
-  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-align: left;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+  padding-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.evolution-nodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  width: 100%;
 }
 
 .evolution-node {
-  padding: 8px 10px;
-  border: 1px solid #475569;
-  border-radius: 4px;
-  color: #cbd5e1;
-  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(8, 14, 28, 0.75);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  border-radius: 6px;
+  color: #94a3b8;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.evolution-node:hover {
+  transform: translateY(-2px);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
 }
 
 .evolution-node.unlocked {
-  border-color: var(--color-hud-accent);
-  color: var(--color-hud-accent-soft);
+  border-color: rgba(57, 255, 20, 0.55);
+  background: linear-gradient(145deg, rgba(15, 30, 24, 0.8) 0%, rgba(6, 18, 14, 0.9) 100%);
+  color: #f1f5f9;
+  box-shadow: 0 0 12px rgba(57, 255, 20, 0.15);
+}
+
+.evolution-node-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.evolution-node-icon {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.evolution-node-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.evolution-node.unlocked .evolution-node-icon {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(57, 255, 20, 0.4);
+  color: #39ff14;
+  filter: drop-shadow(0 0 4px #39ff14);
+}
+
+.evolution-node-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: #64748b;
+}
+
+.evolution-node.unlocked .evolution-node-tag {
+  color: #86efac;
+}
+
+.evolution-node-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.evolution-node-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #cbd5e1;
+}
+
+.evolution-node.unlocked .evolution-node-name {
+  color: #f8fafc;
+}
+
+.evolution-node-status {
+  font-size: 7.5px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.evolution-node.unlocked .evolution-node-status {
+  color: #4ade80;
 }
 
 .pause-panel {

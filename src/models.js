@@ -1127,6 +1127,16 @@
         { x: tip.x, y: tip.y, z: tip.z - thickness * 2.9 }, 'tail_blade', 24);
       blade.rotation.y = -side * 0.35;
       tailRoot.add(blade);
+      // Articulated osselets / vertebrae chain nodes for AAA procedural wave propagation
+      const vertebrae = [];
+      for (let v = 0; v < points.length; v++) {
+        const vertGroup = new T.Group();
+        vertGroup.name = `tail_vertebra_${v}`;
+        vertGroup.position.set(points[v].x, points[v].y, points[v].z);
+        tailRoot.add(vertGroup);
+        vertebrae.push(vertGroup);
+      }
+      tailRoot.userData.vertebrae = vertebrae;
       parent.add(tailRoot); return tailRoot;
     }
 
@@ -1215,6 +1225,26 @@
       inner.userData.retractedZ = -0.2 * scale;
       inner.userData.extensionLength = 0.7 * scale;
       jawRoot.add(inner); jawRoot.userData.innerJaw = inner;
+
+      // Salive filante visqueuse Three.js reliant les machoires
+      const salivaGroup = new T.Group(); salivaGroup.name = 'inner_jaw_saliva_strands';
+      const salivaMat = new T.MeshStandardMaterial({
+        color: 0xf8fafc,
+        transparent: true,
+        opacity: 0.65,
+        roughness: 0.08,
+        metalness: 0.15,
+        depthWrite: false
+      });
+      for (let sIdx = 0; sIdx < 4; sIdx++) {
+        const strand = new T.Mesh(new T.CylinderGeometry(0.007 * scale, 0.004 * scale, 0.25 * scale, 4), salivaMat);
+        strand.name = `saliva_strand_${sIdx}`;
+        strand.visible = false;
+        salivaGroup.add(strand);
+      }
+      jawRoot.add(salivaGroup);
+      jawRoot.userData.salivaStrands = salivaGroup;
+
       parent.add(jawRoot); return jawRoot;
     }
 
@@ -3909,7 +3939,16 @@
         leftPincer: 'p5000_hydraulic_pincer_left',
         rightPincer: 'p5000_hydraulic_pincer_right'
       };
-      return this._finalize(root, { modelType: 'human', subtype: 'powerloader', height: 5.65 });
+      // Biometric & architectural scaling: Canon Caterpillar P-5000 Power Loader (3.0m height)
+      const loaderAssembly = new T.Group();
+      loaderAssembly.name = 'loader_assembly';
+      while (root.children.length > 0) {
+        loaderAssembly.add(root.children[0]);
+      }
+      loaderAssembly.scale.setScalar(3.0 / 5.65);
+      root.add(loaderAssembly);
+      this.placeOnGround(root, 0);
+      return this._finalize(root, { modelType: 'human', subtype: 'powerloader', height: 3.0 });
     }
 
     // -------------------------------------------------------------------------
@@ -4205,18 +4244,17 @@
           6
         ));
       }
-      // Keep the detailed silhouette while counterbalancing the global player
-      // scale applied by the game. The resulting parasite is visibly smaller
-      // than a human head instead of spanning the whole upper body.
+      // Canon 1:1 biometrics: compact body ~0.35m, finger span ~0.25m, prehensile tail ~0.9m
       const scaledAssembly = new T.Group();
       scaledAssembly.name = 'crawler_scaled_assembly';
       while (root.children.length) scaledAssembly.add(root.children[0]);
-      scaledAssembly.scale.setScalar(0.82);
+      scaledAssembly.scale.setScalar(0.35);
       root.add(scaledAssembly);
+      this.placeOnGround(root, 0);
 
       const facehugger = this._finalize(root, {
         modelType: 'facehugger',
-        height: 0.66,
+        height: 0.35,
         forwardAxis: '+Z',
         animationJoints: {
           legs: Array.from({ length: 8 }, (_, index) => `crawler_leg_${index}`),
@@ -4650,10 +4688,17 @@
       }
       this._addTail(root, hide, chitin, { x: 0, y: 0.58, z: -0.72 }, 3.1, 0.3, -0.38, 0.11);
       this._addCarapaceSpines(root, chitin, 0.94, 7, 0.65, 0.52, -1);
+      // Canon 1:1 biometrics: serpentine vermiform body ~0.45m
+      const scaledAssembly = new T.Group();
+      scaledAssembly.name = 'chestburster_scaled_assembly';
+      while (root.children.length) scaledAssembly.add(root.children[0]);
+      scaledAssembly.scale.setScalar(0.09);
+      root.add(scaledAssembly);
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'chestburster',
         chrysalis: false,
-        height: 1.42,
+        height: 0.45,
         animationJoints: ['juvenile_arm_-1', 'juvenile_arm_1', 'articulated_jaw']
       });
     }
@@ -4927,7 +4972,13 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       const lurker = caste === 'lurker';
       const gorillaAlien = caste === 'gorilla_alien';
 
-      const scale = pathogenPopper ? 0.28 : (ripperQueen ? 1.68 : (foundryCrusher ? 1.42 : (siegeRoyal ? 1.38 : (engineerHybrid ? 1.35 : (monicaLine ? 1.32 : (warden ? 1.30 : (salvageHiveBrute ? 1.28 : (ravager ? 1.26 : (ataraxRipper ? 1.22 : (harbinger ? 1.18 : (kSeriesYellow ? 1.08 : (specimenSixLine ? 1.08 : (pathogenMimic ? 1.08 : (caravanStalker ? 1.06 : (paleCrucibleHunter ? 1.06 : (reefStalker ? 1.06 : (foundryDrone ? 1.05 : (pathogenBlight ? 1.05 : (reefSpitter ? 1.05 : (arcologyLurker ? 1.04 : (neuroXenoDrone ? 1.02 : (exploder ? 1.02 : (dustRunner ? 0.95 : acidQueenMatriarchOmega ? 1.74 : (magmaCrusherBehemothPrime ? 1.69 : (chitinShieldCrusherJuggernaut ? 1.41 : (shadowStalkerPhantomApex ? 1.15 : (acidBlisterBroodmother ? 1.73 : (obsidianSlagTitan ? 1.68 : (chitinArmoredCrusher ? 1.40 : (stalkerPhantomInfiltrator ? 1.15 : (corrosiveBileQueen ? 1.72 : (magmaCrustBehemoth ? 1.67 : (armoredSiegeStrider ? 1.39 : (stalkerShadowLurker ? 1.16 : (sporeBlisterMatriarch ? 1.70 : (obsidianMantleGoliath ? 1.66 : (chitinPlatedVanguard ? 1.38 : (spectralChameleonWraith ? 1.15 : (acidSporeCarrierQueen ? 1.71 : (pyroSlagJuggernaut ? 1.57 : (biomechDuneStrider ? 1.33 : (shadowCrawlerAmbusher ? 1.14 : (queenMother ? 1.75 : (ancientProgenitorQueen ? 1.74 : (myceliumQueenBroodmother ? 1.73 : (omegaPrimeEmpress ? 1.72 : (matriarchQueen ? 1.68 : (empress ? 1.65 : (primordialEngineerDeaconApex ? 1.55 : (synthChitinHybridXeno ? 1.35 : (radioactiveChernobylXeno ? 1.29 : (wingedNightStalker ? 1.25 : (titanCrusherBerserker ? 1.64 : (flyingQueen ? 1.58 : (king ? 1.62 : (ultramorph ? 1.56 : (deaconess ? 1.55 : (magmaCrustCrusher ? 1.55 : (wingedHarpyQueen ? 1.54 : (titanBoneBehemoth ? 1.53 : (goliathSiegeCrusher ? 1.52 : (cyberImplantRavager ? 1.49 : (chitinShieldPhalanx ? 1.48 : (raven ? 1.48 : (abomination ? 1.48 : (tungstenRibRavager ? 1.47 : (armoredJuggernaut ? 1.46 : (empressPraetorianVanguard ? 1.45 : (boneCrusherRavager ? 1.45 : (royalChestbursterAdult ? 1.44 : (pathogenBrute ? 1.44 : (obsidienneEmpressGuard ? 1.43 : (royal ? 1.42 : (acidBoilerMatriarch ? 1.41 : (berserkerAlien ? 1.4 : (praetorianExecutioner ? 1.39 : (alpha ? 1.38 : (pyroSlagXenomorph ? 1.37 : (gorillaAlien ? 1.36 : (newborn ? 1.35 : (irradiatedReactorXeno ? 1.34 : (plasmaFusedXeno ? 1.34 : (deaconAdult ? 1.34 : (royalGuard ? 1.33 : (parasiticCarrier ? 1.32 : (charger ? 1.32 : (corrosiveOvomorphCarrier ? 1.31 : (xenoborg ? 1.3 : (fungalMyceliumHost ? 1.29 : (anubiteXeno ? 1.28 : (bioMechanicalDefianceStalker ? 1.28 : (abyssalTrenchXeno ? 1.28 : (bullSpitter ? 1.28 : (palatine ? 1.28 : (voidVacuumStalker ? 1.27 : (razorWingGliderXeno ? 1.26 : (neomorphApex ? 1.26 : (causticBileBursterAdult ? 1.25 : (mutagenicSporeBurster ? 1.25 : (neomorphBloodbursterAlpha ? 1.25 : (cryoStalkerXeno ? 1.24 : (arachnidAlien ? 1.24 : (guardian ? 1.24 : (tarkatanStalker ? 1.23 : (neuroToxinWaspXeno ? 1.22 : (arachnoSpitter ? 1.22 : (carrier ? 1.22 : (bioElectricEelXeno ? 1.21 : (scorpionSpitter ? 1.21 : (predalien ? 1.32 : (chrysalisWarrior ? 1.25 : (defender ? 1.18 : (spiderAlien ? 1.2 : (snakeAlien ? 1.18 : (chameleonOpticStalker ? 1.16 : (pathogenStalker ? 1.16 : (gridAlien ? 1.15 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (neomorph ? 1.08 : (redDrone ? 1.08 : (phantomLurker ? 1.07 : (warrior ? 1.06 : (infiltrator ? 1.05 : (lurker ? 1.04 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+      // Canon 1:1 Biometric Scaling (1 Three.js unit = 1 meter):
+      // Drone: 2.15m (0.4266), Warrior: 2.30m (0.4563), Neomorph: 2.05m (0.4067),
+      // Predalien: 2.60m (0.5159), Newborn: 2.70m (0.5357), Praetorian: 3.20m (0.5424), Queen: 4.50m (0.7009)
+      const canonScale = royal ? 0.7009 : (guardian ? 0.5424 : (predalien ? 0.5159 : (newborn ? 0.5357 : (neomorph ? 0.4067 : (warrior ? 0.4563 : 0.4266)))));
+      const relativeModifier = pathogenPopper ? 0.28 : (ripperQueen ? 1.68 : (foundryCrusher ? 1.42 : (siegeRoyal ? 1.38 : (engineerHybrid ? 1.35 : (monicaLine ? 1.32 : (warden ? 1.30 : (salvageHiveBrute ? 1.28 : (ravager ? 1.26 : (ataraxRipper ? 1.22 : (harbinger ? 1.18 : (kSeriesYellow ? 1.08 : (specimenSixLine ? 1.08 : (pathogenMimic ? 1.08 : (caravanStalker ? 1.06 : (paleCrucibleHunter ? 1.06 : (reefStalker ? 1.06 : (foundryDrone ? 1.05 : (pathogenBlight ? 1.05 : (reefSpitter ? 1.05 : (arcologyLurker ? 1.04 : (neuroXenoDrone ? 1.02 : (exploder ? 1.02 : (dustRunner ? 0.95 : acidQueenMatriarchOmega ? 1.74 : (magmaCrusherBehemothPrime ? 1.69 : (chitinShieldCrusherJuggernaut ? 1.41 : (shadowStalkerPhantomApex ? 1.15 : (acidBlisterBroodmother ? 1.73 : (obsidianSlagTitan ? 1.68 : (chitinArmoredCrusher ? 1.40 : (stalkerPhantomInfiltrator ? 1.15 : (corrosiveBileQueen ? 1.72 : (magmaCrustBehemoth ? 1.67 : (armoredSiegeStrider ? 1.39 : (stalkerShadowLurker ? 1.16 : (sporeBlisterMatriarch ? 1.70 : (obsidianMantleGoliath ? 1.66 : (chitinPlatedVanguard ? 1.38 : (spectralChameleonWraith ? 1.15 : (acidSporeCarrierQueen ? 1.71 : (pyroSlagJuggernaut ? 1.57 : (biomechDuneStrider ? 1.33 : (shadowCrawlerAmbusher ? 1.14 : (queenMother ? 1.75 : (ancientProgenitorQueen ? 1.74 : (myceliumQueenBroodmother ? 1.73 : (omegaPrimeEmpress ? 1.72 : (matriarchQueen ? 1.68 : (empress ? 1.65 : (primordialEngineerDeaconApex ? 1.55 : (synthChitinHybridXeno ? 1.35 : (radioactiveChernobylXeno ? 1.29 : (wingedNightStalker ? 1.25 : (titanCrusherBerserker ? 1.64 : (flyingQueen ? 1.58 : (king ? 1.62 : (ultramorph ? 1.56 : (deaconess ? 1.55 : (magmaCrustCrusher ? 1.55 : (wingedHarpyQueen ? 1.54 : (titanBoneBehemoth ? 1.53 : (goliathSiegeCrusher ? 1.52 : (cyberImplantRavager ? 1.49 : (chitinShieldPhalanx ? 1.48 : (raven ? 1.48 : (abomination ? 1.48 : (tungstenRibRavager ? 1.47 : (armoredJuggernaut ? 1.46 : (empressPraetorianVanguard ? 1.45 : (boneCrusherRavager ? 1.45 : (royalChestbursterAdult ? 1.44 : (pathogenBrute ? 1.44 : (obsidienneEmpressGuard ? 1.43 : (acidBoilerMatriarch ? 1.41 : (berserkerAlien ? 1.4 : (praetorianExecutioner ? 1.39 : (alpha ? 1.38 : (pyroSlagXenomorph ? 1.37 : (gorillaAlien ? 1.36 : (irradiatedReactorXeno ? 1.34 : (plasmaFusedXeno ? 1.34 : (deaconAdult ? 1.34 : (royalGuard ? 1.33 : (parasiticCarrier ? 1.32 : (charger ? 1.32 : (corrosiveOvomorphCarrier ? 1.31 : (xenoborg ? 1.3 : (fungalMyceliumHost ? 1.29 : (anubiteXeno ? 1.28 : (bioMechanicalDefianceStalker ? 1.28 : (abyssalTrenchXeno ? 1.28 : (bullSpitter ? 1.28 : (palatine ? 1.28 : (voidVacuumStalker ? 1.27 : (razorWingGliderXeno ? 1.26 : (neomorphApex ? 1.26 : (causticBileBursterAdult ? 1.25 : (mutagenicSporeBurster ? 1.25 : (neomorphBloodbursterAlpha ? 1.25 : (cryoStalkerXeno ? 1.24 : (arachnidAlien ? 1.24 : (tarkatanStalker ? 1.23 : (neuroToxinWaspXeno ? 1.22 : (arachnoSpitter ? 1.22 : (carrier ? 1.22 : (bioElectricEelXeno ? 1.21 : (scorpionSpitter ? 1.21 : (chrysalisWarrior ? 1.25 : (defender ? 1.18 : (spiderAlien ? 1.2 : (snakeAlien ? 1.18 : (chameleonOpticStalker ? 1.16 : (pathogenStalker ? 1.16 : (gridAlien ? 1.15 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (redDrone ? 1.08 : (phantomLurker ? 1.07 : (infiltrator ? 1.05 : (lurker ? 1.04 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
+      const isCanonSpecific = royal || guardian || predalien || newborn || neomorph || warrior || caste === 'drone';
+      const scale = isCanonSpecific ? canonScale : (canonScale * relativeModifier);
       let chitinColor = 0x0b1518;
       if (pathogenPopper) chitinColor = 0x4d7c0f; // Popper PathogÃ¨ne (Aliens: Fireteam Elite)
       else if (pathogenBlight) chitinColor = 0x365314; // Blight PathogÃ¨ne Brume Acide (Aliens: Fireteam Elite)
@@ -6339,10 +6390,12 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
           ));
         }
       }
+      this.placeOnGround(root, 0);
+      const canonHeight = royal ? 4.50 : (guardian ? 3.20 : (newborn ? 2.70 : (predalien ? 2.60 : (warrior ? 2.30 : (neomorph ? 2.05 : 2.15)))));
       return this._finalize(root, {
         modelType: 'adult',
         caste,
-        height: (royal ? 7.4 : (alpha ? 6.8 : (guardian ? 6.25 : 5.25))),
+        height: canonHeight,
         animationJoints: {
           head: 'cranial_dome',
           jaw: 'articulated_jaw',
@@ -6359,8 +6412,9 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       const T = this._three();
       const root = new T.Group();
       root.name = 'adult_runner';
-      const primary = this._material('chitin', { color: 0x9a8980, roughness: 0.42, metalness: 0.12, clearcoat: 0.54 });
-      const secondary = this._material('resin', { color: 0x8e8174, opacity: 1, transparent: false });
+      // Canon Alien 3 : Crâne lisse fuselé couleur bronze / caramel
+      const primary = this._material('chitin', { color: 0xa16207, roughness: 0.38, metalness: 0.22, clearcoat: 0.65 });
+      const secondary = this._material('resin', { color: 0x78350f, opacity: 1, transparent: false });
       const bone = this._material('bone', { color: 0xc7b58b });
 
       root.add(this._ellipsoid(
@@ -6414,10 +6468,17 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       }
       this._addTail(root, primary, secondary, { x: 0, y: 1.55, z: -1.42 }, 5.5, 0.42, 0.55, 0.13);
       this._addCarapaceSpines(root, primary, 2.05, 11, 0.78, 1.42, -1);
+      // Canon 1:1 biometrics: low quadruped runner ~1.85m height (Alien 3)
+      const runnerAssembly = new T.Group();
+      runnerAssembly.name = 'runner_assembly';
+      while (root.children.length) runnerAssembly.add(root.children[0]);
+      runnerAssembly.scale.setScalar(1.85 / 2.55);
+      root.add(runnerAssembly);
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'runner',
-        height: 2.55,
+        height: 1.85,
         animationJoints: {
           head: 'runner_head', jaw: 'articulated_jaw', tail: 'segmented_tail',
           legs: Array.from({ length: 4 }, (_, index) => `runner_leg_${index}`)
@@ -6433,7 +6494,8 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       const T = this._three();
       const root = new T.Group();
       root.name = 'adult_crusher';
-      const scale = 1.45;
+      // Canon 1:1 biometrics: 3.5m armored ram with bulletproof cephalic shield
+      const scale = 3.50 / 3.80;
       const primary = this._material('chitin', { color: 0x18181b, roughness: 0.4, metalness: 0.52 });
       const secondary = this._material('chitinWarm', { color: 0x27272a });
       const bone = this._material('bone', { color: 0xa1a1aa });
@@ -6514,10 +6576,11 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       }
       this._addTail(root, primary, bone, { x: 0, y: 1.8 * scale, z: -1.8 * scale }, 6.2 * scale, 0.5 * scale, 0.65 * scale, 0.16 * scale);
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'crusher',
-        height: 3.8 * scale,
+        height: 3.50,
         animationJoints: Array.from({ length: 4 }, (_, index) => `crusher_leg_${index}`)
       });
     }
@@ -8260,26 +8323,27 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         // Console de commande de déverrouillage manuel
         root.add(this._box(dark, { x: 0.65, y: 0.85, z: 0.25 }, { x: -2.3, y: 1.4, z: 0.2 }, 'narcissus_manual_console', true));
       } else if (normalizedType === 'm577_apc' || normalizedType === 'apc') {
-        // Chantier 132 : Véhicule Blindé de Transport de Troupes M577 APC USCM (Aliens 1986)
+        // Chantier 132 : Véhicule Blindé de Transport de Troupes M577 APC USCM (Aliens 1986 - 8.5m x 3.4m x 2.8m)
         const uscmArmor = this._material('industrial', { color: 0x166534, roughness: 0.45, metalness: 0.65 });
         const heavyTire = this._material('darkMetal', { color: 0x09090b, roughness: 0.9, metalness: 0.05 });
         const cannonMetal = this._material('darkMetal', { color: 0x18181b, roughness: 0.25, metalness: 0.92 });
-        // Châssis blindé incliné titane/céramique
-        root.add(this._box(uscmArmor, { x: 3.2, y: 1.5, z: 6.4 }, { x: 0, y: 1.25, z: 0 }, 'apc_hull_main', true));
+        // Châssis blindé incliné titane/céramique 1:1 canon (8.5m de long, 3.4m de large, 2.8m de haut)
+        root.add(this._box(uscmArmor, { x: 3.4, y: 1.8, z: 8.5 }, { x: 0, y: 1.4, z: 0 }, 'apc_hull_main', true));
         // Glacis avant incliné à 45°
-        const glacis = this._box(uscmArmor, { x: 3.15, y: 1.1, z: 1.6 }, { x: 0, y: 1.45, z: 2.8 }, 'apc_glacis', true);
+        const glacis = this._box(uscmArmor, { x: 3.35, y: 1.3, z: 2.2 }, { x: 0, y: 1.5, z: 3.4 }, 'apc_glacis', true);
         glacis.rotation.x = -0.45;
         root.add(glacis);
-        // 4 Roues motrices géantes tout-terrain (diamètre 1.3m)
+        // 4 Roues motrices géantes tout-terrain (diamètre 1.6m)
         for (let rw = 0; rw < 4; rw++) {
-          const rwx = (rw % 2 === 0 ? -1 : 1) * 1.72;
-          const rwz = (rw < 2 ? -1 : 1) * 2.1;
-          root.add(this._cylinder(heavyTire, 0.65, 0.65, 0.48, { x: rwx, y: 0.65, z: rwz }, { x: 0, y: 0, z: Math.PI / 2 }, `apc_wheel_${rw}`));
+          const rwx = (rw % 2 === 0 ? -1 : 1) * 1.75;
+          const rwz = (rw < 2 ? -1 : 1) * 2.6;
+          root.add(this._cylinder(heavyTire, 0.8, 0.8, 0.52, { x: rwx, y: 0.8, z: rwz }, { x: 0, y: 0, z: Math.PI / 2 }, `apc_wheel_${rw}`));
         }
-        // Tourelle double canon 20mm Boyars escamotable sur le toit
-        root.add(this._cylinder(cannonMetal, 0.62, 0.68, 0.35, { x: 0.75, y: 2.2, z: -1.2 }, { x: 0, y: 0, z: 0 }, 'apc_turret_base'));
-        root.add(this._segment(cannonMetal, new T.Vector3(0.65, 2.3, -1.2), new T.Vector3(0.65, 2.3, 1.4), 0.06, 0.05, 'apc_cannon_barrel_left', 8));
-        root.add(this._segment(cannonMetal, new T.Vector3(0.85, 2.3, -1.2), new T.Vector3(0.85, 2.3, 1.4), 0.06, 0.05, 'apc_cannon_barrel_right', 8));
+        // Tourelle double canon 20mm Boyars escamotable sur le toit (y=2.8m)
+        root.add(this._cylinder(cannonMetal, 0.65, 0.7, 0.35, { x: 0.75, y: 2.45, z: -1.5 }, { x: 0, y: 0, z: 0 }, 'apc_turret_base'));
+        root.add(this._segment(cannonMetal, new T.Vector3(0.65, 2.55, -1.5), new T.Vector3(0.65, 2.55, 1.8), 0.065, 0.055, 'apc_cannon_barrel_left', 8));
+        root.add(this._segment(cannonMetal, new T.Vector3(0.85, 2.55, -1.5), new T.Vector3(0.85, 2.55, 1.8), 0.065, 0.055, 'apc_cannon_barrel_right', 8));
+        this.placeOnGround(root, 0);
       } else if (normalizedType === 'water_droplet_vent' || normalizedType === 'droplet_vent') {
         // Chantier 134 : Sas de Condensation & Chutes de Gouttes d'Eau Industrielles (Alien 1979)
         const copperPipe = this._material('industrial', { color: 0xb45309, roughness: 0.4, metalness: 0.78 });
@@ -12735,7 +12799,16 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
 
       root.add(swivelHead);
 
-      const finalized = this._finalize(root, { modelType: 'sentryTurret', height: 1.4 });
+      // Canon Aliens 1986 : Tourelle UA 571-C sur trépied stable (1.15m de hauteur totale)
+      const turretAssembly = new T.Group();
+      turretAssembly.name = 'turret_assembly';
+      while (root.children.length > 0) {
+        turretAssembly.add(root.children[0]);
+      }
+      turretAssembly.scale.setScalar(1.15 / 1.40);
+      root.add(turretAssembly);
+
+      const finalized = this._finalize(root, { modelType: 'sentryTurret', height: 1.15 });
       this.placeOnGround(finalized, 0);
       return finalized;
     }

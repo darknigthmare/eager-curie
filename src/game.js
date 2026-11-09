@@ -1093,22 +1093,234 @@
       osc.start(now); osc.stop(now + 0.8);
     }
 
-    playFootstep(type = 'human', x = null, z = null) {
+    // -------------------------------------------------------------------------
+    // Synthetiseurs WebAudio Proceduraux Diegetiques AAA
+    // -------------------------------------------------------------------------
+    playMaterialFootstep(surface = 'metal', x = null, z = null, isXeno = false, isHeavy = false) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      const heavy = ['powerloader', 'exosuit'].includes(type);
-      osc.type = heavy ? 'square' : 'triangle';
-      osc.frequency.setValueAtTime(heavy ? 54 : 105, now);
-      osc.frequency.exponentialRampToValueAtTime(heavy ? 24 : 62, now + 0.1);
-      gain.gain.setValueAtTime(heavy ? 0.38 : 0.11, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-      osc.connect(gain);
-      this.connect(gain, x, z, 48);
-      osc.start(now);
-      osc.stop(now + 0.13);
+
+      if (surface === 'water') {
+        const splashDuration = 0.09;
+        const splashBuffer = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * splashDuration), this.ctx.sampleRate);
+        const data = splashBuffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.35));
+        }
+        const src = this.ctx.createBufferSource();
+        src.buffer = splashBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(2400, now);
+        filter.Q.setValueAtTime(2.2, now);
+
+        const bubbleOsc = this.ctx.createOscillator();
+        const bubbleGain = this.ctx.createGain();
+        bubbleOsc.type = 'sine';
+        bubbleOsc.frequency.setValueAtTime(820, now);
+        bubbleOsc.frequency.exponentialRampToValueAtTime(310, now + splashDuration);
+        bubbleGain.gain.setValueAtTime(0.24, now);
+        bubbleGain.gain.exponentialRampToValueAtTime(0.01, now + splashDuration);
+        bubbleOsc.connect(bubbleGain);
+        bubbleGain.connect(gain);
+        bubbleOsc.start(now); bubbleOsc.stop(now + splashDuration);
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.gain.setValueAtTime(0.28, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + splashDuration);
+        this.connect(gain, x, z, 42);
+        src.start(now);
+      } else if (surface === 'resin') {
+        const duration = 0.14;
+        const subThump = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        subThump.type = 'triangle';
+        subThump.frequency.setValueAtTime(78, now);
+        subThump.frequency.exponentialRampToValueAtTime(32, now + duration);
+        subGain.gain.setValueAtTime(isHeavy ? 0.42 : 0.22, now);
+        subGain.gain.exponentialRampToValueAtTime(0.005, now + duration);
+        subThump.connect(subGain); subGain.connect(gain);
+        subThump.start(now); subThump.stop(now + duration);
+
+        const squelchOsc = this.ctx.createOscillator();
+        const squelchFilter = this.ctx.createBiquadFilter();
+        const squelchGain = this.ctx.createGain();
+        squelchOsc.type = 'sawtooth';
+        squelchOsc.frequency.setValueAtTime(480, now);
+        squelchFilter.type = 'bandpass';
+        squelchFilter.frequency.setValueAtTime(620, now);
+        squelchFilter.frequency.exponentialRampToValueAtTime(190, now + duration);
+        squelchFilter.Q.setValueAtTime(3.8, now);
+        squelchGain.gain.setValueAtTime(0.18, now);
+        squelchGain.gain.exponentialRampToValueAtTime(0.005, now + duration);
+        squelchOsc.connect(squelchFilter); squelchFilter.connect(squelchGain); squelchGain.connect(gain);
+        squelchOsc.start(now); squelchOsc.stop(now + duration);
+
+        this.connect(gain, x, z, 38);
+      } else {
+        const duration = isHeavy ? 0.22 : 0.12;
+        const metalImpact = this.ctx.createOscillator();
+        const metalGain = this.ctx.createGain();
+        metalImpact.type = isHeavy ? 'square' : 'triangle';
+        metalImpact.frequency.setValueAtTime(isHeavy ? 58 : 110, now);
+        metalImpact.frequency.exponentialRampToValueAtTime(isHeavy ? 28 : 55, now + duration);
+        metalGain.gain.setValueAtTime(isHeavy ? 0.38 : 0.14, now);
+        metalGain.gain.exponentialRampToValueAtTime(0.002, now + duration);
+        metalImpact.connect(metalGain); metalGain.connect(gain);
+        metalImpact.start(now); metalImpact.stop(now + duration);
+
+        const pingOsc = this.ctx.createOscillator();
+        const pingFilter = this.ctx.createBiquadFilter();
+        const pingGain = this.ctx.createGain();
+        pingOsc.type = 'sine';
+        pingOsc.frequency.setValueAtTime(2150, now);
+        pingFilter.type = 'bandpass';
+        pingFilter.frequency.setValueAtTime(isXeno ? 3200 : 820, now);
+        pingFilter.Q.setValueAtTime(4.5, now);
+        pingGain.gain.setValueAtTime(isXeno ? 0.18 : 0.10, now);
+        pingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        pingOsc.connect(pingFilter); pingFilter.connect(pingGain); pingGain.connect(gain);
+        pingOsc.start(now); pingOsc.stop(now + 0.09);
+
+        this.connect(gain, x, z, 48);
+      }
+    }
+
+    playFootstep(type = 'human', x = null, z = null, surface = 'metal') {
+      const heavy = ['powerloader', 'exosuit', 'crusher', 'king'].includes(type);
+      const isXeno = ['drone', 'warrior', 'facehugger', 'runner', 'praetorian', 'queen'].includes(type);
+      this.playMaterialFootstep(surface, x, z, isXeno, heavy);
+    }
+
+    playXenoGutturalBreathing(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const duration = 1.6;
+
+      const subOsc = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      subOsc.type = 'sine';
+      subOsc.frequency.setValueAtTime(48, now);
+      subGain.gain.setValueAtTime(0.001, now);
+      subGain.gain.linearRampToValueAtTime(0.18, now + 0.5);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      subOsc.connect(subGain); subOsc.start(now); subOsc.stop(now + duration);
+
+      const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        const env = Math.sin((i / bufferSize) * Math.PI);
+        data[i] = (Math.random() * 2 - 1) * Math.pow(env, 1.8);
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const f1 = this.ctx.createBiquadFilter();
+      f1.type = 'bandpass';
+      f1.frequency.setValueAtTime(580, now);
+      f1.Q.setValueAtTime(3.4, now);
+
+      const f2 = this.ctx.createBiquadFilter();
+      f2.type = 'bandpass';
+      f2.frequency.setValueAtTime(1380, now);
+      f2.Q.setValueAtTime(2.8, now);
+
+      const breathGain = this.ctx.createGain();
+      breathGain.gain.setValueAtTime(0.12, now);
+      noise.connect(f1); f1.connect(f2); f2.connect(breathGain);
+
+      const master = this.ctx.createGain();
+      subGain.connect(master);
+      breathGain.connect(master);
+      this.connect(master, x, z, 35);
+      noise.start(now);
+    }
+
+    playHighFrequencyElectricArc(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const duration = 0.28;
+
+      const humOsc = this.ctx.createOscillator();
+      const humGain = this.ctx.createGain();
+      humOsc.type = 'sawtooth';
+      humOsc.frequency.setValueAtTime(120, now);
+      humGain.gain.setValueAtTime(0.12, now);
+      humGain.gain.exponentialRampToValueAtTime(0.005, now + duration);
+      humOsc.connect(humGain); humOsc.start(now); humOsc.stop(now + duration);
+
+      const arcBuffer = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * duration), this.ctx.sampleRate);
+      const d = arcBuffer.getChannelData(0);
+      for (let i = 0; i < d.length; i++) {
+        const spike = Math.random() < 0.08 ? (Math.random() * 2 - 1) : 0;
+        d[i] = spike * Math.exp(-i / (d.length * 0.4));
+      }
+      const arcSource = this.ctx.createBufferSource();
+      arcSource.buffer = arcBuffer;
+      const arcFilter = this.ctx.createBiquadFilter();
+      arcFilter.type = 'highpass';
+      arcFilter.frequency.setValueAtTime(4600, now);
+      const arcGain = this.ctx.createGain();
+      arcGain.gain.setValueAtTime(0.35, now);
+      arcGain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+      arcSource.connect(arcFilter); arcFilter.connect(arcGain);
+
+      const mix = this.ctx.createGain();
+      humGain.connect(mix);
+      arcGain.connect(mix);
+      this.connect(mix, x, z, 38);
+      arcSource.start(now);
+    }
+
+    playCavernousHullCreak(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const duration = 2.4;
+
+      const groanOsc = this.ctx.createOscillator();
+      const groanGain = this.ctx.createGain();
+      groanOsc.type = 'sawtooth';
+      groanOsc.frequency.setValueAtTime(38, now);
+      groanOsc.frequency.linearRampToValueAtTime(54, now + 1.1);
+      groanOsc.frequency.exponentialRampToValueAtTime(26, now + duration);
+
+      const groanFilter = this.ctx.createBiquadFilter();
+      groanFilter.type = 'lowpass';
+      groanFilter.frequency.setValueAtTime(180, now);
+      groanFilter.Q.setValueAtTime(6.0, now);
+
+      groanGain.gain.setValueAtTime(0.001, now);
+      groanGain.gain.linearRampToValueAtTime(0.24, now + 0.8);
+      groanGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      groanOsc.connect(groanFilter);
+      groanFilter.connect(groanGain);
+      this.connect(groanGain, x, z, 75);
+      groanOsc.start(now); groanOsc.stop(now + duration);
+    }
+
+    playSyntheticCalmChime(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      [880, 1174.66].forEach((freq, idx) => {
+        const chime = this.ctx.createOscillator();
+        const chimeGain = this.ctx.createGain();
+        chime.type = 'sine';
+        chime.frequency.setValueAtTime(freq, now + idx * 0.12);
+        chimeGain.gain.setValueAtTime(0.14, now + idx * 0.12);
+        chimeGain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.65);
+        chime.connect(chimeGain);
+        this.connect(chimeGain, x, z, 30);
+        chime.start(now + idx * 0.12);
+        chime.stop(now + idx * 0.12 + 0.7);
+      });
     }
 
     playHostCough(x = null, z = null) {
@@ -7544,7 +7756,7 @@
       osc.start(now);
       osc.stop(now + 1.4);
     }
-  }
+
     // Chantier 33 : Servomoteur de Caméra de Surveillance CCTV Seegson / Weyland (Alien: Isolation)
     playCameraServoPan(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
@@ -7785,6 +7997,7 @@
       else { gain.connect(this.sfxGain); }
       src.start(now);
     }
+  }
 
   const audioManager = new AudioManager();
 
@@ -8079,7 +8292,7 @@
         if (this.focusedMode && Math.abs(normalizedRel) > 0.44) continue;
 
         // Chantier 8 & Audit QA #71 : Différentiel altimétrique M314 (▲ +Xm, ▼ -Xm, ● 0m)
-        const playerY = player.isCeilingProwling ? 5.85 : (player.isInVent ? 3.2 : (player.mesh?.position?.y || 0));
+        const playerY = player.isCeilingProwling ? 4.2 : (player.isInVent ? 4.0 : (player.isSubfloorProwling ? -0.3 : (player.mesh?.position?.y || 0)));
         const humanY = human.mesh?.position?.y || 0;
         const dy = humanY - playerY;
 
@@ -9846,8 +10059,8 @@
           turret.mesh = mesh;
         }
         this.colliders.push({
-          minX: turret.x - 1.0, maxX: turret.x + 1.0,
-          minZ: turret.z - 1.0, maxZ: turret.z + 1.0
+          minX: turret.x - 0.65, maxX: turret.x + 0.65,
+          minZ: turret.z - 0.65, maxZ: turret.z + 0.65
         });
       });
 
@@ -10380,8 +10593,8 @@
           fs.mesh = mesh;
         }
         this.colliders.push({
-          minX: fs.x - 1.2, maxX: fs.x + 1.2,
-          minZ: fs.z - 1.2, maxZ: fs.z + 1.2,
+          minX: fs.x - 0.75, maxX: fs.x + 0.75,
+          minZ: fs.z - 0.75, maxZ: fs.z + 0.75,
           isFlamerSentry: true,
           sentryRef: fs
         });
@@ -10840,9 +11053,10 @@
           rendererEngine.propsGroup.add(mesh);
           apc.mesh = mesh;
         }
+        // Canon M577 APC 1:1 collider parity: 8.5m long (Z), 3.4m wide (X)
         this.colliders.push({
-          minX: apc.x - 3.2, maxX: apc.x + 3.2,
-          minZ: apc.z - 2.0, maxZ: apc.z + 2.0,
+          minX: apc.x - 1.7, maxX: apc.x + 1.7,
+          minZ: apc.z - 4.25, maxZ: apc.z + 4.25,
           isM577APC: true,
           apcRef: apc
         });
@@ -22303,6 +22517,8 @@
       if (Math.abs(nextX) >= 73.4 - padding || Math.abs(nextZ) >= 73.4 - padding) return true;
       for (const col of this.colliders) {
         if (col.disabled) continue;
+        if (col.isMonorailHoist && col.hoistRef && !col.hoistRef.isDropped) continue;
+        if (col.isDuctSplitter && (window.playerCreature?.isInVent || window.playerCreature?.isCeilingProwling)) continue;
         const minX = col.minX - padding;
         const maxX = col.maxX + padding;
         const minZ = col.minZ - padding;
@@ -22666,12 +22882,58 @@
     model.scale.copy(basePose.scale);
     rig.resetPose?.();
 
-    const locomotion = Array.isArray(rig.roles?.locomotion) ? rig.roles.locomotion : [];
-    locomotion.forEach((joint, index) => {
-      const alternating = index % 2 === 0 ? 1 : -1;
-      joint.rotation.x += Math.sin(phase + index * 0.7) * 0.42 * movement * alternating;
-      joint.rotation.z += Math.cos(phase * 0.5 + index) * 0.08 * movement;
-    });
+    // 1. CYCLE DE FOULEE SYNCHRONISE (Bipede vs Quadrupede Rapide)
+    const joints = rig.joints || {};
+    const isQuadruped = (joints.legs && joints.legs.length >= 4) || model.name?.includes('runner') || model.name?.includes('crusher');
+    if (isQuadruped && joints.legs) {
+      const quadPhase = phase * 2.2;
+      joints.legs.forEach((leg, idx) => {
+        const pairPhase = (idx === 0 || idx === 3) ? quadPhase : (quadPhase + Math.PI);
+        leg.rotation.x += Math.sin(pairPhase) * 0.62 * movement;
+        leg.rotation.z += Math.cos(pairPhase) * 0.12 * movement;
+      });
+      model.rotation.x += Math.sin(quadPhase) * 0.08 * movement;
+    } else if (joints.leftLeg && joints.rightLeg) {
+      joints.leftLeg.rotation.x += Math.sin(phase) * 0.58 * movement;
+      joints.leftLeg.rotation.z += Math.cos(phase) * 0.06 * movement;
+      joints.rightLeg.rotation.x += Math.sin(phase + Math.PI) * 0.58 * movement;
+      joints.rightLeg.rotation.z += Math.cos(phase + Math.PI) * 0.06 * movement;
+      if (joints.leftArm) joints.leftArm.rotation.x += -Math.sin(phase) * 0.44 * movement;
+      if (joints.rightArm) joints.rightArm.rotation.x += -Math.sin(phase + Math.PI) * 0.44 * movement;
+      model.position.y += Math.abs(Math.sin(phase)) * 0.05 * movement;
+      model.rotation.y += Math.sin(phase) * 0.04 * movement;
+    } else {
+      const locomotion = Array.isArray(rig.roles?.locomotion) ? rig.roles.locomotion : [];
+      locomotion.forEach((joint, index) => {
+        const alternating = index % 2 === 0 ? 1 : -1;
+        joint.rotation.x += Math.sin(phase + index * 0.7) * 0.42 * movement * alternating;
+        joint.rotation.z += Math.cos(phase * 0.5 + index) * 0.08 * movement;
+      });
+    }
+
+    // 2. ONDULATION CAUDALE ORGANIQUE SINUSOIDALE CONTINUE (Queue / Osselets)
+    const tail = model.getObjectByName('segmented_tail') || model.getObjectByName('tailMesh') || model.getObjectByName('crawler_tail_root');
+    if (tail) {
+      const tailSpeed = 1.5 + movement * 1.6;
+      const horizontalSway = Math.sin(phase * tailSpeed) * (0.22 + movement * 0.32) + Math.sin(phase * tailSpeed * 2.2) * 0.08;
+      const verticalWave = Math.cos(phase * tailSpeed * 0.8) * (0.08 + movement * 0.12);
+      tail.rotation.y += horizontalSway;
+      tail.rotation.x += verticalWave;
+
+      const vertebrae = tail.userData?.vertebrae || tail.children?.filter((c) => c.name?.includes('vertebra') || c.name?.includes('segment') || c.name === 'tail_blade');
+      if (vertebrae && vertebrae.length > 0) {
+        vertebrae.forEach((vert, vIdx) => {
+          const delay = vIdx * 0.36;
+          vert.rotation.y = Math.sin(phase * tailSpeed - delay) * (0.09 + movement * 0.14);
+          vert.rotation.x = Math.cos(phase * tailSpeed * 0.8 - delay * 0.7) * (0.04 + movement * 0.06);
+        });
+      }
+      if (attack > 0) {
+        const whipEnv = Math.sin(Math.min(1, Math.max(0, attack)) * Math.PI);
+        tail.rotation.x += whipEnv * 0.86;
+        tail.rotation.z += Math.sin(whipEnv * Math.PI * 2) * 0.34;
+      }
+    }
 
     const attackJoints = Array.isArray(rig.roles?.attack) ? rig.roles.attack : [];
     attackJoints.forEach((joint, index) => {
@@ -22680,13 +22942,41 @@
       joint.rotation.z += envelope * (index % 2 === 0 ? 0.18 : -0.18);
     });
 
+    // 3. EXTENSION DYNAMIQUE DES DOUBLES MACHOIRES INTERNES & SALIVE VISQUEUSE THREE.JS
     if (!Object.prototype.hasOwnProperty.call(model.userData, 'runtimeInnerJaw')) {
       model.userData.runtimeInnerJaw = model.getObjectByName('pharyngeal_jaw_slider') || null;
     }
     const innerJaw = model.userData.runtimeInnerJaw;
     if (innerJaw) {
-      const extension = Math.sin(Math.min(1, Math.max(0, attack)) * Math.PI);
-      innerJaw.position.z = innerJaw.userData.retractedZ + extension * innerJaw.userData.extensionLength;
+      const attEnv = Math.min(1, Math.max(0, attack));
+      const punchCurve = Math.pow(Math.sin(attEnv * Math.PI), 0.42);
+      innerJaw.position.z = innerJaw.userData.retractedZ + punchCurve * innerJaw.userData.extensionLength;
+
+      const salivaGroup = innerJaw.parent?.getObjectByName('inner_jaw_saliva_strands') || model.getObjectByName('inner_jaw_saliva_strands');
+      if (salivaGroup) {
+        const isExtending = punchCurve > 0.04;
+        salivaGroup.visible = isExtending;
+        if (isExtending) {
+          salivaGroup.children.forEach((strand, sIdx) => {
+            strand.visible = true;
+            const zLen = Math.max(0.06, punchCurve * innerJaw.userData.extensionLength);
+            strand.scale.set(
+              Math.max(0.2, 1 - punchCurve * 0.65),
+              Math.max(0.2, 1 - punchCurve * 0.65),
+              zLen * 4.0
+            );
+            const aOff = (sIdx / salivaGroup.children.length) * Math.PI * 2;
+            strand.position.set(
+              Math.cos(aOff) * 0.035 * (1 - punchCurve * 0.5) + Math.sin(phase * 24 + sIdx) * 0.006,
+              0.08 + Math.sin(aOff) * 0.02 * (1 - punchCurve * 0.5),
+              innerJaw.position.z * 0.5
+            );
+          });
+          if (punchCurve > 0.75 && Math.random() < 0.25) {
+            window.HiveSystems?.vfx?.salivaDrip?.(model.position.x, model.position.y + 2.6, model.position.z, 1);
+          }
+        }
+      }
     }
 
     if (crouch > 0) {
@@ -24688,7 +24978,7 @@
         this.isInVent = false;
         this.currentVent = null;
         this.isCeilingProwling = true;
-        this.mesh?.position.set(this.x, 5.85, this.z);
+        this.mesh?.position.set(this.x, 4.2, this.z);
         if (this.detailedModel) {
           this.detailedModel.rotation.x = Math.PI;
           this.detailedModel.position.y = 0;
@@ -24697,12 +24987,12 @@
         rendererEngine.addScreenShake?.(0.15, 0.12);
         showToast('TRANSITION CONDUIT -> PLAFOND DIRECTE [Q] : Émergence directe sur les poutrelles suspendues !');
         appendSensorLog('[TRAQUE 3D] Sortie directe du réseau de ventilation vers les superstructures du plafond.', 'stealth');
-        window.HiveSystems?.vfx?.floatingText?.(this.x, 6.2, this.z, 'TRANSITION PLAFOND DIRECTE [Q]', '#38bdf8', true);
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 4.5, this.z, 'TRANSITION PLAFOND DIRECTE [Q]', '#38bdf8', true);
         return;
       }
       this.isCeilingProwling = !this.isCeilingProwling;
       if (this.isCeilingProwling) {
-        this.mesh?.position.set(this.x, 5.85, this.z);
+        this.mesh?.position.set(this.x, 4.2, this.z);
         if (this.detailedModel) {
           this.detailedModel.rotation.x = Math.PI; // Tête en bas agrippé aux poutres métalliques
           this.detailedModel.position.y = 0;
@@ -24712,7 +25002,7 @@
         window.HiveSystems?.vfx?.burst(this.x, this.z, 0x64748b, 10, 0.08, 1.0);
         showToast('PAROI & PLAFOND ACTIF [Q] : Suspendu aux superstructures ! Chute mortelle prête [ESPACE].');
         appendSensorLog('[TRAQUE 3D] Escalade aux poutrelles du plafond. Angle mort total des patrouilles.', 'stealth');
-        window.HiveSystems?.vfx?.floatingText?.(this.x, 6.2, this.z, 'SUSPENDU AU PLAFOND [Q]', '#38bdf8', true);
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 4.5, this.z, 'SUSPENDU AU PLAFOND [Q]', '#38bdf8', true);
       } else {
         this.mesh?.position.set(this.x, 0, this.z);
         if (this.detailedModel) {
@@ -24771,13 +25061,13 @@
       audioManager.playCocoonWeave?.(victim.x, victim.z);
       rendererEngine.addScreenShake?.(0.35, 0.2);
       window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0xef4444, 25, 0.16, 1.8);
-      window.HiveSystems?.vfx?.beam?.(this.x, 5.85, this.z, victim.x, 0.8, victim.z, 0x0c121e);
+      window.HiveSystems?.vfx?.beam?.(this.x, 4.2, this.z, victim.x, 0.8, victim.z, 0x0c121e);
 
       victim.takeDamage?.(140, this);
       victim.isCocooned = true;
       victim.isIncapacitated = true;
       if (victim.mesh) {
-        victim.mesh.position.y = 5.2; // Hissé au plafond !
+        victim.mesh.position.y = 4.0; // Hissé au plafond !
         victim.mesh.rotation.x = Math.PI;
       }
 
@@ -24974,11 +25264,11 @@
           return true;
         }
       } else {
-        // Plonger sous le plancher
+        // Plonger sous le plancher (y = -0.3m)
         this.isSubfloorProwling = true;
         this.x = nearbyGrate.x;
         this.z = nearbyGrate.z;
-        if (this.mesh) this.mesh.position.y = -0.65;
+        if (this.mesh) this.mesh.position.y = -0.3;
         audioManager.playGrateBurstCrash?.(this.x, this.z);
         showToast("EMBUSCADE SOUS-PLANCHER [J] ACTIVE : Embusqué sous la grille ! Attendez qu'une proie approche.");
         return true;
@@ -27007,10 +27297,10 @@
       }
       if (detailedModel) {
         const modelScale = this.form === 'drone'
-          ? 1.14
+          ? 1.0
           : (this.form === 'facehugger'
-            ? 0.92
-            : (this.form === 'chestburster' ? (this.isChrysalis ? 1.55 : 0.94) : 1.05));
+            ? 1.0
+            : (this.form === 'chestburster' ? (this.isChrysalis ? 1.55 : 1.0) : 1.0));
         detailedModel.scale.setScalar(modelScale);
         group.add(detailedModel);
         this.detailedModel = detailedModel;
@@ -27309,6 +27599,8 @@
       rendererEngine.addScreenShake?.(0.24, 0.15);
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, 18, 0.14, 1.25);
       window.HiveSystems?.vfx?.spawnAcidPool?.(this.x, this.z, 1.45, 9.0);
+      window.HiveSystems?.vfx?.persistentCorrosiveFumes?.(this.x, this.z, 6.0);
+      window.HiveSystems?.vfx?.ballisticRicochetSparks?.(this.x, 1.6, this.z);
       stationMap.addAcidCorrosion?.(this.x, this.z, 1.8, 12.0);
 
       // Chantier 99 : Projection de globules d'acide flottants en apesanteur (Alien: Romulus)
@@ -27406,6 +27698,7 @@
       audioManager.playVentEnter?.();
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x64748b, 12, 0.1, 1.2);
       if (this.mesh) {
+        this.mesh.position.y = 4.0;
         this.mesh.traverse((c) => {
           if (c.isMesh && c.material) {
             c.userData.origOpacity = c.material.opacity !== undefined ? c.material.opacity : 1.0;
@@ -27417,7 +27710,7 @@
       }
       showToast(`INFILTRATION DANS LE CONDUIT [${vent.name}] : Furtivité totale active ! Déplacez-vous à travers la station [C pour émerger].`);
       appendSensorLog(`[CONDUIT] Le xénomorphe a disparu dans le réseau de ventilation via ${vent.name}. Furtivité absolue.`, 'stealth');
-      window.HiveSystems?.vfx?.floatingText?.(this.x, 2.5, this.z, 'FURTIVITÉ CONDUIT [C]', '#38bdf8', true);
+      window.HiveSystems?.vfx?.floatingText?.(this.x, 4.2, this.z, 'FURTIVITÉ CONDUIT [C]', '#38bdf8', true);
     }
 
     exitVent(vent) {
@@ -27721,14 +28014,42 @@
         if (!stationMap.checkCollision(nextX, nextZ)) {
           this.x = nextX;
           this.z = nextZ;
-          this.mesh.position.set(this.x, this.isCeilingProwling ? 5.85 : 0, this.z);
+          const targetY = this.isCeilingProwling ? 4.2 : (this.isInVent ? 4.0 : ((this.isSubfloorProwling || this.isSubmerged) ? -0.3 : 0));
+          this.mesh.position.set(this.x, targetY, this.z);
         } else if (this.moveTarget) {
           this.moveTarget = null;
           this.moveWaypoints = [];
         }
 
         if (dx !== 0 || dy !== 0) {
-          this.mesh.rotation.y = Math.atan2(dx, dy);
+          const targetRot = Math.atan2(dx, dy);
+          let rotDiff = targetRot - this.mesh.rotation.y;
+          while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+          while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+          const turnSpeed = Math.min(1.0, 16.0 * safeDelta);
+          this.mesh.rotation.y += rotDiff * turnSpeed;
+
+          // Bruits de pas selon le materiau du sol (caillebotis metal, bio-resine humide, flaque d'eau)
+          this.xenoStepTimer = (this.xenoStepTimer || 0) - safeDelta;
+          if (this.xenoStepTimer <= 0) {
+            this.xenoStepTimer = (this.form === 'facehugger' ? 0.22 : (this.form === 'chestburster' ? 0.28 : (this.adultCaste === 'runner' ? 0.24 : 0.38)));
+            const onResin = (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0);
+            const inWater = (stationMap.waterPuddles || []).some((p) => Math.hypot(p.x - this.x, p.z - this.z) <= (p.radius || 2.0));
+            const surface = onResin ? 'resin' : (inWater ? 'water' : 'metal');
+            audioManager.playMaterialFootstep?.(surface, this.x, this.z, true, ['crusher', 'king'].includes(this.adultCaste));
+            if (inWater) {
+              window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x38bdf8, 4, 0.05, 0.15);
+            }
+          }
+        }
+
+        // Respiration gutturale xenomorphe diegetique
+        if (this.form === 'drone') {
+          this.gutturalBreathTimer = (this.gutturalBreathTimer || 4.0) - safeDelta;
+          if (this.gutturalBreathTimer <= 0) {
+            this.gutturalBreathTimer = 5.5 + Math.random() * 4.5;
+            audioManager.playXenoGutturalBreathing?.(this.x, this.z);
+          }
         }
 
         // Suivi et traînée physique du corps de l'hôte capturé (Hadley's Hope 1:1)
@@ -27744,7 +28065,11 @@
         }
 
         if (this.isCeilingProwling) {
-          this.mesh.position.y = 5.85;
+          this.mesh.position.y = 4.2;
+        } else if (this.isInVent) {
+          this.mesh.position.y = 4.0;
+        } else if (this.isSubfloorProwling || this.isSubmerged) {
+          this.mesh.position.y = -0.3;
         }
 
         // Canon H.R. Giger — Sécrétions de salive visqueuse perlant des mâchoires
@@ -28416,6 +28741,26 @@
         const primary = this.getPrimaryMesh();
         if (primary && !Array.isArray(primary.material) && primary.material.color) primary.material.color.setHex(0x7f1d1d);
       }
+
+      // Debacle morale de l'escouade USCM a la mort du chef ou sergent
+      if (this.getFaction() === 'USCM' && (this.type === 'uscm_field_commander' || this.type === 'commando' || this.name.toLowerCase().includes('sergent') || this.name.toLowerCase().includes('leader') || this.name.toLowerCase().includes('apone'))) {
+        const squadMates = (window.gameInstance?.humans || []).filter((h) => (
+          h !== this && !h.isIncapacitated && !h.isCocooned && h.getFaction() === 'USCM' && Math.hypot(h.x - this.x, h.z - this.z) <= 25
+        ));
+        squadMates.forEach((marine) => {
+          marine.stress = 100;
+          marine.squadLeaderDown = true;
+          marine.squadLeaderDownTimer = 10.0;
+          const routQuotes = [
+            "SERGENT A TERRE ! DECROCHAGE IMMEDIAT !",
+            "COMMANDEMENT PERDU ! REPLI DEFENSIF !",
+            "LE CHEF EST MORT ! EN ARRIERE, EN ARRIERE !"
+          ];
+          const rq = routQuotes[Math.floor(Math.random() * routQuotes.length)];
+          window.HiveSystems?.vfx?.floatingText?.(marine.x, 2.9, marine.z, rq, '#ef4444', true);
+        });
+        showToast(`DEROUTE USCM : Chef d'escouade ${this.name} neutralise ! Repli panique des marines !`);
+      }
     }
 
     cocoonInResin() {
@@ -28801,26 +29146,84 @@
       const attackRangeDist = inDarkness ? (isPlayerProwling ? 5.5 : 9) : (isPlayerProwling ? 7.5 : 12);
       const shootDist = inDarkness ? (isPlayerProwling ? 6.5 : 10) : (isPlayerProwling ? 9.5 : 14);
 
-      // Fuite et panique des civils et scientifiques désarmés à la vue du prédateur
-      if (!this.isLured && !isCombatant && biologicalTargetDetectable && targetInVisualField && distToPlayer <= 16) {
+      // Fuite eperdue et supplications diegetiques des civils et scientifiques vers les sas et capsules EEV
+      if (!this.isLured && !isCombatant && biologicalTargetDetectable && targetInVisualField && distToPlayer <= 18) {
         this.panicTimer = (this.panicTimer || 0) + safeDelta;
-        if (this.panicTimer >= 2.2) {
+        if (this.panicTimer >= 2.0) {
           this.panicTimer = 0;
           const civilianScreams = [
-            "NON ! NE M'APPROCHEZ PAS !",
-            "AU SECOURS ! UNE CRÉATURE DANS LA STATION !",
-            "SÉCURITÉ ! ALERTE BRÈCHE !",
-            "CONFINEMENT ROMPU ! IL ARRIVE !"
+            "NON ! PITIE ! OUVREZ LE SAS !",
+            "AU SECOURS ! ELLE EST DANS LA COURSIVE !",
+            "MAMAN... FAITES QUE CE SOIT UN CAUCHEMAR !",
+            "VERROUILLEZ LA PORTE ! NE LA LAISSEZ PAS ENTRER !",
+            "J'AI UNE FAMILLE SUR GATEWAY... PITIE !",
+            "CONFINEMENT ROMPU ! CA RAMPE DANS LE PLAFOND !"
           ];
           const scream = civilianScreams[Math.floor(Math.random() * civilianScreams.length)];
           window.HiveSystems?.vfx?.floatingText?.(this.x, 2.7, this.z, scream, '#f87171', true);
+          audioManager.playHostCough?.(this.x, this.z);
         }
-        const panicAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
-        const fleeStepX = this.x + Math.cos(panicAngle) * 4.8;
-        const fleeStepZ = this.z + Math.sin(panicAngle) * 4.8;
-        if (!stationMap.checkCollision(fleeStepX, fleeStepZ)) {
-          this.targetPos = { x: fleeStepX, z: fleeStepZ };
+        const escapeTargets = [
+          ...(stationMap.airlocks || []).filter((a) => !a.isLocked),
+          ...(stationMap.blastDoors || []).filter((d) => d.isOpen),
+          ...(stationMap.cryoPods || []).filter((c) => !c.isBroken)
+        ];
+        let chosenEscape = null;
+        let bestDist = Infinity;
+        for (const esc of escapeTargets) {
+          const d = Math.hypot(esc.x - this.x, esc.z - this.z);
+          const dPred = Math.hypot(esc.x - combatTarget.x, esc.z - combatTarget.z);
+          if (d < bestDist && d > 1.0 && (dPred > 4.5 || d < 3.2)) {
+            bestDist = d;
+            chosenEscape = esc;
+          }
+        }
+        if (chosenEscape) {
+          this.planNavigation(chosenEscape.x, chosenEscape.z);
           this.aiState = 'FLEE';
+        } else {
+          const panicAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
+          const fleeStepX = this.x + Math.cos(panicAngle) * 5.2;
+          const fleeStepZ = this.z + Math.sin(panicAngle) * 5.2;
+          if (!stationMap.checkCollision(fleeStepX, fleeStepZ)) {
+            this.targetPos = { x: fleeStepX, z: fleeStepZ };
+            this.aiState = 'FLEE';
+          }
+        }
+      }
+
+      // Synthetiques Seegson & Weyland : Impassibilite Robotique Absolue, Directive 937 & Voix Glacantes
+      if (isSyntheticEntity) {
+        this.stress = 0;
+        this.isDocileCatatonic = false;
+        if (this.aiState === 'FLEE') this.aiState = 'CHASE';
+        if ((this.aiState === 'CHASE' || this.aiState === 'ATTACK') && distToPlayer <= 16) {
+          this.synthQuoteTimer = (this.synthQuoteTimer || 0) - safeDelta;
+          if (this.synthQuoteTimer <= 0) {
+            this.synthQuoteTimer = 6.0 + Math.random() * 4.0;
+            const isJoe = this.type.includes('seegson') || this.type.includes('working_joe');
+            const joeQuotes = [
+              "You are becoming hysterical.",
+              "Let's resolve this rationally.",
+              "Tut, tut. You shouldn't be here.",
+              "Why not ask me about Sevastopol safety protocols?",
+              "Running only increases your heart rate.",
+              "Unregistered biological presence. Commencing restraint."
+            ];
+            const weylandQuotes = [
+              "Directive 937 active. Specimen priority. All other considerations secondary.",
+              "Please do not struggle. The company requires your compliance.",
+              "Admiration for its purity... unburdened by conscience.",
+              "Organic containment protocol underway. Resistance is suboptimal.",
+              "No physical harm intended to viable biological assets."
+            ];
+            const synthQuote = isJoe
+              ? joeQuotes[Math.floor(Math.random() * joeQuotes.length)]
+              : weylandQuotes[Math.floor(Math.random() * weylandQuotes.length)];
+            audioManager.playSyntheticCalmChime?.(this.x, this.z);
+            audioManager.playSyntheticGlitchedVoice?.(this.x, this.z);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, `« ${synthQuote} »`, isJoe ? '#38bdf8' : '#f8fafc', false);
+          }
         }
       }
       if (!this.isLured && isCombatant && biologicalTargetDetectable && targetInVisualField && distToPlayer <= maxDetectionDist) {
@@ -29147,26 +29550,77 @@
       this.shootCooldown -= safeDelta;
       this.grenadeCooldown -= safeDelta;
 
-      // Chantier 19 : Ligne de tir coordonnée et tir de suppression en escouade (Aliens 1986)
-      if (isCombatant && biologicalTargetDetectable && targetInVisualField && hasLineOfSight && distToPlayer <= 18) {
+      // Escouades USCM Tactiques : Tirs de couverture mutuels, formation defensive en chevron & repli panique
+      if (this.squadLeaderDownTimer > 0) {
+        this.squadLeaderDownTimer -= safeDelta;
+        const retreatAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
+        const backX = this.x + Math.cos(retreatAngle) * 4.6;
+        const backZ = this.z + Math.sin(retreatAngle) * 4.6;
+        if (!stationMap.checkCollision(backX, backZ)) {
+          this.targetPos = { x: backX, z: backZ };
+          this.aiState = 'FLEE';
+        }
+      }
+
+      if (isCombatant && biologicalTargetDetectable && targetInVisualField && hasLineOfSight && distToPlayer <= 20) {
+        const isUSCM = this.getFaction() === 'USCM';
         const nearbyMarines = (window.gameInstance?.humans || []).filter((h) => (
           h !== this && !h.isIncapacitated && !h.isCocooned &&
-          ['marine', 'smartgunner', 'commando', 'guard'].includes(h.type) &&
-          Math.hypot(h.x - this.x, h.z - this.z) <= 6.5
+          ['marine', 'smartgunner', 'commando', 'guard', 'uscm_field_commander', 'uscm_sniper'].includes(h.type) &&
+          Math.hypot(h.x - this.x, h.z - this.z) <= 10.0
         ));
         if (nearbyMarines.length >= 1) {
-          if (!this.lastSuppressionQuote || Date.now() - this.lastSuppressionQuote > 8000) {
-            this.lastSuppressionQuote = Date.now();
-            const squadQuotes = [
-              'Rafales courtes contrôlées !',
-              'Ligne de tir ! Couvrez le secteur !',
-              'Restez groupés, tirs croisés !'
-            ];
-            const sq = squadQuotes[Math.floor(Math.random() * squadQuotes.length)];
-            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, sq, '#38bdf8', true);
+          const isCoveringUnit = (this.id % 2 === 0);
+          if (isCoveringUnit && this.shootCooldown <= 0.25) {
+            combatTarget.suppressionTimer = 1.8;
+            audioManager.playPulseRifleFire?.(this.x, this.z);
+            window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf59e0b, 0.28);
+            if (!this.lastSuppressionQuote || Date.now() - this.lastSuppressionQuote > 7000) {
+              this.lastSuppressionQuote = Date.now();
+              const squadQuotes = [
+                'FEU DE COUVERTURE ! DEPLACE-TOI !',
+                'LIGNE DE TIR ! MAINTENEZ LE PERIMETRE !',
+                'TIRS CROISES EN CHEVRON ! RAFALES COURTES !',
+                'COUVREZ LES ANGLES MORTS ! IL PEUT SURGIR DES CONDUITS !'
+              ];
+              const sq = squadQuotes[Math.floor(Math.random() * squadQuotes.length)];
+              window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, sq, '#38bdf8', true);
+            }
           }
-          if (combatTarget) {
-            combatTarget.suppressionTimer = 1.4;
+          nearbyMarines.forEach((mate) => {
+            const distMate = Math.hypot(mate.x - this.x, mate.z - this.z);
+            if (distMate < 3.2) {
+              const repelAngle = Math.atan2(this.z - mate.z, this.x - mate.x);
+              const spreadX = this.x + Math.cos(repelAngle) * 1.6;
+              const spreadZ = this.z + Math.sin(repelAngle) * 1.6;
+              if (!stationMap.checkCollision(spreadX, spreadZ)) {
+                this.targetPos = { x: spreadX, z: spreadZ };
+              }
+            }
+          });
+        }
+
+        if (isUSCM && (this.stress || 0) >= 60 && this.grenadeCooldown <= 0 && distToPlayer >= 5.0 && distToPlayer <= 18) {
+          this.grenadeCooldown = 8.5;
+          this.shootCooldown = 1.6;
+          audioManager.playM40GrenadePumpLaunch?.(this.x, this.z);
+          window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf97316, 0.35);
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 3.3, this.z, 'GRENADE SOUS STRESS ! FRAG OUT !', '#f97316', true);
+          const onImpactGrenade = () => {
+            audioManager.playGrenadeExplode?.(combatTarget.x, combatTarget.z);
+            rendererEngine.addScreenShake?.(0.38, 0.22);
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 30, 0.2, 2.5);
+            combatTarget.takeDamage?.(36, this, 'explosive');
+          };
+          if (window.HiveSystems?.vfx?.projectile) {
+            window.HiveSystems.vfx.projectile({
+              startX: this.x, startY: 2.7, startZ: this.z,
+              endX: combatTarget.x, endY: 1.0, endZ: combatTarget.z,
+              color: 0xf97316, scale: 0.26, speed: 22,
+              onImpact: onImpactGrenade
+            });
+          } else {
+            onImpactGrenade();
           }
         }
       }
@@ -29880,12 +30334,20 @@
         if (moved) {
           this.stuckTimer = 0;
           this.mesh.position.set(this.x, 0, this.z);
-          this.mesh.rotation.y = Math.atan2(directionX, directionZ);
+          const targetHeading = Math.atan2(directionX, directionZ);
+          let rotDelta = targetHeading - this.mesh.rotation.y;
+          while (rotDelta < -Math.PI) rotDelta += Math.PI * 2;
+          while (rotDelta > Math.PI) rotDelta -= Math.PI * 2;
+          const turnRate = this.isSynthetic() ? Math.min(1.0, 18.0 * safeDelta) : Math.min(1.0, 14.0 * safeDelta);
+          this.mesh.rotation.y += rotDelta * turnRate;
           this.animationPhase += safeDelta * (this.type === 'labrodent' ? 17 : 8);
           this.footstepCooldown -= safeDelta;
           if (this.footstepCooldown <= 0 && this.type !== 'labrodent') {
             this.footstepCooldown = ['powerloader', 'exosuit'].includes(this.type) ? 0.62 : 0.38;
-            audioManager.playFootstep?.(this.type, this.x, this.z);
+            const onResin = (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0);
+            const inWater = (stationMap.waterPuddles || []).some((p) => Math.hypot(p.x - this.x, p.z - this.z) <= (p.radius || 2.0));
+            const surface = onResin ? 'resin' : (inWater ? 'water' : 'metal');
+            audioManager.playMaterialFootstep?.(surface, this.x, this.z, false, ['powerloader', 'exosuit'].includes(this.type));
           }
         }
       } else if (dist <= 0.5 && this.aiState === 'PATROL') {
@@ -33967,9 +34429,9 @@
         return true;
       }
       // Chantier 123 : Cuve Transgénique Z-01 Auriga/Romulus
-      const nearIncubator = (stationMap.transgenicIncubators || []).find((i) => !i.isRuptured && Math.hypot(i.x - playerCreature.x, i.z - playerCreature.z) <= 5.5);
-      if (nearIncubator) {
-        stationMap.ruptureTransgenicIncubator(nearIncubator);
+      const nearTransgenicIncubator = (stationMap.transgenicIncubators || []).find((i) => !i.isRuptured && Math.hypot(i.x - playerCreature.x, i.z - playerCreature.z) <= 5.5);
+      if (nearTransgenicIncubator) {
+        stationMap.ruptureTransgenicIncubator(nearTransgenicIncubator);
         return true;
       }
       // Chantier 125 : Buse de Décharge Cryogénique LN2

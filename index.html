@@ -45,23 +45,565 @@
         </div>
 
         <div class="campaign-options">
-          <label for="difficulty-select">DIFFICULTÉ</label>
-          <select id="difficulty-select">
-            <option value="story">RÉCIT — menace réduite</option>
-            <option value="survivor" selected>SURVIVANT — expérience équilibrée</option>
-            <option value="nightmare">CAUCHEMAR — réaction humaine extrême</option>
-          </select>
-          <label for="origin-select">LIEU D'ORIGINE DU DÉPART (ACTE 1)</label>
-          <select id="origin-select">
-            <option value="random" selected>🎲 ALÉATOIRE (1 des 4 cartes et origines)</option>
-            <option value="juggernaut">🪐 Épave Derelict / Juggernaut (Pilote Ingénieur, Scaphandre EVA)</option>
-            <option value="hive">🪺 Ruche Bio-Résine (Nid alien, Patrouille Marine Colonial USCM)</option>
-            <option value="colony">🏭 Colonie Hadley's Hope (Sous-sol industriel, Ouvrier en salopette)</option>
-            <option value="starship">🚀 Vaisseau USCSS Nostromo (Laboratoire Médical, Blouse scientifique)</option>
-          </select>
-          <label class="toggle-row">
+          <!-- Éléments select originaux conservés en arrière-plan pour compatibilité 100% avec toute la logique existante et tests -->
+          <div class="sr-only-compat" aria-hidden="true">
+            <label for="difficulty-select">DIFFICULTÉ</label>
+            <select id="difficulty-select" tabindex="-1">
+              <option value="story">RÉCIT — menace réduite</option>
+              <option value="survivor" selected>SURVIVANT — expérience équilibrée</option>
+              <option value="nightmare">CAUCHEMAR — réaction humaine extrême</option>
+            </select>
+            <label for="origin-select">LIEU D'ORIGINE DU DÉPART (ACTE 1)</label>
+            <select id="origin-select" tabindex="-1">
+              <option value="random" selected>🎲 ALÉATOIRE (1 des 4 cartes et origines)</option>
+              <option value="juggernaut">🪐 Épave Derelict / Juggernaut (Pilote Ingénieur, Scaphandre EVA)</option>
+              <option value="hive">🪺 Ruche Bio-Résine (Nid alien, Patrouille Marine Colonial USCM)</option>
+              <option value="colony">🏭 Colonie Hadley's Hope (Sous-sol industriel, Ouvrier en salopette)</option>
+              <option value="starship">🚀 Vaisseau USCSS Nostromo (Laboratoire Médical, Blouse scientifique)</option>
+            </select>
+          </div>
+
+          <!-- ==========================================
+               MODULE 1 : SÉLECTION DE LA DIFFICULTÉ
+          =========================================== -->
+          <div class="menu-section-header">
+            <div class="menu-section-meta">
+              <span class="menu-section-tag">PARAMÈTRE // 01</span>
+              <span class="menu-section-sub">PROTOCOLE DE MENACE</span>
+            </div>
+            <h3 class="menu-section-title">DIFFICULTÉ OPÉRATIONNELLE</h3>
+          </div>
+
+          <div class="difficulty-grid" role="radiogroup" aria-label="Niveau de difficulté">
+            <!-- 1. RÉCIT (Vert / Bouclier) -->
+            <div class="diff-card" data-difficulty="story" role="radio" aria-checked="false" tabindex="0">
+              <div class="card-tech-corners" aria-hidden="true"></div>
+              <div class="diff-card-header">
+                <div class="diff-icon-box diff-story">
+                  <svg viewBox="0 0 32 32" class="diff-svg" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path d="M16 3 L27 7 V16 C27 23 16 29 16 29 C16 29 5 23 5 16 V7 Z" fill="rgba(16, 185, 129, 0.15)" stroke="#10b981" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M16 7 L23 10 V16 C23 20.8 16 25 16 25 C16 25 9 20.8 9 16 V10 Z" stroke="#34d399" stroke-width="1.2" stroke-dasharray="2 2"/>
+                    <circle cx="16" cy="15" r="3" fill="#10b981"/>
+                    <line x1="16" y1="10" x2="16" y2="12" stroke="#34d399" stroke-width="1.5"/>
+                    <line x1="16" y1="18" x2="16" y2="20" stroke="#34d399" stroke-width="1.5"/>
+                    <line x1="11" y1="15" x2="13" y2="15" stroke="#34d399" stroke-width="1.5"/>
+                    <line x1="19" y1="15" x2="21" y2="15" stroke="#34d399" stroke-width="1.5"/>
+                  </svg>
+                </div>
+                <div class="diff-title-group">
+                  <span class="diff-badge badge-story">SÉCURITÉ W-Y</span>
+                  <h4 class="diff-title">RÉCIT</h4>
+                </div>
+              </div>
+              <p class="diff-desc">Menace et stress biologiques atténués. Vigilance et réactivité humaine réduites.</p>
+              <div class="diff-stats">
+                <div class="stat-chip"><span class="chip-lbl">LÉTALITÉ</span><span class="chip-val val-green">18%</span></div>
+                <div class="chip-divider"></div>
+                <div class="stat-chip"><span class="chip-lbl">IA ENNEMIE</span><span class="chip-val">PASSIVE</span></div>
+              </div>
+              <div class="card-status-bar">
+                <span class="status-dot"></span>
+                <span class="status-text">STANDBY</span>
+              </div>
+            </div>
+
+            <!-- 2. SURVIVANT (Ambre / Chevron USCM - Actif par défaut) -->
+            <div class="diff-card active" data-difficulty="survivor" role="radio" aria-checked="true" tabindex="0">
+              <div class="card-tech-corners" aria-hidden="true"></div>
+              <div class="diff-card-header">
+                <div class="diff-icon-box diff-survivor">
+                  <svg viewBox="0 0 32 32" class="diff-svg" fill="none" stroke="currentColor" aria-hidden="true">
+                    <circle cx="16" cy="16" r="13" stroke="rgba(245, 158, 11, 0.4)" stroke-width="1" stroke-dasharray="3 3"/>
+                    <path d="M7 11 L16 18 L25 11" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M7 17 L16 24 L25 17" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="16" cy="16" r="2" fill="#fbbf24"/>
+                    <line x1="16" y1="2" x2="16" y2="5" stroke="#f59e0b" stroke-width="1.5"/>
+                    <line x1="16" y1="27" x2="16" y2="30" stroke="#f59e0b" stroke-width="1.5"/>
+                    <line x1="2" y1="16" x2="5" y2="16" stroke="#f59e0b" stroke-width="1.5"/>
+                    <line x1="27" y1="16" x2="30" y2="16" stroke="#f59e0b" stroke-width="1.5"/>
+                  </svg>
+                </div>
+                <div class="diff-title-group">
+                  <span class="diff-badge badge-survivor">USCM STANDARD</span>
+                  <h4 class="diff-title">SURVIVANT</h4>
+                </div>
+              </div>
+              <p class="diff-desc">L'expérience tactique canonique. Patrouilles armées et réactivité nominale de l'équipage.</p>
+              <div class="diff-stats">
+                <div class="stat-chip"><span class="chip-lbl">LÉTALITÉ</span><span class="chip-val val-amber">65%</span></div>
+                <div class="chip-divider"></div>
+                <div class="stat-chip"><span class="chip-lbl">IA ENNEMIE</span><span class="chip-val">TACTIQUE</span></div>
+              </div>
+              <div class="card-status-bar">
+                <span class="status-dot"></span>
+                <span class="status-text">ACTIF</span>
+              </div>
+            </div>
+
+            <!-- 3. CAUCHEMAR (Rouge / Crâne Xéno) -->
+            <div class="diff-card" data-difficulty="nightmare" role="radio" aria-checked="false" tabindex="0">
+              <div class="card-tech-corners" aria-hidden="true"></div>
+              <div class="diff-card-header">
+                <div class="diff-icon-box diff-nightmare">
+                  <svg viewBox="0 0 32 32" class="diff-svg" fill="none" stroke="currentColor" aria-hidden="true">
+                    <polygon points="16,3 29,27 3,27" fill="rgba(239, 68, 68, 0.12)" stroke="#ef4444" stroke-width="1.2"/>
+                    <path d="M8 15 C8 10 12 7 19 7 C24 7 27 10 27 14 C27 17 24 18 22 18 C20 18 19 19 18 21 L16 21 L16 19 C13 19 10 19 8 17 Z" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="1.3"/>
+                    <path d="M10 17 L11 15 M13 17 L14 15 M16 17 L17 15 M19 18 L19.5 16 M21 18 L21.5 16.5" stroke="#fca5a5" stroke-width="1.1" stroke-linecap="round"/>
+                    <circle cx="21" cy="12" r="1.5" fill="#f87171"/>
+                  </svg>
+                </div>
+                <div class="diff-title-group">
+                  <span class="diff-badge badge-nightmare">BIO-MENACE ALPHA</span>
+                  <h4 class="diff-title">CAUCHEMAR</h4>
+                </div>
+              </div>
+              <p class="diff-desc">Réaction humaine impitoyable. Détection fulgurante, lance-flammes et tourelles de défense.</p>
+              <div class="diff-stats">
+                <div class="stat-chip"><span class="chip-lbl">LÉTALITÉ</span><span class="chip-val val-red">98%</span></div>
+                <div class="chip-divider"></div>
+                <div class="stat-chip"><span class="chip-lbl">IA ENNEMIE</span><span class="chip-val">EXTRÊME</span></div>
+              </div>
+              <div class="card-status-bar">
+                <span class="status-dot"></span>
+                <span class="status-text">STANDBY</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==========================================
+               MODULE 2 : SÉLECTION DU SECTEUR D'ORIGINE
+          =========================================== -->
+          <div class="menu-section-header">
+            <div class="menu-section-meta">
+              <span class="menu-section-tag">PARAMÈTRE // 02</span>
+              <span class="menu-section-sub">LIEU D'ORIGINE DU DÉPART — ACTE I</span>
+            </div>
+            <h3 class="menu-section-title">ORIGINE DU PREMIER SPÉCIMEN</h3>
+          </div>
+
+          <div class="origin-grid" role="radiogroup" aria-label="Lieu d'origine du départ (Acte 1)">
+            <!-- ORIGINE 1 : ALÉATOIRE (Bandeau Tactique Radar Holographique) -->
+            <div class="origin-card origin-featured active" data-origin="random" role="radio" aria-checked="true" tabindex="0">
+              <div class="card-tech-corners" aria-hidden="true"></div>
+              <div class="origin-thumb-container">
+                <div class="origin-thumb-scanlines" aria-hidden="true"></div>
+                <div class="origin-thumb-badge">ORPHEUS RNG // MULTI-SCAN</div>
+                <svg class="origin-thumb-svg" viewBox="0 0 360 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-label="Miniature holographique radar du protocole aléatoire">
+                  <defs>
+                    <linearGradient id="rndGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="#0369a1" stop-opacity="0.3"/>
+                      <stop offset="50%" stop-color="#0284c7" stop-opacity="0.15"/>
+                      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.9"/>
+                    </linearGradient>
+                    <radialGradient id="radarSweep" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+                      <stop offset="70%" stop-color="#38bdf8" stop-opacity="0.08"/>
+                      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+                    </radialGradient>
+                  </defs>
+                  <rect width="360" height="140" fill="#040914"/>
+                  <line x1="0" y1="35" x2="360" y2="35" stroke="rgba(56, 189, 248, 0.1)" stroke-width="1"/>
+                  <line x1="0" y1="70" x2="360" y2="70" stroke="rgba(56, 189, 248, 0.15)" stroke-width="1"/>
+                  <line x1="0" y1="105" x2="360" y2="105" stroke="rgba(56, 189, 248, 0.1)" stroke-width="1"/>
+                  <line x1="90" y1="0" x2="90" y2="140" stroke="rgba(56, 189, 248, 0.08)" stroke-width="1"/>
+                  <line x1="180" y1="0" x2="180" y2="140" stroke="rgba(56, 189, 248, 0.15)" stroke-width="1"/>
+                  <line x1="270" y1="0" x2="270" y2="140" stroke="rgba(56, 189, 248, 0.08)" stroke-width="1"/>
+
+                  <circle cx="180" cy="70" r="60" fill="url(#rndGrad)" stroke="#0284c7" stroke-width="1" stroke-dasharray="4 2"/>
+                  <circle cx="180" cy="70" r="42" fill="none" stroke="#38bdf8" stroke-width="1"/>
+                  <circle cx="180" cy="70" r="22" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="2 2"/>
+                  <circle cx="180" cy="70" r="4" fill="#38bdf8"/>
+
+                  <path d="M180 70 L238 28 A60 60 0 0 0 180 10 Z" fill="url(#radarSweep)"/>
+                  <line x1="180" y1="70" x2="238" y2="28" stroke="#38bdf8" stroke-width="1.5"/>
+
+                  <g transform="translate(130, 42)">
+                    <circle cx="0" cy="0" r="3" fill="#38bdf8"/>
+                    <circle cx="0" cy="0" r="7" fill="none" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.6"/>
+                    <text x="9" y="3" fill="#7dd3fc" font-family="'Share Tech Mono', monospace" font-size="8">SEC-01 DERELICT</text>
+                  </g>
+                  <g transform="translate(230, 48)">
+                    <circle cx="0" cy="0" r="3" fill="#c084fc"/>
+                    <circle cx="0" cy="0" r="7" fill="none" stroke="#c084fc" stroke-width="1" stroke-opacity="0.6"/>
+                    <text x="9" y="3" fill="#d8b4fe" font-family="'Share Tech Mono', monospace" font-size="8">SEC-02 HIVE</text>
+                  </g>
+                  <g transform="translate(225, 98)">
+                    <circle cx="0" cy="0" r="3" fill="#fbbf24"/>
+                    <circle cx="0" cy="0" r="7" fill="none" stroke="#fbbf24" stroke-width="1" stroke-opacity="0.6"/>
+                    <text x="9" y="3" fill="#fde68a" font-family="'Share Tech Mono', monospace" font-size="8">SEC-03 COLONY</text>
+                  </g>
+                  <g transform="translate(135, 102)">
+                    <circle cx="0" cy="0" r="3" fill="#34d399"/>
+                    <circle cx="0" cy="0" r="7" fill="none" stroke="#34d399" stroke-width="1" stroke-opacity="0.6"/>
+                    <text x="9" y="3" fill="#a7f3d0" font-family="'Share Tech Mono', monospace" font-size="8">SEC-04 NOSTROMO</text>
+                  </g>
+
+                  <path d="M10 126 Q30 118 50 126 T90 126 T130 115 T150 135 T170 126 T210 120 T230 132 T260 126 T300 126 T350 126" fill="none" stroke="#0284c7" stroke-width="1.2" stroke-opacity="0.8"/>
+                  <path d="M15 15 H25 M20 10 V20 M335 15 H345 M340 10 V20 M15 125 H25 M20 120 V130 M335 125 H345 M340 120 V130" stroke="#0284c7" stroke-width="1"/>
+                </svg>
+              </div>
+              <div class="origin-card-body">
+                <div class="origin-header-row">
+                  <div class="origin-icon-box origin-icon-rnd">
+                    <svg viewBox="0 0 24 24" class="origin-svg-icon" fill="none" stroke="currentColor" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" stroke-width="1.5"/>
+                      <circle cx="12" cy="12" r="6" stroke-width="1" stroke-dasharray="2 2"/>
+                      <path d="M12 2 L12 6 M12 18 L12 22 M2 12 L6 12 M18 12 L22 12" stroke-width="1.5"/>
+                      <path d="M12 12 L18 8" stroke="#38bdf8" stroke-width="2"/>
+                    </svg>
+                  </div>
+                  <div class="origin-title-meta">
+                    <div class="origin-faction-tag">TÉLÉMÉTRIE CLASSIFIÉE</div>
+                    <h4 class="origin-title">PROTOCOLE ALÉATOIRE</h4>
+                    <span class="origin-loc-sub">Sélection imprévisible parmi les 4 zones d'éclosion</span>
+                  </div>
+                  <span class="origin-select-tag">ACTIF</span>
+                </div>
+                <p class="origin-desc">Lancement d'incubation tactique sous confinement aveugle. La ruche s'éveille dans l'une des 4 zones historiques.</p>
+                <div class="origin-specs-grid">
+                  <div class="spec-cell"><span class="spec-k">HÔTE CIBLE</span><span class="spec-v val-cyan">INCONNU / ALÉATOIRE</span></div>
+                  <div class="spec-cell"><span class="spec-k">SECTEUR</span><span class="spec-v">VARIABLE [1 SUR 4]</span></div>
+                  <div class="spec-cell"><span class="spec-k">COORDONNÉES</span><span class="spec-v">[???.?? // ???.??]</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ORIGINE 2 : ÉPAVE DERELICT LV-426 -->
+            <div class="origin-card" data-origin="juggernaut" role="radio" aria-checked="false" tabindex="0">
+              <div class="card-tech-corners" aria-hidden="true"></div>
+              <div class="origin-thumb-container">
+                <div class="origin-thumb-scanlines" aria-hidden="true"></div>
+                <div class="origin-thumb-badge">LV-426 // MALAI'KAK</div>
+                <svg class="origin-thumb-svg" viewBox="0 0 360 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-label="Illustration de la nef Derelict sur les pics rocheux sous la brume de LV-426">
+                  <defs>
+                    <linearGradient id="skyJugg" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#030712"/>
+                      <stop offset="50%" stop-color="#08172b"/>
+                      <stop offset="100%" stop-color="#020617"/>
+                    </linearGradient>
+                    <linearGradient id="mistGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0"/>
+                      <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.25"/>
+                      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.05"/>
+                    </linearGradient>
+                    <linearGradient id="beamGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.4"/>
+                      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <rect width="360" height="140" fill="url(#skyJugg)"/>
+                  <circle cx="300" cy="35" r="24" fill="#0f2238" stroke="#1e3a5f" stroke-width="1"/>
+                  <ellipse cx="300" cy="35" rx="38" ry="7" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-opacity="0.4" transform="rotate(-15 300 35)"/>
+                  <circle cx="45" cy="22" r="0.8" fill="#e0f2fe"/>
+                  <circle cx="120" cy="15" r="1.1" fill="#bae6fd"/>
+                  <circle cx="190" cy="28" r="0.7" fill="#e0f2fe"/>
+                  <circle cx="230" cy="18" r="0.9" fill="#bae6fd"/>
+
+                  <polygon points="0,110 35,80 80,105 130,75 190,110 240,82 290,105 330,78 360,105 360,140 0,140" fill="#050d1a"/>
+                  <polygon points="0,125 40,95 75,120 115,85 160,125 210,92 260,130 310,90 360,125 360,140 0,140" fill="#030812"/>
+
+                  <!-- Derelict Horseshoe Silhouette -->
+                  <g transform="translate(100, 32)">
+                    <path d="M15 55 C12 35 25 18 45 12 C60 8 75 14 78 26 C80 34 74 42 66 45 C55 49 42 55 35 68 Z" fill="#0a192f" stroke="#38bdf8" stroke-width="1.2"/>
+                    <path d="M145 55 C148 35 135 18 115 12 C100 8 85 14 82 26 C80 34 86 42 94 45 C105 49 118 55 125 68 Z" fill="#0a192f" stroke="#38bdf8" stroke-width="1.2"/>
+                    <path d="M60 26 C60 16 70 8 80 8 C90 8 100 16 100 26 C100 34 90 40 80 40 C70 40 60 34 60 26 Z" fill="#081426" stroke="#38bdf8" stroke-width="1.4"/>
+                    <ellipse cx="80" cy="24" rx="6" ry="4" fill="#0284c7" stroke="#7dd3fc" stroke-width="1"/>
+                    <path d="M35 30 L45 35 M48 24 L56 30 M112 30 L104 35 M125 24 L117 30" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8"/>
+                  </g>
+
+                  <!-- Mist layers -->
+                  <ellipse cx="180" cy="115" rx="140" ry="25" fill="url(#mistGrad)"/>
+                  <ellipse cx="80" cy="125" rx="90" ry="18" fill="url(#mistGrad)"/>
+                  <ellipse cx="280" cy="120" rx="90" ry="20" fill="url(#mistGrad)"/>
+
+                  <!-- Explorer Kane Spotlight & Silhouette -->
+                  <polygon points="65,128 115,70 145,72 85,130" fill="url(#beamGrad)"/>
+                  <circle cx="62" cy="122" r="2.2" fill="#7dd3fc"/>
+                  <path d="M59 125 L65 125 L63 133 L61 133 Z" fill="#38bdf8"/>
+                  <line x1="64" y1="125" x2="72" y2="124" stroke="#e0f2fe" stroke-width="1"/>
+                </svg>
+              </div>
+              <div class="origin-card-body">
+                <div class="origin-header-row">
+                  <div class="origin-icon-box origin-icon-jugg">
+                    <svg viewBox="0 0 24 24" class="origin-svg-icon" fill="none" stroke="currentColor" aria-hidden="true">
+                      <path d="M12 3 C8 3 5 6 5 11 C5 15 8 17 10 18 L10 21 L14 21 L14 18 C16 17 19 15 19 11 C19 6 16 3 12 3 Z" stroke-width="1.5"/>
+                      <path d="M8 11 C8 9 10 8 12 8 C14 8 16 9 16 11 L16 13 C16 15 14 16 12 16 C10 16 8 15 8 13 Z" stroke="#38bdf8" stroke-width="1.2"/>
+                      <path d="M12 16 L12 21" stroke="#38bdf8" stroke-width="1.5"/>
+                      <circle cx="12" cy="12" r="1.5" fill="#38bdf8"/>
+                    </svg>
+                  </div>
+                  <div class="origin-title-meta">
+                    <div class="origin-faction-tag">INGÉNIEUR // MALAI'KAK</div>
+                    <h4 class="origin-title">ÉPAVE DERELICT</h4>
+                    <span class="origin-loc-sub">LV-426 · Chambre des Œufs Fossilisée</span>
+                  </div>
+                  <span class="origin-select-tag">SÉLECTIONNER</span>
+                </div>
+                <p class="origin-desc">Signal de détresse acoustique ultra-basse fréquence. Un explorateur en scaphandre lourd descend dans la nef alien.</p>
+                <div class="origin-specs-grid">
+                  <div class="spec-cell"><span class="spec-k">HÔTE CIBLE</span><span class="spec-v val-cyan">G. Kane (Scaphandre EVA)</span></div>
+                  <div class="spec-cell"><span class="spec-k">ATMOSPHÈRE</span><span class="spec-v">Brume bleue · Cryo-stase</span></div>
+                  <div class="spec-cell"><span class="spec-k">COORDONNÉES</span><span class="spec-v">[-55.0 // +02.0]</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ORIGINE 3 : RUCHE D'ACHERON -->
+            <div class="origin-card" data-origin="hive" role="radio" aria-checked="false" tabindex="0">
+              <div class="card-tech-corners" aria-hidden="true"></div>
+              <div class="origin-thumb-container">
+                <div class="origin-thumb-scanlines" aria-hidden="true"></div>
+                <div class="origin-thumb-badge">ACHERON // NID PRIMAIRE</div>
+                <svg class="origin-thumb-svg" viewBox="0 0 360 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-label="Illustration de la ruche d'Acheron avec voûtes de chitine et hôte emmuré dans la bio-résine">
+                  <defs>
+                    <linearGradient id="hiveGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#12031a"/>
+                      <stop offset="60%" stop-color="#2a0840"/>
+                      <stop offset="100%" stop-color="#09010e"/>
+                    </linearGradient>
+                    <radialGradient id="eggGlow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#c084fc" stop-opacity="0.7"/>
+                      <stop offset="60%" stop-color="#a855f7" stop-opacity="0.25"/>
+                      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+                    </radialGradient>
+                  </defs>
+                  <rect width="360" height="140" fill="url(#hiveGrad)"/>
+
+                  <path d="M0 0 Q30 45 40 60 Q45 35 60 0 Q80 50 95 70 Q105 40 120 0 Q150 65 170 85 Q185 45 200 0 Q230 55 250 75 Q265 35 290 0 Q320 60 340 75 Q350 40 360 0 Z" fill="#1b0529" stroke="#7e22ce" stroke-width="1.2"/>
+                  <path d="M20 0 Q40 35 48 48 Q55 25 70 0 Q100 40 110 55 Q120 25 140 0 Q170 50 185 65 Q195 30 220 0 Q250 45 265 60 Q275 25 300 0 Q330 45 345 55 Q355 25 360 0 Z" fill="#2d0a42" stroke="#a855f7" stroke-width="0.8" stroke-opacity="0.6"/>
+
+                  <path d="M45 60 Q60 90 70 140 M110 55 Q90 100 105 140 M265 60 Q290 95 280 140 M340 75 Q320 110 330 140" stroke="#581c87" stroke-width="2.5" fill="none"/>
+                  <path d="M45 60 Q60 90 70 140 M110 55 Q90 100 105 140 M265 60 Q290 95 280 140 M340 75 Q320 110 330 140" stroke="#c084fc" stroke-width="0.8" stroke-opacity="0.7" fill="none"/>
+
+                  <!-- Ovomorph Egg -->
+                  <ellipse cx="100" cy="115" rx="30" ry="16" fill="url(#eggGlow)"/>
+                  <path d="M85 125 C82 105 90 92 100 90 C110 92 118 105 115 125 Z" fill="#1e072e" stroke="#c084fc" stroke-width="1.4"/>
+                  <path d="M96 90 L90 82 M104 90 L110 82 M94 92 L86 88 M106 92 L114 88" stroke="#f472b6" stroke-width="1.5" stroke-linecap="round"/>
+                  <ellipse cx="100" cy="92" rx="4" ry="2" fill="#39ff14"/>
+
+                  <!-- Cocooned Marine Dietrich -->
+                  <g transform="translate(255, 75)">
+                    <path d="M10 5 C5 -10 25 -20 32 -10 C38 0 35 30 28 45 C22 55 5 45 8 30 Z" fill="#190426" stroke="#a855f7" stroke-width="1.4"/>
+                    <circle cx="21" cy="-3" r="5" fill="#3b0764" stroke="#c084fc" stroke-width="1"/>
+                    <path d="M18 -3 Q21 -5 24 -3" stroke="#38bdf8" stroke-width="1.2" fill="none"/>
+                    <path d="M15 5 L27 5 L25 18 L17 18 Z" fill="#2e1065" stroke="#7e22ce" stroke-width="1"/>
+                    <line x1="2" y1="-8" x2="38" y2="12" stroke="#d8b4fe" stroke-width="1" stroke-opacity="0.7"/>
+                    <line x1="36" y1="-5" x2="5" y2="25" stroke="#d8b4fe" stroke-width="1" stroke-opacity="0.7"/>
+                    <line x1="8" y1="35" x2="35" y2="40" stroke="#d8b4fe" stroke-width="1" stroke-opacity="0.7"/>
+                  </g>
+
+                  <!-- Spore Motes -->
+                  <circle cx="140" cy="75" r="1.5" fill="#c084fc"/>
+                  <circle cx="165" cy="50" r="1.2" fill="#39ff14"/>
+                  <circle cx="190" cy="85" r="1.8" fill="#e879f9"/>
+                  <circle cx="220" cy="65" r="1.2" fill="#c084fc"/>
+                </svg>
+              </div>
+              <div class="origin-card-body">
+                <div class="origin-header-row">
+                  <div class="origin-icon-box origin-icon-hive">
+                    <svg viewBox="0 0 24 24" class="origin-svg-icon" fill="none" stroke="currentColor" aria-hidden="true">
+                      <path d="M12 2 C8 6 6 10 6 14 C6 18 9 22 12 22 C15 22 18 18 18 14 C18 10 16 6 12 2 Z" stroke-width="1.5"/>
+                      <path d="M12 7 C10 10 9 12 9 15 C9 17 10 19 12 19" stroke="#a855f7" stroke-width="1.5"/>
+                      <circle cx="12" cy="15" r="2" fill="#a855f7"/>
+                      <path d="M5 11 L2 9 M19 11 L22 9 M4 16 L1 17 M20 16 L23 17" stroke="#c084fc" stroke-width="1.3" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <div class="origin-title-meta">
+                    <div class="origin-faction-tag">NID PRIMAIRE BIO-RÉSINE</div>
+                    <h4 class="origin-title">RUCHE D'ACHERON</h4>
+                    <span class="origin-loc-sub">Sous-sol Acheron · Nurserie de Ponte</span>
+                  </div>
+                  <span class="origin-select-tag">SÉLECTIONNER</span>
+                </div>
+                <p class="origin-desc">Atmosphère saturée de sécrétions de chitine et phéromones. Un fusilier colonial isolé cherche sa section dans la nurserie.</p>
+                <div class="origin-specs-grid">
+                  <div class="spec-cell"><span class="spec-k">HÔTE CIBLE</span><span class="spec-v val-violet">Cpt Dietrich (Marine USCM)</span></div>
+                  <div class="spec-cell"><span class="spec-k">ATMOSPHÈRE</span><span class="spec-v">Phéromones · Bio-résine</span></div>
+                  <div class="spec-cell"><span class="spec-k">COORDONNÉES</span><span class="spec-v">[+34.0 // +50.0]</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ORIGINE 4 : COLONIE HADLEY'S HOPE -->
+            <div class="origin-card" data-origin="colony" role="radio" aria-checked="false" tabindex="0">
+              <div class="card-tech-corners" aria-hidden="true"></div>
+              <div class="origin-thumb-container">
+                <div class="origin-thumb-scanlines" aria-hidden="true"></div>
+                <div class="origin-thumb-badge">HADLEY'S HOPE // SUB-LVL 3</div>
+                <svg class="origin-thumb-svg" viewBox="0 0 360 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-label="Illustration des coursives industrielles de Hadley's Hope avec tuyauterie et bandes d'alerte jaune et noir">
+                  <defs>
+                    <linearGradient id="corridorGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#0c0a07"/>
+                      <stop offset="60%" stop-color="#241407"/>
+                      <stop offset="100%" stop-color="#080705"/>
+                    </linearGradient>
+                    <linearGradient id="beaconCone" x1="1" y1="0.5" x2="0" y2="0.5">
+                      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.6"/>
+                      <stop offset="60%" stop-color="#f59e0b" stop-opacity="0.2"/>
+                      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+                    </linearGradient>
+                    <pattern id="hazardStripe" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                      <rect width="8" height="16" fill="#eab308"/>
+                      <rect x="8" width="8" height="16" fill="#18181b"/>
+                    </pattern>
+                  </defs>
+                  <rect width="360" height="140" fill="url(#corridorGrad)"/>
+
+                  <polygon points="0,0 120,40 120,100 0,140" fill="#120e09" stroke="#451a03" stroke-width="1.2"/>
+                  <polygon points="360,0 240,40 240,100 360,140" fill="#120e09" stroke="#451a03" stroke-width="1.2"/>
+
+                  <rect x="120" y="40" width="120" height="60" fill="#1a1208" stroke="#78350f" stroke-width="1.5"/>
+                  <rect x="150" y="52" width="60" height="48" fill="#0d0803" stroke="#b45309" stroke-width="1"/>
+
+                  <rect x="120" y="40" width="120" height="8" fill="url(#hazardStripe)"/>
+                  <rect x="120" y="40" width="8" height="60" fill="url(#hazardStripe)"/>
+                  <rect x="232" y="40" width="8" height="60" fill="url(#hazardStripe)"/>
+
+                  <path d="M0 12 L120 44 L240 44 L360 12" stroke="#52525b" stroke-width="4" fill="none"/>
+                  <path d="M0 20 L120 47 L240 47 L360 20" stroke="#71717a" stroke-width="2.5" fill="none"/>
+                  <path d="M0 6 L120 42 L240 42 L360 6" stroke="#3f3f46" stroke-width="3" fill="none"/>
+                  <path d="M60 24 Q70 42 75 40 Q80 32 90 40" stroke="#f59e0b" stroke-width="1.2" fill="none"/>
+                  <path d="M280 24 Q290 40 295 38" stroke="#ef4444" stroke-width="1.2" fill="none"/>
+
+                  <polygon points="0,140 120,100 240,100 360,140" fill="#0a0805" stroke="#451a03" stroke-width="1"/>
+                  <line x1="60" y1="120" x2="300" y2="120" stroke="#78350f" stroke-width="1" stroke-dasharray="3 3"/>
+                  <line x1="100" y1="107" x2="260" y2="107" stroke="#78350f" stroke-width="1" stroke-dasharray="2 2"/>
+
+                  <polygon points="180,50 30,0 30,140" fill="url(#beaconCone)"/>
+                  <circle cx="180" cy="50" r="5" fill="#f59e0b"/>
+                  <circle cx="180" cy="50" r="9" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-opacity="0.8"/>
+
+                  <ellipse cx="145" cy="85" rx="35" ry="12" fill="#f59e0b" fill-opacity="0.12"/>
+                  <ellipse cx="205" cy="90" rx="40" ry="14" fill="#f59e0b" fill-opacity="0.15"/>
+                </svg>
+              </div>
+              <div class="origin-card-body">
+                <div class="origin-header-row">
+                  <div class="origin-icon-box origin-icon-colony">
+                    <svg viewBox="0 0 24 24" class="origin-svg-icon" fill="none" stroke="currentColor" aria-hidden="true">
+                      <path d="M2 20 L2 8 L8 12 L8 8 L14 12 L14 4 L22 8 L22 20 Z" stroke-width="1.5"/>
+                      <rect x="6" y="15" width="3" height="5" fill="#f59e0b"/>
+                      <rect x="11" y="15" width="3" height="5" fill="#f59e0b"/>
+                      <rect x="16" y="15" width="3" height="5" fill="#f59e0b"/>
+                      <line x1="2" y1="20" x2="22" y2="20" stroke-width="2"/>
+                    </svg>
+                  </div>
+                  <div class="origin-title-meta">
+                    <div class="origin-faction-tag">SEEGSON & W-Y MINING</div>
+                    <h4 class="origin-title">COLONIE HADLEY'S HOPE</h4>
+                    <span class="origin-loc-sub">Sous-sol Industriel · Sub-Level 3</span>
+                  </div>
+                  <span class="origin-select-tag">SÉLECTIONNER</span>
+                </div>
+                <p class="origin-desc">Bruit de tuyauterie et condensation industrielle. Un ouvrier de maintenance colonial inspecte une anomalie de purge.</p>
+                <div class="origin-specs-grid">
+                  <div class="spec-cell"><span class="spec-k">HÔTE CIBLE</span><span class="spec-v val-amber">R. Jorden (Salopette Chantier)</span></div>
+                  <div class="spec-cell"><span class="spec-k">ATMOSPHÈRE</span><span class="spec-v">Vapeurs caloporteur · Ambre</span></div>
+                  <div class="spec-cell"><span class="spec-k">COORDONNÉES</span><span class="spec-v">[+40.0 // -42.0]</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ORIGINE 5 : VAISSEAU USCSS NOSTROMO -->
+            <div class="origin-card" data-origin="starship" role="radio" aria-checked="false" tabindex="0">
+              <div class="card-tech-corners" aria-hidden="true"></div>
+              <div class="origin-thumb-container">
+                <div class="origin-thumb-scanlines" aria-hidden="true"></div>
+                <div class="origin-thumb-badge">W-Y CORP // NOSTROMO MED</div>
+                <svg class="origin-thumb-svg" viewBox="0 0 360 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-label="Illustration du laboratoire médical capitonné du Nostromo avec cuve cryogénique et écrans ambre MU/TH/UR">
+                  <defs>
+                    <linearGradient id="nostromoGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#040812"/>
+                      <stop offset="50%" stop-color="#091829"/>
+                      <stop offset="100%" stop-color="#030812"/>
+                    </linearGradient>
+                    <linearGradient id="cryoTubeGrad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.2"/>
+                      <stop offset="50%" stop-color="#7dd3fc" stop-opacity="0.4"/>
+                      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.2"/>
+                    </linearGradient>
+                  </defs>
+                  <rect width="360" height="140" fill="url(#nostromoGrad)"/>
+
+                  <!-- Hexagonal padded wall modules (Alien 1979) -->
+                  <g stroke="#1e3a5f" stroke-width="1.2" fill="#081526" fill-opacity="0.8">
+                    <polygon points="15,20 30,12 45,20 45,38 30,46 15,38"/>
+                    <polygon points="15,56 30,48 45,56 45,74 30,82 15,74"/>
+                    <polygon points="15,92 30,84 45,92 45,110 30,118 15,110"/>
+                    <polygon points="45,38 60,30 75,38 75,56 60,64 45,56"/>
+                    <polygon points="45,74 60,66 75,74 75,92 60,100 45,92"/>
+                    <polygon points="45,110 60,102 75,110 75,128 60,136 45,128"/>
+                  </g>
+
+                  <!-- Cylindrical Cryo Pod -->
+                  <g transform="translate(105, 15)">
+                    <rect x="0" y="5" width="46" height="105" rx="10" fill="#0c1d33" stroke="#38bdf8" stroke-width="1.5"/>
+                    <rect x="6" y="16" width="34" height="82" rx="6" fill="url(#cryoTubeGrad)" stroke="#7dd3fc" stroke-width="1"/>
+                    <line x1="12" y1="35" x2="34" y2="35" stroke="#bae6fd" stroke-width="1" stroke-dasharray="2 2"/>
+                    <line x1="12" y1="55" x2="34" y2="55" stroke="#bae6fd" stroke-width="1" stroke-dasharray="2 2"/>
+                    <line x1="12" y1="75" x2="34" y2="75" stroke="#bae6fd" stroke-width="1" stroke-dasharray="2 2"/>
+                    <ellipse cx="23" cy="62" rx="9" ry="14" fill="#040b17" stroke="#38bdf8" stroke-width="1"/>
+                    <rect x="8" y="7" width="30" height="6" fill="#1e293b"/>
+                    <circle cx="16" cy="10" r="1.5" fill="#39ff14"/>
+                    <circle cx="23" cy="10" r="1.5" fill="#38bdf8"/>
+                    <circle cx="30" cy="10" r="1.5" fill="#ef4444"/>
+                  </g>
+
+                  <!-- MU/TH/UR CRT Screen Array -->
+                  <g transform="translate(180, 20)">
+                    <rect x="0" y="0" width="160" height="95" rx="6" fill="#0b1320" stroke="#334155" stroke-width="1.5"/>
+                    <rect x="8" y="8" width="144" height="42" rx="3" fill="#171206" stroke="#f59e0b" stroke-width="1.2"/>
+                    <text x="14" y="20" fill="#f59e0b" font-family="'Share Tech Mono', monospace" font-size="7.5" font-weight="bold">MU/TH/UR 6000 // CONFINEMENT ACTIF</text>
+                    <path d="M14 34 L35 34 L40 24 L45 42 L50 30 L55 36 L60 34 L100 34 L105 26 L110 40 L115 34 L144 34" fill="none" stroke="#fbbf24" stroke-width="1.2"/>
+
+                    <rect x="8" y="55" width="70" height="32" rx="2" fill="#171206" stroke="#d97706" stroke-width="1"/>
+                    <text x="12" y="65" fill="#fbbf24" font-family="'Share Tech Mono', monospace" font-size="6">TEMP : -18.4°C</text>
+                    <text x="12" y="73" fill="#fbbf24" font-family="'Share Tech Mono', monospace" font-size="6">STASE: STABLE</text>
+                    <text x="12" y="81" fill="#34d399" font-family="'Share Tech Mono', monospace" font-size="6">BIO-SCAN: ACTIF</text>
+
+                    <rect x="82" y="55" width="70" height="32" rx="2" fill="#171206" stroke="#d97706" stroke-width="1"/>
+                    <path d="M92 74 L102 63 L112 74 L107 74 L102 68 L97 74 Z" fill="#f59e0b"/>
+                    <path d="M122 74 L132 63 L142 74 L137 74 L132 68 L127 74 Z" fill="#f59e0b"/>
+                    <text x="100" y="82" fill="#fbbf24" font-family="'Share Tech Mono', monospace" font-size="5.5" font-weight="bold">W-Y CORP</text>
+                  </g>
+                </svg>
+              </div>
+              <div class="origin-card-body">
+                <div class="origin-header-row">
+                  <div class="origin-icon-box origin-icon-starship">
+                    <svg viewBox="0 0 24 24" class="origin-svg-icon" fill="none" stroke="currentColor" aria-hidden="true">
+                      <path d="M2 17 L8 6 L14 17 L11.5 17 L8 10.5 L4.5 17 Z" fill="#38bdf8" stroke="none"/>
+                      <path d="M10 17 L16 6 L22 17 L19.5 17 L16 10.5 L12.5 17 Z" fill="#38bdf8" stroke="none"/>
+                      <line x1="2" y1="20" x2="22" y2="20" stroke="#38bdf8" stroke-width="1.5"/>
+                    </svg>
+                  </div>
+                  <div class="origin-title-meta">
+                    <div class="origin-faction-tag">WEYLAND-YUTANI CORP</div>
+                    <h4 class="origin-title">USCSS NOSTROMO</h4>
+                    <span class="origin-loc-sub">Pont Médical · Laboratoire & Caissons Cryo</span>
+                  </div>
+                  <span class="origin-select-tag">SÉLECTIONNER</span>
+                </div>
+                <p class="origin-desc">Confinement médical actif et température régulée. Le personnel scientifique examine l'échantillon d'ovomorphe en quarantaine.</p>
+                <div class="origin-specs-grid">
+                  <div class="spec-cell"><span class="spec-k">HÔTE CIBLE</span><span class="spec-v val-cyan">Dr I. Kade (Blouse Nostromo)</span></div>
+                  <div class="spec-cell"><span class="spec-k">ATMOSPHÈRE</span><span class="spec-v">Cryo-givre · Médical stérile</span></div>
+                  <div class="spec-cell"><span class="spec-k">COORDONNÉES</span><span class="spec-v">[-20.0 // -35.0]</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- OPTION LORE ÉTENDU -->
+          <label class="toggle-row custom-toggle-row">
             <input type="checkbox" id="expanded-lore-toggle" checked>
-            <span>Autoriser les castes compatibles avec l’univers étendu</span>
+            <div class="toggle-indicator" aria-hidden="true"></div>
+            <div class="toggle-copy">
+              <span class="toggle-label">GÉNOME EXPANSION — CASTES ÉTENDUES</span>
+              <span class="toggle-desc">Autorise l'évolution en Prétorien, Spitter, Ravager et Crusher compatibles avec les archives Weyland-Yutani.</span>
+            </div>
           </label>
         </div>
 

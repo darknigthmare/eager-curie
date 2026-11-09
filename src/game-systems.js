@@ -773,6 +773,107 @@
       });
     }
 
+    // Persistance de fumees acides corrosives rongeant le metal avec bulles caustiques montantes
+    persistentCorrosiveFumes(x, z, duration = 6.0) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const radius = 1.8;
+      for (let i = 0; i < 14; i++) {
+        const size = 0.35 + Math.random() * 0.45;
+        const geo = new THREE.SphereGeometry(size, 7, 7);
+        const smokeColor = Math.random() < 0.6 ? 0x84cc16 : (Math.random() < 0.5 ? 0xa3e635 : 0x4d7c0f);
+        const mat = new THREE.MeshBasicMaterial({
+          color: smokeColor,
+          transparent: true,
+          opacity: 0.32 + Math.random() * 0.22,
+          depthWrite: false
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(
+          (Math.random() - 0.5) * radius * 1.5,
+          0.15 + Math.random() * 0.7,
+          (Math.random() - 0.5) * radius * 1.5
+        );
+        mesh.userData.isSmoke = true;
+        mesh.userData.baseOpacity = mat.opacity;
+        mesh.userData.vy = 0.4 + Math.random() * 0.5;
+        mesh.userData.vx = (Math.random() - 0.5) * 0.22;
+        mesh.userData.vz = (Math.random() - 0.5) * 0.22;
+        group.add(mesh);
+      }
+      for (let i = 0; i < 8; i++) {
+        const bGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 6, 6);
+        const bMat = new THREE.MeshBasicMaterial({
+          color: 0xecfccb,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: false
+        });
+        const bubble = new THREE.Mesh(bGeo, bMat);
+        bubble.position.set(
+          (Math.random() - 0.5) * radius * 0.9,
+          0.04 + Math.random() * 0.15,
+          (Math.random() - 0.5) * radius * 0.9
+        );
+        bubble.userData.isBubble = true;
+        bubble.userData.phase = Math.random() * Math.PI * 2;
+        bubble.userData.vy = 0.4 + Math.random() * 0.35;
+        group.add(bubble);
+      }
+      const light = new THREE.PointLight(0xa3e635, 2.2, 6.0);
+      light.position.set(0, 0.4, 0);
+      group.add(light);
+
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        age: 0,
+        lifetime: duration,
+        corrosiveFumes: true,
+        radius,
+        light
+      });
+    }
+
+    // Etincelles d'impact de ricochets balistiques sur la chitine blindee
+    ballisticRicochetSparks(x, y = 1.4, z, normalX = 0, normalY = 1, normalZ = 0, count = 16) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const sparkColors = [0xfff7ed, 0xfef08a, 0xfbbf24, 0xf97316];
+      for (let i = 0; i < count; i++) {
+        const size = 0.04 + Math.random() * 0.04;
+        const geo = new THREE.SphereGeometry(size, 4, 4);
+        const col = sparkColors[Math.floor(Math.random() * sparkColors.length)];
+        const mat = new THREE.MeshBasicMaterial({
+          color: col,
+          transparent: true,
+          opacity: 1.0,
+          depthWrite: false
+        });
+        const spark = new THREE.Mesh(geo, mat);
+        spark.position.set(0, y, 0);
+        const speed = 7.0 + Math.random() * 8.5;
+        const spreadX = (Math.random() - 0.5) * 6.0;
+        const spreadY = 2.0 + Math.random() * 6.0;
+        const spreadZ = (Math.random() - 0.5) * 6.0;
+        spark.userData.velocity = new THREE.Vector3(
+          normalX * speed * 0.6 + spreadX,
+          Math.max(1.5, normalY * speed * 0.6 + spreadY),
+          normalZ * speed * 0.6 + spreadZ
+        );
+        group.add(spark);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        age: 0,
+        lifetime: 0.38 + Math.random() * 0.2,
+        ricochetSparks: true
+      });
+    }
+
     spawnSteamCloud(x, y, z, duration = 3.6) {
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
       const group = new THREE.Group();
@@ -913,6 +1014,35 @@
               }
             }
           }
+        } else if (effect.corrosiveFumes) {
+          effect.group.children.forEach((p) => {
+            if (p.userData.isBubble) {
+              p.userData.phase = (p.userData.phase || 0) + deltaSeconds * 5.0;
+              p.position.y += p.userData.vy * deltaSeconds;
+              const scale = Math.max(0.1, 1 + Math.sin(p.userData.phase) * 0.4);
+              p.scale.set(scale, scale, scale);
+              if (p.position.y > 0.48) {
+                p.position.y = 0.04;
+                p.position.x = (Math.random() - 0.5) * effect.radius * 0.9;
+                p.position.z = (Math.random() - 0.5) * effect.radius * 0.9;
+              }
+            } else if (p.userData.isSmoke) {
+              p.position.y += p.userData.vy * deltaSeconds;
+              p.position.x += p.userData.vx * deltaSeconds;
+              p.position.z += p.userData.vz * deltaSeconds;
+              p.scale.addScalar(deltaSeconds * 0.32);
+              if (p.material) p.material.opacity = Math.max(0, (p.userData.baseOpacity || 0.35) * (1 - progress));
+            }
+          });
+          if (effect.light) {
+            effect.light.intensity = (1 - progress) * (2.2 + Math.sin(effect.age * 12) * 0.6);
+          }
+        } else if (effect.ricochetSparks) {
+          for (const spark of effect.group.children) {
+            spark.position.addScaledVector(spark.userData.velocity, deltaSeconds);
+            spark.userData.velocity.y -= 14.0 * deltaSeconds;
+            if (spark.material) spark.material.opacity = Math.max(0, 1 - progress);
+          }
         } else {
           for (const particle of effect.group.children) {
             particle.position.addScaledVector(particle.userData.velocity, deltaSeconds);
@@ -996,6 +1126,8 @@
       const originSelect = document.getElementById('origin-select');
       const expandedLore = document.getElementById('expanded-lore-toggle');
 
+      this.bindCardSelectors();
+
       document.getElementById('btn-new-campaign')?.addEventListener('click', () => {
         const originVal = originSelect?.value || 'random';
         const save = this.saveManager.startNew(difficulty?.value || 'survivor', !!expandedLore?.checked, originVal);
@@ -1025,6 +1157,119 @@
       document.getElementById('btn-open-codex-menu')?.addEventListener('click', () => {
         this.openCodex(true);
       });
+    }
+
+    bindCardSelectors() {
+      const diffSelect = document.getElementById('difficulty-select');
+      const originSelect = document.getElementById('origin-select');
+      const diffCards = Array.from(document.querySelectorAll('.diff-card'));
+      const originCards = Array.from(document.querySelectorAll('.origin-card'));
+
+      const updateDiffCards = (val) => {
+        if (!val) return;
+        diffCards.forEach((card) => {
+          const match = card.getAttribute('data-difficulty') === val;
+          card.classList.toggle('active', match);
+          card.setAttribute('aria-checked', match ? 'true' : 'false');
+          const statusText = card.querySelector('.status-text');
+          if (statusText) statusText.textContent = match ? 'ACTIF' : 'STANDBY';
+        });
+      };
+
+      const updateOriginCards = (val) => {
+        if (!val) return;
+        originCards.forEach((card) => {
+          const match = card.getAttribute('data-origin') === val;
+          card.classList.toggle('active', match);
+          card.setAttribute('aria-checked', match ? 'true' : 'false');
+          const selectTag = card.querySelector('.origin-select-tag');
+          if (selectTag) selectTag.textContent = match ? 'ACTIF' : 'SÉLECTIONNER';
+        });
+      };
+
+      diffCards.forEach((card, index) => {
+        const selectCurrent = () => {
+          const val = card.getAttribute('data-difficulty');
+          if (diffSelect && val) {
+            diffSelect.value = val;
+            diffSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          updateDiffCards(val);
+        };
+
+        card.addEventListener('click', selectCurrent);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectCurrent();
+          } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = diffCards[(index + 1) % diffCards.length];
+            next?.focus();
+            const val = next?.getAttribute('data-difficulty');
+            if (diffSelect && val) {
+              diffSelect.value = val;
+              diffSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            updateDiffCards(val);
+          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prev = diffCards[(index - 1 + diffCards.length) % diffCards.length];
+            prev?.focus();
+            const val = prev?.getAttribute('data-difficulty');
+            if (diffSelect && val) {
+              diffSelect.value = val;
+              diffSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            updateDiffCards(val);
+          }
+        });
+      });
+
+      originCards.forEach((card, index) => {
+        const selectCurrent = () => {
+          const val = card.getAttribute('data-origin');
+          if (originSelect && val) {
+            originSelect.value = val;
+            originSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          updateOriginCards(val);
+        };
+
+        card.addEventListener('click', selectCurrent);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectCurrent();
+          } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = originCards[(index + 1) % originCards.length];
+            next?.focus();
+            const val = next?.getAttribute('data-origin');
+            if (originSelect && val) {
+              originSelect.value = val;
+              originSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            updateOriginCards(val);
+          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prev = originCards[(index - 1 + originCards.length) % originCards.length];
+            prev?.focus();
+            const val = prev?.getAttribute('data-origin');
+            if (originSelect && val) {
+              originSelect.value = val;
+              originSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            updateOriginCards(val);
+          }
+        });
+      });
+
+      diffSelect?.addEventListener('change', () => updateDiffCards(diffSelect.value));
+      originSelect?.addEventListener('change', () => updateOriginCards(originSelect.value));
+
+      if (diffSelect) updateDiffCards(diffSelect.value || 'survivor');
+      if (originSelect) updateOriginCards(originSelect.value || 'random');
     }
 
     bindUtilityControls() {

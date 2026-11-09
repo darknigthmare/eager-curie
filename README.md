@@ -64,6 +64,8 @@ node tools/qa-models.cjs
 
 Le premier script produit son rapport JSON et ses captures dans `.tools/qa/`. Les tests automatisés couvrent des parcours d’interface et des scénarios ciblés ; l’initialisation des actes par API ne constitue pas une campagne intégralement jouée. Les résultats et limites sont décrits dans `QA_REPORT.md`.
 
+La [reprise technique du 9 novembre 2026](docs/CONTINUATION_20261109.md) documente les corrections de démarrage, le cycle simulé du mortier M40 et leurs contrôles ciblés reproductibles. Elle distingue ces résultats des validations historiques et des chantiers encore ouverts.
+
 Pour renouveler les dépendances statiques épinglées : `python3 tools/vendor-assets.py`. Cet outil vérifie l’intégrité SHA-512 des archives npm avant d’écrire les fichiers ; `assets/vendor/provenance.json` enregistre leurs versions et empreintes.
 
 ## Qualité graphique

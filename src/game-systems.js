@@ -315,8 +315,13 @@
 
     setReducedMotion(reduced) {
       this.reducedMotion = !!reduced;
+      for (const effect of this.effects) {
+        if (effect.mortarWarning) effect.shell.visible = !this.reducedMotion;
+      }
       if (!this.reducedMotion || this.effects.length === 0) return;
-      this.clear(true);
+      // A mortar telegraph is gameplay information, not an optional animation.
+      // Hiding motion must not erase its fixed warning or resolve its shot.
+      this.clear(true, true);
     }
 
     getMaterial(color) {
@@ -348,9 +353,14 @@
       return particle;
     }
 
-    clear(resolveProjectiles = false) {
+    clear(resolveProjectiles = false, preserveMortarWarnings = false) {
       const effects = this.effects.splice(0, this.effects.length);
       for (const effect of effects) {
+        if (effect.mortarWarning) {
+          if (preserveMortarWarnings && !effect.released) this.effects.push(effect);
+          else this.releaseMortarWarning(effect);
+          continue;
+        }
         if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
           while (effect.group.children.length > 0) {
             const p = effect.group.children.pop();
@@ -412,6 +422,67 @@
       mesh.position.set(x, 0.1, z);
       this.scene.add(mesh);
       this.effects.push({ group: mesh, age: 0, lifetime: 0.9, ring: true });
+    }
+
+    releaseMortarWarning(effect) {
+      if (!effect || effect.released) return false;
+      effect.released = true;
+      const index = this.effects.indexOf(effect);
+      if (index >= 0) this.effects.splice(index, 1);
+      effect.group.parent?.remove(effect.group);
+      // These resources belong only to this shot; no particle-pool asset is
+      // shared. Do not depend on an optional renderer disposal callback.
+      for (const resource of effect.resources) resource.dispose();
+      return true;
+    }
+
+    mortarWarning({ startX, startZ, targetX, targetZ, duration = .65, radius = 5.5, isValid = null } = {}) {
+      if (!this.scene || typeof THREE === 'undefined' ||
+        ![startX, startZ, targetX, targetZ, duration, radius].every(Number.isFinite) ||
+        duration <= 0 || radius <= 0) return null;
+      if (typeof isValid === 'function') {
+        try { if (!isValid()) return null; } catch (_) { return null; }
+      }
+      const group = new THREE.Group();
+      group.name = 'mortar_telegraph';
+      const warning = new THREE.Group();
+      warning.name = 'mortar_impact_warning';
+      warning.rotation.x = -Math.PI / 2;
+      warning.position.set(targetX, .09, targetZ);
+      const markerMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffa726, transparent: true, opacity: .86, side: THREE.DoubleSide,
+        depthTest: false, depthWrite: false, toneMapped: false
+      });
+      const outerGeometry = new THREE.RingGeometry(radius * .975, radius, 48);
+      const centerGeometry = new THREE.RingGeometry(.10, .22, 24);
+      const outer = new THREE.Mesh(outerGeometry, markerMaterial);
+      const center = new THREE.Mesh(centerGeometry, markerMaterial);
+      outer.renderOrder = center.renderOrder = 12;
+      warning.add(outer, center);
+      group.add(warning);
+
+      const shellGeometry = new THREE.CylinderGeometry(.055, .09, .55, 8);
+      const shellMaterial = new THREE.MeshBasicMaterial({ color: 0xffcf66, toneMapped: false });
+      const shell = new THREE.Mesh(shellGeometry, shellMaterial);
+      shell.name = 'mortar_shell';
+      shell.position.set(startX, 1.25, startZ);
+      shell.visible = !this.reducedMotion;
+      group.add(shell);
+      const effect = {
+        group, warning, shell, mortarWarning: true, released: false,
+        age: 0, lifetime: duration, isValid,
+        start: new THREE.Vector3(startX, 1.25, startZ),
+        end: new THREE.Vector3(targetX, .12, targetZ),
+        arcHeight: 2.8, tangent: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0),
+        resources: [outerGeometry, centerGeometry, markerMaterial, shellGeometry, shellMaterial]
+      };
+      effect.tangent.copy(effect.end).sub(effect.start);
+      effect.tangent.y += Math.PI * effect.arcHeight;
+      shell.quaternion.setFromUnitVectors(effect.up, effect.tangent.normalize());
+      this.scene.add(group);
+      this.effects.push(effect);
+      // Purely visual: only StationMap's simulated shot owns the actual hit.
+      return { cancel: () => this.releaseMortarWarning(effect) };
     }
 
     projectile({
@@ -840,6 +911,27 @@
     update(deltaSeconds) {
       for (let index = this.effects.length - 1; index >= 0; index--) {
         const effect = this.effects[index];
+        if (effect.mortarWarning) {
+          let current = true;
+          if (typeof effect.isValid === 'function') {
+            try { current = !!effect.isValid(); } catch (_) { current = false; }
+          }
+          // A scene/stage change must still release stale visuals while paused.
+          if (!current) { this.releaseMortarWarning(effect); continue; }
+          if (window.gameInstance?.isSystemPaused) continue;
+          const delta = Math.max(0, Math.min(.1, Number(deltaSeconds) || 0));
+          effect.age = Math.min(effect.lifetime, effect.age + delta);
+          const t = effect.age / effect.lifetime;
+          effect.shell.position.lerpVectors(effect.start, effect.end, t);
+          effect.shell.position.y += Math.sin(t * Math.PI) * effect.arcHeight;
+          effect.tangent.copy(effect.end).sub(effect.start);
+          effect.tangent.y += Math.cos(t * Math.PI) * Math.PI * effect.arcHeight;
+          effect.shell.quaternion.setFromUnitVectors(effect.up, effect.tangent.normalize());
+          effect.shell.visible = !this.reducedMotion;
+          // The warning never expands/follows its target or invokes a hit.
+          if (t >= 1) this.releaseMortarWarning(effect);
+          continue;
+        }
         effect.age += deltaSeconds;
         const progress = Math.min(1, effect.age / effect.lifetime);
         if (effect.projectile) {

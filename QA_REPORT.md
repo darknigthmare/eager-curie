@@ -56,3 +56,9 @@ python3 tools/qa-graphics.py --url http://127.0.0.1:8082/ --portraits --matched-
 ```
 
 La suite de gameplay ajoute uniquement un accès de test aux objets internes dans la réponse du script pour inspecter navigation et collisions. La suite intégrée utilise les fichiers servis sans instrumentation.
+
+## Reprise ciblée — 9 novembre 2026
+
+Les résultats historiques ci-dessus ne sont pas revendiqués comme une nouvelle validation complète de la campagne. Le [rapport de reprise](docs/CONTINUATION_20261109.md) précise la base GitHub `7fd6c46`, les deux erreurs de compilation préexistantes corrigées, le routage de neuf SFX et le cycle simulé du mortier M40.
+
+Les scripts du lot sont `qa-mortar-lifecycle.cjs`, `qa-audio-boot.cjs`, `qa-boot-contract.cjs` et `qa-mortar-native.py`/`qa-mortar-native-probe.js`. Les preuves privées sous `.tools/` distinguent les reproductions initiales, les échecs du runner dans le sandbox et les cohortes acceptées. Voir le rapport de reprise pour les comptes, empreintes, commandes et limites exacts. Ni campagne complète jouée à la main, ni conformité à une bible non retrouvée, ni publication Vercel ne sont certifiées par cette reprise.

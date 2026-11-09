@@ -7544,15 +7544,12 @@
       osc.start(now);
       osc.stop(now + 1.4);
     }
-  }
     // Chantier 33 : Servomoteur de Caméra de Surveillance CCTV Seegson / Weyland (Alien: Isolation)
     playCameraServoPan(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-      const panNode = this._calcSpatialPan(x, z, 14);
-      if (panNode === false) return;
       const osc = ctx.createOscillator();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(1180, now);
@@ -7566,8 +7563,7 @@
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
       osc.connect(filter);
       filter.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 14);
       osc.start(now);
       osc.stop(now + 0.18);
     }
@@ -7578,8 +7574,6 @@
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-      const panNode = this._calcSpatialPan(x, z, 22);
-      if (panNode === false) return;
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       osc1.type = 'square';
@@ -7593,8 +7587,7 @@
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
       osc1.connect(gain);
       osc2.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 22);
       osc1.start(now); osc2.start(now);
       osc1.stop(now + 0.15); osc2.stop(now + 0.15);
     }
@@ -7605,8 +7598,6 @@
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-      const panNode = this._calcSpatialPan(x, z, 18);
-      if (panNode === false) return;
       const osc = ctx.createOscillator();
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(420, now);
@@ -7620,8 +7611,7 @@
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
       osc.connect(filter);
       filter.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 18);
       osc.start(now);
       osc.stop(now + 0.16);
     }
@@ -7632,8 +7622,6 @@
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-      const panNode = this._calcSpatialPan(x, z, 20);
-      if (panNode === false) return;
       [0, 0.08].forEach((delay) => {
         const osc = ctx.createOscillator();
         osc.type = 'square';
@@ -7642,8 +7630,7 @@
         gain.gain.setValueAtTime(0.18, now + delay);
         gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.06);
         osc.connect(gain);
-        if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-        else { gain.connect(this.sfxGain); }
+        this.connect(gain, x, z, 20);
         osc.start(now + delay);
         osc.stop(now + delay + 0.06);
       });
@@ -7655,8 +7642,6 @@
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-      const panNode = this._calcSpatialPan(x, z, 10);
-      if (panNode === false) return;
       const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.035), ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.3));
@@ -7670,8 +7655,7 @@
       gain.gain.setValueAtTime(0.16, now);
       src.connect(filter);
       filter.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 10);
       src.start(now);
     }
 
@@ -7681,8 +7665,6 @@
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-      const panNode = this._calcSpatialPan(x, z, 16);
-      if (panNode === false) return;
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       osc1.type = 'sawtooth';
@@ -7694,8 +7676,7 @@
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
       osc1.connect(gain);
       osc2.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 16);
       osc1.start(now); osc2.start(now);
       osc1.stop(now + 0.45); osc2.stop(now + 0.45);
     }
@@ -7706,8 +7687,6 @@
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-      const panNode = this._calcSpatialPan(x, z, 15);
-      if (panNode === false) return;
       const osc = ctx.createOscillator();
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(260, now);
@@ -7721,8 +7700,7 @@
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
       osc.connect(filter);
       filter.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 15);
       osc.start(now);
       osc.stop(now + 0.32);
     }
@@ -7733,8 +7711,6 @@
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-      const panNode = this._calcSpatialPan(x, z, 16);
-      if (panNode === false) return;
       const osc = ctx.createOscillator();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(135, now);
@@ -7752,8 +7728,7 @@
       osc.connect(gain);
       oscRing.connect(ringGain);
       ringGain.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 16);
       osc.start(now); oscRing.start(now);
       osc.stop(now + 0.16); oscRing.stop(now + 0.16);
     }
@@ -7764,8 +7739,6 @@
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-      const panNode = this._calcSpatialPan(x, z, 14);
-      if (panNode === false) return;
       const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.32), ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.5));
@@ -7781,11 +7754,11 @@
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
       src.connect(filter);
       filter.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 14);
       src.start(now);
     }
 
+  }
   const audioManager = new AudioManager();
 
   // -------------------------------------------------------------
@@ -17395,29 +17368,91 @@
       return true;
     }
 
+    isPortableMortarShotCurrent(mortar, shot) {
+      const game = window.gameInstance;
+      return !!shot && shot.map === this && shot.mortar === mortar &&
+        mortar?.pendingShot === shot && Array.isArray(this.portableMortars) && this.portableMortars === shot.mortars &&
+        this.portableMortars.includes(mortar) && game === shot.game &&
+        game?.campaignActive === true && game.isRunning === true &&
+        game.currentStage === shot.stage && game.currentStageIndex === shot.stageIndex &&
+        playerCreature === shot.player && playerCreature.mesh === shot.mesh && !!shot.mesh &&
+        playerCreature.form === shot.form && playerCreature.adultCaste === shot.caste &&
+        !playerCreature.isDefeated && Number.isFinite(playerCreature.health) && playerCreature.health > 0 &&
+        [playerCreature.x, playerCreature.z, shot.targetX, shot.targetZ].every(Number.isFinite);
+    }
+
+    cancelPortableMortarShot(mortar, shot = mortar?.pendingShot) {
+      if (!shot) return false;
+      // Clear ownership first: cleanup must never erase a replacement shot or
+      // let the same impact be delivered twice through a retained reference.
+      if (mortar?.pendingShot === shot) mortar.pendingShot = null;
+      this.pendingPortableMortarShots?.delete(shot);
+      const visual = shot.visual;
+      shot.visual = null;
+      try { visual?.cancel?.(); }
+      catch (error) { console.warn('Mortar warning cleanup unavailable:', error); }
+      return true;
+    }
+
+    resolvePortableMortarShot(mortar, shot) {
+      if (window.gameInstance?.isSystemPaused || !this.isPortableMortarShotCurrent(mortar, shot) ||
+        !Number.isFinite(shot.remaining) || shot.remaining > 1e-7) return false;
+      const { targetX, targetZ } = shot;
+      const hit = Math.hypot(playerCreature.x - targetX, playerCreature.z - targetZ) <= 5.5;
+      this.cancelPortableMortarShot(mortar, shot);
+      // A warning/projectile is presentation only. Missing VFX must neither
+      // advance the fuse nor prevent the authored, exactly-once damage call.
+      if (hit) playerCreature.takeDamage(48, null);
+      window.HiveSystems?.vfx?.burst?.(targetX, targetZ, 0xef4444, 32, 0.35, 2.8);
+      window.HiveSystems?.vfx?.ring?.(targetX, targetZ, 0xf97316, 12.0);
+      if (hit) window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 3.2, playerCreature.z, '-48 OBUS DE MORTIER M40 !', '#ef4444', true);
+      return true;
+    }
+
     updatePortableMortars(safeDelta) {
-      (this.portableMortars || []).forEach((pm) => {
-        if (pm.isDestroyed) return;
-        pm.shootCooldown -= safeDelta;
-        if (pm.shootCooldown <= 0) {
-          pm.shootCooldown = 4.8;
-          const distToPlayer = Math.hypot(playerCreature.x - pm.x, playerCreature.z - pm.z);
-          if (distToPlayer >= 7.0 && distToPlayer <= 26.0 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
-            audioManager.playMortarLaunchAndShrapnel?.(pm.x, pm.z);
-            rendererEngine.addScreenShake?.(0.35, 0.3);
-            const targetX = playerCreature.x;
-            const targetZ = playerCreature.z;
-            setTimeout(() => {
-              window.HiveSystems?.vfx?.burst?.(targetX, targetZ, 0xef4444, 32, 0.35, 2.8);
-              window.HiveSystems?.vfx?.ring?.(targetX, targetZ, 0xf97316, 12.0);
-              if (Math.hypot(playerCreature.x - targetX, playerCreature.z - targetZ) <= 5.5) {
-                playerCreature.takeDamage(48, null);
-                window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 3.2, playerCreature.z, '-48 OBUS DE MORTIER M40 !', '#ef4444', true);
-              }
-            }, 650);
-          }
-        }
-      });
+      const game = window.gameInstance;
+      const mortars = Array.isArray(this.portableMortars) ? this.portableMortars : [];
+      const shots = this.pendingPortableMortarShots;
+      // The registry also retains shells whose launcher was removed from the
+      // map array, so their warning can be disposed without a future timer.
+      if (shots) for (const shot of [...shots]) {
+        if (!this.isPortableMortarShotCurrent(shot.mortar, shot)) this.cancelPortableMortarShot(shot.mortar, shot);
+      }
+      if (!game?.campaignActive || !game.isRunning || game.isSystemPaused) return;
+      const delta = Number.isFinite(safeDelta) ? Math.max(0, Math.min(.05, safeDelta)) : 0;
+      if (delta === 0) return;
+
+      if (shots) for (const shot of [...shots]) {
+        shot.remaining = Math.max(0, shot.remaining - delta);
+        if (shot.remaining <= 1e-7) this.resolvePortableMortarShot(shot.mortar, shot);
+      }
+
+      for (const pm of mortars) {
+        if (!pm || pm.isDestroyed) continue;
+        pm.shootCooldown -= delta;
+        if (pm.shootCooldown > 1e-7 || pm.pendingShot) continue;
+        pm.shootCooldown = 4.8;
+        const distToPlayer = Math.hypot(playerCreature.x - pm.x, playerCreature.z - pm.z);
+        if (distToPlayer < 7.0 || distToPlayer > 26.0 || playerCreature.isInVent || playerCreature.isCeilingProwling ||
+          !playerCreature.mesh || playerCreature.isDefeated || !Number.isFinite(playerCreature.health) || playerCreature.health <= 0 ||
+          !game.currentStage || ![pm.x, pm.z, playerCreature.x, playerCreature.z].every(Number.isFinite)) continue;
+
+        const shot = {
+          map: this, mortars, mortar: pm, game, stage: game.currentStage, stageIndex: game.currentStageIndex,
+          player: playerCreature, mesh: playerCreature.mesh, form: playerCreature.form, caste: playerCreature.adultCaste,
+          targetX: playerCreature.x, targetZ: playerCreature.z, remaining: .65, visual: null
+        };
+        pm.pendingShot = shot;
+        (this.pendingPortableMortarShots ||= new Set()).add(shot);
+        try {
+          shot.visual = window.HiveSystems?.vfx?.mortarWarning?.({
+            startX: pm.x, startZ: pm.z, targetX: shot.targetX, targetZ: shot.targetZ,
+            duration: .65, radius: 5.5, isValid: () => this.isPortableMortarShotCurrent(pm, shot)
+          }) || null;
+        } catch (error) { console.warn('Mortar warning unavailable:', error); }
+        audioManager.playMortarLaunchAndShrapnel?.(pm.x, pm.z);
+        rendererEngine.addScreenShake?.(0.35, 0.3);
+      }
     }
 
     // Chantier 130 : Sas d'Amarrage Navette de Sauvetage Narcissus (Alien 1979)
@@ -33967,9 +34002,9 @@
         return true;
       }
       // Chantier 123 : Cuve Transgénique Z-01 Auriga/Romulus
-      const nearIncubator = (stationMap.transgenicIncubators || []).find((i) => !i.isRuptured && Math.hypot(i.x - playerCreature.x, i.z - playerCreature.z) <= 5.5);
-      if (nearIncubator) {
-        stationMap.ruptureTransgenicIncubator(nearIncubator);
+      const nearTransgenicIncubator = (stationMap.transgenicIncubators || []).find((i) => !i.isRuptured && Math.hypot(i.x - playerCreature.x, i.z - playerCreature.z) <= 5.5);
+      if (nearTransgenicIncubator) {
+        stationMap.ruptureTransgenicIncubator(nearTransgenicIncubator);
         return true;
       }
       // Chantier 125 : Buse de Décharge Cryogénique LN2

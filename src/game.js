@@ -27,6 +27,8 @@
         this.ctx = new AudioCtx();
         this.masterGain = this.ctx.createGain();
         this.masterGain.gain.value = this.volume;
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.connect(this.masterGain);
         if (this.ctx.createDynamicsCompressor) {
           this.compressor = this.ctx.createDynamicsCompressor();
           this.compressor.threshold.setValueAtTime(-16, this.ctx.currentTime);
@@ -59,10 +61,35 @@
       }
     }
 
+    get audioCtx() {
+      return this.ctx;
+    }
+
     resume() {
       if (this.ctx && this.ctx.state === 'suspended') {
         this.ctx.resume();
       }
+    }
+
+    _calcSpatialPan(x, z, maxDist = 25) {
+      if (!this.ctx) return null;
+      if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+      const listenerX = rendererEngine?.camera?.position?.x ?? playerCreature?.x ?? 0;
+      const listenerZ = playerCreature?.z ?? rendererEngine?.camera?.position?.z ?? 0;
+      const dist = Math.hypot(x - listenerX, z - listenerZ);
+      if (dist > maxDist * 2.2) return false;
+      if (this.ctx.createStereoPanner) {
+        const panner = this.ctx.createStereoPanner();
+        const pan = Math.max(-0.95, Math.min(0.95, (x - listenerX) / Math.max(1, maxDist * 0.75)));
+        panner.pan.setValueAtTime(pan, this.ctx.currentTime);
+        return panner;
+      }
+      return null;
+    }
+
+    _createPanner(x, z, maxDist = 25) {
+      const res = this._calcSpatialPan(x, z, maxDist);
+      return res === false ? null : res;
     }
 
     connect(node, x = null, z = null, radius = 58) {
@@ -212,15 +239,18 @@
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const now = this.ctx.currentTime;
-      const freq = Math.max(550, 2450 - dist * 95);
+      // Mission Wave 3 : Modulation Doppler dynamique (750 Hz à 30m jusqu'à 2400 Hz à <= 3m)
+      const normD = Math.max(0, Math.min(1, (dist - 3) / 27));
+      const freq = Math.round(2400 - normD * 1650);
 
       const emitPing = (timeOffset) => {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, now + timeOffset);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(200, freq * 0.94), now + timeOffset + 0.065);
         gain.gain.setValueAtTime(0.38, now + timeOffset);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.068);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + timeOffset + 0.068);
         osc.connect(gain);
         this.connect(gain);
         osc.start(now + timeOffset);
@@ -228,8 +258,8 @@
       };
 
       emitPing(0);
-      if (dist < 4.5) {
-        emitPing(0.082); // Double-bip d'alerte frénétique Weyland-Yutani M314
+      if (dist < 3.5) {
+        emitPing(0.068); // Cadence double-clic rapide à courte distance (Aliens 1986 / Isolation)
       }
     }
 
@@ -7997,6 +8027,204 @@
       else { gain.connect(this.sfxGain); }
       src.start(now);
     }
+
+    // Mission Wave 3 : Grésillement Radio Transceiver VHF/UHF avec CTCSS Mic-Clicks (M41A / AP-Comms)
+    playRadioCommsStatic(duration = 1.2) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const dur = Math.max(0.4, Number(duration) || 1.2);
+      const bufferSize = Math.floor(ctx.sampleRate * dur);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        data[i] = (b0 + b1 + b2 + white * 0.5362) * 0.18;
+      }
+      const noiseSource = ctx.createBufferSource();
+      noiseSource.buffer = buffer;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(1750, now);
+      bpf.Q.setValueAtTime(1.8, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.24, now + 0.03);
+      gain.gain.setValueAtTime(0.24, now + dur - 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      noiseSource.connect(bpf);
+      bpf.connect(gain);
+      gain.connect(this.sfxGain || this.masterGain);
+      noiseSource.start(now);
+      noiseSource.stop(now + dur);
+
+      const clickOsc = ctx.createOscillator();
+      const clickGain = ctx.createGain();
+      clickOsc.type = 'square';
+      clickOsc.frequency.setValueAtTime(2400, now);
+      clickOsc.frequency.setValueAtTime(1200, now + dur - 0.04);
+      clickGain.gain.setValueAtTime(0.18, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+      clickGain.gain.setValueAtTime(0.15, now + dur - 0.04);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      clickOsc.connect(clickGain);
+      clickGain.connect(this.sfxGain || this.masterGain);
+      clickOsc.start(now);
+      clickOsc.stop(now + dur);
+    }
+
+    playRadioChatter(duration = 1.2) {
+      this.playRadioCommsStatic(duration);
+    }
+
+    // Mission Wave 3 : Double Pulsation Sub-bass Gestation Terminale & Arythmie Thoracique (55Hz / 45Hz)
+    playHostHeartbeatArrhythmia(rate = 1.0, intensity = 1.0) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const r = Math.max(0.5, Math.min(3.0, Number(rate) || 1.0));
+      const inten = Math.max(0.2, Math.min(2.5, Number(intensity) || 1.0));
+      const lubDuration = 0.09 / r;
+      const dubOffset = 0.14 / r;
+      const dubDuration = 0.08 / r;
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(55 * (1.0 + (Math.random() - 0.5) * 0.06), now);
+      osc1.frequency.exponentialRampToValueAtTime(32, now + lubDuration);
+      gain1.gain.setValueAtTime(0.65 * inten, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + lubDuration);
+      osc1.connect(gain1);
+      gain1.connect(this.sfxGain || this.masterGain);
+      osc1.start(now);
+      osc1.stop(now + lubDuration);
+
+      const jitter = (Math.random() - 0.45) * (0.035 / r);
+      const tDub = now + Math.max(0.06, dubOffset + jitter);
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(45 * (1.0 + (Math.random() - 0.5) * 0.08), tDub);
+      osc2.frequency.exponentialRampToValueAtTime(26, tDub + dubDuration);
+      gain2.gain.setValueAtTime(0.85 * inten, tDub);
+      gain2.gain.exponentialRampToValueAtTime(0.001, tDub + dubDuration);
+      osc2.connect(gain2);
+      gain2.connect(this.sfxGain || this.masterGain);
+      osc2.start(tDub);
+      osc2.stop(tDub + dubDuration);
+    }
+
+    // Mission Wave 3 : Craquement Organique Viscéral du Cartilage Costal & Micro-fractures du Sternum
+    playSternumBoneCreak() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const dur = 0.48;
+      const osc = ctx.createOscillator();
+      const modOsc = ctx.createOscillator();
+      const modGain = ctx.createGain();
+      const mainGain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(75, now);
+      osc.frequency.linearRampToValueAtTime(195, now + dur * 0.7);
+      osc.frequency.exponentialRampToValueAtTime(50, now + dur);
+      modOsc.type = 'triangle';
+      modOsc.frequency.setValueAtTime(38, now);
+      modOsc.frequency.linearRampToValueAtTime(92, now + dur);
+      modGain.gain.setValueAtTime(65, now);
+      modGain.gain.exponentialRampToValueAtTime(5, now + dur);
+      modOsc.connect(modGain);
+      modGain.connect(osc.frequency);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(820, now);
+      filter.frequency.exponentialRampToValueAtTime(1450, now + dur * 0.5);
+      filter.frequency.exponentialRampToValueAtTime(400, now + dur);
+      filter.Q.setValueAtTime(3.8, now);
+      mainGain.gain.setValueAtTime(0.55, now);
+      mainGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(filter);
+      filter.connect(mainGain);
+      mainGain.connect(this.sfxGain || this.masterGain);
+      osc.start(now);
+      modOsc.start(now);
+      osc.stop(now + dur);
+      modOsc.stop(now + dur);
+
+      const bufSize = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) {
+        const t = i / ctx.sampleRate;
+        d[i] = (Math.random() > 0.94 ? (Math.random() * 2 - 1) * Math.sin(t * 800) : 0);
+      }
+      const crackSource = ctx.createBufferSource();
+      crackSource.buffer = buf;
+      const crackFilter = ctx.createBiquadFilter();
+      crackFilter.type = 'highpass';
+      crackFilter.frequency.setValueAtTime(950, now);
+      const crackGain = ctx.createGain();
+      crackGain.gain.setValueAtTime(0.42, now);
+      crackGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      crackSource.connect(crackFilter);
+      crackFilter.connect(crackGain);
+      crackGain.connect(this.sfxGain || this.masterGain);
+      crackSource.start(now);
+      crackSource.stop(now + dur);
+    }
+
+    // Mission Wave 3 : Dépressurisation Pneumatique Explosive Sas EVA et Vannes Cryo (2.5s decay)
+    playAirlockDecompressionHiss(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const dur = 2.5;
+      const panNode = this._calcSpatialPan(x, z, 35);
+      if (panNode === false) return;
+      const bufLen = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.95));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(2800, now);
+      bpf.frequency.exponentialRampToValueAtTime(420, now + dur);
+      bpf.Q.setValueAtTime(2.2, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.72, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      noise.connect(bpf);
+      bpf.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain || this.masterGain); }
+      else { gain.connect(this.sfxGain || this.masterGain); }
+      noise.start(now);
+      noise.stop(now + dur);
+
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(68, now);
+      osc.frequency.exponentialRampToValueAtTime(28, now + 1.2);
+      const boomGain = ctx.createGain();
+      boomGain.gain.setValueAtTime(0.48, now);
+      boomGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+      osc.connect(boomGain);
+      if (panNode) { boomGain.connect(panNode); panNode.connect(this.sfxGain || this.masterGain); }
+      else { boomGain.connect(this.sfxGain || this.masterGain); }
+      osc.start(now);
+      osc.stop(now + 1.2);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -8144,7 +8372,7 @@
       const maxRange = (this.focusedMode ? 35.0 : 22.0) + casteRangeMod;
       const radius = (w / 2) - 6;
 
-      ctx.fillStyle = 'rgba(2, 26, 8, 0.42)';
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.22)';
       ctx.fillRect(0, 0, w, h);
 
       this.sweepAngle = (this.sweepAngle + deltaSeconds * 2.8) % (Math.PI * 2);
@@ -8310,14 +8538,43 @@
         const angleDiff = Math.abs((((relAngle - this.sweepAngle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
         const isHit = this.focusedMode || angleDiff < 0.35;
 
-        ctx.fillStyle = isHit ? '#ffffff' : '#39ff14';
+        // Mission Wave 3 : Glyphes Altimétriques Triangulaires M314 (▲ conduit/plafond > 2.5m, ▼ sous-plancher < -0.1m, ● sol standard)
+        const contactY = human.mesh?.position?.y ?? 0;
+        const markerSize = isHit ? 5.2 : 4.0;
         ctx.shadowColor = '#39ff14';
         ctx.shadowBlur = isHit ? 12 : 6;
-        ctx.beginPath();
-        ctx.arc(bx, by, isHit ? 4.2 : 3.0, 0, Math.PI * 2);
-        ctx.fill();
+
+        if (contactY > 2.5) {
+          // Conduit supérieur ou plafond à 4.0m/4.2m : triangle creux pointant vers le haut ▲
+          ctx.strokeStyle = isHit ? '#ffffff' : '#39ff14';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(bx, by - markerSize);
+          ctx.lineTo(bx + markerSize, by + markerSize);
+          ctx.lineTo(bx - markerSize, by + markerSize);
+          ctx.closePath();
+          ctx.stroke();
+        } else if (contactY < -0.1) {
+          // Sous-plancher / cale technique à -0.3m : triangle creux pointant vers le bas ▼
+          ctx.strokeStyle = isHit ? '#ffffff' : '#39ff14';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(bx, by + markerSize);
+          ctx.lineTo(bx + markerSize, by - markerSize);
+          ctx.lineTo(bx - markerSize, by - markerSize);
+          ctx.closePath();
+          ctx.stroke();
+        } else {
+          // Niveau du sol standard : point circulaire plein ●
+          ctx.fillStyle = isHit ? '#ffffff' : '#39ff14';
+          ctx.beginPath();
+          ctx.arc(bx, by, isHit ? 4.2 : 3.0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = isHit ? '#ffffff' : '#39ff14';
         ctx.font = '700 8px monospace';
-        ctx.fillText(elevMarker, bx + 5, by + 3);
+        ctx.fillText(elevMarker, bx + 6, by + 3);
         ctx.shadowBlur = 0;
       }
 
@@ -8630,6 +8887,18 @@
         const modeTag = isZeroG ? 'ZERO-G' : (this.focusedMode ? 'FOCAL' : (nearReactor ? 'PARASITE' : sensoryProfileLabel));
         this.statusEl.textContent = contactCount > 0 ? (closestDistance < 6 ? `CRITIQUE [${modeTag}]` : `TRACKING [${modeTag}]`) : `STANDBY [${modeTag}]`;
         this.statusEl.style.color = closestDistance < 6 ? '#ef4444' : (isZeroG ? '#a855f7' : (nearReactor && !this.focusedMode ? '#f59e0b' : '#39ff14'));
+      }
+
+      // Mission Wave 3 : Modulation Doppler Audio M314 selon la cible la plus proche
+      this.pingTimer = (this.pingTimer || 0) - deltaSeconds;
+      if (contactCount > 0 && closestDistance < maxRange) {
+        if (this.pingTimer <= 0) {
+          const pingInterval = Math.max(0.24, Math.min(1.8, 0.22 + (closestDistance / 30.0) * 1.58));
+          this.pingTimer = pingInterval;
+          audioManager.playMotionTrackerPing(closestDistance);
+        }
+      } else {
+        this.pingTimer = 0.35;
       }
     }
   }
@@ -14105,6 +14374,7 @@
     triggerDecompression(duration = 9.0) {
       this.depressurizationTimer = duration;
       audioManager.playBlastDoorHydraulics?.(this.evaAirlock.x, this.evaAirlock.z);
+      audioManager.playAirlockDecompressionHiss?.(this.evaAirlock.x, this.evaAirlock.z);
       showToast('DÉCOMPRESSION DU SAS EVA : l’atmosphère est aspirée vers le vide spatial !');
       appendSensorLog('[SÉCURITÉ ORBITALE] Sas EVA ouvert sur le vide. Dégazage atmosphérique à haute vélocité.', 'alert');
     }
@@ -32092,6 +32362,10 @@
       this.huntRepathCooldown = 0;
       this.rations = [];
       this.thoracicView = new ThoracicView();
+      this.sternumPressure = 10;
+      this.sternumCreak70Played = false;
+      this.sternumCreak90Played = false;
+      this.hostHeartbeatTimer = 0;
     }
 
     setInternalViewUI(active, bursting = false) {
@@ -32099,18 +32373,87 @@
       const controls = document.getElementById('thoracic-controls');
       const button = document.getElementById('btn-thoracic-erupt');
       const status = document.getElementById('thoracic-status');
+      const pressureFill = document.getElementById('sternum-pressure-fill');
       app?.classList.toggle('is-internal-view', active);
       controls?.classList.toggle('hidden', !active);
       controls?.setAttribute('aria-hidden', String(!active));
+      if (pressureFill) {
+        pressureFill.style.width = `${Math.min(100, Math.max(10, this.sternumPressure || 10))}%`;
+      }
       if (status) {
         status.textContent = bursting
           ? 'Les plaques sternales cèdent sous la poussée.'
-          : 'Les contractions convergent vers le sternum.';
+          : (this.sternumPressure >= 85
+            ? 'RUPTURE IMMINENTE ! PERFORATION CRITIQUE ! [ESPACE]'
+            : (this.sternumPressure >= 60
+              ? 'Fissuration costale imminente ! Poussez ! [ESPACE]'
+              : 'Les contractions convergent vers le sternum. [ESPACE]'));
       }
       if (button) {
         button.disabled = bursting;
-        button.textContent = bursting ? 'RUPTURE DU STERNUM…' : 'PERFORER LE STERNUM [ESPACE]';
-        button.onclick = active && !bursting ? () => this.perforateSternum() : null;
+        button.textContent = bursting ? 'RUPTURE DU STERNUM…' : `PERFORER LE STERNUM [ESPACE] (${Math.round(this.sternumPressure || 10)}%)`;
+        button.onclick = active && !bursting ? () => this.pumpSternumPressure() : null;
+      }
+    }
+
+    pumpSternumPressure(increment = 24) {
+      if (this.step !== 'READY_TO_BURST') return;
+      this.sternumPressure = Math.min(100, (this.sternumPressure || 10) + increment);
+      const pressure = this.sternumPressure;
+      const pressureFill = document.getElementById('sternum-pressure-fill');
+      if (pressureFill) {
+        pressureFill.style.width = `${pressure}%`;
+        pressureFill.style.boxShadow = `0 0 ${Math.round(pressure * 0.25)}px rgba(239, 68, 68, 0.9)`;
+      }
+      const status = document.getElementById('thoracic-status');
+      if (status) {
+        if (pressure >= 90) {
+          status.textContent = 'RUPTURE IMMINENTE ! PERFORATION DU CARTILAGE ! [ESPACE]';
+          status.style.color = '#ef4444';
+        } else if (pressure >= 65) {
+          status.textContent = 'Fissuration costale imminente ! Contractions critiques ! [ESPACE]';
+          status.style.color = '#f59e0b';
+        } else {
+          status.textContent = 'Les contractions convergent vers le sternum. Poussez ! [ESPACE]';
+          status.style.color = '#38bdf8';
+        }
+      }
+      const button = document.getElementById('btn-thoracic-erupt');
+      if (button) {
+        button.textContent = `PERFORER LE STERNUM [ESPACE] (${Math.round(pressure)}%)`;
+      }
+      const btnEruptNow = document.getElementById('btn-erupt-now');
+      if (btnEruptNow) {
+        btnEruptNow.textContent = `PERFORER LE STERNUM [ESPACE] (${Math.round(pressure)}%)`;
+      }
+
+      // Heartbeat arrhythmia acceleration
+      const heartRate = 1.0 + (pressure / 100) * 1.6;
+      const heartIntensity = 0.8 + (pressure / 100) * 1.2;
+      audioManager.playHostHeartbeatArrhythmia?.(heartRate, heartIntensity);
+
+      // Micro camera shake on thoracic strain
+      rendererEngine.addScreenShake?.(0.08 + (pressure / 100) * 0.14, 0.14);
+
+      // Organic creak at 70% and 90%
+      if (pressure >= 70 && !this.sternumCreak70Played) {
+        this.sternumCreak70Played = true;
+        audioManager.playSternumBoneCreak?.();
+        rendererEngine.addScreenShake?.(0.22, 0.2);
+        window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0xef4444, 14, 0.1, 0.7);
+      }
+      if (pressure >= 90 && !this.sternumCreak90Played) {
+        this.sternumCreak90Played = true;
+        audioManager.playSternumBoneCreak?.();
+        rendererEngine.addScreenShake?.(0.32, 0.25);
+        window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0xef4444, 22, 0.14, 0.9);
+      }
+
+      // Update ThoracicView deformation
+      this.thoracicView?.setBurstProgress(pressure / 100 * 0.75);
+
+      if (pressure >= 100) {
+        this.perforateSternum();
       }
     }
 
@@ -32201,9 +32544,9 @@
           };
         });
       } else if (this.step === 'READY_TO_BURST') {
-        instructions.innerHTML = '<strong>Vue intra-thoracique :</strong><br><br>• Le sternum remplit le champ de vision.<br>• Déclenchez la poussée lorsque les contractions culminent.';
-        actionsContainer.innerHTML = '<button type="button" id="btn-erupt-now" class="act-btn" style="border-color: #ef4444;">PERFORER LE STERNUM [ESPACE]</button>';
-        document.getElementById('btn-erupt-now').onclick = () => this.perforateSternum();
+        instructions.innerHTML = `<strong>Vue intra-thoracique :</strong><br><br>• Le sternum remplit le champ de vision.<br>• Déclenchez la poussée en martelant [ESPACE] ou le bouton d'éruption.<br>• Pression costale : <strong>${Math.round(this.sternumPressure || 10)}%</strong>.`;
+        actionsContainer.innerHTML = `<button type="button" id="btn-erupt-now" class="act-btn" style="border-color: #ef4444;">PERFORER LE STERNUM [ESPACE] (${Math.round(this.sternumPressure || 10)}%)</button>`;
+        document.getElementById('btn-erupt-now').onclick = () => this.pumpSternumPressure();
       } else if (this.step === 'BURST_SEQUENCE') {
         instructions.innerHTML = '<strong>Perforation :</strong><br><br>• La poussée fracture progressivement les plaques sternales.';
         actionsContainer.innerHTML = '<button type="button" class="act-btn" disabled>RUPTURE DU STERNUM…</button>';
@@ -32259,7 +32602,9 @@
       this.burstTimer = 0;
       this.burstCrackStage = 0;
       this.setInternalViewUI(true, true);
+      audioManager.playSternumBoneCreak?.();
       audioManager.playSternumPressure?.();
+      rendererEngine.addScreenShake?.(0.45, 0.35);
       this.updateHUD();
     }
 
@@ -32285,6 +32630,7 @@
       }
       this.step = 'HUNT_FAUNA';
       rendererEngine.snapCameraTarget(playerCreature.x, playerCreature.z);
+      rendererEngine.addScreenShake?.(0.65, 0.45);
       audioManager.playBoneCrunch();
       audioManager.playChestburstScreech();
       audioManager.playWetImpact?.(playerCreature.x, playerCreature.z);
@@ -32503,7 +32849,7 @@
         return;
       }
       if (key !== ' ') return;
-      if (this.step === 'READY_TO_BURST') this.perforateSternum();
+      if (this.step === 'READY_TO_BURST') this.pumpSternumPressure();
       else if (this.step === 'HUNT_FAUNA') this.attackNearbyRodent();
       else if (this.step === 'CHRYSALIS' && this.chrysalisTimer >= 100) this.emergeAdultForm();
     }
@@ -32602,6 +32948,10 @@
         }
         if (this.gestationProgress >= 100) {
           this.step = 'READY_TO_BURST';
+          this.sternumPressure = 10;
+          this.sternumCreak70Played = false;
+          this.sternumCreak90Played = false;
+          this.hostHeartbeatTimer = 0.2;
           if (this.infectedHost) {
             this.infectedHost.isRestrained = true;
             this.thoracicView.activate(this.infectedHost.x, this.infectedHost.z);
@@ -32612,11 +32962,19 @@
           if (internalCamera) rendererEngine.snapCinematicCamera(internalCamera);
           this.setInternalViewUI(true);
           audioManager.playSternumPressure?.();
-          window.HiveSystems?.updateObjective(3, 1, 'Perforer le sternum depuis la vue intra-thoracique.');
+          audioManager.playHostHeartbeatArrhythmia?.(1.0, 1.0);
+          window.HiveSystems?.updateObjective(3, 1, 'Perforer le sternum depuis la vue intra-thoracique [ESPACE].');
           this.updateHUD();
         }
       } else if (this.step === 'READY_TO_BURST') {
         this.thoracicView.update(safeDelta);
+        this.hostHeartbeatTimer = (this.hostHeartbeatTimer || 0) - safeDelta;
+        if (this.hostHeartbeatTimer <= 0) {
+          const rate = 1.0 + ((this.sternumPressure || 10) / 100) * 1.5;
+          const interval = Math.max(0.38, 1.25 / rate);
+          this.hostHeartbeatTimer = interval;
+          audioManager.playHostHeartbeatArrhythmia?.(rate, 0.8 + ((this.sternumPressure || 10) / 100) * 0.8);
+        }
       } else if (this.step === 'BURST_SEQUENCE') {
         this.burstTimer += safeDelta;
         const progress = Math.min(1, this.burstTimer / 1.25);

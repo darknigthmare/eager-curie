@@ -1114,6 +1114,7 @@
       this.bindCodex();
       this.bindPauseAndSettings();
       this.refreshContinueButton();
+      this.bindThoracicObserver();
       this.setMission(1, 0);
       this.renderCodex('castes');
       const campaignMeta = document.querySelector('.front-meta');
@@ -1575,6 +1576,32 @@
       }
     }
 
+    bindThoracicObserver() {
+      const thoracicStatus = document.getElementById('thoracic-status');
+      const pressureFill = document.getElementById('sternum-pressure-fill');
+      const eruptButton = document.getElementById('btn-thoracic-erupt');
+      if (!thoracicStatus || !pressureFill) return;
+      const updateGauge = () => {
+        const text = thoracicStatus.textContent || '';
+        const isRuptured = text.includes('cèdent') || text.includes('Rupture') || eruptButton?.disabled;
+        if (isRuptured) {
+          pressureFill.style.width = '100%';
+          pressureFill.classList.add('ruptured');
+        } else {
+          pressureFill.style.width = '75%';
+          pressureFill.classList.remove('ruptured');
+        }
+      };
+      const observer = new MutationObserver(updateGauge);
+      observer.observe(thoracicStatus, { childList: true, characterData: true, subtree: true });
+      if (eruptButton) {
+        eruptButton.addEventListener('click', () => {
+          pressureFill.style.width = '100%';
+          pressureFill.classList.add('ruptured');
+        });
+      }
+    }
+
     setMission(stage, completed = 0, explicitObjective = null) {
       const act = this.getAct(stage);
       const objectives = this.objectivesForAct(act);
@@ -1582,6 +1609,7 @@
       const missionTitle = document.getElementById('mission-title');
       const missionObjective = document.getElementById('mission-objective');
       const missionProgress = document.getElementById('mission-progress');
+      const missionProgressFill = document.getElementById('mission-progress-fill');
       const playableTotals = [3, 2, 3, 4, 5];
       const playableTotal = playableTotals[Math.max(0, Math.min(4, stage - 1))];
       if (missionAct) missionAct.textContent = `ACTE ${this.roman(stage)}`;
@@ -1590,6 +1618,10 @@
         missionObjective.textContent = explicitObjective || objectives[Math.min(completed, Math.max(0, objectives.length - 1))] || 'Adapter la ruche à la menace.';
       }
       if (missionProgress) missionProgress.textContent = `${Math.min(completed, playableTotal)} / ${playableTotal}`;
+      if (missionProgressFill) {
+        const pct = Math.min(100, Math.max(0, (completed / Math.max(1, playableTotal)) * 100));
+        missionProgressFill.style.width = `${pct.toFixed(1)}%`;
+      }
     }
 
     checkpoint(stage, unlockIds = [], additions = {}) {

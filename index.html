@@ -709,12 +709,25 @@
 
     <!-- Mission tracker: deliberately separate from the action sidebar. -->
     <section id="mission-tracker" aria-label="Objectif de mission">
-      <span id="mission-act">ACTE I</span>
-      <div>
+      <div class="mission-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="4 2" opacity="0.6"/>
+          <polygon points="12,4 19,8 19,16 12,20 5,16 5,8" stroke="#38bdf8" stroke-width="1.4" fill="rgba(56, 189, 248, 0.12)"/>
+          <polyline points="9,12 12,9 15,12" stroke="#39ff14" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="14" r="1.5" fill="#39ff14"/>
+        </svg>
+      </div>
+      <div class="mission-content">
+        <div class="mission-header-row">
+          <span id="mission-act">ACTE I</span>
+          <span id="mission-progress">0 / 3</span>
+        </div>
         <strong id="mission-title">ÉCLOSION</strong>
         <p id="mission-objective">Percevoir une présence viable dans le laboratoire.</p>
+        <div class="mission-progress-bar">
+          <div id="mission-progress-fill" class="mission-progress-fill" style="width: 0%;"></div>
+        </div>
       </div>
-      <span id="mission-progress">0 / 3</span>
     </section>
 
     <!-- Side Panel / Stats & Context Info -->
@@ -771,8 +784,20 @@
 
     <!-- Dedicated controls for the full-screen intra-thoracic sequence. -->
     <section id="thoracic-controls" class="thoracic-controls hidden" aria-label="Perforation interne" aria-hidden="true">
+      <div class="thoracic-ekg-container" aria-hidden="true">
+        <svg class="thoracic-ekg-svg" viewBox="0 0 240 40">
+          <path class="thoracic-ekg-grid" d="M0 10 L240 10 M0 20 L240 20 M0 30 L240 30 M40 0 L40 40 M80 0 L80 40 M120 0 L120 40 M160 0 L160 40 M200 0 L200 40" stroke="rgba(239, 68, 68, 0.15)" stroke-width="1"/>
+          <path class="thoracic-ekg-line" d="M0 20 L60 20 L70 5 L80 35 L90 10 L100 20 L160 20 L170 5 L180 35 L190 10 L200 20 L240 20" stroke="#ef4444" stroke-width="2" fill="none"/>
+        </svg>
+      </div>
       <span>PERCEPTION INTERNE // MATURATION TERMINÉE</span>
       <strong>PRESSION SOUS-STERNALE</strong>
+      <div class="sternum-pressure-box">
+        <span class="pressure-label">CONTRAINTE TISSULAIRE DU STERNUM</span>
+        <div class="sternum-pressure-track">
+          <div id="sternum-pressure-fill" class="sternum-pressure-fill" style="width: 15%;"></div>
+        </div>
+      </div>
       <p id="thoracic-status">Les contractions convergent vers le sternum.</p>
       <button type="button" id="btn-thoracic-erupt" class="act-btn">PERFORER LE STERNUM [ESPACE]</button>
     </section>
@@ -987,8 +1012,21 @@
 
     <!-- Story transmissions do not steal focus and disappear automatically. -->
     <div id="narrative-banner" class="narrative-banner hidden" role="status" aria-live="polite">
-      <span id="narrative-speaker">MNEMOSYNE</span>
-      <p id="narrative-line"></p>
+      <div class="narrative-crt-scanline" aria-hidden="true"></div>
+      <div class="narrative-comm-header">
+        <span class="comm-rec-dot" aria-hidden="true"></span>
+        <span class="comm-freq-tag">COMM-LINK // DIRECTIVE 937</span>
+        <span class="comm-status-tag">CHIFFRÉ CLASSE A</span>
+        <div class="narrative-oscilloscope" aria-hidden="true">
+          <svg viewBox="0 0 120 20">
+            <path d="M0 10 Q15 0 30 10 T60 10 T90 10 T120 10" stroke="#38bdf8" stroke-width="1.5" fill="none" class="waveform-anim"/>
+          </svg>
+        </div>
+      </div>
+      <div class="narrative-body">
+        <span id="narrative-speaker">MNEMOSYNE</span>
+        <p id="narrative-line"></p>
+      </div>
     </div>
 
     <!-- =========================================================

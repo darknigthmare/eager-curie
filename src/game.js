@@ -22979,6 +22979,177 @@
       }
     }
 
+    // 4. ANIMATIONS PROCEDURALES 1:1 DES CASTES SPECIALISEES & ARMES HUMAINES
+    const casteAttackEnv = Math.sin(Math.min(1, Math.max(0, attack)) * Math.PI);
+
+    // 4.1 Castes juvéniles (queen_burster, beluga, spined, neomorph_bb, armored_cb, cloaked)
+    const juvenileCastes = [
+      { segs: ['queen_burster_seg_', 'queen_burster_segment_'], heads: ['queen_burster_head'], maxSeg: 6 },
+      { segs: ['beluga_seg_', 'belugamorph_segment_'], heads: ['beluga_head', 'belugamorph_head'], maxSeg: 6 },
+      { segs: ['spined_seg_'], heads: ['spined_head'], maxSeg: 5 },
+      { segs: ['neomorph_bb_seg_', 'bloodburster_seg_'], heads: ['neomorph_bb_head', 'bloodburster_head'], maxSeg: 6 },
+      { segs: ['armored_cb_seg_', 'armored_burster_seg_'], heads: ['armored_cb_head', 'armored_burster_head'], maxSeg: 5 },
+      { segs: ['cloaked_seg_'], heads: ['cloaked_head'], maxSeg: 5 }
+    ];
+    juvenileCastes.forEach((casteDef) => {
+      let isCastePresent = false;
+      for (let s = 0; s < casteDef.maxSeg; s++) {
+        let segObj = null;
+        for (const prefix of casteDef.segs) {
+          segObj = model.getObjectByName(`${prefix}${s}`);
+          if (segObj) break;
+        }
+        if (segObj) {
+          isCastePresent = true;
+          const wavePhase = phase * 3.6 - s * 0.46;
+          segObj.position.x += Math.sin(wavePhase) * (0.04 + movement * 0.08);
+          segObj.rotation.y += Math.sin(wavePhase) * (0.08 + movement * 0.14);
+        }
+      }
+      if (isCastePresent || casteAttackEnv > 0) {
+        casteDef.heads.forEach((headName) => {
+          const hObj = model.getObjectByName(headName);
+          if (hObj) {
+            hObj.rotation.x -= casteAttackEnv * 0.48;
+            hObj.position.y += casteAttackEnv * 0.12;
+          }
+        });
+      }
+    });
+
+    // 4.2 Snake Drone (10 segments sinueux en S & mâchoires écartées)
+    for (let s = 0; s < 10; s++) {
+      const snakeSeg = model.getObjectByName(`snake_seg_${s}`);
+      if (snakeSeg) {
+        const sPhase = phase * 3.8 - s * 0.62;
+        snakeSeg.position.x += Math.sin(sPhase) * (0.12 + movement * 0.22);
+        snakeSeg.rotation.y += Math.sin(sPhase) * (0.16 + movement * 0.3);
+        snakeSeg.rotation.z += Math.cos(sPhase * 0.5) * 0.05 * movement;
+      }
+    }
+    const snakeJawLeft = model.getObjectByName('snake_jaw_left') || model.getObjectByName('snake_fang_left');
+    const snakeJawRight = model.getObjectByName('snake_jaw_right') || model.getObjectByName('snake_fang_right');
+    if (snakeJawLeft) snakeJawLeft.rotation.y -= casteAttackEnv * 0.44;
+    if (snakeJawRight) snakeJawRight.rotation.y += casteAttackEnv * 0.44;
+
+    // 4.3 Mantis Drone (faux ravisseuses & balancement)
+    for (let side = -1; side <= 1; side += 2) {
+      const mantisForearm = model.getObjectByName(`mantis_forearm_${side}`);
+      const mantisScythe = model.getObjectByName(`mantis_scythe_${side}`);
+      const mantisArmUp = model.getObjectByName(`mantis_arm_upper_${side}`);
+      if (mantisArmUp) {
+        mantisArmUp.rotation.x += Math.sin(phase + (side > 0 ? 0 : Math.PI)) * 0.28 * movement - casteAttackEnv * 0.42;
+      }
+      if (mantisForearm) {
+        mantisForearm.rotation.x -= casteAttackEnv * 0.65;
+        mantisForearm.rotation.z += side * casteAttackEnv * 0.2;
+      }
+      if (mantisScythe) {
+        mantisScythe.rotation.x += Math.sin(phase + side) * 0.18 * movement - casteAttackEnv * 0.88;
+        mantisScythe.rotation.z += side * casteAttackEnv * 0.35;
+      }
+    }
+
+    // 4.4 Scorpion Drone (fouetté du dard caudal au-dessus de la tête & pinces)
+    const scorpTailArch = model.getObjectByName('scorpion_tail_arch');
+    const scorpVenomSting = model.getObjectByName('scorpion_venom_sting');
+    if (scorpTailArch) {
+      scorpTailArch.rotation.x += casteAttackEnv * 0.95 + Math.sin(phase * 2.2) * 0.08;
+      scorpTailArch.rotation.z += Math.sin(phase * 2.6) * 0.05;
+    }
+    if (scorpVenomSting) {
+      scorpVenomSting.rotation.x += casteAttackEnv * 0.68;
+      scorpVenomSting.position.z += casteAttackEnv * 0.28;
+    }
+    for (let side = -1; side <= 1; side += 2) {
+      const scorpPincer = model.getObjectByName(`scorpion_pincer_${side}`);
+      if (scorpPincer) {
+        scorpPincer.rotation.y += side * casteAttackEnv * 0.44;
+        scorpPincer.rotation.x += Math.sin(phase + side) * 0.14 * movement;
+      }
+    }
+
+    // 4.5 Crab Drone (claquement mécanique des pinces chélipèdes)
+    for (let side = -1; side <= 1; side += 2) {
+      const crabChela = model.getObjectByName(`crab_chela_${side}`);
+      const crabClawMob = model.getObjectByName(`crab_claw_mobile_${side}`);
+      const crabArm = model.getObjectByName(`crab_arm_${side}`);
+      if (crabArm) {
+        crabArm.rotation.x += Math.sin(phase + (side > 0 ? 0 : Math.PI)) * 0.24 * movement;
+      }
+      if (crabChela) {
+        crabChela.position.z += casteAttackEnv * 0.2;
+        crabChela.rotation.x += casteAttackEnv * 0.26;
+      }
+      if (crabClawMob) {
+        crabClawMob.rotation.z += -side * casteAttackEnv * 0.72;
+      }
+    }
+
+    // 4.6 Bull / Rhino / Boar Drone (abaissement des cornes/défenses en charge bélier)
+    const ramHeads = [
+      model.getObjectByName('bull_head'),
+      model.getObjectByName('rhino_head'),
+      model.getObjectByName('boar_head')
+    ];
+    const ramBodies = [
+      model.getObjectByName('bull_torso'),
+      model.getObjectByName('rhino_chest'),
+      model.getObjectByName('boar_chest')
+    ];
+    const ramChargeStance = casteAttackEnv * 0.55 + (movement > 0.3 ? 0.32 : 0);
+    ramHeads.forEach((h) => {
+      if (h) {
+        h.rotation.x += ramChargeStance;
+        h.position.y -= ramChargeStance * 0.14;
+      }
+    });
+    ramBodies.forEach((b) => {
+      if (b) {
+        b.rotation.x += ramChargeStance * 0.32;
+      }
+    });
+
+    // 4.7 Gorilla Drone (balancement brachial knuckle-walk & frappe écrasante double poings)
+    for (let side = -1; side <= 1; side += 2) {
+      const gorillaArmUp = model.getObjectByName(`gorilla_arm_upper_${side}`);
+      const gorillaForearm = model.getObjectByName(`gorilla_forearm_${side}`);
+      if (gorillaArmUp) {
+        gorillaArmUp.rotation.x += Math.sin(phase + (side > 0 ? 0 : Math.PI)) * 0.55 * movement - casteAttackEnv * 0.92;
+        gorillaArmUp.position.y += casteAttackEnv * 0.22;
+      }
+      if (gorillaForearm) {
+        gorillaForearm.rotation.x += Math.cos(phase + (side > 0 ? 0 : Math.PI)) * 0.2 * movement - casteAttackEnv * 0.42;
+      }
+    }
+
+    // 4.8 Cougar / Worker Drone (foulée féline souple & griffes pelleteuses de fouissage)
+    const cougarChest = model.getObjectByName('cougar_chest');
+    const cougarTail = model.getObjectByName('cougar_tail_tube');
+    if (cougarChest) cougarChest.rotation.z += Math.sin(phase) * 0.08 * movement;
+    if (cougarTail) cougarTail.rotation.y += Math.sin(phase * 1.8) * 0.32;
+    for (let side = -1; side <= 1; side += 2) {
+      const spadeClaw = model.getObjectByName(`worker_spade_claw_${side}`);
+      if (spadeClaw) {
+        const digMotion = casteAttackEnv > 0 ? Math.sin(casteAttackEnv * Math.PI * 2) * 0.46 : Math.sin(phase * 2.8) * 0.26 * movement;
+        spadeClaw.rotation.x += digMotion;
+      }
+    }
+
+    // 4.9 Recul & Visée d'Arme Humaine (weapon_assembly / equipment)
+    let humanWeapon = model.getObjectByName('weapon_assembly');
+    if (!humanWeapon) {
+      model.traverse((child) => {
+        if (!humanWeapon && child.name && (child.name.includes('_equipment') || child.name.includes('weapon_assembly') || child.name.includes('_receiver'))) {
+          humanWeapon = child;
+        }
+      });
+    }
+    if (humanWeapon) {
+      humanWeapon.position.z -= casteAttackEnv * 0.14;
+      humanWeapon.rotation.x += casteAttackEnv * 0.24;
+    }
+
     if (crouch > 0) {
       model.position.y -= Math.sin(Math.min(1, crouch) * Math.PI) * 0.22;
       model.rotation.x += Math.sin(Math.min(1, crouch) * Math.PI) * 0.12;
@@ -23021,6 +23192,84 @@
       fillElement.style.width = `${normalizedValue}%`;
       fillElement.setAttribute('aria-valuenow', String(Math.round(normalizedValue)));
     }
+  }
+
+  // -------------------------------------------------------------
+  // ACTION BUTTONS SQUARE VECTOR ICONS (AAA POLISH)
+  // -------------------------------------------------------------
+  const ACTION_SVG_ICONS = {
+    claw: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2c3 2 5 6 6 12M9 2c3 3 5 7 5 13M14 2c2 3 4 7 3 13"/></svg>',
+    leap: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16C5 9 10 4 17 4M17 4v6M17 4h-6M4 17l4-4"/></svg>',
+    acid: '<svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2c-1 2-5 7-5 10a5 5 0 0010 0c0-3-4-8-5-10zm-1.5 8a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/></svg>',
+    vent: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 4h14M3 8h14M3 12h14M3 16h14M7 4v12M13 4v12"/></svg>',
+    resin: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="10,2 17,6.5 17,14.5 10,19 3,14.5 3,6.5"/><circle cx="10" cy="10.5" r="3" fill="currentColor"/></svg>',
+    sonar: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="4" cy="16" r="2" fill="currentColor"/><path d="M8 15a6 6 0 00-6-6M13 14a11 11 0 00-11-11M18 13A16 16 0 002 0"/></svg>',
+    hatch: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a6 6 0 00-6 6c0 5 3 9 6 10 3-1 6-5 6-10a6 6 0 00-6-6zM4 10l4-2 3 3 5-3"/></svg>',
+    trap: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2L4 12h6l-1 6 7-10h-6l1-6z"/></svg>',
+    vision: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3" fill="currentColor"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3"/></svg>',
+    queen: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16l2-10 4 5 1-7 1 7 4-5 2 10zM3 16h14"/></svg>',
+    generic: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="14" height="14" rx="2"/><circle cx="10" cy="10" r="3" fill="currentColor"/></svg>'
+  };
+
+  function getActionIconCategory(btn) {
+    const raw = `${btn.id || ''} ${btn.getAttribute('data-mutation') || ''} ${btn.getAttribute('data-tab-cat') || ''} ${btn.textContent || ''}`.toLowerCase();
+    if (raw.includes('acid') || raw.includes('crachat') || raw.includes('spray') || raw.includes('dégazage') || raw.includes('boiler') || raw.includes('caustique')) return 'acid';
+    if (raw.includes('leap') || raw.includes('bond') || raw.includes('saut') || raw.includes('lunge') || raw.includes('resserrer') || raw.includes('étreinte') || raw.includes('agripp') || raw.includes('charge')) return 'leap';
+    if (raw.includes('vent') || raw.includes('conduit') || raw.includes('grille') || raw.includes('trappe') || raw.includes('plafond') || raw.includes('ceiling') || raw.includes('paroi')) return 'vent';
+    if (raw.includes('resin') || raw.includes('résine') || raw.includes('cocon') || raw.includes('mimic') || raw.includes('camouflage') || raw.includes('stealth') || raw.includes('prowl')) return 'resin';
+    if (raw.includes('vision') || raw.includes('thermiq') || raw.includes('scan') || raw.includes('sens') || raw.includes('calibr') || raw.includes('détect')) return 'vision';
+    if (raw.includes('hiss') || raw.includes('sifflement') || raw.includes('cri') || raw.includes('roar') || raw.includes('hurlement') || raw.includes('sonar') || raw.includes('phéromone')) return 'sonar';
+    if (raw.includes('éclosion') || raw.includes('hatch') || raw.includes('mue') || raw.includes('molt') || raw.includes('gestation') || raw.includes('sternum') || raw.includes('perforer') || raw.includes('libérer') || raw.includes('erupt')) return 'hatch';
+    if (raw.includes('queen') || raw.includes('reine') || raw.includes('ovipositor') || raw.includes('ovipositeur') || raw.includes('royal') || raw.includes('palatine') || raw.includes('ruche') || raw.includes('conquête')) return 'queen';
+    if (raw.includes('piege') || raw.includes('piège') || raw.includes('trap') || raw.includes('machin') || raw.includes('coolant') || raw.includes('sas') || raw.includes('purge') || raw.includes('décon') || raw.includes('sabotage') || raw.includes('electr')) return 'trap';
+    if (raw.includes('griffe') || raw.includes('claw') || raw.includes('jaw') || raw.includes('mâchoire') || raw.includes('morsure') || raw.includes('bite') || raw.includes('tail') || raw.includes('dard') || raw.includes('impale') || raw.includes('décapit') || raw.includes('éventr') || raw.includes('swipe') || raw.includes('tendon') || raw.includes('frenzy') || raw.includes('crush')) return 'claw';
+    return 'generic';
+  }
+
+  function ensureActionIconStyles() {
+    if (typeof document === 'undefined') return;
+    if (!document.getElementById('action-sq-icon-styles')) {
+      const styleEl = document.createElement('style');
+      styleEl.id = 'action-sq-icon-styles';
+      styleEl.textContent = `
+        .action-sq-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 16px;
+          height: 16px;
+          min-width: 16px;
+          min-height: 16px;
+          margin-right: 6px;
+          vertical-align: middle;
+          flex-shrink: 0;
+          pointer-events: none;
+        }
+        .action-sq-icon svg {
+          width: 100%;
+          height: 100%;
+          display: block;
+        }
+      `;
+      document.head?.appendChild(styleEl);
+    }
+  }
+
+  function enrichActionButtonsWithSquareIcons(container = document.getElementById('action-buttons-container')) {
+    if (!container) return;
+    ensureActionIconStyles();
+    const buttons = container.querySelectorAll('button.act-btn, button');
+    buttons.forEach((btn) => {
+      if (btn.classList.contains('hud-tab-btn')) return;
+      if (btn.querySelector('.action-sq-icon')) return;
+      const cat = getActionIconCategory(btn);
+      const svg = ACTION_SVG_ICONS[cat] || ACTION_SVG_ICONS.generic;
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'action-sq-icon';
+      iconSpan.setAttribute('aria-hidden', 'true');
+      iconSpan.innerHTML = svg;
+      btn.insertBefore(iconSpan, btn.firstChild);
+    });
   }
 
   // -------------------------------------------------------------
@@ -24916,7 +25165,7 @@
       this.isLeaping = false;
       this.leapElapsed = 0;
       this.leapDuration = 0.62;
-      this.leapArcHeight = 3.6;
+      this.leapArcHeight = 1.65;
       this.leapUsesFaceAnchor = true;
       this.leapStart = null;
       this.leapHost = null;
@@ -27296,11 +27545,7 @@
         }
       }
       if (detailedModel) {
-        const modelScale = this.form === 'drone'
-          ? 1.0
-          : (this.form === 'facehugger'
-            ? 1.0
-            : (this.form === 'chestburster' ? (this.isChrysalis ? 1.55 : 1.0) : 1.0));
+        const modelScale = 1.0;
         detailedModel.scale.setScalar(modelScale);
         group.add(detailedModel);
         this.detailedModel = detailedModel;
@@ -27784,7 +28029,7 @@
 
     startLeapTo(host, onComplete, {
       duration = 0.62,
-      arcHeight = 3.6,
+      arcHeight = 1.65,
       useFaceAnchor = true
     } = {}) {
       if (!host || !this.mesh || this.isLeaping) return false;
@@ -28375,24 +28620,24 @@
       }
 
       if (this.type === 'powerloader' || this.type === 'exosuit') {
-        const mechGeo = new THREE.BoxGeometry(3.0, 4.5, 2.5);
+        const mechGeo = new THREE.BoxGeometry(1.8, 3.0, 1.5);
         const mechMat = new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.9, roughness: 0.2 });
         const mech = new THREE.Mesh(mechGeo, mechMat);
-        mech.position.y = 2.25;
+        mech.position.y = 1.5;
         group.add(mech);
 
-        const clawGeo = new THREE.BoxGeometry(0.8, 1.8, 0.8);
+        const clawGeo = new THREE.BoxGeometry(0.5, 1.2, 0.5);
         const clawMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
-        const clawL = new THREE.Mesh(clawGeo, clawMat); clawL.position.set(-1.8, 2.0, 1.2);
-        const clawR = new THREE.Mesh(clawGeo, clawMat); clawR.position.set(1.8, 2.0, 1.2);
+        const clawL = new THREE.Mesh(clawGeo, clawMat); clawL.position.set(-1.1, 1.4, 0.8);
+        const clawR = new THREE.Mesh(clawGeo, clawMat); clawR.position.set(1.1, 1.4, 0.8);
         group.add(clawL); group.add(clawR);
 
         const pLight = new THREE.PointLight(0xeab308, 4.0, 25);
-        pLight.position.set(0, 3.5, 0);
+        pLight.position.set(0, 2.5, 0);
         group.add(pLight);
 
       } else {
-        const bodyGeo = new THREE.CylinderGeometry(0.6, 0.6, 2.0, 8);
+        const bodyGeo = new THREE.CylinderGeometry(0.28, 0.28, 1.35, 8);
         let color = 0x38bdf8;
         if (['guard', 'marine', 'smartgunner', 'gyro', 'commando'].includes(this.type)) color = 0xf59e0b;
         if (['android', 'synthetic'].includes(this.type)) color = 0xf8fafc;
@@ -28400,13 +28645,13 @@
 
         const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.4 });
         const mesh = new THREE.Mesh(bodyGeo, mat);
-        mesh.position.y = 1.0;
+        mesh.position.y = 0.68;
         group.add(mesh);
 
-        const headGeo = new THREE.SphereGeometry(0.4, 8, 8);
+        const headGeo = new THREE.SphereGeometry(0.18, 8, 8);
         const headMat = new THREE.MeshStandardMaterial({ color: ['android', 'synthetic'].includes(this.type) ? 0xe2e8f0 : 0xfde047 });
         const headMesh = new THREE.Mesh(headGeo, headMat);
-        headMesh.position.y = 2.2;
+        headMesh.position.y = 1.58;
         group.add(headMesh);
       }
 
@@ -28440,7 +28685,7 @@
         anchor.position.set(0, 0, 0.2);
         rodentHead.add(anchor);
       } else {
-        anchor.position.set(0, 3.95, 0.43);
+        anchor.position.set(0, 1.68, 0.18);
         group.add(anchor);
       }
       this.faceAnchor = anchor;
@@ -28451,9 +28696,9 @@
       if (!this.flashlight) {
         if (!active) return;
         const spot = new THREE.SpotLight(0xfff8e7, 3.8, 22, Math.PI / 4.5, 0.45, 1.2);
-        spot.position.set(0.35, 1.9, 0.4);
+        spot.position.set(0.22, 1.38, 0.28);
         const targetObj = new THREE.Object3D();
-        targetObj.position.set(0.35, 1.2, 12);
+        targetObj.position.set(0.22, 1.2, 12);
         this.mesh.add(spot);
         this.mesh.add(targetObj);
         spot.target = targetObj;
@@ -31459,6 +31704,7 @@
           audioManager.playFacehuggerLeap();
         };
       }
+      enrichActionButtonsWithSquareIcons(actionsContainer);
     }
     log(msg) { appendSensorLog(msg, 'bio'); }
     update() {
@@ -31565,6 +31811,7 @@
       if (btnThermal) btnThermal.onclick = () => visionSystem.toggleThermal();
       const btnRoyal = document.getElementById('btn-royal-mutate');
       if (btnRoyal) btnRoyal.onclick = () => this.applyRoyalMutation();
+      enrichActionButtonsWithSquareIcons(actionsContainer);
     }
 
     applyRoyalMutation(silent = false) {
@@ -32003,6 +32250,7 @@
         });
         if (isMature) document.getElementById('btn-emerge-drone').onclick = () => this.emergeAdultForm();
       }
+      enrichActionButtonsWithSquareIcons(actionsContainer);
     }
 
     perforateSternum() {
@@ -33165,6 +33413,7 @@
         };
       });
       filterActionButtons(this.activeActionTab || 'all');
+      enrichActionButtonsWithSquareIcons(actionsContainer);
     }
 
     executeAcidSpit() {
@@ -36055,6 +36304,7 @@
       document.getElementById('btn-spawn-palatine').onclick = () => this.spawnUnit('palatine', 110);
       document.getElementById('btn-spawn-offspring').onclick = () => this.spawnUnit('offspring', 95);
       document.getElementById('btn-final-conquest').onclick = () => this.completeConquest();
+      enrichActionButtonsWithSquareIcons(actionsContainer);
     }
 
     isArmoredHost(host) {
@@ -36620,6 +36870,16 @@
         this.headerResizeObserver.observe(header);
       }
       handleViewportChange();
+      const actionsContainerEl = document.getElementById('action-buttons-container');
+      if (actionsContainerEl) {
+        enrichActionButtonsWithSquareIcons(actionsContainerEl);
+        if (typeof MutationObserver !== 'undefined' && !this.actionButtonsObserver) {
+          this.actionButtonsObserver = new MutationObserver(() => {
+            enrichActionButtonsWithSquareIcons(actionsContainerEl);
+          });
+          this.actionButtonsObserver.observe(actionsContainerEl, { childList: true, subtree: true });
+        }
+      }
     }
 
     focusPrimaryAction() {

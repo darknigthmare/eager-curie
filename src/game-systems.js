@@ -267,7 +267,10 @@
       }
       const audioButton = document.getElementById('btn-audio-toggle');
       audioButton?.setAttribute('aria-pressed', String(this.values.muted));
-      if (audioButton) audioButton.textContent = this.values.muted ? 'SON COUPÉ' : 'SON';
+      if (audioButton) {
+        const audioSvg = `<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><path d="M4 7 L7 7 L12 3 L12 17 L7 13 L4 13 Z" stroke-width="1.5" stroke-linejoin="round"/>${this.values.muted ? '<line x1="14" y1="6" x2="18" y2="14" stroke-width="1.5"/><line x1="18" y1="6" x2="14" y2="14" stroke-width="1.5"/>' : '<path d="M15 7 A4 4 0 0 1 15 13 M17 4 A8 8 0 0 1 17 16" stroke-width="1.5" stroke-linecap="round"/>'}</svg>`;
+        audioButton.innerHTML = `${audioSvg}<span>${this.values.muted ? 'SON COUPÉ' : 'SON'}</span>`;
+      }
       this.game?.setMasterVolume?.(this.values.volume / 100);
       this.game?.setReducedMotion?.(this.values.reducedMotion);
       this.game?.setGraphicsQuality?.(this.values.graphicsQuality);
@@ -1632,7 +1635,27 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = `codex-entry${isUnlocked ? '' : ' locked'}`;
-        button.textContent = isUnlocked ? (entry.name || entry.title || id).toUpperCase() : `DONNÉE ${String(index + 1).padStart(2, '0')} — VERROUILLÉE`;
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'codex-entry-icon';
+        iconSpan.setAttribute('aria-hidden', 'true');
+        let iconSvg = '';
+        if (!isUnlocked) {
+          iconSvg = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="5" y="8" width="10" height="9" rx="2" stroke-width="1.5"/><path d="M7 8 V5 C7 3.3 8.3 2 10 2 C11.7 2 13 3.3 13 5 V8" stroke-width="1.5"/><circle cx="10" cy="12.5" r="1" fill="currentColor"/></svg>';
+        } else if (category === 'castes') {
+          iconSvg = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 11 C4 7 7 4 10 4 C13 4 16 7 16 11 C16 14 14 16 12 16 L12 18 L8 18 L8 16 C6 16 4 14 4 11 Z" stroke="#39ff14" stroke-width="1.4"/><circle cx="8" cy="11" r="1.2" fill="#39ff14"/><circle cx="12" cy="11" r="1.2" fill="#39ff14"/></svg>';
+        } else if (category === 'threats') {
+          iconSvg = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><circle cx="10" cy="10" r="7" stroke="#ef4444" stroke-width="1.4"/><path d="M10 3 L10 6 M10 14 L10 17 M3 10 L6 10 M14 10 L17 10" stroke="#ef4444" stroke-width="1.4"/><circle cx="10" cy="10" r="2" fill="#ef4444"/></svg>';
+        } else {
+          iconSvg = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="3" y="4" width="14" height="12" rx="2" stroke="#38bdf8" stroke-width="1.4"/><circle cx="7" cy="10" r="2" stroke="#38bdf8" stroke-width="1.2"/><circle cx="13" cy="10" r="2" stroke="#38bdf8" stroke-width="1.2"/><line x1="7" y1="13" x2="13" y2="13" stroke="#38bdf8" stroke-width="1.2"/></svg>';
+        }
+        iconSpan.innerHTML = iconSvg;
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'codex-entry-label';
+        labelSpan.textContent = isUnlocked ? (entry.name || entry.title || id).toUpperCase() : `DONNÉE ${String(index + 1).padStart(2, '0')} — VERROUILLÉE`;
+
+        button.append(iconSpan, labelSpan);
         button.addEventListener('click', () => {
           document.querySelectorAll('.codex-entry').forEach((node) => {
             node.classList.remove('active');
@@ -1658,7 +1681,20 @@
 
     renderCodexDetail(container, entry, unlocked) {
       if (!unlocked) {
-        container.innerHTML = '<span class="codex-status">DONNÉE VERROUILLÉE</span><h3>OBSERVATION INCOMPLÈTE</h3><p>Progressez dans la campagne ou rencontrez cette forme pour restaurer le dossier.</p>';
+        container.innerHTML = `
+          <div class="codex-detail-thumb codex-thumb-locked" aria-hidden="true">
+            <svg viewBox="0 0 320 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+              <rect width="320" height="90" fill="#080306"/>
+              <line x1="0" y1="45" x2="320" y2="45" stroke="#ef4444" stroke-width="1" stroke-dasharray="6 4" stroke-opacity="0.4"/>
+              <path d="M150 22 L170 22 L175 36 L165 36 L165 65 L155 65 L155 36 L145 36 Z" fill="#ef4444" fill-opacity="0.25"/>
+              <text x="160" y="48" fill="#ef4444" font-family="'Orbitron', sans-serif" font-size="10" text-anchor="middle" letter-spacing="2">ACCÈS VERROUILLÉ</text>
+              <text x="160" y="66" fill="#94a3b8" font-family="'Share Tech Mono', monospace" font-size="7.5" text-anchor="middle">SÉCURITÉ W-Y NIVEAU 4 EXIGÉE</text>
+            </svg>
+          </div>
+          <span class="codex-status">DONNÉE VERROUILLÉE</span>
+          <h3>OBSERVATION INCOMPLÈTE</h3>
+          <p>Progressez dans la campagne ou rencontrez cette forme pour restaurer le dossier.</p>
+        `;
         return;
       }
       const name = entry.name || entry.title || entry.id || 'ENTRÉE';
@@ -1676,6 +1712,36 @@
           return value.description || value.label || value.name || value.id || 'Donnée restaurée';
         });
       container.replaceChildren();
+
+      const detailThumb = document.createElement('div');
+      detailThumb.className = 'codex-detail-thumb';
+      detailThumb.setAttribute('aria-hidden', 'true');
+      detailThumb.innerHTML = `
+        <svg viewBox="0 0 320 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="detailThumbGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#04101e"/>
+              <stop offset="60%" stop-color="#082038"/>
+              <stop offset="100%" stop-color="#020812"/>
+            </linearGradient>
+          </defs>
+          <rect width="320" height="90" fill="url(#detailThumbGrad)"/>
+          <line x1="0" y1="22" x2="320" y2="22" stroke="rgba(56,189,248,0.12)" stroke-width="1"/>
+          <line x1="0" y1="45" x2="320" y2="45" stroke="rgba(56,189,248,0.18)" stroke-width="1"/>
+          <line x1="0" y1="68" x2="320" y2="68" stroke="rgba(56,189,248,0.12)" stroke-width="1"/>
+          <line x1="80" y1="0" x2="80" y2="90" stroke="rgba(56,189,248,0.08)" stroke-width="1"/>
+          <line x1="160" y1="0" x2="160" y2="90" stroke="rgba(56,189,248,0.14)" stroke-width="1"/>
+          <line x1="240" y1="0" x2="240" y2="90" stroke="rgba(56,189,248,0.08)" stroke-width="1"/>
+          <path d="M10 45 L50 45 L55 30 L60 60 L65 38 L70 45 L130 45 L135 25 L140 65 L145 35 L150 45 L210 45 L215 32 L220 58 L225 45 L310 45" fill="none" stroke="#38bdf8" stroke-width="1.3" stroke-opacity="0.8"/>
+          <circle cx="275" cy="45" r="28" fill="none" stroke="#0284c7" stroke-width="1" stroke-dasharray="3 2"/>
+          <circle cx="275" cy="45" r="16" fill="none" stroke="#38bdf8" stroke-width="1"/>
+          <circle cx="275" cy="45" r="3" fill="#39ff14"/>
+          <line x1="275" y1="45" x2="295" y2="30" stroke="#39ff14" stroke-width="1.2"/>
+          <text x="14" y="16" fill="#7dd3fc" font-family="'Share Tech Mono', monospace" font-size="8">ARCHIVE BIOMÉTRIQUE // DOSSIER ACTIF</text>
+          <text x="14" y="80" fill="#64748b" font-family="'Share Tech Mono', monospace" font-size="7.5">SPECTRE: ÉTALONNÉ // ANALYSE ORPHEUS OK</text>
+        </svg>
+      `;
+
       const status = document.createElement('span');
       status.className = 'codex-status';
       status.textContent = 'DOSSIER RESTAURÉ';
@@ -1692,7 +1758,7 @@
       tag.textContent = loreLabels[String(lore).toUpperCase()] || String(lore).toUpperCase();
       const paragraph = document.createElement('p');
       paragraph.textContent = description;
-      container.append(status, heading, tag, paragraph);
+      container.append(detailThumb, status, heading, tag, paragraph);
       if (items.length) {
         const list = document.createElement('ul');
         items.forEach((value) => {
@@ -1760,17 +1826,103 @@
       ];
       const endings = Array.isArray(rawEndings) ? rawEndings : Object.values(rawEndings);
       container.replaceChildren();
+
+      const endingThumbnails = {
+        dominion: `
+          <div class="ending-card-thumb" aria-hidden="true">
+            <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="endDominionGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#19042b"/>
+                  <stop offset="60%" stop-color="#3b0764"/>
+                  <stop offset="100%" stop-color="#0a0112"/>
+                </linearGradient>
+              </defs>
+              <rect width="160" height="90" fill="url(#endDominionGrad)"/>
+              <circle cx="80" cy="45" r="22" fill="#0c1220" stroke="#a855f7" stroke-width="1.2"/>
+              <ellipse cx="80" cy="45" rx="42" ry="8" fill="none" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="4 2"/>
+              <path d="M40 75 Q60 55 80 45 Q100 35 120 15 M30 20 Q55 35 80 45 Q105 55 130 70" stroke="#7e22ce" stroke-width="3" fill="none"/>
+              <path d="M40 75 Q60 55 80 45 Q100 35 120 15 M30 20 Q55 35 80 45 Q105 55 130 70" stroke="#e879f9" stroke-width="1" stroke-opacity="0.8" fill="none"/>
+              <path d="M68 28 L80 18 L92 28 L86 34 L80 32 L74 34 Z" fill="#2e1065" stroke="#f472b6" stroke-width="1.2"/>
+              <circle cx="77" cy="28" r="1" fill="#39ff14"/>
+              <circle cx="83" cy="28" r="1" fill="#39ff14"/>
+            </svg>
+          </div>
+        `,
+        exodus: `
+          <div class="ending-card-thumb" aria-hidden="true">
+            <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="endExodusGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#041226"/>
+                  <stop offset="60%" stop-color="#082f49"/>
+                  <stop offset="100%" stop-color="#020617"/>
+                </linearGradient>
+              </defs>
+              <rect width="160" height="90" fill="url(#endExodusGrad)"/>
+              <circle cx="25" cy="18" r="0.8" fill="#e0f2fe"/>
+              <circle cx="65" cy="28" r="0.6" fill="#bae6fd"/>
+              <circle cx="110" cy="15" r="1" fill="#e0f2fe"/>
+              <circle cx="128" cy="55" r="26" fill="#0f172a" stroke="#38bdf8" stroke-width="1.4"/>
+              <path d="M112 45 Q122 42 126 52 M120 65 Q130 60 138 68" stroke="#0284c7" stroke-width="1" fill="none"/>
+              <path d="M15 65 L45 52 L52 54 L38 68 Z" fill="#0f172a" stroke="#7dd3fc" stroke-width="1.2"/>
+              <line x1="5" y1="70" x2="35" y2="58" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="2" y1="72" x2="25" y2="63" stroke="#39ff14" stroke-width="1.2"/>
+            </svg>
+          </div>
+        `,
+        seed: `
+          <div class="ending-card-thumb" aria-hidden="true">
+            <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="endSeedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#141c0a"/>
+                  <stop offset="60%" stop-color="#243310"/>
+                  <stop offset="100%" stop-color="#060903"/>
+                </linearGradient>
+              </defs>
+              <rect width="160" height="90" fill="url(#endSeedGrad)"/>
+              <rect x="15" y="15" width="130" height="60" rx="3" fill="#0a0f05" stroke="#4d7c0f" stroke-width="1.2"/>
+              <line x1="15" y1="35" x2="145" y2="35" stroke="#365314" stroke-width="1"/>
+              <line x1="45" y1="15" x2="45" y2="75" stroke="#365314" stroke-width="1"/>
+              <line x1="115" y1="15" x2="115" y2="75" stroke="#365314" stroke-width="1"/>
+              <ellipse cx="80" cy="52" rx="14" ry="18" fill="#17250b" stroke="#84cc16" stroke-width="1.5"/>
+              <path d="M76 40 L72 35 M84 40 L88 35 M74 42 L68 40 M86 42 L92 40" stroke="#a3e635" stroke-width="1.4" stroke-linecap="round"/>
+              <circle cx="80" cy="42" r="2" fill="#39ff14"/>
+              <circle cx="80" cy="68" r="1.8" fill="#84cc16"/>
+            </svg>
+          </div>
+        `
+      };
+
+      const endingIcons = {
+        dominion: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 18 L12 4 L20 18 L16 18 L12 11 L8 18 Z" stroke="#c084fc" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="18" r="3" fill="#a855f7"/></svg>',
+        exodus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke="#38bdf8" stroke-width="1.5"/><path d="M12 3 A9 9 0 0 1 21 12" stroke="#7dd3fc" stroke-width="2.2"/><path d="M8 12 L16 12 L13 8 M16 12 L13 16" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round"/></svg>',
+        seed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="13" rx="6" ry="8" stroke="#84cc16" stroke-width="1.6"/><circle cx="12" cy="13" r="2.5" fill="#84cc16"/><path d="M12 2 L12 5 M8 4 L10 6 M16 4 L14 6" stroke="#a3e635" stroke-width="1.4" stroke-linecap="round"/></svg>'
+      };
+
       endings.forEach((ending) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'ending-card';
+
+        const thumbWrapper = document.createElement('div');
+        thumbWrapper.innerHTML = endingThumbnails[ending.id] || endingThumbnails.dominion;
+        const thumbNode = thumbWrapper.firstElementChild;
+
+        const iconBadge = document.createElement('span');
+        iconBadge.className = 'ending-card-icon';
+        iconBadge.setAttribute('aria-hidden', 'true');
+        iconBadge.innerHTML = endingIcons[ending.id] || endingIcons.dominion;
+
         const title = document.createElement('strong');
         title.textContent = ending.title || ending.name || ending.id;
         const description = document.createElement('span');
         const labelPart = ending.choiceLabel || ending.description || ending.summary || '';
         const tonePart = ending.tone ? ` [${ending.tone}]` : '';
         description.textContent = `${labelPart}${tonePart}`;
-        button.append(title, description);
+
+        button.append(thumbNode, iconBadge, title, description);
         if (ending.epilogue) {
           const epilogueNode = document.createElement('small');
           epilogueNode.style.display = 'block';

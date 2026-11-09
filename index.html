@@ -648,9 +648,27 @@
       <div class="hud-center">
         <!-- Sensor Vision Selector -->
         <div class="vision-selector" role="group" aria-label="Mode de vision">
-          <button type="button" id="btn-vis-normal" class="vis-btn active" aria-pressed="true" title="Vision optique normale (Clavier : F1)">NATIVE [F1]</button>
-          <button type="button" id="btn-vis-thermal" class="vis-btn" aria-pressed="false" title="Vision thermique (Clavier : F2)">THERMAL [F2]</button>
-          <button type="button" id="btn-vis-acoustic" class="vis-btn" aria-pressed="false" title="Vision sonar / vibration (Clavier : F3)">ACOUSTIC [F3]</button>
+          <button type="button" id="btn-vis-normal" class="vis-btn active" aria-pressed="true" title="Vision optique normale (Clavier : F1)">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <circle cx="10" cy="10" r="7" stroke-width="1.5"/>
+              <circle cx="10" cy="10" r="3" stroke-width="1.5" fill="rgba(57, 255, 20, 0.25)"/>
+              <path d="M10 2 L10 5 M10 15 L10 18 M2 10 L5 10 M15 10 L18 10" stroke-width="1.3"/>
+            </svg>
+            <span>NATIVE [F1]</span>
+          </button>
+          <button type="button" id="btn-vis-thermal" class="vis-btn" aria-pressed="false" title="Vision thermique (Clavier : F2)">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <path d="M6 15 C5 13 5 11 6 9 C7 7 7 5 6 3 M10 17 C9 15 9 13 10 11 C11 9 11 7 10 5 M14 15 C13 13 13 11 14 9 C15 7 15 5 14 3" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <span>THERMAL [F2]</span>
+          </button>
+          <button type="button" id="btn-vis-acoustic" class="vis-btn" aria-pressed="false" title="Vision sonar / vibration (Clavier : F3)">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <circle cx="6" cy="10" r="2.2" fill="#22c55e"/>
+              <path d="M10 6 A6 6 0 0 1 10 14 M13 4 A9 9 0 0 1 13 16 M16 2 A12 12 0 0 1 16 18" stroke="#22c55e" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <span>ACOUSTIC [F3]</span>
+          </button>
         </div>
       </div>
 
@@ -661,9 +679,29 @@
           <span class="alert-level level-0" id="alert-level-text" role="status" aria-live="polite">NIVEAU 0 — IGNORANCE</span>
         </div>
         <div class="utility-controls" role="group" aria-label="Menus du jeu">
-          <button type="button" id="btn-open-codex" class="utility-btn" title="Ouvrir le codex (C)">CODEX</button>
-          <button type="button" id="btn-audio-toggle" class="utility-btn" aria-pressed="false" title="Couper ou rétablir le son">SON</button>
-          <button type="button" id="btn-pause-game" class="utility-btn" title="Pause (Échap)">PAUSE</button>
+          <button type="button" id="btn-open-codex" class="utility-btn" title="Ouvrir le codex (C)">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <rect x="3" y="3" width="14" height="14" rx="2" stroke-width="1.5"/>
+              <line x1="7" y1="7" x2="13" y2="7" stroke-width="1.5"/>
+              <line x1="7" y1="10" x2="13" y2="10" stroke-width="1.5"/>
+              <line x1="7" y1="13" x2="11" y2="13" stroke-width="1.5"/>
+            </svg>
+            <span>CODEX</span>
+          </button>
+          <button type="button" id="btn-audio-toggle" class="utility-btn" aria-pressed="false" title="Couper ou rétablir le son">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <path d="M4 7 L7 7 L12 3 L12 17 L7 13 L4 13 Z" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M15 7 A4 4 0 0 1 15 13 M17 4 A8 8 0 0 1 17 16" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <span>SON</span>
+          </button>
+          <button type="button" id="btn-pause-game" class="utility-btn" title="Pause (Échap)">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="currentColor">
+              <rect x="5" y="4" width="3.5" height="12" rx="1"/>
+              <rect x="11.5" y="4" width="3.5" height="12" rx="1"/>
+            </svg>
+            <span>PAUSE</span>
+          </button>
         </div>
         <button type="button" id="btn-toggle-hud" class="mobile-hud-toggle" aria-expanded="true" aria-controls="hud-sidebar">MASQUER HUD</button>
       </div>
@@ -748,16 +786,122 @@
 
         <!-- Conserved for the earlier modular prototype; hidden in the active game flow. -->
         <div id="embryo-choices" class="choices-container hidden" role="group" aria-label="Adaptation embryonnaire">
+          <!-- 1. Agilité (Runner / Tendons biomécaniques) -->
           <button type="button" class="choice-card" data-mutation="agility">
-            <span class="c-title">MUTATION AGILITÉ</span>
+            <div class="choice-card-thumb">
+              <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <linearGradient id="mutAgilityGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#082f49"/>
+                    <stop offset="60%" stop-color="#0c4a6e"/>
+                    <stop offset="100%" stop-color="#020617"/>
+                  </linearGradient>
+                </defs>
+                <rect width="160" height="90" fill="url(#mutAgilityGrad)"/>
+                <!-- Kinetic speed grid lines -->
+                <line x1="0" y1="20" x2="160" y2="20" stroke="rgba(56,189,248,0.12)" stroke-width="1"/>
+                <line x1="0" y1="45" x2="160" y2="45" stroke="rgba(56,189,248,0.18)" stroke-width="1"/>
+                <line x1="0" y1="70" x2="160" y2="70" stroke="rgba(56,189,248,0.12)" stroke-width="1"/>
+                <line x1="15" y1="80" x2="145" y2="25" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="8 4" stroke-opacity="0.6"/>
+                <!-- Biomechanical Tendons -->
+                <path d="M10 65 Q45 40 85 52 T150 25" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M15 72 Q50 48 90 58 T155 32" fill="none" stroke="#7dd3fc" stroke-width="1.2" stroke-dasharray="3 2"/>
+                <path d="M8 58 Q40 32 80 44 T145 18" fill="none" stroke="#0284c7" stroke-width="1.6"/>
+                <!-- Runner Xeno Leaping Silhouette -->
+                <path d="M60 48 C70 42 85 36 105 34 C118 33 132 30 142 22 C135 28 122 34 110 38 C95 43 80 48 65 52 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/>
+                <circle cx="105" cy="34" r="2" fill="#39ff14"/>
+                <path d="M60 52 L50 68 M85 45 L95 62 M115 36 L130 50" stroke="#38bdf8" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="choice-card-header">
+              <span class="choice-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M13 2 L3 14 L12 14 L11 22 L21 10 L12 10 Z" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="c-title">MUTATION AGILITÉ</span>
+            </div>
             <span class="c-desc">Vitesse de déplacement accrue et mouvements silencieux.</span>
           </button>
+
+          <!-- 2. Sang Acide (Vapeurs corrosives & Gouttes moléculaires) -->
           <button type="button" class="choice-card" data-mutation="acid">
-            <span class="c-title">SANG ACIDE</span>
+            <div class="choice-card-thumb">
+              <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <linearGradient id="mutAcidGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#142606"/>
+                    <stop offset="60%" stop-color="#223e0c"/>
+                    <stop offset="100%" stop-color="#050a02"/>
+                  </linearGradient>
+                  <radialGradient id="acidSizzle" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#84cc16" stop-opacity="0.8"/>
+                    <stop offset="60%" stop-color="#4d7c0f" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="#142606" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+                <rect width="160" height="90" fill="url(#mutAcidGrad)"/>
+                <!-- Corroded floor bulkhead hole -->
+                <ellipse cx="80" cy="62" rx="45" ry="18" fill="#020401" stroke="#84cc16" stroke-width="1.5"/>
+                <ellipse cx="80" cy="62" rx="35" ry="12" fill="url(#acidSizzle)"/>
+                <!-- Chemical vapors rising -->
+                <path d="M65 55 Q60 38 68 25 T62 10 M80 50 Q88 34 82 20 T86 8 M95 55 Q102 38 96 24 T100 10" fill="none" stroke="#a3e635" stroke-width="1.4" stroke-opacity="0.75" stroke-dasharray="4 2"/>
+                <!-- Falling & Splashing Acid Droplets -->
+                <circle cx="80" cy="38" r="3.2" fill="#84cc16" stroke="#d9f99d" stroke-width="0.8"/>
+                <circle cx="68" cy="48" r="2.2" fill="#84cc16"/>
+                <circle cx="94" cy="46" r="2.5" fill="#a3e635"/>
+                <circle cx="58" cy="62" r="1.8" fill="#39ff14"/>
+                <circle cx="102" cy="63" r="1.8" fill="#39ff14"/>
+              </svg>
+            </div>
+            <div class="choice-card-header">
+              <span class="choice-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 2 C8 7 6 11 6 15 C6 18.5 8.7 21 12 21 C15.3 21 18 18.5 18 15 C18 11 16 7 12 2 Z" stroke-width="1.8"/>
+                  <circle cx="12" cy="15" r="2.5" fill="currentColor"/>
+                </svg>
+              </span>
+              <span class="c-title">SANG ACIDE</span>
+            </div>
             <span class="c-desc">Projection d'acide corrosive renforcée.</span>
           </button>
+
+          <!-- 3. Chitine Renforcée (Plaques d'exosquelette nervurées) -->
           <button type="button" class="choice-card" data-mutation="carapace">
-            <span class="c-title">CHITINE RENFORCÉE</span>
+            <div class="choice-card-thumb">
+              <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <linearGradient id="mutChitinGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#1e180c"/>
+                    <stop offset="60%" stop-color="#3d2c14"/>
+                    <stop offset="100%" stop-color="#090704"/>
+                  </linearGradient>
+                </defs>
+                <rect width="160" height="90" fill="url(#mutChitinGrad)"/>
+                <!-- Hexagonal structural mesh -->
+                <polygon points="40,25 50,18 60,25 60,35 50,42 40,35" fill="none" stroke="#78350f" stroke-width="1"/>
+                <polygon points="60,25 70,18 80,25 80,35 70,42 60,35" fill="none" stroke="#78350f" stroke-width="1"/>
+                <polygon points="50,42 60,35 70,42 70,52 60,59 50,52" fill="none" stroke="#78350f" stroke-width="1"/>
+                <!-- Heavy Ribbed Chitin Carapace Plates -->
+                <path d="M30 68 C45 42 70 30 110 24 C130 21 145 28 150 36 C135 34 115 38 90 48 C65 58 45 68 30 68 Z" fill="#18120a" stroke="#f59e0b" stroke-width="1.8"/>
+                <path d="M42 74 C58 52 82 40 120 34" fill="none" stroke="#fbbf24" stroke-width="1.4"/>
+                <path d="M55 78 C70 60 95 48 130 42" fill="none" stroke="#f59e0b" stroke-width="1.2"/>
+                <!-- Kinetic Deflection Ricochet Spark -->
+                <line x1="88" y1="36" x2="72" y2="16" stroke="#ef4444" stroke-width="1.5"/>
+                <line x1="88" y1="36" x2="108" y2="18" stroke="#fbbf24" stroke-width="1.8"/>
+                <circle cx="88" cy="36" r="3" fill="#fbbf24"/>
+                <circle cx="88" cy="36" r="6" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="2 2"/>
+              </svg>
+            </div>
+            <div class="choice-card-header">
+              <span class="choice-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M12 2 L20 6 V12 C20 17 12 22 12 22 C12 22 4 17 4 12 V6 Z" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="M12 6 V18 M7 10 L17 10 M7 14 L17 14" stroke="currentColor" stroke-width="1.4"/>
+                </svg>
+              </span>
+              <span class="c-title">CHITINE RENFORCÉE</span>
+            </div>
             <span class="c-desc">Résistance accrue aux projectiles et au feu.</span>
           </button>
         </div>
@@ -770,25 +914,74 @@
     <div id="rts-control-bar" class="rts-bar hidden" role="group" aria-label="Commandes phéromonales">
       <div class="rts-bar-title">PHÉROMONES DE COMMANDE</div>
       <button type="button" class="rts-cmd-btn active" data-cmd="HUNT" aria-pressed="true" title="Touche Q">
-        CHASSER [Q]
+        <span class="rts-cmd-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="8" stroke-width="1.5" stroke-dasharray="3 2"/>
+            <circle cx="12" cy="12" r="3" fill="#ef4444"/>
+            <path d="M12 2 L12 6 M12 18 L12 22 M2 12 L6 12 M18 12 L22 12" stroke="#ef4444" stroke-width="1.8"/>
+          </svg>
+        </span>
+        <span class="rts-cmd-label">CHASSER [Q]</span>
       </button>
       <button type="button" class="rts-cmd-btn" data-cmd="CAPTURE" aria-pressed="false" title="Touche W">
-        CAPTURER [W]
+        <span class="rts-cmd-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <ellipse cx="12" cy="12" rx="6" ry="8" stroke="#a855f7" stroke-width="1.5"/>
+            <path d="M6 10 C9 10 9 14 12 14 C15 14 15 10 18 10 M6 14 C9 14 9 10 12 10 C15 10 15 14 18 14" stroke="#c084fc" stroke-width="1.3"/>
+            <circle cx="12" cy="12" r="2" fill="#c084fc"/>
+          </svg>
+        </span>
+        <span class="rts-cmd-label">CAPTURER [W]</span>
       </button>
       <button type="button" class="rts-cmd-btn" data-cmd="DEFEND" aria-pressed="false" title="Touche E">
-        DÉFENDRE [E]
+        <span class="rts-cmd-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 3 L20 6 V12 C20 17 12 21 12 21 C12 21 4 17 4 12 V6 Z" stroke="#38bdf8" stroke-width="1.5" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="2.5" fill="#38bdf8"/>
+          </svg>
+        </span>
+        <span class="rts-cmd-label">DÉFENDRE [E]</span>
       </button>
       <button type="button" class="rts-cmd-btn" data-cmd="INFEST" aria-pressed="false" title="Touche R">
-        INFESTER [R]
+        <span class="rts-cmd-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 4 C8.5 4 7 7 7 11 C7 16 10 20 12 20 C14 20 17 16 17 11 C17 7 15.5 4 12 4 Z" stroke="#84cc16" stroke-width="1.5"/>
+            <path d="M10 6 L8 3 M14 6 L16 3 M12 4 L12 1" stroke="#a3e635" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="2.5" fill="#84cc16"/>
+          </svg>
+        </span>
+        <span class="rts-cmd-label">INFESTER [R]</span>
       </button>
       <button type="button" class="rts-cmd-btn" data-cmd="RUSH" aria-pressed="false" title="Touche T">
-        RUSH ESSAIM [T]
+        <span class="rts-cmd-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M3 9 L8 9 L11 5 L11 13 L8 9" stroke="#f59e0b" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M8 12 L13 12 L16 8 L16 16 L13 12" stroke="#fbbf24" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M13 15 L18 15 L21 11 L21 19 L18 15" stroke="#f59e0b" stroke-width="1.6" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="rts-cmd-label">RUSH ESSAIM [T]</span>
       </button>
       <button type="button" id="btn-scent-trail" class="rts-cmd-btn" aria-pressed="false" title="Déposer un sentier de phéromones de sprint +30% (Touche N)">
-        PISTE SPRINT [N]
+        <span class="rts-cmd-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M3 17 C7 17 8 13 12 13 C16 13 17 7 21 7" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="5" cy="17" r="1.6" fill="#38bdf8"/>
+            <circle cx="12" cy="13" r="1.6" fill="#7dd3fc"/>
+            <circle cx="19" cy="7" r="2.2" fill="#39ff14"/>
+          </svg>
+        </span>
+        <span class="rts-cmd-label">PISTE SPRINT [N]</span>
       </button>
       <button type="button" id="btn-possess-mode" class="rts-cmd-btn possess-btn" aria-pressed="false" title="Prendre le contrôle direct d'une unité (Touche P)">
-        IMPULSION SYNAPTIQUE [P]
+        <span class="rts-cmd-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="3" fill="#e879f9" stroke="#c084fc" stroke-width="1.4"/>
+            <circle cx="12" cy="12" r="7" stroke="#a855f7" stroke-width="1.2" stroke-dasharray="3 2"/>
+            <path d="M12 2 L12 5 M12 19 L12 22 M2 12 L5 12 M19 12 L22 12" stroke="#e879f9" stroke-width="1.4"/>
+          </svg>
+        </span>
+        <span class="rts-cmd-label">IMPULSION SYNAPTIQUE [P]</span>
       </button>
     </div>
 
@@ -811,10 +1004,40 @@
           <button type="button" id="btn-close-codex" class="close-system-btn">FERMER [C]</button>
         </header>
         <div class="codex-tabs" role="tablist" aria-label="Catégories du codex">
-          <button type="button" class="codex-tab active" data-category="castes" role="tab" aria-selected="true">CASTES</button>
-          <button type="button" class="codex-tab" data-category="threats" role="tab" aria-selected="false">MENACES</button>
-          <button type="button" class="codex-tab" data-category="archives" role="tab" aria-selected="false">ARCHIVES</button>
-          <button type="button" class="codex-tab" data-category="evolution" role="tab" aria-selected="false">ÉVOLUTION</button>
+          <button type="button" class="codex-tab active" data-category="castes" role="tab" aria-selected="true">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <path d="M4 11 C4 7 7 4 10 4 C13 4 16 7 16 11 C16 14 14 16 12 16 L12 18 L8 18 L8 16 C6 16 4 14 4 11 Z" stroke-width="1.4"/>
+              <ellipse cx="8" cy="11" rx="1.2" ry="1.8" fill="currentColor"/>
+              <ellipse cx="12" cy="11" rx="1.2" ry="1.8" fill="currentColor"/>
+            </svg>
+            <span>CASTES</span>
+          </button>
+          <button type="button" class="codex-tab" data-category="threats" role="tab" aria-selected="false">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <circle cx="10" cy="10" r="7" stroke-width="1.4"/>
+              <path d="M10 3 L10 6 M10 14 L10 17 M3 10 L6 10 M14 10 L17 10" stroke-width="1.4"/>
+              <circle cx="10" cy="10" r="2" fill="#ef4444"/>
+            </svg>
+            <span>MENACES</span>
+          </button>
+          <button type="button" class="codex-tab" data-category="archives" role="tab" aria-selected="false">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <rect x="3" y="4" width="14" height="12" rx="2" stroke-width="1.4"/>
+              <circle cx="7" cy="10" r="2" stroke-width="1.2"/>
+              <circle cx="13" cy="10" r="2" stroke-width="1.2"/>
+              <line x1="7" y1="13" x2="13" y2="13" stroke-width="1.2"/>
+            </svg>
+            <span>ARCHIVES</span>
+          </button>
+          <button type="button" class="codex-tab" data-category="evolution" role="tab" aria-selected="false">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <circle cx="10" cy="4" r="2" fill="currentColor"/>
+              <path d="M10 6 L10 10 M10 10 L5 13 L5 16 M10 10 L15 13 L15 16" stroke-width="1.4"/>
+              <circle cx="5" cy="16" r="1.5" fill="#39ff14"/>
+              <circle cx="15" cy="16" r="1.5" fill="#38bdf8"/>
+            </svg>
+            <span>ÉVOLUTION</span>
+          </button>
         </div>
         <div class="codex-layout">
           <nav id="codex-list" class="codex-list" aria-label="Entrées du codex"></nav>
@@ -903,9 +1126,28 @@
             <span class="tracker-label-sub">CIBLE</span>
             <span id="tracker-contacts-val" class="tracker-val">0</span>
           </div>
-          <button type="button" id="btn-toggle-blueprint" class="tracker-toggle-btn" title="Afficher le Schéma Holo-Blueprint des 3 Ponts (Touche L / P)">[L] PLAN</button>
-          <button type="button" id="btn-tracker-mode" class="tracker-toggle-btn" title="Basculer balayage Focalisé 35m / 360° (Touche T)">[T] 360°</button>
-          <button type="button" id="btn-toggle-tracker" class="tracker-toggle-btn" title="Afficher / Masquer (Touche M)">[M]</button>
+          <button type="button" id="btn-toggle-blueprint" class="tracker-toggle-btn" title="Afficher le Schéma Holo-Blueprint des 3 Ponts (Touche L / P)">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <rect x="3" y="3" width="14" height="14" stroke-width="1.4"/>
+              <line x1="3" y1="10" x2="17" y2="10" stroke-width="1.2" stroke-dasharray="2 1"/>
+              <line x1="10" y1="3" x2="10" y2="17" stroke-width="1.2" stroke-dasharray="2 1"/>
+            </svg>
+            <span>[L] PLAN</span>
+          </button>
+          <button type="button" id="btn-tracker-mode" class="tracker-toggle-btn" title="Basculer balayage Focalisé 35m / 360° (Touche T)">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <circle cx="10" cy="10" r="7" stroke-width="1.4"/>
+              <line x1="10" y1="10" x2="15" y2="5" stroke="#39ff14" stroke-width="1.6"/>
+            </svg>
+            <span>[T] 360°</span>
+          </button>
+          <button type="button" id="btn-toggle-tracker" class="tracker-toggle-btn" title="Afficher / Masquer (Touche M)">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <rect x="4" y="5" width="12" height="10" rx="1.5" stroke-width="1.4"/>
+              <line x1="7" y1="17" x2="13" y2="17" stroke-width="1.4"/>
+            </svg>
+            <span>[M]</span>
+          </button>
         </div>
       </div>
     </div>

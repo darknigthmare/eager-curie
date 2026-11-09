@@ -4072,10 +4072,20 @@
       root.add(innerAssembly);
 
       this._addCarapaceSpines(root, shell, 1.25, 7, 1.8, 1.28, -1);
+      // Biometric 1:1 Canon scaling: Ovomorph incubator is 0.85m tall (Alien 1979 / Aliens 1986)
+      const eggScale = 0.85 / 4.45;
+      const eggAssembly = new T.Group();
+      eggAssembly.name = 'egg_biometric_assembly';
+      while (root.children.length > 0) {
+        eggAssembly.add(root.children[0]);
+      }
+      eggAssembly.scale.setScalar(eggScale);
+      root.add(eggAssembly);
+      this.placeOnGround(root, 0);
       const egg = this._finalize(root, {
         modelType: 'egg',
         open: !!open,
-        height: open ? 3.55 : 4.45,
+        height: open ? 0.72 : 0.85,
         animationJoints: {
           petals: ['articulated_petal_0', 'articulated_petal_1', 'articulated_petal_2', 'articulated_petal_3']
         },
@@ -4633,10 +4643,21 @@
           ));
         });
 
+        // Biometric 1:1 Canon scaling: Romulus Chrysalis Cocoon is 1.95m tall
+        const cocoonScale = 1.95 / 3.25;
+        const cocoonAssembly = new T.Group();
+        cocoonAssembly.name = 'cocoon_biometric_assembly';
+        while (root.children.length > 0) {
+          cocoonAssembly.add(root.children[0]);
+        }
+        cocoonAssembly.scale.setScalar(cocoonScale);
+        root.add(cocoonAssembly);
+        this.placeOnGround(root, 0);
+
         return this._finalize(root, {
           modelType: 'chestburster',
           chrysalis: true,
-          height: 3.25,
+          height: 1.95,
           animationJoints: [
             'pod_membrane',
             'amniotic_core',
@@ -6933,12 +6954,23 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         'labhound_tracker'
       ));
 
+      // Biometric 1:1 Canon scaling: K-9 Service Dog / Cyber-Hound is 0.78m tall (Alien 3)
+      const houndScale = 0.78 / 2.25;
+      const houndAssembly = new T.Group();
+      houndAssembly.name = 'hound_biometric_assembly';
+      while (root.children.length > 0) {
+        houndAssembly.add(root.children[0]);
+      }
+      houndAssembly.scale.setScalar(houndScale);
+      root.add(houndAssembly);
+      this.placeOnGround(root, 0);
+
       return this._finalize(root, {
         modelType: 'serviceAnimal',
         subtype: isCyberHound ? 'weyland_cyber_hound' : 'labhound',
         requestedSubtype: requestedType,
         forwardAxis: '+Z',
-        height: 2.25,
+        height: 0.78,
         animationJoints: {
           head: 'labhound_head',
           tail: 'labhound_tail',
@@ -7011,12 +7043,14 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       }
 
       const root = this._createHumanFigure(normalizedType, false);
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'human',
         subtype: normalizedType,
         requestedSubtype: requestedType,
         forwardAxis: '+Z',
-        height: 4.25
+        height: 4.25,
+        canonHeight: 1.80
       });
     }
 
@@ -13312,7 +13346,8 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       const royalFlesh = this._material('chitinWarm', { color: 0x4a1d36, roughness: 0.38 });
       const royalChitin = this._material('chitin', { color: 0x221033, roughness: 0.22, metalness: 0.55 });
       const bone = this._material('bone', { color: 0xc8b6d8 });
-      const scale = 1.38;
+      // Canon 1:1 biometrics: Royal Chestburster is 0.62m tall (larger than 0.45m standard Chestburster)
+      const scale = 0.52;
 
       // Segments corporels sinueux de serpent royal
       for (let s = 0; s < 9; s++) {
@@ -13372,11 +13407,21 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         );
       }
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'queen_burster',
         caste: 'queen_burster',
-        height: 1.65,
-        animationJoints: ['queen_burster_head', 'queen_burster_crest', 'queen_burster_segment_0', 'queen_burster_segment_4']
+        height: 0.62,
+        animationJoints: [
+          'queen_burster_head',
+          'queen_burster_crest',
+          'queen_burster_segment_0',
+          'queen_burster_segment_2',
+          'queen_burster_segment_4',
+          'queen_burster_segment_6',
+          'queen_burster_main_arm_-1',
+          'queen_burster_main_arm_1'
+        ]
       });
     }
 
@@ -13439,7 +13484,8 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       const paleSkin = this._material('chitinWarm', { color: 0xf8fafc, roughness: 0.72, metalness: 0.05 });
       const bloodFlesh = this._material('chitin', { color: 0xdc2626, roughness: 0.25, metalness: 0.1 });
       const fangBone = this._material('bone', { color: 0xffffff });
-      const scale = 1.15;
+      // Canon 1:1 biometrics: Juvenile Belugamorph / Bloodburster is 0.55m tall (Alien: Covenant)
+      const scale = 0.52;
 
       // Segments corporels sinueux blanc craie translucide
       for (let s = 0; s < 8; s++) {
@@ -13479,11 +13525,19 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         );
       }
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'chestburster',
         caste: 'belugamorph',
-        height: 1.25,
-        animationJoints: ['belugamorph_head', 'belugamorph_segment_0', 'belugamorph_segment_3']
+        height: 0.55,
+        animationJoints: [
+          'belugamorph_head',
+          'belugamorph_segment_0',
+          'belugamorph_segment_2',
+          'belugamorph_segment_4',
+          'belugamorph_arm_-1',
+          'belugamorph_arm_1'
+        ]
       });
     }
 
@@ -13601,7 +13655,7 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       root.name = 'spined_burster';
       const paleChitin = this._material('chitinWarm', { color: 0x451a03, roughness: 0.35, metalness: 0.3 });
       const spineBone = this._material('bone', { color: 0xfef08a });
-      const scale = 0.95;
+      const scale = 0.62;
 
       for (let s = 0; s < 7; s++) {
         const rad = (0.28 - s * 0.03) * scale;
@@ -13612,11 +13666,12 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       root.add(this._ellipsoid(paleChitin, { x: 0.34 * scale, y: 0.26 * scale, z: 0.52 * scale }, { x: 0, y: 0.38 * scale, z: 0.42 * scale }, 'spined_head', 14));
       this._addJaw(root, paleChitin, spineBone, { x: 0, y: 0.28 * scale, z: 0.72 * scale }, 0.4 * scale, false);
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'chestburster',
         caste: 'spined_burster',
-        height: 0.85,
-        animationJoints: ['spined_head', 'spined_seg_0', 'spined_seg_3']
+        height: 0.48,
+        animationJoints: ['spined_head', 'spined_seg_0', 'spined_seg_2', 'spined_seg_4']
       });
     }
 
@@ -13678,7 +13733,7 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       root.name = 'neomorph_bloodburster';
       const chalkSkin = this._material('resin', { color: 0xf8fafc, roughness: 0.25, opacity: 0.92, transparent: true });
       const bloodCrimson = this._material('emissiveRed', { color: 0xdc2626, emissive: 0x991b1b, emissiveIntensity: 1.5 });
-      const scale = 0.92;
+      const scale = 0.62;
 
       for (let s = 0; s < 6; s++) {
         const rad = (0.24 - s * 0.025) * scale;
@@ -13687,11 +13742,12 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       root.add(this._ellipsoid(chalkSkin, { x: 0.28 * scale, y: 0.22 * scale, z: 0.55 * scale }, { x: 0, y: 0.32 * scale, z: 0.38 * scale }, 'bloodburster_head', 14));
       root.add(this._box(bloodCrimson, { x: 0.16 * scale, y: 0.08 * scale, z: 0.24 * scale }, { x: 0, y: 0.25 * scale, z: 0.58 * scale }, 'bloodburster_bloody_teeth'));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'chestburster',
         caste: 'neomorph_bloodburster',
-        height: 0.82,
-        animationJoints: ['bloodburster_head', 'bloodburster_seg_0', 'bloodburster_seg_2']
+        height: 0.46,
+        animationJoints: ['bloodburster_head', 'bloodburster_seg_0', 'bloodburster_seg_2', 'bloodburster_seg_4']
       });
     }
 
@@ -13767,11 +13823,23 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         root.add(this._segment(armMat, new T.Vector3(side * 0.28 * scale, 0.75 * scale, 0.22 * scale), new T.Vector3(side * 0.45 * scale, 0.42 * scale, 0.45 * scale), 0.06 * scale, 0.04 * scale, `snake_arm_${side}`, 8));
       }
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'snake_drone',
-        height: 1.45 * scale,
-        animationJoints: ['snake_head', 'snake_seg_0', 'snake_seg_2', 'snake_seg_5']
+        height: 1.65,
+        animationJoints: [
+          'snake_head',
+          'snake_hood',
+          'snake_seg_0',
+          'snake_seg_2',
+          'snake_seg_4',
+          'snake_seg_6',
+          'snake_seg_8',
+          'snake_arm_-1',
+          'snake_arm_1',
+          'snake_stinger'
+        ]
       });
     }
 
@@ -13796,7 +13864,7 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       const T = this._three();
       const root = new T.Group();
       root.name = 'armored_chestburster';
-      const scale = 0.95;
+      const scale = 0.65;
       const paleFlesh = this._material('resin', { color: 0xe2e8f0, roughness: 0.35 });
       const darkArmor = this._material('darkMetal', { color: 0x0f172a, roughness: 0.25, metalness: 0.75 });
 
@@ -13810,11 +13878,12 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       // Tête cuirassée
       root.add(this._ellipsoid(darkArmor, { x: 0.26 * scale, y: 0.2 * scale, z: 0.52 * scale }, { x: 0, y: 0.3 * scale, z: 0.36 * scale }, 'armored_burster_head', 14));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'chestburster',
         caste: 'armored_chestburster',
-        height: 0.78,
-        animationJoints: ['armored_burster_head', 'armored_burster_seg_0']
+        height: 0.48,
+        animationJoints: ['armored_burster_head', 'armored_burster_seg_0', 'armored_burster_seg_2']
       });
     }
 
@@ -13889,11 +13958,22 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       // Dard caudal aiguillon
       root.add(this._cone(scytheBlade, 0.06 * scale, 0.35 * scale, { x: 0, y: 0.75 * scale, z: -1.05 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'mantis_tail_stinger'));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'mantis_drone',
-        height: 1.85 * scale,
-        animationJoints: ['mantis_head', 'mantis_torso']
+        height: 2.35,
+        animationJoints: [
+          'mantis_head',
+          'mantis_torso',
+          'mantis_arm_upper_-1',
+          'mantis_arm_upper_1',
+          'mantis_scythe_-1',
+          'mantis_scythe_1',
+          'mantis_thigh_-1',
+          'mantis_thigh_1',
+          'mantis_tail_stinger'
+        ]
       });
     }
 
@@ -13918,7 +13998,7 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       const T = this._three();
       const root = new T.Group();
       root.name = 'cloaked_runner_burster';
-      const scale = 0.88;
+      const scale = 0.62;
       const ghostChitin = this._material('resin', {
         color: 0x64748b,
         roughness: 0.15,
@@ -13935,11 +14015,12 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       root.add(this._ellipsoid(ghostChitin, { x: 0.24 * scale, y: 0.18 * scale, z: 0.48 * scale }, { x: 0, y: 0.25 * scale, z: 0.32 * scale }, 'cloaked_head', 12));
       root.add(this._box(eyeGlow, { x: 0.08 * scale, y: 0.04 * scale, z: 0.12 * scale }, { x: 0, y: 0.24 * scale, z: 0.46 * scale }, 'cloaked_optic'));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'chestburster',
         caste: 'cloaked_runner_burster',
-        height: 0.7,
-        animationJoints: ['cloaked_head', 'cloaked_seg_0']
+        height: 0.45,
+        animationJoints: ['cloaked_head', 'cloaked_seg_0', 'cloaked_seg_2']
       });
     }
 
@@ -14014,11 +14095,21 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       root.add(this._cone(bullChitin, 0.15 * scale, 0.9 * scale, { x: 0, y: 0.75 * scale, z: -0.9 * scale }, { x: -Math.PI / 4, y: 0, z: 0 }, 'bull_tail'));
       root.add(this._ellipsoid(hornBone, { x: 0.18 * scale, y: 0.15 * scale, z: 0.22 * scale }, { x: 0, y: 0.65 * scale, z: -1.4 * scale }, 'bull_tail_club', 10));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'bull_drone',
-        height: 1.7 * scale,
-        animationJoints: ['bull_head', 'bull_torso']
+        height: 2.25,
+        animationJoints: [
+          'bull_head',
+          'bull_torso',
+          'bull_foreleg_-1',
+          'bull_foreleg_1',
+          'bull_hindthigh_-1',
+          'bull_hindthigh_1',
+          'bull_tail',
+          'bull_tail_club'
+        ]
       });
     }
 
@@ -14072,11 +14163,22 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       // Queue courte articulée
       root.add(this._cone(gorillaChitin, 0.12 * scale, 0.65 * scale, { x: 0, y: 0.7 * scale, z: -0.55 * scale }, { x: -Math.PI / 4, y: 0, z: 0 }, 'gorilla_tail'));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'gorilla_drone',
-        height: 1.8 * scale,
-        animationJoints: ['gorilla_head', 'gorilla_chest']
+        height: 2.40,
+        animationJoints: [
+          'gorilla_head',
+          'gorilla_chest',
+          'gorilla_arm_upper_-1',
+          'gorilla_arm_upper_1',
+          'gorilla_forearm_-1',
+          'gorilla_forearm_1',
+          'gorilla_leg_-1',
+          'gorilla_leg_1',
+          'gorilla_tail'
+        ]
       });
     }
 
@@ -14155,11 +14257,22 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       // Queue puissante à dard éperon
       root.add(this._cone(tuskObsidian, 0.1 * scale, 0.7 * scale, { x: 0, y: 0.7 * scale, z: -0.55 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'boar_tail'));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'boar_drone',
-        height: 1.7 * scale,
-        animationJoints: ['boar_head', 'boar_chest']
+        height: 1.95,
+        animationJoints: [
+          'boar_head',
+          'boar_chest',
+          'boar_tusk_-1',
+          'boar_tusk_1',
+          'boar_arm_-1',
+          'boar_arm_1',
+          'boar_leg_-1',
+          'boar_leg_1',
+          'boar_tail'
+        ]
       });
     }
 
@@ -14208,11 +14321,23 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       // Triple dard venimeux terminal luminescent
       root.add(this._cone(venomBarb, 0.07 * scale, 0.35 * scale, { x: 0, y: 2.25 * scale, z: 0.25 * scale }, { x: Math.PI / 2, y: 0, z: 0 }, 'scorpion_venom_sting'));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'scorpion_drone',
-        height: 2.3 * scale,
-        animationJoints: ['scorpion_head', 'scorpion_chest', 'scorpion_tail_arch']
+        height: 2.30,
+        animationJoints: [
+          'scorpion_head',
+          'scorpion_chest',
+          'scorpion_tail_arch',
+          'scorpion_venom_sting',
+          'scorpion_pincer_-1',
+          'scorpion_pincer_1',
+          'scorpion_arm_-1',
+          'scorpion_arm_1',
+          'scorpion_leg_-1',
+          'scorpion_leg_1'
+        ]
       });
     }
 
@@ -14309,11 +14434,21 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       ], 0.065 * scale, 'cougar_tail_tube', 14, 6));
       root.add(this._cone(tendonGlow, 0.05 * scale, 0.25 * scale, { x: 0, y: 0.25 * scale, z: -1.85 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'cougar_tail_blade'));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'cougar_drone',
-        height: 1.35 * scale,
-        animationJoints: ['cougar_head', 'cougar_chest']
+        height: 1.60,
+        animationJoints: [
+          'cougar_head',
+          'cougar_chest',
+          'cougar_foreleg_-1',
+          'cougar_foreleg_1',
+          'cougar_hindleg_-1',
+          'cougar_hindleg_1',
+          'cougar_tail_tube',
+          'cougar_tail_blade'
+        ]
       });
     }
 
@@ -14357,11 +14492,22 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       // Queue robuste d'ancrage
       root.add(this._cone(workerChitin, 0.09 * scale, 0.75 * scale, { x: 0, y: 0.65 * scale, z: -0.55 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'worker_tail'));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'worker_drone',
-        height: 1.6 * scale,
-        animationJoints: ['worker_head', 'worker_chest']
+        height: 1.75,
+        animationJoints: [
+          'worker_head',
+          'worker_chest',
+          'worker_spade_claw_-1',
+          'worker_spade_claw_1',
+          'worker_arm_-1',
+          'worker_arm_1',
+          'worker_leg_-1',
+          'worker_leg_1',
+          'worker_tail'
+        ]
       });
     }
 
@@ -14479,11 +14625,23 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       root.add(this._segment(rhinoChitin, new T.Vector3(0, 0.75 * scale, -0.5 * scale), new T.Vector3(0, 0.35 * scale, -1.2 * scale), 0.16 * scale, 0.1 * scale, 'rhino_tail_base', 8));
       root.add(this._cone(hornBone, 0.14 * scale, 0.6 * scale, { x: 0, y: 0.25 * scale, z: -1.45 * scale }, { x: -Math.PI / 3, y: 0, z: 0 }, 'rhino_tail_club'));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'rhino_drone',
-        height: 1.85 * scale,
-        animationJoints: ['rhino_head', 'rhino_chest']
+        height: 2.65,
+        animationJoints: [
+          'rhino_head',
+          'rhino_chest',
+          'rhino_forearm_-1',
+          'rhino_forearm_1',
+          'rhino_talon_-1',
+          'rhino_talon_1',
+          'rhino_leg_-1',
+          'rhino_leg_1',
+          'rhino_tail_base',
+          'rhino_tail_club'
+        ]
       });
     }
 
@@ -14541,11 +14699,24 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       // Queue articulée bivalve
       root.add(this._segment(crabChitin, new T.Vector3(0, 0.7 * scale, -0.45 * scale), new T.Vector3(0, 0.3 * scale, -1.15 * scale), 0.13 * scale, 0.08 * scale, 'crab_tail', 8));
 
+      this.placeOnGround(root, 0);
       return this._finalize(root, {
         modelType: 'adult',
         caste: 'crab_drone',
-        height: 1.7 * scale,
-        animationJoints: ['crab_head', 'crab_carapace']
+        height: 2.15,
+        animationJoints: [
+          'crab_head',
+          'crab_carapace',
+          'crab_arm_-1',
+          'crab_arm_1',
+          'crab_chela_-1',
+          'crab_chela_1',
+          'crab_claw_mobile_-1',
+          'crab_claw_mobile_1',
+          'crab_leg_-1',
+          'crab_leg_1',
+          'crab_tail'
+        ]
       });
     }
 

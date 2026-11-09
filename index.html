@@ -9,6 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/hive-icon.svg">
   <link rel="stylesheet" href="assets/fonts/fonts.css">
   <link rel="stylesheet" href="src/css/style.css?v=20261020-modern">
+  <link rel="stylesheet" href="src/css/alien-base.css?v=20261109">
 
   <!-- Pinned, integrity-verified runtime served locally; no external CDN required. -->
   <script defer src="assets/vendor/three.r128.min.js"></script>
@@ -51,13 +52,13 @@
             <option value="survivor" selected>SURVIVANT — expérience équilibrée</option>
             <option value="nightmare">CAUCHEMAR — réaction humaine extrême</option>
           </select>
-          <label for="origin-select">LIEU D'ORIGINE DU DÉPART (ACTE 1)</label>
+          <label for="origin-select">ORIGINE DANS LA STATION (ACTE I)</label>
           <select id="origin-select">
-            <option value="random" selected>🎲 ALÉATOIRE (1 des 4 cartes et origines)</option>
-            <option value="juggernaut">🪐 Épave Derelict / Juggernaut (Pilote Ingénieur, Scaphandre EVA)</option>
-            <option value="hive">🪺 Ruche Bio-Résine (Nid alien, Patrouille Marine Colonial USCM)</option>
-            <option value="colony">🏭 Colonie Hadley's Hope (Sous-sol industriel, Ouvrier en salopette)</option>
-            <option value="starship">🚀 Vaisseau USCSS Nostromo (Laboratoire Médical, Blouse scientifique)</option>
+            <option value="random" selected>🎲 ALÉATOIRE — 1 des 4 origines de la station</option>
+            <option value="juggernaut">🪐 Soute archéologique — champ d'œufs et voile laser</option>
+            <option value="hive">🪺 Secteur infesté — nid de résine et patrouille</option>
+            <option value="colony">🏭 Annexe coloniale — recoin industriel</option>
+            <option value="starship">🚀 Module de transit — recoin sombre</option>
           </select>
           <label class="toggle-row">
             <input type="checkbox" id="expanded-lore-toggle" checked>
@@ -191,7 +192,7 @@
 
     <!-- Dedicated controls for the full-screen intra-thoracic sequence. -->
     <section id="thoracic-controls" class="thoracic-controls hidden" aria-label="Perforation interne" aria-hidden="true">
-      <span>PERCEPTION INTERNE // MATURATION TERMINÉE</span>
+      <span>PERCEPTION INTERNE // CYCLE INTRA-THORACIQUE</span>
       <strong>PRESSION SOUS-STERNALE</strong>
       <p id="thoracic-status">Les contractions convergent vers le sternum.</p>
       <button type="button" id="btn-thoracic-erupt" class="act-btn">PERFORER LE STERNUM [ESPACE]</button>
@@ -383,6 +384,8 @@
   <script defer src="src/render-quality.js?v=20261020-modern"></script>
   <script defer src="src/station-detail.js?v=20261020-modern"></script>
   <script defer src="src/game-systems.js?v=20261020-modern"></script>
+  <script defer src="src/industrial-layout.js?v=20261109"></script>
   <script defer src="src/game.js?v=20261020-modern"></script>
+  <script defer src="src/alien-base-library.js?v=20261109"></script>
 </body>
 </html>

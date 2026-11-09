@@ -6,6 +6,18 @@ server.ps1
 start.bat
 tools/
 .tools/
+.ai-tools/
+.github/
+AGENTS.md
+CLAUDE.md
+docs/
+
+# Only the reviewed public reference snapshots belong in the static game.
+# Future research, gameplay, manifests and private data stay excluded.
+data/*
+!data/alien-base.snapshot.v1.json
+!data/alien-base.snapshot.v2.json
+!data/alien-base.media.v2.json
 QA_REPORT.md
 GRAPHICS_UPGRADE.md
 SCULPT_UPGRADE.md

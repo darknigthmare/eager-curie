@@ -1062,6 +1062,11 @@
       this.inertSnapshots = new Map();
       this.narrativeTimer = null;
       this.campaignActive = false;
+      this.compactHudMedia = null;
+      this.compactHudActive = null;
+      this.biologicalTransitionOwner = null;
+      this.locomotionLocks = new Map();
+      this.locomotionLockWrites = new WeakMap();
     }
 
     init(game) {
@@ -1072,6 +1077,8 @@
       this.bindUtilityControls();
       this.bindCodex();
       this.bindPauseAndSettings();
+      this.bindCompactHud();
+      this.bindLocomotionGuard();
       this.refreshContinueButton();
       this.setMission(1, 0);
       this.renderCodex('castes');
@@ -1089,6 +1096,7 @@
       const expandedLore = document.getElementById('expanded-lore-toggle');
 
       document.getElementById('btn-new-campaign')?.addEventListener('click', () => {
+        this.clearBiologicalTransition();
         const originVal = originSelect?.value || 'random';
         const save = this.saveManager.startNew(difficulty?.value || 'survivor', !!expandedLore?.checked, originVal);
         this.game?.configureCampaign?.(save);
@@ -1107,6 +1115,7 @@
       document.getElementById('btn-continue-campaign')?.addEventListener('click', () => {
         const save = this.saveManager.read();
         if (!save?.campaignStarted) return;
+        this.clearBiologicalTransition();
         this.game?.configureCampaign?.(save);
         this.hideLayer(boot, false);
         this.campaignActive = true;
@@ -1175,6 +1184,290 @@
       });
     }
 
+    bindCompactHud() {
+      const app = document.getElementById('app-container');
+      const sidebar = document.getElementById('hud-sidebar');
+      const toggle = document.getElementById('btn-toggle-hud');
+      if (!app || !sidebar || !toggle || typeof window.matchMedia !== 'function') return;
+      // The GameMaster's resize handler reads this property dynamically. Share
+      // one breakpoint rather than letting its desktop branch reopen a phone
+      // drawer every time the browser toolbar changes the viewport height.
+      this.compactHudMedia = window.matchMedia('(max-width: 680px), (max-width: 1050px) and (max-height: 480px)');
+      this.game.mobileHudMedia = this.compactHudMedia;
+      const status = document.createElement('div');
+      status.id = 'hud-compact-status';
+      status.setAttribute('role', 'group');
+      app.appendChild(status);
+      const quickActions = document.createElement('div');
+      quickActions.id = 'hud-quick-actions';
+      quickActions.setAttribute('role', 'group');
+      quickActions.setAttribute('aria-label', 'Actions contextuelles rapides');
+      app.appendChild(quickActions);
+      const syncActions = () => {
+        const sources = Array.from(sidebar.querySelectorAll('#action-buttons-container .act-btn'))
+          .filter((button) => button.id && !button.disabled && window.getComputedStyle(button).display !== 'none')
+          .slice(0, 3);
+        const previous = Array.from(quickActions.children);
+        const focused = document.activeElement;
+        const aliases = sources.map((source) => {
+          let alias = previous.find((button) => button.dataset.sourceAction === source.id);
+          if (!alias) {
+            alias = document.createElement('button');
+            alias.type = 'button';
+            alias.className = 'quick-action-btn';
+            alias.dataset.sourceAction = source.id;
+            alias.addEventListener('click', () => {
+              const current = document.getElementById(alias.dataset.sourceAction);
+              if (!current || current.disabled || window.getComputedStyle(current).display === 'none' || this.hasAnyVisibleModal() ||
+                !this.game?.campaignActive || this.game?.isSystemPaused || this.game?.isRunning === false || this.isPhysicalActionBlocked(current)) return;
+              current.click();
+            });
+          }
+          const state = this.getPhysicalActionState();
+          const busyLabel = state.ceilingActionPhase === 'HOLD'
+            ? 'PRISE MAINTENUE — Q : LIBÉRER PUIS DESCENDRE'
+            : state.ceilingActionPhase ? 'CAPTURE / LEVAGE — Q : INTERROMPRE' : 'ANNULER LA TRANSITION [Q]';
+          const ceilingLabels = {
+            'btn-drone-ceiling': state.busy ? busyLabel : 'DESCENDRE AU SOL [Q]',
+            'btn-claw-swipe': 'ATTERRISSAGE OFFENSIF [ESPACE]',
+            'btn-tail-impale': 'PRISE CAUDALE SUSPENDUE [E/T]',
+            'btn-ceiling-drop-eviscerate': 'PRISE CAUDALE SUSPENDUE [E/T]'
+          };
+          const label = (state.busy || state.hanging) && ceilingLabels[source.id]
+            ? ceilingLabels[source.id] : source.textContent.trim().replace(/\s+/g, ' ');
+          if (alias.textContent !== label) alias.textContent = label;
+          alias.setAttribute('aria-label', label);
+          alias.title = label;
+          return alias;
+        });
+        if (previous.length !== aliases.length || previous.some((button, index) => button !== aliases[index])) {
+          quickActions.replaceChildren(...aliases);
+          if (previous.includes(focused) && !aliases.includes(focused)) (aliases[0] || toggle).focus({ preventScroll: true });
+        }
+        app.classList.toggle('has-quick-actions', aliases.length > 0);
+      };
+      this.syncCompactActions = syncActions;
+      if (typeof MutationObserver !== 'undefined') {
+        const actions = document.getElementById('action-buttons-container');
+        this.compactActionsObserver = new MutationObserver(syncActions);
+        if (actions) this.compactActionsObserver.observe(actions, { subtree: true, childList: true, characterData: true,
+          attributes: true, attributeFilter: ['class', 'style', 'disabled'] });
+      }
+      const syncStatus = () => {
+        const vital = document.getElementById('stat-vital-val')?.textContent || '—';
+        const secondary = document.getElementById('stat-sec-val')?.textContent || '—';
+        const vitalLabel = document.getElementById('stat-vital-label')?.textContent || 'Vitalité';
+        const secondaryLabel = document.getElementById('stat-sec-label')?.textContent || 'Réserve';
+        status.textContent = `PV ${vital} · RÉSERVE ${secondary}`;
+        status.setAttribute('aria-label', `${vitalLabel} : ${vital}. ${secondaryLabel} : ${secondary}.`);
+      };
+      syncStatus();
+      if (typeof MutationObserver !== 'undefined') {
+        this.compactStatusObserver = new MutationObserver(syncStatus);
+        const stats = sidebar.querySelector('.panel-section');
+        if (stats) this.compactStatusObserver.observe(stats, { subtree: true, childList: true, characterData: true });
+      }
+      const syncDrawer = () => {
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        app.classList.toggle('hud-drawer-open', this.compactHudActive && expanded);
+        toggle.textContent = expanded && this.compactHudActive ? 'FERMER' : 'ACTIONS';
+        toggle.setAttribute('aria-label', expanded && this.compactHudActive ? 'Fermer les actions et retrouver la scène' : 'Afficher les actions, les visions et les objectifs');
+      };
+      if (typeof MutationObserver !== 'undefined') {
+        // Stage changes also close the authored HUD through setHudExpanded.
+        // Observe its state attribute only: syncing our label/classes must not
+        // create a class-observer feedback loop or leave quick actions hidden.
+        this.compactDrawerObserver = new MutationObserver(syncDrawer);
+        this.compactDrawerObserver.observe(toggle, { attributes: true, attributeFilter: ['aria-expanded'] });
+      }
+      const syncTracker = () => {
+        const tracker = document.getElementById('m314-tracker');
+        const button = document.getElementById('btn-toggle-tracker');
+        const collapsed = !!tracker?.classList.contains('collapsed');
+        button?.setAttribute('aria-expanded', String(!collapsed));
+        button?.setAttribute('aria-label', collapsed ? 'Déployer le détecteur de mouvements' : 'Replier le détecteur de mouvements');
+      };
+      const syncViewport = () => {
+        const compact = this.compactHudMedia.matches;
+        const changed = compact !== this.compactHudActive;
+        if (changed) {
+          const tracker = this.game?.motionTracker;
+          if (compact) this.desktopTrackerCollapsed = !!tracker?.isCollapsed;
+          this.compactHudActive = compact;
+          app.classList.toggle('compact-hud', compact);
+          document.body.classList.toggle('compact-hud', compact);
+          this.game?.setHudExpanded?.(!compact);
+          if (tracker) {
+            tracker.isCollapsed = compact || !!this.desktopTrackerCollapsed;
+            tracker.deviceEl?.classList.toggle('collapsed', tracker.isCollapsed);
+          }
+        }
+        syncDrawer();
+        syncTracker();
+        syncActions();
+      };
+      toggle.addEventListener('click', () => {
+        syncDrawer();
+        if (this.compactHudActive && toggle.getAttribute('aria-expanded') === 'true') {
+          const action = sidebar.querySelector('#action-buttons-container button:not(:disabled)');
+          (action || sidebar)?.focus({ preventScroll: true });
+          if (action) action.scrollIntoView({ block: 'nearest' });
+        }
+      });
+      document.getElementById('btn-toggle-tracker')?.addEventListener('click', syncTracker);
+      if (typeof MutationObserver !== 'undefined') {
+        const tracker = document.getElementById('m314-tracker');
+        this.compactTrackerObserver = new MutationObserver(syncTracker);
+        if (tracker) this.compactTrackerObserver.observe(tracker, { attributes: true, attributeFilter: ['class'] });
+      }
+      // A compact drawer is not a pause dialog. Escape closes only this drawer,
+      // returns focus to its trigger, and leaves the simulation state intact.
+      window.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape' || !this.compactHudActive ||
+          toggle.getAttribute('aria-expanded') !== 'true' || this.hasAnyVisibleModal()) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.game?.setHudExpanded?.(false);
+        syncDrawer();
+        toggle.focus({ preventScroll: true });
+      }, true);
+      window.addEventListener('resize', syncViewport);
+      this.compactHudMedia.addEventListener?.('change', syncViewport);
+      syncViewport();
+    }
+
+    getPhysicalActionState() {
+      if (this.game?.currentStageIndex !== 4) return { busy: false, hanging: false, ceilingActionPhase: null };
+      const state = this.game?.getLocomotionState?.();
+      return { busy: !!(state?.busy ?? this.game?.isLocomotionBusy?.()), hanging: !!state?.hanging,
+        ceilingActionPhase: typeof state?.ceilingActionPhase === 'string' ? state.ceilingActionPhase : null };
+    }
+
+    isPhysicalActionBusy() { return this.getPhysicalActionState().busy; }
+
+    isPhysicalActionBlocked(button, state = this.getPhysicalActionState()) {
+      if (state.busy) return button?.id !== 'btn-drone-ceiling';
+      return state.hanging && !['btn-drone-ceiling', 'btn-claw-swipe', 'btn-tail-impale', 'btn-ceiling-drop-eviscerate'].includes(button?.id);
+    }
+
+    setLocomotionAttribute(button, name, value) {
+      const oldValue = button.getAttribute(name);
+      if (oldValue === value) return;
+      const writes = this.locomotionLockWrites.get(button) || [];
+      writes.push({ name, oldValue, value });
+      this.locomotionLockWrites.set(button, writes);
+      if (value === null) button.removeAttribute(name);
+      else button.setAttribute(name, value);
+    }
+
+    consumeLocomotionMutations(records) {
+      records.forEach((record, index) => {
+        if (record.type !== 'attributes' || !['disabled', 'aria-disabled'].includes(record.attributeName)) return;
+        const button = record.target, name = record.attributeName;
+        // MutationRecord has only oldValue. The following record for the same
+        // attribute supplies its intermediate new value before the final DOM.
+        const next = records.slice(index + 1).find(candidate => candidate.type === 'attributes' &&
+          candidate.target === button && candidate.attributeName === name);
+        const value = next ? next.oldValue : button.getAttribute(name);
+        const writes = this.locomotionLockWrites.get(button) || [];
+        const ownIndex = writes.findIndex(write => write.name === name && write.oldValue === record.oldValue && write.value === value);
+        if (ownIndex >= 0) { writes.splice(ownIndex, 1); return; }
+        const snapshot = this.locomotionLocks.get(button);
+        if (!snapshot) return;
+        // Preserve an authored cooldown/prerequisite change that happened while
+        // our temporary busy lock held the same control disabled.
+        if (name === 'disabled') snapshot.disabled = value !== null;
+        else snapshot.ariaDisabled = value;
+      });
+    }
+
+    syncLocomotionActions() {
+      const container = document.getElementById('action-buttons-container');
+      if (!container) return;
+      // Gameplay may finish a transition and author a cooldown in the same
+      // synchronous tick, before observer delivery. Consume it before restoring
+      // the saved state, otherwise that final authored disable would be lost.
+      this.consumeLocomotionMutations(this.locomotionActionsObserver?.takeRecords?.() || []);
+      const state = this.getPhysicalActionState(), busy = state.busy, hanging = state.hanging;
+      const buttons = Array.from(container.querySelectorAll('.act-btn'));
+      const app = document.getElementById('app-container');
+      const before = app?.classList.contains('locomotion-busy');
+      const beforeHanging = app?.classList.contains('ceiling-hanging');
+      const previousPhase = this.lastLocomotionActionPhase;
+      this.lastLocomotionActionPhase = state.ceilingActionPhase;
+      app?.classList.toggle('locomotion-busy', busy);
+      app?.classList.toggle('ceiling-hanging', hanging);
+      for (const [button, snapshot] of this.locomotionLocks) {
+        if (buttons.includes(button) && this.isPhysicalActionBlocked(button, state)) continue;
+        this.setLocomotionAttribute(button, 'disabled', snapshot.disabled ? '' : null);
+        this.setLocomotionAttribute(button, 'aria-disabled', snapshot.ariaDisabled);
+        delete button.dataset.locomotionLocked;
+        this.locomotionLocks.delete(button);
+      }
+      if (busy || hanging) for (const button of buttons) {
+        if (!this.isPhysicalActionBlocked(button, state)) continue;
+        if (!this.locomotionLocks.has(button)) this.locomotionLocks.set(button, {
+          disabled: button.disabled, ariaDisabled: button.getAttribute('aria-disabled')
+        });
+        this.setLocomotionAttribute(button, 'disabled', '');
+        this.setLocomotionAttribute(button, 'aria-disabled', 'true');
+        button.dataset.locomotionLocked = 'true';
+      }
+      if (before !== busy || beforeHanging !== hanging || previousPhase !== state.ceilingActionPhase) this.syncCompactActions?.();
+    }
+
+    bindLocomotionGuard() {
+      const container = document.getElementById('action-buttons-container');
+      if (!container) return;
+      container.addEventListener('click', (event) => {
+        const button = event.target?.closest?.('button.act-btn');
+        if (!button || !this.isPhysicalActionBlocked(button)) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }, true);
+      if (typeof MutationObserver !== 'undefined') {
+        this.locomotionActionsObserver = new MutationObserver((records) => {
+          this.consumeLocomotionMutations(records);
+          this.syncLocomotionActions();
+        });
+        this.locomotionActionsObserver.observe(container, { subtree: true, childList: true, attributes: true,
+          attributeOldValue: true, attributeFilter: ['disabled', 'aria-disabled'] });
+      }
+      this.syncLocomotionActions();
+    }
+
+    setBiologicalTransition(opacity, label = '') {
+      const value = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 0;
+      if (value === 0) { this.clearBiologicalTransition(); return 0; }
+      let veil = document.getElementById('biological-transition');
+      if (!veil) {
+        veil = document.createElement('div');
+        veil.id = 'biological-transition';
+        const caption = document.createElement('span');
+        caption.setAttribute('role', 'status');
+        caption.setAttribute('aria-live', 'polite');
+        veil.appendChild(caption);
+        document.getElementById('app-container')?.appendChild(veil);
+      }
+      veil.style.opacity = String(value);
+      const caption = veil.firstElementChild;
+      if (caption && caption.textContent !== String(label)) caption.textContent = String(label);
+      this.biologicalTransitionOwner = this.game?.currentStage || null;
+      return value;
+    }
+
+    clearBiologicalTransition() {
+      document.getElementById('biological-transition')?.remove();
+      this.biologicalTransitionOwner = null;
+    }
+
+    updateBiologicalTransition() {
+      if (this.biologicalTransitionOwner &&
+        (this.biologicalTransitionOwner !== this.game?.currentStage || !this.game?.campaignActive)) {
+        this.clearBiologicalTransition();
+      }
+    }
+
     bindCodex() {
       document.getElementById('btn-close-codex')?.addEventListener('click', () => this.closeCodex());
       const tabs = Array.from(document.querySelectorAll('.codex-tab'));
@@ -1226,6 +1519,7 @@
       document.getElementById('btn-open-settings')?.addEventListener('click', () => this.openSettings());
       document.getElementById('btn-close-settings')?.addEventListener('click', () => this.closeSettings());
       document.getElementById('btn-return-menu')?.addEventListener('click', () => {
+        this.clearBiologicalTransition();
         this.hideLayer(document.getElementById('pause-overlay'), false);
         this.campaignActive = false;
         this.game?.returnToMenu?.();
@@ -1549,6 +1843,15 @@
         });
         container.appendChild(list);
       }
+      const casteId = String(entry.id || entry.key || '');
+      if (Object.prototype.hasOwnProperty.call(this.content.castes || {}, casteId)) {
+        const reference = document.createElement('button');
+        reference.type = 'button';
+        reference.className = 'ab-codex-link';
+        reference.textContent = 'CONSULTER LA RÉFÉRENCE ALIEN BASE';
+        reference.addEventListener('click', () => window.AlienBaseOpenCaste?.(casteId));
+        container.appendChild(reference);
+      }
     }
 
     renderEvolution(container) {
@@ -1727,6 +2030,8 @@
       ui.showEndingChoices(onChoice);
     },
     update(deltaSeconds) {
+      ui.updateBiologicalTransition();
+      ui.syncLocomotionActions();
       vfx.update(deltaSeconds);
     }
   };

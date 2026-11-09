@@ -4036,7 +4036,7 @@
       const egg = this._finalize(root, {
         modelType: 'egg',
         open: !!open,
-        height: open ? 3.55 : 4.45,
+        height: open ? 2.11 : 2.71,
         animationJoints: {
           petals: ['articulated_petal_0', 'articulated_petal_1', 'articulated_petal_2', 'articulated_petal_3']
         },
@@ -4058,6 +4058,15 @@
       egg.userData.setOpen = (state) => egg.userData.setOpenProgress(state ? 1 : 0);
       egg.userData.petalJoints = petalJoints;
       egg.userData.setOpenProgress(open ? 1 : 0);
+      // A torso-high incubator beside the 4.25-unit human rig. Normalize the
+      // assembly, not root.scale: callers position the root at floor height.
+      const rootedAssembly = new T.Group();
+      rootedAssembly.name = 'rooted_ovomorph_assembly';
+      while (egg.children.length) rootedAssembly.add(egg.children[0]);
+      rootedAssembly.scale.setScalar(.52);
+      rootedAssembly.position.y = .208;
+      egg.add(rootedAssembly);
+      egg.userData.scaleReference = 'human-rig-4.25-torso-height';
       return egg;
     }
 
@@ -4211,12 +4220,12 @@
       const scaledAssembly = new T.Group();
       scaledAssembly.name = 'crawler_scaled_assembly';
       while (root.children.length) scaledAssembly.add(root.children[0]);
-      scaledAssembly.scale.setScalar(0.82);
+      scaledAssembly.scale.setScalar(0.40);
       root.add(scaledAssembly);
 
       const facehugger = this._finalize(root, {
         modelType: 'facehugger',
-        height: 0.66,
+        height: 0.33,
         forwardAxis: '+Z',
         animationJoints: {
           legs: Array.from({ length: 8 }, (_, index) => `crawler_leg_${index}`),
@@ -4243,16 +4252,87 @@
           legJoints.forEach((joint, index) => {
             const side = joint.userData.side;
             const row = joint.userData.row;
-            joint.rotation.z = side * 0.24;
+            // Bend toward the host, not out in front of the dorsal palm.
+            joint.rotation.z = -side * 0.25;
             joint.rotation.y = (row - 1.5) * 0.1;
-            kneeJoints[index].rotation.z = side * 2.2;
+            kneeJoints[index].rotation.z = -side * 0.85;
             kneeJoints[index].rotation.y = (row - 1.5) * 0.16;
-            ankleJoints[index].rotation.z = side * 1.12;
+            ankleJoints[index].rotation.z = -side * 0.45;
           });
           tailJoint.rotation.x = -0.2;
           tailJoint.rotation.y = 0.72;
         }
         facehugger.userData.foldedPose = !!folded;
+        if (!folded) facehugger.userData.setAttachmentPose?.(null);
+      };
+      // A free crawling tail cannot become a cervical coil by rotating its
+      // root. This second, owned surface is cached and deformed in place only
+      // when the measured neck target changes (at most eight times/second).
+      // All inputs are model-root local, so intrinsic royal scale is retained.
+      let gripTail = null, gripCurve = null, lastGrip = null, lastGripTime = -Infinity;
+      const tubular = 72, radial = 12;
+      facehugger.userData.setAttachmentPose = (pose) => {
+        if (facehugger.userData.hiveFactoryDisposed) return false;
+        if (!pose) {
+          tailJoint.visible = true;
+          if (gripTail) gripTail.visible = false;
+          if (facehugger.userData.attachmentGrip) facehugger.userData.attachmentGrip.active = false;
+          return true;
+        }
+        const center = new T.Vector3().copy(pose.neckCenter);
+        const axis = new T.Vector3().copy(pose.neckAxis).normalize();
+        const forward = new T.Vector3().copy(pose.neckForward).addScaledVector(axis, -pose.neckForward.dot(axis)).normalize();
+        const radius = Number(pose.neckRadius), elapsed = Number(pose.elapsed) || 0;
+        if (![...center.toArray(), ...axis.toArray(), ...forward.toArray(), radius].every(Number.isFinite) ||
+            radius <= 0 || axis.lengthSq() < .9 || forward.lengthSq() < .9) return false;
+        tailJoint.visible = false;
+        if (gripTail) gripTail.visible = true;
+        if (lastGrip && elapsed >= lastGripTime && elapsed - lastGripTime < .125) return true;
+        if (lastGrip && center.distanceToSquared(lastGrip.center) < .0001 && axis.dot(lastGrip.axis) > .9995 &&
+            forward.dot(lastGrip.forward) > .9995 && Math.abs(radius - lastGrip.radius) < .004) return true;
+        const assemblyScale = scaledAssembly.scale.x;
+        center.multiplyScalar(1 / assemblyScale);
+        const ringRadius = radius / assemblyScale;
+        const side = new T.Vector3().crossVectors(axis, forward).normalize();
+        const start = tailBase.clone(), ring = [];
+        for (let index = 0; index <= 16; index++) {
+          const angle = index / 16 * Math.PI * 1.82;
+          ring.push(center.clone().addScaledVector(forward, Math.cos(angle) * ringRadius)
+            .addScaledVector(side, Math.sin(angle) * ringRadius).addScaledVector(axis, -.035 * index / 16));
+        }
+        const approach = start.clone().lerp(ring[0], .55).addScaledVector(forward, ringRadius * .18);
+        const points = [start, approach, ...ring];
+        if (!gripTail) {
+          gripCurve = new T.CatmullRomCurve3(points);
+          gripTail = this._mesh(new T.TubeGeometry(gripCurve, tubular, .105, radial, false), hide, 'cervical_grip_tail');
+          scaledAssembly.add(gripTail);
+        } else {
+          gripCurve.points = points;
+          gripCurve.updateArcLengths();
+          const frames = gripCurve.computeFrenetFrames(tubular, false), geometry = gripTail.geometry;
+          const position = geometry.attributes.position, normal = geometry.attributes.normal;
+          const vertex = new T.Vector3(), surfaceNormal = new T.Vector3();
+          for (let index = 0; index <= tubular; index++) {
+            const origin = gripCurve.getPointAt(index / tubular);
+            for (let edge = 0; edge <= radial; edge++) {
+              const angle = edge / radial * Math.PI * 2, slot = index * (radial + 1) + edge;
+              surfaceNormal.copy(frames.normals[index]).multiplyScalar(-Math.cos(angle))
+                .addScaledVector(frames.binormals[index], Math.sin(angle));
+              vertex.copy(origin).addScaledVector(surfaceNormal, .105);
+              position.setXYZ(slot, vertex.x, vertex.y, vertex.z);
+              normal.setXYZ(slot, surfaceNormal.x, surfaceNormal.y, surfaceNormal.z);
+            }
+          }
+          position.needsUpdate = normal.needsUpdate = true;
+          geometry.computeBoundingBox(); geometry.computeBoundingSphere();
+        }
+        lastGrip = { center: new T.Vector3().copy(pose.neckCenter), axis: axis.clone(), forward: forward.clone(), radius };
+        lastGripTime = elapsed;
+        const previous = facehugger.userData.attachmentGrip;
+        facehugger.userData.attachmentGrip = { active: true, geometry: gripTail.geometry.uuid,
+          updates: (previous?.updates || 0) + 1, neckCenter: pose.neckCenter.toArray(), neckRadius: radius,
+          ringPoints: ring.map(point => point.clone().multiplyScalar(assemblyScale).toArray()) };
+        return true;
       };
       facehugger.userData.setPose = (pose) => facehugger.userData.setFoldedPose(pose === 'folded');
       facehugger.userData.attachmentPose = {
@@ -9282,17 +9362,24 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         // Boîtier d'aiguillage Seegson
         root.add(this._box(boxSeegson, { x: 0.6, y: 0.8, z: 0.5 }, { x: 1.8, y: 0.45, z: 0 }, 'rail_switch_box', true));
       } else if (normalizedType === 'medlab_autopsy_chute' || normalizedType === 'autopsy_incinerator_chute') {
-        // Chantier 257 : Hadley's Hope MedLab Autopsy Sump Drain & Biohazard Chute (Aliens 1986)
+        // Human-length loading chamber, with a real aperture and hinged cover.
         const steelTable = this._material('industrial', { color: 0x94a3b8, roughness: 0.18, metalness: 0.92 });
         const fireGlow = this._material('emissiveRed', { color: 0xf97316, emissive: 0xc2410c, emissiveIntensity: 3.4 });
         const darkChute = this._material('darkMetal', { color: 0x0f172a, roughness: 0.6, metalness: 0.8 });
-        // Table d'autopsie inox incurvée
-        root.add(this._box(steelTable, { x: 2.6, y: 0.2, z: 1.3 }, { x: 0, y: 0.95, z: 0 }, 'autopsy_table_surface', true));
-        root.add(this._cylinder(steelTable, 0.2, 0.2, 0.85, { x: 0, y: 0.45, z: 0 }, { x: 0, y: 0, z: 0 }, 'autopsy_table_pedestal'));
-        // Goulotte d'évacuation de déchets au pied de table
-        root.add(this._box(darkChute, { x: 1.1, y: 1.2, z: 1.1 }, { x: 1.4, y: 0.6, z: 0 }, 'autopsy_drain_hopper', true));
-        // Trappe guillotine vers l'incinérateur avec lueur thermique
-        root.add(this._box(fireGlow, { x: 0.8, y: 0.05, z: 0.8 }, { x: 1.4, y: 0.1, z: 0 }, 'autopsy_incinerator_glow'));
+        root.add(this._box(steelTable, { x: .22, y: 1.85, z: 5.7 }, { x: -1.24, y: .925, z: 0 }, 'autopsy_intake_wall_left', true));
+        root.add(this._box(steelTable, { x: .22, y: 1.85, z: 5.7 }, { x: 1.24, y: .925, z: 0 }, 'autopsy_intake_wall_right', true));
+        root.add(this._box(steelTable, { x: 2.26, y: 1.85, z: .22 }, { x: 0, y: .925, z: -2.74 }, 'autopsy_intake_wall_back', true));
+        root.add(this._box(steelTable, { x: 2.26, y: 1.85, z: .22 }, { x: 0, y: .925, z: 2.74 }, 'autopsy_intake_wall_front', true));
+        root.add(this._box(darkChute, { x: 2.26, y: .06, z: 5.26 }, { x: 0, y: .04, z: 0 }, 'autopsy_intake_chamber_floor'));
+        root.add(this._box(fireGlow, { x: .12, y: .06, z: 4.8 }, { x: -1.05, y: .11, z: 0 }, 'autopsy_incinerator_glow'));
+        const lidHinge = new (this._three().Group)();
+        lidHinge.name = 'autopsy_lid_hinge';
+        lidHinge.position.set(0, 1.95, -2.85);
+        lidHinge.add(this._box(steelTable, { x: 2.7, y: .12, z: 5.7 }, { x: 0, y: 0, z: 2.85 }, 'autopsy_table_surface', true));
+        root.add(lidHinge);
+        const intake = new (this._three().Group)();
+        intake.name = 'autopsy_intake_anchor'; intake.position.set(0, 1.95, 0);root.add(intake);
+        root.userData.incineratorIntake = { anchor: intake, lid: lidHinge, width: 2.18, length: 5.16, depth: 1.75, floorY: .08, lipY: 1.95, openAngle: -Math.PI / 2 };
       } else if (normalizedType === 'vehicle_crane_arm' || normalizedType === 'uscm_vehicle_crane') {
         // Chantier 258 : USCM Heavy Vehicle Maintenance Bay & Hydraulic Crane Arm (Aliens: Dark Descent)
         const craneOlive = this._material('industrial', { color: 0x365314, roughness: 0.55, metalness: 0.7 });

@@ -72,6 +72,9 @@ $rootPrefix = $rootPath + [System.IO.Path]::DirectorySeparatorChar
 $allowedExtensions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 @('.html', '.css', '.js', '.json', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.wav', '.mp3', '.woff', '.woff2', '.glb', '.gltf', '.bin', '.hdr') |
     ForEach-Object { [void]$allowedExtensions.Add($_) }
+$publicReferencePaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+@('data/alien-base.snapshot.v1.json', 'data/alien-base.snapshot.v2.json', 'data/alien-base.media.v2.json') |
+    ForEach-Object { [void]$publicReferencePaths.Add($_) }
 
 $url = "http://localhost:$Port/"
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
@@ -164,8 +167,24 @@ try {
             $segments = $relativeCandidate -split '[\\/]'
             $containsPrivateSegment = @($segments | Where-Object { $_.StartsWith('.') }).Count -gt 0
             $extension = [System.IO.Path]::GetExtension($candidatePath)
+            $publicCandidate = $relativeCandidate.Replace('\', '/')
+            $isPublicPath = $publicCandidate -eq 'index.html' -or
+                ($segments.Count -gt 1 -and $segments[0] -in @('assets', 'src')) -or
+                $publicReferencePaths.Contains($publicCandidate)
+            $containsReparsePoint = $false
+            $inspectionPath = $rootPath
+            foreach ($segment in $segments) {
+                $inspectionPath = Join-Path $inspectionPath $segment
+                if (Test-Path -LiteralPath $inspectionPath) {
+                    $item = Get-Item -LiteralPath $inspectionPath -Force
+                    if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+                        $containsReparsePoint = $true
+                        break
+                    }
+                }
+            }
 
-            if ($containsPrivateSegment -or
+            if (-not $isPublicPath -or $containsPrivateSegment -or $containsReparsePoint -or
                 -not $allowedExtensions.Contains($extension) -or
                 -not (Test-Path -LiteralPath $candidatePath -PathType Leaf)) {
                 $body = [System.Text.Encoding]::UTF8.GetBytes('Ressource introuvable.')

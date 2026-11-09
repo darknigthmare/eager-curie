@@ -34,24 +34,26 @@
       return this.active(() => {
         for (let elapsed = 0; elapsed < seconds - 1e-8; elapsed += 1 / 60) {
           this.tick(Math.min(1 / 60, seconds - elapsed), movement);
-          this.samples.push({ x: p.x, z: p.z, collision: map.checkCollision(p.x, p.z) });
+          this.samples.push({ x: p.x, z: p.z, collision: map.checkCollision(p.x, p.z, p.creatureEnvelope.radius) });
         }
         return this.snapshot();
       });
     },
     findLane() {
+      const clearance = p.creatureEnvelope?.radius;
+      this.require(Number.isFinite(clearance) && clearance > 0, 'Actual drone clearance is missing');
       const offsets = [{ key: 'd', x: 1, z: 0 }, { key: 'a', x: -1, z: 0 },
         { key: 's', x: 0, z: 1 }, { key: 'w', x: 0, z: -1 }];
       for (const mortar of map.portableMortars || []) for (const radius of [10, 14, 8, 18, 22])
         for (let i = 0; i < 24; i++) {
           const x = mortar.x + Math.cos(i * Math.PI / 12) * radius,
             z = mortar.z + Math.sin(i * Math.PI / 12) * radius;
-          if (map.checkCollision(x, z, .88)) continue;
+          if (map.checkCollision(x, z, clearance)) continue;
           for (const direction of offsets) {
             let clear = true;
             for (let at = 0; at <= 10; at += .25)
-              if (map.checkCollision(x + direction.x * at, z + direction.z * at, .88)) { clear = false; break; }
-            if (clear) return { mortar, x, z, direction, distance: radius };
+              if (map.checkCollision(x + direction.x * at, z + direction.z * at, clearance)) { clear = false; break; }
+            if (clear) return { mortar, x, z, direction, distance: radius, clearance };
           }
         }
       throw Error('No actual native mortar lane with an obstacle-free keyboard dodge was found');
@@ -74,7 +76,7 @@
       return { mortar: { id: this.pm.id, x: this.pm.x, z: this.pm.z },
         player: { x: p.x, z: p.z, form: p.form, caste: p.adultCaste, mutation: p.embryoMutation,
           moltenLeadCoated: p.isMoltenLeadCoated, health: p.health, expectedNetDamage: 48 },
-        direction: this.lane.direction, reduced,
+        direction: this.lane.direction, clearance: this.lane.clearance, reduced,
         fixture: 'Actual authored mortar and colliders; drone/no mutation/no lead coating/1000PV prevent unrelated damage mitigation; only chosen cooldown ready; unrelated AI and map hazards not stepped' };
     },
     launch() {

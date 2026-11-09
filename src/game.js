@@ -90,7 +90,7 @@
       // Audit QA #7 & #32 : Filtrage d'atténuation et résonance tubulaire de conduits métalliques
       if (this.ctx.createBiquadFilter) {
         const filter = this.ctx.createBiquadFilter();
-        const inVent = window.playerCreature?.isInVent;
+        const inVent = playerCreature?.isInVent;
         if (inVent) {
           // Audit QA #32 : Filtrage passe-bande résonant simulant la réverbération tubulaire métallique claustrophobique [C]
           filter.type = 'bandpass';
@@ -150,6 +150,7 @@
     setVolume(value) {
       this.volume = Math.max(0, Math.min(1, Number(value) || 0));
       if (this.masterGain && this.ctx) {
+        this.masterGain.gain.cancelScheduledValues(this.ctx.currentTime);
         this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : this.volume, this.ctx.currentTime, 0.03);
       }
     }
@@ -157,6 +158,7 @@
     toggleMuted() {
       this.isMuted = !this.isMuted;
       if (this.masterGain && this.ctx) {
+        this.masterGain.gain.cancelScheduledValues(this.ctx.currentTime);
         this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : this.volume, this.ctx.currentTime, 0.03);
       }
       return this.isMuted;
@@ -164,13 +166,15 @@
 
     // Audit QA #17 : Ducking audio dynamique sur le bus des détonations/mortiers pour préserver répliques vocales, M314 et feulements
     triggerExplosionDucking(duration = 0.55, duckRatio = 0.42) {
-      if (!this.initialized || !this.masterGain || !this.ctx || this.isMuted) return;
+      if (!this.initialized || !this.masterGain || !this.ctx || this.isMuted || this.volume <= 0) return;
       const now = this.ctx.currentTime;
       const baseVol = this.volume;
+      const recovery = Number.isFinite(duration) ? Math.max(0.08, Math.min(5, duration)) : 0.55;
+      const ratio = Number.isFinite(duckRatio) ? Math.max(0.01, Math.min(1, duckRatio)) : 0.42;
       this.masterGain.gain.cancelScheduledValues(now);
-      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
-      this.masterGain.gain.exponentialRampToValueAtTime(Math.max(0.05, baseVol * duckRatio), now + 0.04);
-      this.masterGain.gain.exponentialRampToValueAtTime(Math.max(0.01, baseVol), now + duration);
+      this.masterGain.gain.setValueAtTime(Math.min(baseVol, Math.max(0, this.masterGain.gain.value)), now);
+      this.masterGain.gain.exponentialRampToValueAtTime(baseVol * ratio, now + 0.04);
+      this.masterGain.gain.exponentialRampToValueAtTime(baseVol, now + recovery);
     }
 
     startAmbience() {
@@ -7490,13 +7494,12 @@
     }
     // Vague 60 : Effets Audio Procéduraux Synthétiseur Web Audio API (Cap Historique 300 Props !)
     playBrineEvaporatorSteamHiss(x = null, z = null) {
-      if (this.isMuted) return;
-      const ctx = this.audioCtx;
-      if (!ctx) return;
-      const panNode = this._createPanner(x, z);
+      if (!this.initialized || this.isMuted || !this.ctx) return;
+      this.resume();
+      const ctx = this.ctx;
       const now = ctx.currentTime;
       // Souffle et sifflement d'évaporation thermique de saumure
-      const bufferSize = ctx.sampleRate * 1.2;
+      const bufferSize = Math.floor(ctx.sampleRate * 1.2);
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
@@ -7514,16 +7517,14 @@
       gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
       noise.connect(bpf);
       bpf.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 58);
       noise.start(now);
     }
 
     playGeothermalWellheadPressureRelief(x = null, z = null) {
-      if (this.isMuted) return;
-      const ctx = this.audioCtx;
-      if (!ctx) return;
-      const panNode = this._createPanner(x, z);
+      if (!this.initialized || this.isMuted || !this.ctx) return;
+      this.resume();
+      const ctx = this.ctx;
       const now = ctx.currentTime;
       // Décharge de surpression géothermique industrielle
       const osc = ctx.createOscillator();
@@ -7539,8 +7540,7 @@
       gain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
       osc.connect(lpf);
       lpf.connect(gain);
-      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain); }
-      else { gain.connect(this.sfxGain); }
+      this.connect(gain, x, z, 58);
       osc.start(now);
       osc.stop(now + 1.4);
     }
@@ -7838,10 +7838,22 @@
 
     toggleFocusedMode() {
       this.focusedMode = !this.focusedMode;
-      if (this.modeBtn) {
-        this.modeBtn.textContent = this.focusedMode ? '[T] FOCAL' : '[T] 360°';
-      }
-      showToast(this.focusedMode ? 'M314 : Mode Balayage Focalisé 45° Longue Portée 35m [T]' : 'M314 : Mode Balayage Omni 360° Standard 22m [T]');
+      this.updateModeLabel();
+      const shortcut = this.modeShortcut();
+      showToast(this.focusedMode ? `M314 : Balayage focalisé 45° — 35m [${shortcut}]` : `M314 : Balayage 360° — 22m [${shortcut}]`);
+    }
+
+    modeShortcut() { return window.gameInstance?.currentStageIndex === 4 ? 'MAJ+T' : 'T'; }
+
+    updateModeLabel() {
+      if (!this.modeBtn) return;
+      const shortcut = this.modeShortcut();
+      const label = `[${shortcut}] ${this.focusedMode ? 'FOCAL' : '360°'}`;
+      if (this.modeBtn.textContent !== label) this.modeBtn.textContent = label;
+      const key = shortcut === 'T' ? 'T' : 'Shift+T';
+      if (this.modeBtn.getAttribute('aria-keyshortcuts') !== key) this.modeBtn.setAttribute('aria-keyshortcuts', key);
+      const title = `Basculer le balayage M314 (${shortcut})`;
+      if (this.modeBtn.title !== title) this.modeBtn.title = title;
     }
 
     // Audit QA #100 : Télémétrie Angulaire 360° du Gyro-Compas de la Station sur le HUD
@@ -7866,6 +7878,7 @@
 
     update(deltaSeconds, player, humans) {
       if (!this.ctx || !player) return;
+      this.updateModeLabel();
       this.updateGyroCompass(player);
       const ctx = this.ctx;
       const w = this.canvas.width;
@@ -8052,7 +8065,10 @@
         if (this.focusedMode && Math.abs(normalizedRel) > 0.44) continue;
 
         // Chantier 8 & Audit QA #71 : Différentiel altimétrique M314 (▲ +Xm, ▼ -Xm, ● 0m)
-        const playerY = player.isCeilingProwling ? 5.85 : (player.isInVent ? 3.2 : (player.mesh?.position?.y || 0));
+        // Ceiling traversal now follows an authored support instead of a
+        // universal altitude. Report the actual actor root, including climbs.
+        const visualY = player.mesh?.position?.y;
+        const playerY = Number.isFinite(visualY) ? visualY : (player.isInVent ? 3.2 : 0);
         const humanY = human.mesh?.position?.y || 0;
         const dy = humanY - playerY;
 
@@ -8479,6 +8495,8 @@
       return !!this.keys[key.toLowerCase()];
     }
 
+    isKeyDown(key) { return typeof key === 'string' && this.isKeyPressed(key); }
+
     getMovementVector() {
       let dx = 0; let dy = 0;
       if (this.isKeyPressed('w') || this.isKeyPressed('z') || this.isKeyPressed('arrowup')) dy -= 1;
@@ -8740,9 +8758,13 @@
       // La vue de commandement cadre toute la station afin que les trois relais
       // restent réellement ciblables sans caméra libre ni mini-carte.
       // Audit QA #84 : Lissage Cinématique Dynamique lors des Transitions de Rôdeur (Prowl / Crawl)
-      const isProwl = Boolean(window.playerCreature?.isProwling);
-      const isCeiling = Boolean(window.playerCreature?.isCeilingProwling);
-      const prowlOffsetY = isProwl ? -5.5 : (isCeiling ? 3.5 : 0);
+      const actor = playerCreature;
+      const isProwl = Boolean(actor?.isProwling);
+      const hasRaisedPose = Boolean(actor?.isCeilingProwling || actor?.ceilingTransition);
+      const actorY = Number.isFinite(actor?.mesh?.position?.y) ? actor.mesh.position.y : 0;
+      // Track the visible hanging/climbing body, not an imaginary y5.85 deck.
+      const focusY = hasRaisedPose ? Math.max(1.2, actorY - 2.4) : 1.2;
+      const prowlOffsetY = isProwl ? -5.5 : focusY - 1.2;
       const prowlOffsetZ = isProwl ? -3.0 : 0;
       const targetY = isRTS ? 120 : ((31 + heightOffset) * this.cameraDistance + prowlOffsetY);
       const targetZ = isRTS ? (z + 70) : (z + 25 * this.cameraDistance + prowlOffsetZ);
@@ -8772,16 +8794,16 @@
         this.camera.updateProjectionMatrix();
       }
 
-      this.camera.lookAt(x, isRTS ? 0 : 1.2, z);
+      this.camera.lookAt(x, isRTS ? 0 : focusY, z);
 
       // Audit QA #89 : Inclinaison Contextuelle de Caméra en Virage (Camera Banking / Roll)
-      if (!isRTS && window.playerCreature) {
-        const vx = window.playerCreature.vx || 0;
-        const vz = window.playerCreature.vz || 0;
+      if (!isRTS && actor) {
+        const vx = actor.vx || 0;
+        const vz = actor.vz || 0;
         const speed = Math.hypot(vx, vz);
         if (speed > 0.08) {
           const moveAngle = Math.atan2(vx, vz);
-          const facing = window.playerCreature.mesh ? window.playerCreature.mesh.rotation.y : moveAngle;
+          const facing = actor.mesh ? actor.mesh.rotation.y : moveAngle;
           let diffAngle = moveAngle - facing;
           diffAngle = Math.atan2(Math.sin(diffAngle), Math.cos(diffAngle));
           const targetRoll = Math.max(-0.045, Math.min(0.045, diffAngle * 0.12));
@@ -9314,6 +9336,7 @@
     constructor() {
       this.currentDeck = 'A';
       this.walls = [];
+      this.ceilingSupports = [];
       this.colliders = [];
       this.blastDoors = [];
       this.acidCorrosions = [];
@@ -9493,6 +9516,7 @@
         rendererEngine.mapGroup.add(wallMesh);
         this.walls.push(wallMesh);
         this.colliders.push({
+          mesh: wallMesh,
           minX: x - width / 2 - 0.6,
           maxX: x + width / 2 + 0.6,
           minZ: z - depth / 2 - 0.6,
@@ -9525,6 +9549,7 @@
         });
         rendererEngine.propsGroup.add(mesh);
         this.colliders.push({
+          mesh,
           minX: x - w / 2 - 0.6,
           maxX: x + w / 2 + 0.6,
           minZ: z - d / 2 - 0.6,
@@ -9555,8 +9580,10 @@
           detailMetal
         );
         beam.position.set(x, 8.4, z);
+        beam.name = `climbable_ceiling_beam_${this.ceilingSupports.length}`;
         beam.castShadow = true;
         rendererEngine.propsGroup.add(beam);
+        this.ceilingSupports.push({ id: beam.name, mesh: beam, alongX });
       };
 
       const addPipe = (x, z, length, alongX = true, height = 6.7) => {
@@ -9591,7 +9618,7 @@
       addWall(75, 0, 2, 12, 150);
 
       // 2. SECTEUR CRYO-STASE & LABORATOIRE MÉDICAL (Nord-Ouest : X -70 à -15, Z -70 à -25)
-      addWall(-45, -25, 48, 10, 2); // Mur Sud Cryo
+      addWall(-46, -25, 46, 10, 2); // Mur Sud Cryo, ouverture industrielle au sas
       addWall(-15, -48, 2, 10, 44); // Mur Est Cryo
       // Entrée Cryo : ouverture à X = -32, Z = -25
       addProp(-50, -50, 5, 3.5, 4, 0x0284c7, 0x0369a1, 'console'); // Sas stase
@@ -9599,7 +9626,7 @@
       addProp(-60, -38, 4, 3, 4, 0x38bdf8, 0x0284c7, 'crate');
 
       // 3. SECTEUR ARMURERIE & SÉCURITÉ WEYLAND-YUTANI (Nord-Est : X 15 à 70, Z -70 à -25)
-      addWall(45, -25, 48, 10, 2); // Mur Sud Armurerie
+      addWall(46, -25, 46, 10, 2); // Mur Sud Armurerie, ouverture industrielle au sas
       addWall(15, -48, 2, 10, 44); // Mur Ouest Armurerie
       // Entrée Armurerie : ouverture à X = 32, Z = -25
       addProp(50, -50, 4, 4, 5, 0xf59e0b, 0xd97706, 'crate'); // Rateliers d'armes
@@ -9608,20 +9635,20 @@
 
       // 4. CORRIDOR CENTRAL & CARREFOUR NORD-SUD (X -15 à 15, Z -70 à 70)
       // Diviseurs de coursive et piliers porteurs
-      addWall(-15, 0, 2, 10, 36);  // Cloison Ouest corridor
-      addWall(15, 0, 2, 10, 36);   // Cloison Est corridor
+      addWall(-15, 0, 2, 10, 32);  // Cloison Ouest, dégagement des carrefours
+      addWall(15, 0, 2, 10, 32);   // Cloison Est, dégagement des carrefours
       addProp(0, -15, 6, 8, 6, 0x0ea5e9, 0x0284c7, 'generator'); // Relais de distribution
       addProp(0, 15, 5, 7, 5, 0x0284c7, 0x0369a1, 'generator');
 
       // 5. SECTEUR DU RÉACTEUR & RAFFINERIE THERMIQUE (Sud-Ouest : X -70 à -15, Z 25 à 70)
-      addWall(-45, 25, 48, 10, 2); // Mur Nord Réacteur
+      addWall(-46, 25, 46, 10, 2); // Mur Nord Réacteur, ouverture industrielle au sas
       addWall(-15, 48, 2, 10, 44); // Mur Est Réacteur
       addProp(-45, 45, 10, 7, 10, 0xf59e0b, 0xd97706, 'generator'); // Cœur réacteur Mantis
       addProp(-60, 56, 4, 6, 4, 0x475569, 0x000000, 'barrel');
       addProp(-32, 58, 5, 3, 3, 0x334155, 0x000000, 'console');
 
       // 6. NURSERIE DE LA RUCHE & HANGAR BIO-RÉSINE (Sud-Est : X 15 à 70, Z 25 à 70)
-      addWall(45, 25, 48, 10, 2); // Mur Nord Nurserie
+      addWall(46, 25, 46, 10, 2); // Mur Nord Nurserie, ouverture industrielle au sas
       addWall(15, 48, 2, 10, 44); // Mur Ouest Nurserie
       addProp(48, 48, 9, 5, 9, 0x581c87, 0x7e22ce, 'generator'); // Chambre de ponte
       addProp(62, 58, 4, 4, 4, 0x3b0764, 0x581c87, 'crate');
@@ -9677,10 +9704,10 @@
       // Chantier 3 : Portes blindées hydrauliques sur les vraies jonctions de secteur
       // (ouvertes par défaut ; verrouillage de quarantaine KAPPA pendant l'Acte IV).
       this.blastDoors = [
-        { id: 'door_cryo', name: 'Porte étanche Cryo-Stase', x: -18, z: -25, width: 5.6, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
-        { id: 'door_armory', name: 'Blindage Armurerie KAPPA', x: 18, z: -25, width: 5.6, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
-        { id: 'door_reactor', name: 'Écluse Réacteur', x: -18, z: 25, width: 5.6, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
-        { id: 'door_nursery', name: 'Porte Hangar Sud-Est', x: 18, z: 25, width: 5.6, height: 8, depth: 1.6, isWelded: false, weldHp: 100 }
+        { id: 'door_cryo', name: 'Porte étanche Cryo-Stase', x: -18, z: -25, width: 8.8, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
+        { id: 'door_armory', name: 'Blindage Armurerie KAPPA', x: 18, z: -25, width: 8.8, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
+        { id: 'door_reactor', name: 'Écluse Réacteur', x: -18, z: 25, width: 8.8, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
+        { id: 'door_nursery', name: 'Porte Hangar Sud-Est', x: 18, z: 25, width: 8.8, height: 8, depth: 1.6, isWelded: false, weldHp: 100 }
       ];
       this.blastDoors.forEach((door) => {
         const doorMat = new THREE.MeshStandardMaterial({
@@ -9705,11 +9732,25 @@
         rendererEngine.mapGroup.add(mesh);
         door.mesh = mesh;
         door.isOpen = true;
+        // Wide leaves need matching visible jambs/lintel, not an invisible
+        // collision-only doorway. Wall returns stay sealed when the leaf shuts.
+        for(const side of [-1,1]){
+          const material=doorMat.clone();material.transparent=true;
+          const jamb=new THREE.Mesh(new THREE.BoxGeometry(.7,8.8,2.0),material);
+          jamb.name=`${door.id}_jamb_${side}`;jamb.position.set(door.x+side*(door.width/2+.35),4.4,door.z);
+          jamb.castShadow=jamb.receiveShadow=true;rendererEngine.mapGroup.add(jamb);this.walls.push(jamb);
+          this.colliders.push({minX:jamb.position.x-.43,maxX:jamb.position.x+.43,minZ:door.z-1.08,maxZ:door.z+1.08,mesh:jamb,isDoorFrame:true});
+        }
+        const lintelMaterial=doorMat.clone();lintelMaterial.transparent=true;
+        const lintel=new THREE.Mesh(new THREE.BoxGeometry(door.width+1.4,.7,2.0),lintelMaterial);
+        lintel.name=`${door.id}_lintel`;lintel.position.set(door.x,8.45,door.z);
+        lintel.castShadow=lintel.receiveShadow=true;rendererEngine.mapGroup.add(lintel);this.walls.push(lintel);
         door.collider = {
           minX: door.x - door.width / 2 - 0.5,
           maxX: door.x + door.width / 2 + 0.5,
           minZ: door.z - door.depth / 2 - 0.5,
-          maxZ: door.z + door.depth / 2 + 0.5
+          maxZ: door.z + door.depth / 2 + 0.5,
+          mesh
         };
         mesh.position.set(door.x, -door.height + 0.3, door.z);
       });
@@ -9820,7 +9861,8 @@
         }
         this.colliders.push({
           minX: turret.x - 1.0, maxX: turret.x + 1.0,
-          minZ: turret.z - 1.0, maxZ: turret.z + 1.0
+          minZ: turret.z - 1.0, maxZ: turret.z + 1.0,
+          mesh:turret.mesh,turretRef:turret
         });
       });
 
@@ -10771,8 +10813,8 @@
 
       // Chantier 128 : Tourelle Portative Mortier M40 USCM à Shrapnel (Aliens: Fireteam Elite)
       this.portableMortars = [
-        { id: 'mortar_1', name: 'Tourelle Mortier M40 USCM Poste Alpha', x: 10, z: -5, isDestroyed: false, hp: 80, shootCooldown: 4.0, mesh: null },
-        { id: 'mortar_2', name: 'Tourelle Mortier M40 USCM Poste Bravo', x: -16, z: 25, isDestroyed: false, hp: 80, shootCooldown: 5.5, mesh: null }
+        { id: 'mortar_1', name: 'Tourelle Mortier M40 USCM Poste Alpha', x: 10, z: -5, minStage: 4, isDestroyed: false, hp: 80, shootCooldown: 4.0, mesh: null },
+        { id: 'mortar_2', name: 'Tourelle Mortier M40 USCM Poste Bravo', x: -16, z: 25, minStage: 4, isDestroyed: false, hp: 80, shootCooldown: 5.5, mesh: null }
       ];
       this.portableMortars.forEach((pm) => {
         const mesh = window.HiveModelFactory?.createPortableMortarTurret?.();
@@ -12300,7 +12342,11 @@
           rendererEngine.propsGroup.add(mesh);
           ac.mesh = mesh;
         }
-        this.colliders.push({ minX: ac.x - 1.5, maxX: ac.x + 1.5, minZ: ac.z - 0.8, maxZ: ac.z + 0.8, isAutopsyChute: true, chuteRef: ac });
+        const bounds=ac.mesh?new THREE.Box3().setFromObject(ac.mesh):null;
+        ac.collider={minX:bounds&&!bounds.isEmpty()?bounds.min.x:ac.x-1.5,maxX:bounds&&!bounds.isEmpty()?bounds.max.x:ac.x+1.5,
+          minZ:bounds&&!bounds.isEmpty()?bounds.min.z:ac.z-.8,maxZ:bounds&&!bounds.isEmpty()?bounds.max.z:ac.z+.8,
+          mesh:ac.mesh,isAutopsyChute:true,chuteRef:ac};
+        this.colliders.push(ac.collider);
       });
 
       // Chantier 258 : USCM Vehicle Maintenance Bay Crane Arm (Aliens: Dark Descent)
@@ -13480,7 +13526,7 @@
       ];
       // VAGUE 59 (Chantiers 581 à 590 - Cap 290 Props !) : Jonction Nostromo, Portique Hadley, Four Fiorina & Conduit Plasma
       const wave59Defs = [
-        { id: 'nostromo_subdeck_coolant_pipe_junction_1', factory: 'createNostromoSubdeckCoolantPipeJunction', name: 'Jonction Tubulures Caloporteur Nostromo', x: -44, z: -76, hx: 1.0, hz: 0.8, radius: 8.0, damage: 210, color: 0x22d3ee, label: 'RUPTURE JONCTION CRYO NOSTROMO', toast: 'COLLECTEUR EN T CISAILLÉ : Jet de caloporteur azote sous 200 bars !', log: '[PIPE JUNCTION] Décompression brutale de la tuyauterie sous-pont Nostromo.', fx: { type: 'sawtooth', f0: 1600, f1: 140, dur: 0.92, cutoff: 3700, vol: 0.7 }, anim: 'coolant_flow_indicator_ring', chemical: true },
+        { id: 'nostromo_subdeck_coolant_pipe_junction_1', factory: 'createNostromoSubdeckCoolantPipeJunction', name: 'Jonction Tubulures Caloporteur Nostromo', x: -44, z: -76, hx: 1.0, hz: 0.8, radius: 8.0, damage: 210, color: 0x22d3ee, label: 'RUPTURE JONCTION CRYO NOSTROMO', toast: 'COLLECTEUR EN T CISAILLÉ : Jet de caloporteur azote sous 200 bars !', log: '[PIPE JUNCTION] Décompression brutale de la tuyauterie sous-pont Nostromo.', fx: { type: 'sawtooth', f0: 1600, f1: 140, dur: 0.92, cutoff: 3700, vol: 0.7 }, anim: 'coolant_flow_indicator_ring', animMode: 'emissive', chemical: true },
         { id: 'hadley_vehicle_washdown_spray_arch_1', factory: 'createHadleyVehicleWashdownSprayArch', name: 'Portique Décontamination Véhicules Hadley', x: 56, z: 44, hx: 1.1, hz: 0.8, radius: 8.5, damage: 220, color: 0xeab308, label: 'SURPRESSION PORTIQUE ARROSAGE HADLEY', toast: 'BUSES DE PULVÉRISATION ÉVENTRÉES : Dégagement d\'agents tensioactifs à 90°C !', log: '[SPRAY ARCH] Rupture du manifold de décontamination Hadley.', fx: { type: 'sawtooth', f0: 1680, f1: 150, dur: 1.0, cutoff: 3800, vol: 0.72 }, anim: 'spray_arch_lintel_manifold', chemical: true },
         { id: 'fiorina_foundry_mold_drying_kiln_1', factory: 'createFiorinaFoundryMoldDryingKiln', name: 'Four Étuvage Moules Réfractaires Fiorina 161', x: 42, z: 64, hx: 1.1, hz: 0.9, radius: 8.5, damage: 255, color: 0xf97316, label: 'EXPLOSION GAZ ÉTUVAGE FIORINA', toast: 'BRÛLEUR EN RETOUR DE FLAMME : Souffle thermique à 800°C et braises !', log: '[MOLD KILN] Explosion de moufle du four d\'étuvage Fiorina.', fx: { type: 'sawtooth', f0: 520, f1: 58, dur: 1.25, cutoff: 2100, vol: 0.75 }, anim: 'kiln_muffle_inspection_glow', slag: true },
         { id: 'auriga_xenobio_cryo_containment_decanter_1', factory: 'createAurigaCryoContainmentDecanter', name: 'Décanteur Cryo Spécimens USM Auriga', x: -66, z: -26, hx: 0.9, hz: 0.7, radius: 7.5, damage: 215, color: 0x38bdf8, label: 'FISSURE DÉCANTEUR CRYO AURIGA', toast: 'CUVE DE DÉCANTATION SOUS VIDE PERCÉE : Évaporation d\'azote et solvants !', log: '[CRYO DECANTER] Perte d\'isolation du dewar de décantation Auriga.', fx: { type: 'sine', f0: 1720, f1: 130, dur: 1.05, cutoff: 4000, vol: 0.7 }, anim: 'decanter_specimen_tube_glow', chemical: true },
@@ -13504,18 +13550,415 @@
         { id: 'sevastopol_joe_recond_bench_1', factory: 'createSevastopolJoeRecondBench', name: 'Banc Reconditionnement Accumulateurs Working Joe', x: 58, z: 22, hx: 1.0, hz: 0.7, radius: 7.5, damage: 210, color: 0xeab308, label: 'COURT-CIRCUIT BANC ACCUS SEEGSON', toast: 'ARCS 15kV SUR LES CONNECTEURS DE CHARGE : Emballement thermique des piles lithium !', log: '[BATTERY RECOND BENCH] Court-circuit d\'alimentation sur le banc Working Joe.', fx: { type: 'square', f0: 1520, f1: 160, dur: 0.85, cutoff: 3300, vol: 0.68 }, anim: 'recond_charging_leads', shock: true },
         { id: 'fiorina_foundry_quench_weir_1', factory: 'createFiorinaFoundryQuenchWeir', name: 'Déversoir Trop-Plein Cuve Trempe Fiorina 161', x: -18, z: 92, hx: 1.1, hz: 0.8, radius: 8.5, damage: 250, color: 0xf97316, label: 'DÉBORDEMENT DÉVERSOIR CUVE FIORINA (CAP 300 PROPS)', toast: 'SEUIL DÉVERSANT OBSTRUÉ : Vague de boues de plomb et vapeur d\'eau brûlante !', log: '[QUENCH WEIR - CAP 300 PROPS] Rupture d\'évacuation du trop-plein de trempe Fiorina.', fx: { type: 'sawtooth', f0: 460, f1: 55, dur: 1.25, cutoff: 2100, vol: 0.76 }, anim: 'quench_effluent_steam_layer', slag: true }
       ];
-      [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs, ...wave40Defs, ...wave41Defs, ...wave42Defs, ...wave43Defs, ...wave44Defs, ...wave45Defs, ...wave46Defs, ...wave47Defs, ...wave48Defs, ...wave49Defs, ...wave50Defs, ...wave51Defs, ...wave52Defs, ...wave53Defs, ...wave54Defs, ...wave55Defs, ...wave56Defs, ...wave57Defs, ...wave58Defs, ...wave59Defs, ...wave60Defs].forEach((def) => {
-        const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
+      const industrialDefinitions = [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs, ...wave40Defs, ...wave41Defs, ...wave42Defs, ...wave43Defs, ...wave44Defs, ...wave45Defs, ...wave46Defs, ...wave47Defs, ...wave48Defs, ...wave49Defs, ...wave50Defs, ...wave51Defs, ...wave52Defs, ...wave53Defs, ...wave54Defs, ...wave55Defs, ...wave56Defs, ...wave57Defs, ...wave58Defs, ...wave59Defs, ...wave60Defs];
+      industrialDefinitions.forEach((def) => {
+        const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null, placementStatus: 'pending' }, def);
+        prop.authoredPosition = { x: def.x, z: def.z };
+        prop.minStage = this.getPropMinStage(prop);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
-          mesh.position.set(def.x, 0, def.z);
-          rendererEngine.propsGroup.add(mesh);
+          mesh.position.set(0, 0, 0);
           prop.mesh = mesh;
         }
-        this.colliders.push({ minX: def.x - def.hx, maxX: def.x + def.hx, minZ: def.z - def.hz, maxZ: def.z + def.hz, isWave31Prop: true, propRef: prop });
         this.wave31Props.push(prop);
       });
+      this.layoutIndustrialProps();
       this.syncPropsToStage(window.gameInstance?.currentStageIndex || 1);
+    }
+
+    getIndustrialLayoutSectors() {
+      // The existing station has these rooms; IDs and combat effects do not
+      // imply that every reference asset belongs in a random corridor.
+      return [
+        { id: 'medical', minX: -70, maxX: -22, minZ: -70, maxZ: -29, x: -30, z: -35 },
+        { id: 'security', minX: 22, maxX: 70, minZ: -70, maxZ: -29, x: 30, z: -35 },
+        { id: 'foundry', minX: -70, maxX: -22, minZ: 29, maxZ: 70, x: -30, z: 35 },
+        { id: 'nursery', minX: 22, maxX: 70, minZ: 29, maxZ: 70, x: 30, z: 35 },
+        { id: 'maintenance', minX: -70, maxX: -22, minZ: -20, maxZ: 20, x: -40, z: 0 },
+        { id: 'engineering', minX: 22, maxX: 70, minZ: -14, maxZ: 14, x: 40, z: 0 },
+        { id: 'habitation', minX: -12, maxX: 12, minZ: -70, maxZ: -25, x: 0, z: -40 },
+        { id: 'transit', minX: -12, maxX: 12, minZ: 25, maxZ: 70, x: 0, z: 40 }
+      ];
+    }
+
+    prepareIndustrialCirculation() {
+      if(this.industrialCirculationPrepared)return;
+      const preparationStarted=performance.now();
+      this.industrialCirculationPrepared=true;
+      const routes=[
+        [[0,0],[-10,0],[-10,-20],[-20,-20],[-20,-35],[-30,-35]],
+        [[0,0],[10,0],[10,-20],[20,-20],[20,-35],[30,-35]],
+        [[0,0],[-10,0],[-10,20],[-20,20],[-20,35],[-30,35]],
+        [[0,0],[10,0],[10,20],[20,20],[20,35],[30,35]],
+        [[0,0],[-10,0],[-10,-20],[-40,-20],[-40,0]],
+        [[0,0],[10,0],[10,20],[40,20],[40,0]],
+        [[0,0],[10,0],[10,-40],[0,-40]],
+        [[0,0],[-10,0],[-10,40],[0,40]],
+        [[-60,15],[-60,21.5]]
+      ];
+      this.industrialCirculationRoutes=routes.map(route=>route.map(([x,z])=>({x,z})));
+      const segments=this.industrialCirculationRoutes.flatMap(route=>route.slice(1).map((b,i)=>({a:route[i],b})));
+      const overlap=(a,b,margin=.35)=>a.minX<b.maxX+margin&&a.maxX>b.minX-margin&&a.minZ<b.maxZ+margin&&a.maxZ>b.minZ-margin;
+      const laneBlocked=b=>segments.some(segment=>this.segmentIntersectsCollider(segment.a.x,segment.a.z,segment.b.x,segment.b.z,b,2.05));
+      const descriptors=[];
+      for(const collider of this.colliders){
+        if(collider.isWave31Prop)continue;
+        const ref=Object.values(collider).find(value=>value?.mesh?.isObject3D&&!value.isObject3D);
+        const mesh=collider.mesh||ref?.mesh;
+        let bounds={minX:collider.minX,maxX:collider.maxX,minZ:collider.minZ,maxZ:collider.maxZ};
+        if(mesh?.isObject3D){
+          mesh.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(mesh);
+          if(!box.isEmpty()&&box.min.y<.5)bounds={minX:Math.min(bounds.minX,box.min.x),maxX:Math.max(bounds.maxX,box.max.x),minZ:Math.min(bounds.minZ,box.min.z),maxZ:Math.max(bounds.maxZ,box.max.z)};
+        }
+        const structural=collider.isDoorFrame||mesh&&this.walls.includes(mesh)||(this.blastDoors||[]).some(door=>door.collider===collider);
+        descriptors.push({collider,mesh,ref,bounds,structural});
+      }
+      const moveable=descriptors.filter(d=>!d.structural&&d.mesh&&laneBlocked(d.bounds)).sort((a,b)=>{
+        const area=d=>(d.bounds.maxX-d.bounds.minX)*(d.bounds.maxZ-d.bounds.minZ);
+        return area(b)-area(a);
+      });
+      this.legacyPropRelocations=[];this.industrialCirculationDiagnostics=[];
+      for(const item of moveable){
+        const from={x:(item.collider.minX+item.collider.maxX)/2,z:(item.collider.minZ+item.collider.maxZ)/2};
+        const local={minX:item.bounds.minX-from.x,maxX:item.bounds.maxX-from.x,minZ:item.bounds.minZ-from.z,maxZ:item.bounds.maxZ-from.z};
+        let chosen=null;
+        for(let radius=3.75;radius<=25&&!chosen;radius+=1.25){
+          for(let angle=0;angle<48;angle++){
+            const x=Math.round((from.x+Math.cos(angle*Math.PI/24)*radius)/1.25)*1.25;
+            const z=Math.round((from.z+Math.sin(angle*Math.PI/24)*radius)/1.25)*1.25;
+            // Do not move equipment across the station or out of its quarter.
+            if(Math.abs(from.x)>16&&Math.sign(x)!==Math.sign(from.x)||Math.abs(from.z)>24&&Math.sign(z)!==Math.sign(from.z))continue;
+            const b={minX:x+local.minX,maxX:x+local.maxX,minZ:z+local.minZ,maxZ:z+local.maxZ};
+            if(Math.max(Math.abs(b.minX),Math.abs(b.maxX),Math.abs(b.minZ),Math.abs(b.maxZ))>=72.3||laneBlocked(b))continue;
+            if(descriptors.some(other=>other!==item&&overlap(b,other.bounds)))continue;
+            chosen={x,z,bounds:b};break;
+          }
+        }
+        if(!chosen){this.industrialCirculationDiagnostics.push({id:item.ref?.id||item.mesh.name||'legacy_dressing',from,status:'no-safe-bay'});continue;}
+        const dx=chosen.x-from.x,dz=chosen.z-from.z;
+        item.mesh.position.x+=dx;item.mesh.position.z+=dz;item.mesh.updateMatrixWorld(true);
+        const refs=[...new Set(Object.values(item.collider).filter(value=>value&&typeof value==='object'&&value.mesh===item.mesh&&!value.isObject3D))];
+        for(const ref of refs){if(Number.isFinite(ref.x))ref.x+=dx;if(Number.isFinite(ref.z))ref.z+=dz;}
+        item.collider.minX+=dx;item.collider.maxX+=dx;item.collider.minZ+=dz;item.collider.maxZ+=dz;item.bounds=chosen.bounds;
+        this.legacyPropRelocations.push({id:item.ref?.id||item.mesh.name||'legacy_dressing',from,to:{x:chosen.x,z:chosen.z},reason:'clear-authored-circulation'});
+      }
+      this.industrialCirculationMetrics={elapsedMs:performance.now()-preparationStarted,moved:this.legacyPropRelocations.length,
+        unresolved:this.industrialCirculationDiagnostics.length};
+    }
+
+    getIndustrialObstacleBounds() {
+      let measured=0;
+      const bounds = this.colliders.filter(col => !col.isWave31Prop).map(col=>{
+        const mesh=col.mesh || Object.values(col).find(value=>value?.mesh?.isObject3D)?.mesh;
+        if(!mesh?.isObject3D)return col;
+        mesh.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(mesh);
+        // Grounded equipment's visual envelope can exceed an old approximate
+        // collider. High suspended pieces retain their logical support collider.
+        if(box.isEmpty()||box.min.y>.5)return col;
+        measured++;
+        return {...col,minX:Math.min(col.minX,box.min.x),maxX:Math.max(col.maxX,box.max.x),
+          minZ:Math.min(col.minZ,box.min.z),maxZ:Math.max(col.maxZ,box.max.z)};
+      });
+      return {bounds,measured};
+    }
+
+    applyIndustrialLayoutPlan(plan) {
+      if(plan?.schema!=='hive-industrial-layout-v1'||plan.version!==1||plan.clearance!==2||plan.boundary!==73.4||
+        !Array.isArray(plan.records)||plan.records.length!==this.wave31Props.length)return false;
+      const started=performance.now(),byId=new Map(plan.records.map(record=>[record.id,record]));
+      if(byId.size!==this.wave31Props.length)return false;
+      const sectors=this.getIndustrialLayoutSectors(),sectorById=new Map(sectors.map(sector=>[sector.id,sector]));
+      const {bounds:base,measured}=this.getIndustrialObstacleBounds(),prepared=[];
+      const overlap=(a,b,margin=.1)=>a.minX<b.maxX+margin&&a.maxX>b.minX-margin&&a.minZ<b.maxZ+margin&&a.maxZ>b.minZ-margin;
+      for(const prop of this.wave31Props){
+        const record=byId.get(prop.id);
+        if(!prop.mesh||record?.factory!==prop.factory||record.minStage!==prop.minStage||!Array.isArray(record.route)||!record.route.length)return false;
+        const sector=sectorById.get(record.sector);
+        if(!sector||!sectorById.has(record.preferredSector)||record.x<sector.minX||record.x>sector.maxX||record.z<sector.minZ||record.z>sector.maxZ)return false;
+        prop.mesh.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(prop.mesh);
+        const local={minX:Math.min(box.min.x,-prop.hx),maxX:Math.max(box.max.x,prop.hx),minZ:Math.min(box.min.z,-prop.hz),maxZ:Math.max(box.max.z,prop.hz),groundY:-box.min.y};
+        if(!Object.entries(local).every(([key,value])=>Number.isFinite(value)&&Math.abs(value-record.localBounds?.[key])<.002))return false;
+        const b={minX:record.x+local.minX-.18,maxX:record.x+local.maxX+.18,minZ:record.z+local.minZ-.18,maxZ:record.z+local.maxZ+.18};
+        if(!Object.values(b).every(Number.isFinite)||Math.max(Math.abs(b.minX),Math.abs(b.maxX),Math.abs(b.minZ),Math.abs(b.maxZ))>=72.3)return false;
+        if(base.some(other=>overlap(b,other,.35))||prepared.some(other=>overlap(b,other.bounds)))return false;
+        if(![record.accessOrigin,record.interactionPoint,...record.route].every(point=>point&&Number.isFinite(point.x)&&Number.isFinite(point.z)))return false;
+        if(Math.hypot(record.interactionPoint.x-record.x,record.interactionPoint.z-record.z)>5.8||
+          Math.hypot(record.route[0].x-record.accessOrigin.x,record.route[0].z-record.accessOrigin.z)>.001||
+          Math.hypot(record.route.at(-1).x-record.interactionPoint.x,record.route.at(-1).z-record.interactionPoint.z)>.001)return false;
+        prepared.push({prop,record,local,bounds:b});
+      }
+      // Validate compressed clearance routes against the geometry actually
+      // instantiated now. Stale plans never silently move or shrink an asset.
+      const solids=[...base,...prepared.map(item=>item.bounds)];
+      for(const item of prepared){
+        const route=item.record.route;
+        for(let i=0;i<route.length;i++){
+          const a=route[Math.max(0,i-1)],b=route[i];
+          if(Math.max(Math.abs(a.x),Math.abs(a.z),Math.abs(b.x),Math.abs(b.z))>=71)return false;
+          if(solids.some(solid=>this.segmentIntersectsCollider(a.x,a.z,b.x,b.z,solid,2)))return false;
+        }
+      }
+      if(!Array.isArray(plan.anchors)||plan.anchors.length!==8||new Set(plan.anchors.map(anchor=>anchor?.sector)).size!==8)return false;
+      for(const anchor of plan.anchors)if(!sectorById.has(anchor?.sector)||anchor.id!==`recovery_${anchor.sector}`||!Number.isFinite(anchor.x)||!Number.isFinite(anchor.z)||solids.some(solid=>
+        anchor.x>solid.minX-2&&anchor.x<solid.maxX+2&&anchor.z>solid.minZ-2&&anchor.z<solid.maxZ+2))return false;
+      for(const {prop,record,local,bounds} of prepared){
+        prop.x=record.x;prop.z=record.z;prop.localPlacementBounds=local;prop.placementBounds=bounds;
+        prop.placementSector=record.sector;prop.preferredPlacementSector=record.preferredSector;prop.placementStatus='placed';
+        prop.accessOrigin={...record.accessOrigin};prop.interactionPoint={...record.interactionPoint};prop.interactionRoute=record.route.map(point=>({...point}));
+        prop.mesh.position.set(prop.x,local.groundY,prop.z);rendererEngine.propsGroup.add(prop.mesh);
+        prop.collider={...bounds,isWave31Prop:true,propRef:prop,mesh:prop.mesh};this.colliders.push(prop.collider);
+      }
+      this.recoveryRoomAnchors=plan.anchors.map(anchor=>({...anchor}));this.industrialPlacementDiagnostics=[];
+      this.industrialPlacementMetrics={mode:'precompiled',elapsedMs:performance.now()-started,placed:prepared.length,deferred:0,
+        measuredBaseProps:measured,accessRoots:new Set(prepared.map(item=>`${item.record.accessOrigin.x}:${item.record.accessOrigin.z}`)).size};
+      return true;
+    }
+
+    layoutIndustrialProps() {
+      const planningStarted = performance.now();
+      this.prepareIndustrialCirculation();
+      if(window.HiveIndustrialLayout&&this.applyIndustrialLayoutPlan(window.HiveIndustrialLayout))return;
+      // Authoring a new packing can take seconds. Production must neither
+      // freeze the first frame nor silently accept a stale geometry plan.
+      if(window.HiveIndustrialLayoutAuthoring!==true){
+        const status=window.HiveIndustrialLayout?'deferred-stale-layout':'deferred-missing-layout';
+        this.industrialPlacementDiagnostics=(this.wave31Props||[]).map(prop=>{
+          prop.placementStatus=status;if(prop.mesh)prop.mesh.visible=false;
+          return {id:prop.id,status};
+        });
+        this.industrialPlacementMetrics={mode:'rejected-plan',elapsedMs:performance.now()-planningStarted,
+          placed:0,deferred:this.industrialPlacementDiagnostics.length,status};
+        console.error('Industrial layout rejected; regenerate its measured authoring plan.',status);
+        return;
+      }
+      const overlap = (a, b, margin = 0) => a.minX < b.maxX + margin && a.maxX > b.minX - margin &&
+        a.minZ < b.maxZ + margin && a.maxZ > b.minZ - margin;
+      const {bounds:base,measured:measuredBaseProps}=this.getIndustrialObstacleBounds();
+      const occupied = base.slice();
+      const protectedAccess = [];
+      const protectedEdges = new Set();
+      const protectedNodes = new Set();
+      const spatialIndex = new Map();
+      const indexBounds=(rect,margin=0)=>{
+        const b={minX:rect.minX-margin,maxX:rect.maxX+margin,minZ:rect.minZ-margin,maxZ:rect.maxZ+margin};
+        for(let ix=Math.floor(b.minX/8);ix<=Math.floor(b.maxX/8);ix++)for(let iz=Math.floor(b.minZ/8);iz<=Math.floor(b.maxZ/8);iz++){
+          const key=`${ix}:${iz}`;if(!spatialIndex.has(key))spatialIndex.set(key,[]);spatialIndex.get(key).push(b);
+        }
+      };
+      const intersectsIndexed=b=>{
+        for(let ix=Math.floor(b.minX/8);ix<=Math.floor(b.maxX/8);ix++)for(let iz=Math.floor(b.minZ/8);iz<=Math.floor(b.maxZ/8);iz++)
+          if((spatialIndex.get(`${ix}:${iz}`)||[]).some(other=>overlap(b,other)))return true;
+        return false;
+      };
+      for(const collider of base)indexBounds(collider,.35);
+      const sectors = this.getIndustrialLayoutSectors();
+      this.recoveryRoomAnchors = [];
+      this.industrialPlacementDiagnostics = [];
+      // A small occupancy graph is shared by all 300 placements. Running a
+      // complete A* search for every rejected candidate made startup unbounded.
+      // Fine cardinal authoring grid matches the bounded runtime A* fallback;
+      // its 2.05-unit clearance preserves the actual adult envelope.
+      const size=113, step=1.25, min=-70, count=size*size, blocked=new Uint8Array(count);
+      const gridPoint=i=>({x:min+(i%size)*step,z:min+Math.floor(i/size)*step});
+      const markBounds=(bounds)=>{
+        const touched=[];
+        const x0=Math.max(0,Math.ceil((bounds.minX-2.05-min)/step)),x1=Math.min(size-1,Math.floor((bounds.maxX+2.05-min)/step));
+        const z0=Math.max(0,Math.ceil((bounds.minZ-2.05-min)/step)),z1=Math.min(size-1,Math.floor((bounds.maxZ+2.05-min)/step));
+        for(let iz=z0;iz<=z1;iz++)for(let ix=x0;ix<=x1;ix++){const i=iz*size+ix;if(!blocked[i]){blocked[i]=1;touched.push(i);}}
+        return touched;
+      };
+      for(const collider of base) markBounds(collider);
+      let root=56*size+56;
+      if(blocked[root]){
+        let distance=Infinity;
+        for(let i=0;i<count;i++)if(!blocked[i]){const p=gridPoint(i),d=Math.hypot(p.x,p.z);if(d<distance){distance=d;root=i;}}
+      }
+      const roots=new Set([root]);
+      const flood=()=>{
+        const parents=new Int32Array(count);parents.fill(-1);
+        const depths=new Uint16Array(count);parents.routeDepth=depths;
+        const queue=new Int32Array(count);let head=0,tail=0;
+        for(const seed of roots)if(!blocked[seed]){queue[tail++]=seed;parents[seed]=seed;}
+        while(head<tail){
+          const i=queue[head++],ix=i%size,iz=Math.floor(i/size);
+          for(const n of [ix>0?i-1:-1,ix<size-1?i+1:-1,iz>0?i-size:-1,iz<size-1?i+size:-1])
+            if(n>=0&&!blocked[n]&&parents[n]===-1){parents[n]=i;depths[n]=depths[i]+1;queue[tail++]=n;}
+        }
+        return parents;
+      };
+      const reserve=(a,b,width=2.05)=>{
+        protectedAccess.push({a,b,width});
+        const slices=Math.abs(a.x-b.x)>.001&&Math.abs(a.z-b.z)>.001?Math.ceil(Math.hypot(a.x-b.x,a.z-b.z)):1;
+        for(let i=0;i<slices;i++){
+          const x0=a.x+(b.x-a.x)*i/slices,z0=a.z+(b.z-a.z)*i/slices;
+          const x1=a.x+(b.x-a.x)*(i+1)/slices,z1=a.z+(b.z-a.z)*(i+1)/slices;
+          indexBounds({minX:Math.min(x0,x1)-width,maxX:Math.max(x0,x1)+width,
+            minZ:Math.min(z0,z1)-width,maxZ:Math.max(z0,z1)+width});
+        }
+      };
+      const reserveRoute=(node,parents)=>{
+        let i=node,guard=0;const route=[gridPoint(node)];
+        protectedNodes.add(node);
+        while(parents[i]>=0&&parents[i]!==i&&guard++<count){
+          const next=parents[i],key=i<next?`${i}:${next}`:`${next}:${i}`;
+          if(!protectedEdges.has(key)){protectedEdges.add(key);reserve(gridPoint(i),gridPoint(next));}
+          i=next;protectedNodes.add(i);route.push(gridPoint(i));
+        }
+        return route.reverse();
+      };
+      const nearestNode=(target,parents)=>{
+        let best=-1,distance=Infinity;
+        for(let i=0;i<count;i++)if(parents?parents[i]>=0:!blocked[i]){const p=gridPoint(i),d=Math.hypot(p.x-target.x,p.z-target.z);if(d<distance){best=i;distance=d;}}
+        return best;
+      };
+      for(const sector of sectors){
+        const node=nearestNode(sector);
+        if(node>=0){roots.add(node);protectedNodes.add(node);const point=gridPoint(node);this.recoveryRoomAnchors.push({id:`recovery_${sector.id}`,sector:sector.id,...point});reserve(point,point,2);}
+      }
+      const origins=typeof STARTING_CAMPAIGN_ORIGINS!=='undefined'?Object.values(STARTING_CAMPAIGN_ORIGINS):[];
+      for(const point of origins.flatMap(origin=>[origin.eggPos,origin.hostSpawn]).filter(Boolean)){
+        const node=nearestNode(point);if(node>=0){roots.add(node);protectedNodes.add(node);}reserve(point,point,2.5);
+      }
+      // Keep both faces of every authored doorway usable. A closed-door room
+      // may have its own access root; it is not claimed reachable through a lock.
+      for(const door of this.blastDoors||[]){
+        reserve({x:door.x-door.width/2-1,z:door.z},{x:door.x+door.width/2+1,z:door.z},2.2);
+        for(const dz of [-3.5,3.5]){const node=nearestNode({x:door.x,z:door.z+dz});if(node>=0)roots.add(node);}
+      }
+      const initialParents=flood();
+      reserve({x:0,z:0},{x:0,z:0},2.5);
+      for(const route of this.industrialCirculationRoutes||[])for(let i=1;i<route.length;i++)reserve(route[i-1],route[i],2.05);
+      this.industrialBaseAccess=[];
+      for(const anchor of this.recoveryRoomAnchors){
+        const route=this.findPath(0,0,anchor.x,anchor.z,{padding:2});
+        const reached=route.length>0&&Math.hypot(route.at(-1).x-anchor.x,route.at(-1).z-anchor.z)<1.1;
+        this.industrialBaseAccess.push({id:anchor.id,reached,routePoints:route.length});
+        if(reached){let previous={x:0,z:0};for(const point of route){reserve(previous,point,2.05);previous=point;}}
+      }
+      // A local flood seed must not become an isolated equipment pocket after
+      // packing. Preserve an actual adult path from every spawn/door seed to
+      // the station circulation, not merely the seed's empty footprint.
+      this.industrialRootConnections=[];
+      for(const seed of roots){
+        const origin=gridPoint(seed);
+        const anchors=[...this.recoveryRoomAnchors].sort((a,b)=>Math.hypot(a.x-origin.x,a.z-origin.z)-Math.hypot(b.x-origin.x,b.z-origin.z));
+        let connection=null;
+        for(const anchor of anchors){
+          const same=Math.hypot(origin.x-anchor.x,origin.z-anchor.z)<.05;
+          const route=same?[{...origin}]:this.findPath(origin.x,origin.z,anchor.x,anchor.z,{padding:2});
+          if(route.length&&Math.hypot(route.at(-1).x-anchor.x,route.at(-1).z-anchor.z)<.05){connection={anchor,route};break;}
+        }
+        if(!connection){roots.delete(seed);this.industrialRootConnections.push({origin,status:'disconnected-base-seed'});continue;}
+        let previous=origin;for(const point of connection.route){reserve(previous,point,2.05);previous=point;}
+        this.industrialRootConnections.push({origin,anchor:connection.anchor.id,status:'connected',route:connection.route});
+      }
+      for(const door of this.blastDoors||[])for(const dz of [-3.5,3.5]){
+        const node=nearestNode({x:door.x,z:door.z+dz},initialParents);if(node>=0)reserveRoute(node,initialParents);
+      }
+      const chooseSector = prop => {
+        const id = prop.id;
+        if (/(cryo|amniotic|medical|autopsy|autoclave|embryo|genetic|specimen|surgical|stasis|neural|clone|biopsy|morgue|nutrient|incubat|microtome|necropsy|decon)/.test(id)) return 'medical';
+        if (/(foundry|slag|lead|smelt|ladle|quench|tuyere|ingot|ore_|iron|kiln|furnace|coal|preheat|crucible|skimm|dross|ash_|jaw_crusher|chem_vat|kettle)/.test(id)) return 'foundry';
+        if (/(uscm|sulaco|ammo|weapon|ordnance|smartgun|m41a|m40_|claymore|ballistic|security|sentinel|perimeter|marshal|missile|flir|turret)/.test(id)) return 'security';
+        if (/(ovipositor|black_goo|biomass|polymer_cocoon)/.test(id)) return 'nursery';
+        if (/(galley|bunk|chapel|vending|laundry|luggage|hydro|o2_|life_support)/.test(id)) return 'habitation';
+        if (/(cargo|freight|winch|docking|dropship|landing|scaffold|hoist|pallet|transit|rail|monorail|tether|apc|vehicle|airlock|eva_|wheel|chock|tire|tractor)/.test(id)) return 'transit';
+        if (/(drain|sump|sludge|sewer|water|brine|scrub|filter|plenum|coolant|duct|carbon|fan|blower|grille|baffle)/.test(id)) return 'maintenance';
+        return 'engineering';
+      };
+      const candidates = [];
+      for (let x = -69; x <= 69; x += 1.25) for (let z = -69; z <= 69; z += 1.25) {
+        candidates.push({x,z,sector:sectors.find(s=>x>=s.minX&&x<=s.maxX&&z>=s.minZ&&z<=s.maxZ)?.id || 'service'});
+      }
+      // These are connected station departments, not isolated themed maps.
+      // Technical and freight annexes share the quarantine quarter; heavy
+      // equipment gets first claim before small control cabinets fill a bay.
+      const annexes={medical:['medical','nursery','habitation','security'],security:['security','engineering','transit','nursery','maintenance','habitation'],
+        foundry:['foundry','maintenance','engineering','transit','nursery'],nursery:['nursery','medical'],
+        maintenance:['maintenance','engineering','transit','nursery','security','medical'],
+        engineering:['engineering','maintenance','security','nursery','transit','habitation','medical'],
+        habitation:['habitation','transit','medical','nursery','security'],transit:['transit','nursery','security','maintenance','engineering','foundry']};
+      const candidatesBySector=new Map(sectors.map(sector=>[sector.id,candidates.filter(point=>annexes[sector.id].includes(point.sector)).map(point=>({point,
+        score:annexes[sector.id].indexOf(point.sector)*900+Math.hypot(point.x-sector.x,point.z-sector.z)
+      })).sort((a,b)=>a.score-b.score||a.point.x-b.point.x||a.point.z-b.point.z).map(entry=>entry.point)]));
+      const props = (this.wave31Props || []).map(prop => {
+        if (!prop.mesh) return prop;
+        prop.mesh.updateMatrixWorld(true);
+        const b = new THREE.Box3().setFromObject(prop.mesh);
+        prop.localPlacementBounds = { minX: Math.min(b.min.x, -prop.hx), maxX: Math.max(b.max.x, prop.hx),
+          minZ: Math.min(b.min.z, -prop.hz), maxZ: Math.max(b.max.z, prop.hz), groundY: -b.min.y };
+        return prop;
+      }).sort((a,b)=> {
+        const area = p => p.localPlacementBounds ? (p.localPlacementBounds.maxX-p.localPlacementBounds.minX)*(p.localPlacementBounds.maxZ-p.localPlacementBounds.minZ) : 0;
+        return area(b)-area(a) || a.id.localeCompare(b.id);
+      });
+      for (const prop of props) {
+        const local = prop.localPlacementBounds;
+        if (!local) { prop.placementStatus = 'missing-model'; this.industrialPlacementDiagnostics.push({id:prop.id,status:prop.placementStatus}); continue; }
+        const preferred = chooseSector(prop), sorted=candidatesBySector.get(preferred);
+        const rejections={boundary:0,occupied:0,noAccess:0};
+        let chosen = null;
+        for (const point of sorted) {
+          const bounds = {minX:point.x+local.minX-.18,maxX:point.x+local.maxX+.18,minZ:point.z+local.minZ-.18,maxZ:point.z+local.maxZ+.18};
+          if (Math.max(Math.abs(bounds.minX),Math.abs(bounds.maxX),Math.abs(bounds.minZ),Math.abs(bounds.maxZ)) >= 72.3) {rejections.boundary++;continue;}
+          if (intersectsIndexed(bounds)) {rejections.occupied++;continue;}
+          // Temporarily insert this candidate in the same padded graph used by
+          // every earlier prop. Keep a real reachable stand point within E6.
+          const touched=markBounds(bounds),parents=flood();
+          let accessNode=-1,accessCost=Infinity;
+          const x0=Math.max(0,Math.ceil((point.x-5.8-min)/step)),x1=Math.min(size-1,Math.floor((point.x+5.8-min)/step));
+          const z0=Math.max(0,Math.ceil((point.z-5.8-min)/step)),z1=Math.min(size-1,Math.floor((point.z+5.8-min)/step));
+          for(let iz=z0;iz<=z1;iz++)for(let ix=x0;ix<=x1;ix++){
+            const node=iz*size+ix;if(parents[node]<0)continue;
+            const access=gridPoint(node),distance=Math.hypot(access.x-point.x,access.z-point.z);
+            const cost=distance+(protectedNodes.has(node)?0:50+(parents.routeDepth[node]||0)*5);
+            if(distance>5.8||cost>=accessCost)continue;
+            if(occupied.some(col=>this.segmentIntersectsCollider(access.x,access.z,point.x,point.z,col,.08)))continue;
+            accessNode=node;accessCost=cost;
+          }
+          if(accessNode>=0)chosen={point,bounds,access:gridPoint(accessNode),accessNode,parents};
+          else {for(const node of touched)blocked[node]=0;rejections.noAccess++;}
+          if (chosen) break;
+        }
+        if (!chosen) {
+          prop.placementStatus='deferred-no-safe-space'; prop.mesh.visible=false;
+          this.industrialPlacementDiagnostics.push({id:prop.id,status:prop.placementStatus,rejections});
+          continue;
+        }
+        prop.x=chosen.point.x;prop.z=chosen.point.z;prop.placementSector=chosen.point.sector;prop.preferredPlacementSector=preferred;
+        prop.placementBounds=chosen.bounds;prop.interactionPoint=chosen.access;prop.placementStatus='placed';
+        prop.mesh.position.set(prop.x,local.groundY,prop.z);rendererEngine.propsGroup.add(prop.mesh);
+        const collider={...chosen.bounds,isWave31Prop:true,propRef:prop,mesh:prop.mesh};prop.collider=collider;
+        this.colliders.push(collider);occupied.push(collider);indexBounds(collider,.1);
+        prop.interactionRoute=reserveRoute(chosen.accessNode,chosen.parents);
+        prop.accessOrigin={...prop.interactionRoute[0]};
+      }
+      this.industrialPlacementMetrics={mode:'authoring',elapsedMs:performance.now()-planningStarted,placed:props.filter(p=>p.placementStatus==='placed').length,
+        deferred:this.industrialPlacementDiagnostics.length,reservedEdges:protectedEdges.size,accessRoots:roots.size,measuredBaseProps};
+      if(this.industrialPlacementDiagnostics.length) console.warn('Industrial layout requires authored space:',this.industrialPlacementDiagnostics);
+    }
+
+    isPropActiveForStage(prop) {
+      return !!prop && (!prop.placementStatus || prop.placementStatus==='placed') &&
+        this.getPropMinStage(prop) <= (window.gameInstance?.currentStageIndex || this.currentStageIndex || 1) &&
+        prop.collider?.disabled !== true;
+    }
+
+    canInteractWithProp(prop) {
+      if (!this.isPropActiveForStage(prop) || ![prop.x,prop.z,playerCreature.x,playerCreature.z].every(Number.isFinite)) return false;
+      return !this.colliders.some(col => {
+        // The target's own solid envelope is not a wall between actor and its
+        // control panel. All other active colliders still occlude an E/acid use.
+        if (col.disabled || col === prop.collider || col.mesh === prop.mesh && !!prop.mesh || Object.values(col).includes(prop)) return false;
+        return this.segmentIntersectsCollider(playerCreature.x,playerCreature.z,prop.x,prop.z,col,.04);
+      });
+    }
+
+    setPropStageVisibility(prop, active) {
+      if (!prop?.mesh) return;
+      const metadata=prop.mesh.userData ||= {};
+      metadata.hiveGameplayVisible=!!active;
+      prop.mesh.visible=!!active&&!metadata.hiveDistanceCulled;
     }
 
     getPropMinStage(prop, col) {
@@ -13593,13 +14036,13 @@
 
       // 1. Mise à jour de tous les colliders et de leurs props associés
       for (const col of this.colliders) {
-        const prop = col.propRef || col.hoistRef || col.batteryRef || col.basketRef || col.centrifugeRef || col.manifoldRef || col.scannerRef || col.turboRef || col.sledRef || col.trayRef || col.tuyereRef || col.dispenserRef || col.stationRef || col.tokamakRef || col.pipeRef || col.consoleRef || col.sarcophagusRef || col.chamberRef || col.furnaceRef || col.termRef || col.vaultRef || col.cartRef || col.extRef || col.mineRef || col.ventRef || col.wallRef || col.hatchRef || col.flumeRef || col.pistonRef || col.domeRef || col.gantryRef || col.boothRef || col.rackRef || col.bunkerRef || col.shutterRef || col.weirRef || col.blowerRef || col.tableRef || col.sluiceRef || col.cageRef || col.carouselRef || col.bufferRef || col.heaterRef || col.intakeRef;
+        const prop = col.propRef || col.hoistRef || col.batteryRef || col.basketRef || col.centrifugeRef || col.manifoldRef || col.scannerRef || col.turboRef || col.sledRef || col.trayRef || col.tuyereRef || col.dispenserRef || col.stationRef || col.tokamakRef || col.pipeRef || col.consoleRef || col.sarcophagusRef || col.chamberRef || col.furnaceRef || col.termRef || col.vaultRef || col.cartRef || col.extRef || col.mineRef || col.ventRef || col.wallRef || col.hatchRef || col.flumeRef || col.pistonRef || col.domeRef || col.gantryRef || col.boothRef || col.rackRef || col.bunkerRef || col.shutterRef || col.weirRef || col.blowerRef || col.tableRef || col.sluiceRef || col.cageRef || col.carouselRef || col.bufferRef || col.heaterRef || col.intakeRef || Object.values(col).find(value => value?.mesh?.isObject3D && !value.isObject3D);
         if (prop) {
           const minStage = this.getPropMinStage(prop, col);
           prop.minStage = minStage;
-          const isActive = minStage <= stageIndex;
+          const isActive = minStage <= stageIndex && prop.placementStatus !== 'deferred-no-safe-space' && prop.placementStatus !== 'missing-model';
           col.disabled = !isActive;
-          if (prop.mesh) prop.mesh.visible = isActive;
+          this.setPropStageVisibility(prop,isActive);
         }
       }
 
@@ -13607,8 +14050,10 @@
       (this.wave31Props || []).forEach((prop) => {
         const minStage = this.getPropMinStage(prop);
         prop.minStage = minStage;
-        const isActive = minStage <= stageIndex;
-        if (prop.mesh) prop.mesh.visible = isActive;
+        const isActive = minStage <= stageIndex && prop.placementStatus === 'placed';
+        this.setPropStageVisibility(prop,isActive);
+        if (prop.collider) prop.collider.disabled = !isActive;
+        if (!isActive) { prop.isTriggered = false; prop.resetTimer = 0; }
       });
 
       // 3. Synchronisation des vagues 1 à 30 (props industriels spécifiques)
@@ -13619,16 +14064,17 @@
         this.blastFurnaceTuyeres, this.coolingBlowers, this.tacticalHoloTables,
         this.leadDrainageSluices, this.specimenHoldingCages, this.stasisCarousels,
         this.monorailBufferStops, this.steamSuperheaters, this.uscmWeaponRacks,
-        this.syntheticAssemblyStations, this.furnaceAirIntakes
+        this.syntheticAssemblyStations, this.furnaceAirIntakes, this.portableMortars
       ];
       allPropArrays.forEach((arr) => {
         (arr || []).forEach((prop) => {
           const minStage = this.getPropMinStage(prop);
           prop.minStage = minStage;
           const isActive = minStage <= stageIndex;
-          if (prop.mesh) prop.mesh.visible = isActive;
+          this.setPropStageVisibility(prop,isActive);
         });
       });
+      this.chainQueue = (this.chainQueue || []).filter(item => this.isPropActiveForStage(item.prop));
     }
 
     setBlastDoorState(door, open, silent = false) {
@@ -13636,7 +14082,12 @@
       if (!open) {
         // Ne jamais refermer une porte sur une entité (évite tout blocage dans le collider).
         const entities = [playerCreature, ...(window.gameInstance?.humans || []), ...(window.gameInstance?.currentStage?.rtsUnits || [])];
-        const blocked = entities.some((ent) => ent && !ent.isDestroyed && Math.hypot(ent.x - door.x, ent.z - door.z) < 3.4);
+        const blocked = entities.some((ent) => {
+          if (!ent || ent.isDestroyed || !Number.isFinite(ent.x) || !Number.isFinite(ent.z)) return false;
+          const radius=Number.isFinite(ent.creatureEnvelope?.radius)?ent.creatureEnvelope.radius:.75;
+          return ent.x > door.collider.minX-radius && ent.x < door.collider.maxX+radius &&
+            ent.z > door.collider.minZ-radius && ent.z < door.collider.maxZ+radius;
+        });
         if (blocked) return false;
       }
       door.isOpen = open;
@@ -13877,7 +14328,6 @@
 
     update(deltaSeconds = 1 / 60) {
       const safeDelta = Math.max(0, deltaSeconds);
-      this.updateSteamVents(safeDelta);
 
       // Verrouillage de quarantaine KAPPA : les portes se scellent pendant l'Acte IV (alerte >= 3).
       const stageIndex = window.gameInstance?.currentStageIndex || 0;
@@ -14463,7 +14913,7 @@
     updateSentryTurrets(safeDelta) {
       if (!this.sentryTurrets) return;
       for (const turret of this.sentryTurrets) {
-        if (turret.isDestroyed || turret.ammo <= 0) continue;
+        if (!this.isPropActiveForStage(turret) || turret.isDestroyed || turret.ammo <= 0) continue;
         turret.burstCooldown = Math.max(0, turret.burstCooldown - safeDelta);
         turret.recoil = Math.max(0, (turret.recoil || 0) - safeDelta * 4.8);
 
@@ -14533,7 +14983,7 @@
           const targetAngle = Math.atan2(playerCreature.x - turret.x, playerCreature.z - turret.z);
           const diff = Math.abs((((targetAngle - turret.angle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
           // Cône d'acquisition radar 70 degrés
-          if (diff <= Math.PI * 0.38 && this.hasLineOfSight(turret.x, turret.z, playerCreature.x, playerCreature.z)) {
+          if (diff <= Math.PI * 0.38 && this.canInteractWithProp(turret)) {
             isLocked = true;
             if (head) head.rotation.y = targetAngle - turret.angle;
             if (!turret.wasLocked) {
@@ -17374,6 +17824,7 @@
         mortar?.pendingShot === shot && Array.isArray(this.portableMortars) && this.portableMortars === shot.mortars &&
         this.portableMortars.includes(mortar) && game === shot.game &&
         game?.campaignActive === true && game.isRunning === true &&
+        game.currentStageIndex >= (Number.isFinite(mortar?.minStage) ? mortar.minStage : 4) &&
         game.currentStage === shot.stage && game.currentStageIndex === shot.stageIndex &&
         playerCreature === shot.player && playerCreature.mesh === shot.mesh && !!shot.mesh &&
         playerCreature.form === shot.form && playerCreature.adultCaste === shot.caste &&
@@ -17418,7 +17869,7 @@
       if (shots) for (const shot of [...shots]) {
         if (!this.isPortableMortarShotCurrent(shot.mortar, shot)) this.cancelPortableMortarShot(shot.mortar, shot);
       }
-      if (!game?.campaignActive || !game.isRunning || game.isSystemPaused) return;
+      if (!game?.campaignActive || !game.isRunning || game.isSystemPaused || game.currentStageIndex < 4) return;
       const delta = Number.isFinite(safeDelta) ? Math.max(0, Math.min(.05, safeDelta)) : 0;
       if (delta === 0) return;
 
@@ -20016,7 +20467,7 @@
 
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {
-        if (!h.isIncapacitated && !h.isCocooned && (h.isSynthetic || Math.hypot(h.x - tower.x, h.z - tower.z) <= 12.0)) {
+        if (!h.isIncapacitated && !h.isCocooned && (h.isSynthetic() || Math.hypot(h.x - tower.x, h.z - tower.z) <= 12.0)) {
           h.staggerTimer = 5.0;
           h.stress = 100;
           window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, 'APOLLO CORE CORROMPU !', '#22c55e', true);
@@ -20304,7 +20755,7 @@
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {
         if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - railSwitch.x, h.z - railSwitch.z) <= 7.5) {
-          const dmg = h.isSynthetic ? 450 : 280;
+          const dmg = h.isSynthetic() ? 450 : 280;
           h.takeDamage?.(dmg, playerCreature);
           h.staggerTimer = 5.5;
           window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, `-${dmg} ARC ÉLECTRIQUE 750V !`, '#f59e0b', true);
@@ -20327,28 +20778,139 @@
     // -------------------------------------------------------------------------
     // Chantier 257 : MedLab Autopsy Sump Drain & Biohazard Chute (Aliens 1986)
     // -------------------------------------------------------------------------
-    dumpCorpseIntoIncinerator(chute) {
-      if (!chute) return false;
-      const humans = window.gameInstance?.humans || [];
-      const corpse = humans.find((h) => (h.isIncapacitated || h.isCocooned) && Math.hypot(h.x - chute.x, h.z - chute.z) <= 4.5);
-      if (!corpse) {
-        showToast('Aucun corps inanimé à proximité de la trappe de crémation.');
-        return false;
-      }
-      audioManager.playIncineratorDraftRoar?.(chute.x, chute.z);
-      rendererEngine.addScreenShake?.(0.45, 0.3);
-      window.HiveSystems?.vfx?.burst?.(chute.x, chute.z, 0xf97316, 45, 0.35, 2.8);
+    getIncineratorIntake(chute) {
+      const intake = chute?.mesh?.userData?.incineratorIntake;
+      if (!intake?.anchor?.isObject3D || !intake.lid?.isObject3D ||
+        ![intake.width,intake.length,intake.depth,intake.floorY,intake.lipY,intake.openAngle].every(Number.isFinite) ||
+        intake.width <= 0 || intake.length <= 0 || intake.depth <= 0) return null;
+      return intake;
+    }
 
-      corpse.takeDamage?.(999, playerCreature);
-      if (corpse.mesh) corpse.mesh.visible = false;
-      window.HiveSystems?.vfx?.floatingText?.(chute.x, 2.5, chute.z, 'CORPS PURGÉ À L\'INCINÉRATEUR !', '#f97316', true);
-      showToast('GOULOTTE MEDLAB : Dépouille précipitée dans le four thermique !');
-      appendSensorLog('[BIO-INCINERATE] Élimination thermique de matériel biologique étranger.', 'bio');
+    cancelIncineratorTransfer(transfer) {
+      if (!transfer || transfer.completed || transfer.cancelled) return false;
+      transfer.cancelled = true;
+      this.incineratorTransfers?.delete(transfer);
+      if (transfer.chute.pendingTransfer === transfer) transfer.chute.pendingTransfer = null;
+      if (playerCreature.disposalTransfer === transfer) playerCreature.disposalTransfer = null;
+      const host = transfer.host;
+      if (host.disposalOwner === transfer) host.disposalOwner = null;
+      if (host.transportOwner === transfer) {
+        host.transportOwner = null; host.isBeingDragged = false;
+        host.isRestrained = transfer.wasRestrained; host.transportRestingPose = true;
+        if (host.mesh === transfer.hostMesh && transfer.game.humans.includes(host) && !host.isDisposed) {
+          host.x = transfer.startPosition.x;host.z = transfer.startPosition.z;
+          host.mesh.position.copy(transfer.startPosition);host.mesh.quaternion.copy(transfer.startQuaternion);host.mesh.visible = true;
+        }
+      }
+      if (transfer.chute.mesh === transfer.chuteMesh) transfer.intake.lid.rotation.x = 0;
+      transfer.chute.processState = 'READY';
+      return true;
+    }
+
+    isIncineratorTransferCurrent(transfer) {
+      const game = window.gameInstance;
+      return !!transfer && !transfer.completed && !transfer.cancelled && transfer.game === game &&
+        game?.campaignActive === true && game.isRunning === true && game.currentStage === transfer.stage &&
+        game.currentStageIndex === 4 && playerCreature.mesh === transfer.playerMesh && playerCreature.form === 'drone' &&
+        playerCreature.disposalTransfer === transfer && transfer.chute.pendingTransfer === transfer &&
+        this.medlabAutopsyChutes?.includes(transfer.chute) && transfer.chute.mesh === transfer.chuteMesh &&
+        this.isPropActiveForStage(transfer.chute) && game.humans.includes(transfer.host) &&
+        transfer.host.mesh === transfer.hostMesh && transfer.host.transportOwner === transfer &&
+        transfer.host.disposalOwner === transfer && !transfer.host.isDisposed && !playerCreature.isDefeated &&
+        !playerCreature.isInVent && !playerCreature.isCeilingProwling && !playerCreature.isEmerging && !playerCreature.isBiologicalTransition;
+    }
+
+    dumpCorpseIntoIncinerator(chute) {
+      const game = window.gameInstance, corpse = playerCreature.draggedHost, drag = playerCreature.dragTransport;
+      if (!chute || !this.medlabAutopsyChutes?.includes(chute) || chute.pendingTransfer || !this.canInteractWithProp(chute) ||
+        !chute.mesh || chute.mesh.visible === false || !playerCreature.canTransportOnGround?.() ||
+        !corpse?.mesh || !drag || drag.host !== corpse || drag.mesh !== corpse.mesh || corpse.transportOwner !== playerCreature ||
+        corpse.isDisposed || corpse.disposalOwner || corpse.ceilingActionOwner || !game.humans.includes(corpse) ||
+        Math.hypot(playerCreature.x - chute.x,playerCreature.z - chute.z) > 5.5 ||
+        Math.hypot(playerCreature.x - corpse.x,playerCreature.z - corpse.z) > 2.8 ||
+        !this.hasLineOfSight(playerCreature.x,playerCreature.z,corpse.x,corpse.z,.12)) return false;
+      const intake = this.getIncineratorIntake(chute);
+      if (!intake) { showToast('Cette goulotte ne possède pas une ouverture de chargement utilisable.');return false; }
+      chute.mesh.updateMatrixWorld(true);
+      const scale = chute.mesh.getWorldScale(new THREE.Vector3()), body = drag.geometry.bounds, size = drag.geometry.size;
+      if (![scale.x,scale.y,scale.z].every(value=>Number.isFinite(value)&&value>.001)) return false;
+      if (size.x > intake.width * Math.abs(scale.x) - .08 || size.y > intake.length * Math.abs(scale.z) - .08 ||
+        size.z > intake.depth * Math.abs(scale.y) - .12) {
+        showToast('Le corps et son équipement ne passent pas dans cette ouverture. Aucun transfert n’a lieu.');return false;
+      }
+      const rotation = chute.mesh.getWorldQuaternion(new THREE.Quaternion());
+      const targetQuaternion = rotation.clone().multiply(playerCreature.getTransportQuaternion(0));
+      const localX = -(body.min.x + body.max.x) / (2 * scale.x);
+      const localZ = (body.min.y + body.max.y) / (2 * scale.z);
+      const targetPosition = chute.mesh.localToWorld(new THREE.Vector3(localX,intake.lipY - body.min.z / scale.y + .06,localZ));
+      const finalPosition = chute.mesh.localToWorld(new THREE.Vector3(localX,intake.floorY - body.min.z / scale.y + .025,localZ));
+      const startPosition = corpse.mesh.position.clone(), startQuaternion = corpse.mesh.quaternion.clone();
+      const liftPosition = startPosition.clone();liftPosition.y = Math.max(startPosition.y + 1.5,targetPosition.y + .35);
+      // Sample the complete loading sweep before relinquishing the exact body.
+      for (let i = 0; i <= 24; i++) {
+        const t = i / 24, point = liftPosition.clone().lerp(targetPosition,t), quaternion = startQuaternion.clone().slerp(targetQuaternion,t);
+        if (!playerCreature.transportBodyFitsAt(drag.geometry,point,quaternion,chute)) {
+          showToast('Le trajet de chargement est obstrué. Dégagez le corps et la table.');return false;
+        }
+      }
+      const transfer = { game, stage:game.currentStage, chute, chuteMesh:chute.mesh, intake, host:corpse, hostMesh:corpse.mesh,
+        playerMesh:playerCreature.mesh, geometry:drag.geometry, startPosition,startQuaternion,liftPosition,targetPosition,finalPosition,targetQuaternion,
+        elapsed:0,duration:3.05,completed:false,cancelled:false,wasRestrained:drag.wasRestrained,phase:'OPEN' };
+      playerCreature.draggedHost = null;playerCreature.dragTransport = null;playerCreature.disposalTransfer = transfer;
+      corpse.transportOwner = transfer;corpse.disposalOwner = transfer;corpse.isBeingDragged = false;corpse.isRestrained = true;
+      chute.pendingTransfer = transfer;chute.processState = 'LOADING';
+      (this.incineratorTransfers ||= new Set()).add(transfer);
+      playerCreature.moveTarget = null;playerCreature.moveWaypoints = [];
+      audioManager.playIncineratorDraftRoar?.(chute.x,chute.z);
+      showToast('Chargement du corps saisi : ouverture, levage, dépose et fermeture de la chambre.');
       return true;
     }
 
     updateMedlabAutopsyChutes(safeDelta) {
-      // Goulotte statique
+      const game = window.gameInstance;
+      for (const transfer of [...(this.incineratorTransfers || [])]) {
+        if (!this.isIncineratorTransferCurrent(transfer)) { this.cancelIncineratorTransfer(transfer);continue; }
+        if (game.isSystemPaused) continue;
+        const delta = Number.isFinite(safeDelta) ? Math.max(0,Math.min(.05,safeDelta)) : 0;
+        if (!delta) continue;
+        transfer.elapsed = Math.min(transfer.duration,transfer.elapsed + delta);
+        const t = transfer.elapsed, body = transfer.hostMesh, lid = transfer.intake.lid;
+        const smooth = value => {const v=Math.max(0,Math.min(1,value));return v*v*(3-2*v);};
+        if (t <= .4) {transfer.phase='OPEN';lid.rotation.x=transfer.intake.openAngle*smooth(t/.4);}
+        else if (t <= .9) {
+          transfer.phase='LIFT';lid.rotation.x=transfer.intake.openAngle;
+          body.position.lerpVectors(transfer.startPosition,transfer.liftPosition,smooth((t-.4)/.5));
+        } else if (t <= 1.9) {
+          transfer.phase='LOAD';
+          const progress=smooth(t-.9);
+          body.position.lerpVectors(transfer.liftPosition,transfer.targetPosition,progress);
+          body.quaternion.slerpQuaternions(transfer.startQuaternion,transfer.targetQuaternion,progress);
+        } else if (t <= 2.6) {
+          transfer.phase='LOWER';
+          body.position.lerpVectors(transfer.targetPosition,transfer.finalPosition,smooth((t-1.9)/.7));body.quaternion.copy(transfer.targetQuaternion);
+        } else {transfer.phase='CLOSE';lid.rotation.x=transfer.intake.openAngle*(1-smooth((t-2.6)/.45));}
+        if (!playerCreature.transportBodyFitsAt(transfer.geometry,body.position,body.quaternion,transfer.chute)) {
+          this.cancelIncineratorTransfer(transfer);showToast('Chargement interrompu : le passage est devenu obstrué.');continue;
+        }
+        transfer.host.x=body.position.x;transfer.host.z=body.position.z;
+        animateProceduralModel(playerCreature.mesh,{phase:t*2,movement:0,attack:Math.sin(Math.min(1,t/2.6)*Math.PI)*.65});
+        if (transfer.elapsed < transfer.duration - 1e-7) continue;
+        // Commit exactly once, before sound or rendering callbacks. Incapacitated
+        // actors deliberately bypass takeDamage(), so disposal owns this state.
+        transfer.completed=true;
+        this.incineratorTransfers.delete(transfer);
+        transfer.chute.pendingTransfer=null;transfer.chute.processState='READY';transfer.chute.disposalCount=(transfer.chute.disposalCount||0)+1;
+        transfer.intake.lid.rotation.x=0;
+        if (playerCreature.disposalTransfer===transfer)playerCreature.disposalTransfer=null;
+        const host=transfer.host;host.transportOwner=null;host.disposalOwner=null;host.isBeingDragged=false;
+        host.hp=0;host.isIncapacitated=true;host.isRestrained=false;host.isDisposed=true;host.disposalState='INCINERATED';host.isConsumedByCycle=true;host.hostEligibility='none';
+        game.syncCampaignCharacter?.(host,{alive:false});
+        host.destroy?.();
+        if (host.mesh) {rendererEngine.removeObject(host.mesh);host.mesh=null;}
+        const index=game.humans.indexOf(host);if(index>=0)game.humans.splice(index,1);
+        window.HiveSystems?.vfx?.burst?.(transfer.chute.x,transfer.chute.z,0xf97316,18,.18,1.3);
+        appendSensorLog(`[INCINÉRATEUR] Corps ${host.name} éliminé ; chambre refermée.`,'bio');
+      }
     }
 
     // -------------------------------------------------------------------------
@@ -20761,8 +21323,8 @@
 
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {
-        if (!h.isIncapacitated && !h.isCocooned && (h.isSynthetic || Math.hypot(h.x - bay.x, h.z - bay.z) <= 8.0)) {
-          const dmg = h.isSynthetic ? 400 : 160;
+        if (!h.isIncapacitated && !h.isCocooned && (h.isSynthetic() || Math.hypot(h.x - bay.x, h.z - bay.z) <= 8.0)) {
+          const dmg = h.isSynthetic() ? 400 : 160;
           h.takeDamage?.(dmg, playerCreature);
           h.staggerTimer = 5.0;
           window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, `-${dmg} SURTENSION ALCÔVE CHARGE !`, '#0284c7', true);
@@ -21014,7 +21576,7 @@
 
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {
-        if (!h.isIncapacitated && !h.isCocooned && (h.isSynthetic || Math.hypot(h.x - booth.x, h.z - booth.z) <= 12.0)) {
+        if (!h.isIncapacitated && !h.isCocooned && (h.isSynthetic() || Math.hypot(h.x - booth.x, h.z - booth.z) <= 12.0)) {
           h.staggerTimer = 5.0;
           window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, 'DYSFONCTIONNEMENT SYNTHÉTIQUE SEEGSON !', '#22c55e', true);
         }
@@ -21481,7 +22043,7 @@
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {
         if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - station.x, h.z - station.z) <= 8.0) {
-          const dmg = h.isSynthetic ? 320 : 160;
+          const dmg = h.isSynthetic() ? 320 : 160;
           h.takeDamage?.(dmg, playerCreature);
           h.staggerTimer = 4.5;
           window.HiveSystems?.vfx?.floatingText?.(h.x, 3.2, h.z, `-${dmg} DYSFONCTIONNEMENT BRAS SERTISSEUR !`, '#22c55e', true);
@@ -21907,10 +22469,10 @@
     }
 
     // -------------------------------------------------------------------------
-    // Chantiers 301 à 330 : Props générique Vagues 31, 32 & 33 (déclenchement acide [X] / physique [E])
+    // Chantiers 301 à 330 : Props générique Vagues 31, 32 & 33 (déclenchement acide [X] / physique [ESPACE])
     // -------------------------------------------------------------------------
     triggerWave31Prop(prop, isChain = false) {
-      if (!prop || prop.isTriggered) return false;
+      if (!this.isPropActiveForStage(prop) || prop.isTriggered) return false;
       prop.isTriggered = true;
       prop.resetTimer = 14.0;
       if (isChain) {
@@ -22039,7 +22601,7 @@
       // Audit QA #106 : Réaction en chaîne vers les props industriels adjacents (< 10m)
       if (prop.damage >= 160) {
         (this.wave31Props || []).forEach((otherProp) => {
-          if (otherProp !== prop && !otherProp.isTriggered) {
+          if (otherProp !== prop && this.isPropActiveForStage(otherProp) && !otherProp.isTriggered) {
             const dist = Math.hypot(otherProp.x - prop.x, otherProp.z - prop.z);
             if (dist <= 10.0 && !this.chainQueue.some((item) => item.prop === otherProp)) {
               this.chainQueue.push({ prop: otherProp, delay: 0.35 + Math.random() * 0.15 });
@@ -22069,16 +22631,16 @@
     updateWave31Props(safeDelta) {
       const t = performance.now() * 0.003;
       (this.wave31Props || []).forEach((p, idx) => {
-        if (!p.mesh) return;
+        if (!p.mesh || !this.isPropActiveForStage(p)) return;
         const animMesh = p.mesh.children?.find((c) => c.name === p.anim);
         if (p.isTriggered) {
           p.resetTimer -= safeDelta;
-          if (animMesh) {
+          if (animMesh && p.animMode !== 'emissive') {
             if (p.spin) animMesh.rotation.y += safeDelta * 9.0;
             else animMesh.position.y += Math.sin(t * 6 + idx) * safeDelta * 0.6;
           }
           if (p.resetTimer <= 0) p.isTriggered = false;
-        } else if (animMesh) {
+        } else if (animMesh && p.animMode !== 'emissive') {
           // Animation mécanique continue d'ambiance industrielle (turbines, ventilateurs, tambours, antennes, pistons)
           if (p.spin) {
             animMesh.rotation.y += safeDelta * 1.5;
@@ -22134,6 +22696,13 @@
       this.interactPromptTimer -= safeDelta;
       if (this.interactPromptTimer > 0) return;
       this.interactPromptTimer = 0.2;
+      const game = window.gameInstance;
+      if (game?.currentStageIndex !== 4 || typeof game.currentStage?.interactWithNearbyProps !== 'function' ||
+        playerCreature.isLocomotionBusy?.() || playerCreature.isCeilingProwling || playerCreature.isInVent ||
+        playerCreature.isEmerging || playerCreature.isBiologicalTransition || playerCreature.isWallMimic) {
+        if (this.promptEl) this.promptEl.style.display = 'none';
+        return;
+      }
       if (!this.promptEl) {
         const el = document.createElement('div');
         el.id = 'hud-interaction-prompt';
@@ -22147,13 +22716,13 @@
       let bestDist = 6.0;
       for (const key of keys) {
         for (const p of (this[key] || [])) {
-          if (!p || !p.name) continue;
+          if (!p || !p.name || !this.canInteractWithProp(p) || p.isTriggered) continue;
           const d = Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z);
           if (d < bestDist) { bestDist = d; best = p; }
         }
       }
       if (best) {
-        this.promptEl.textContent = `[E] ${best.name} — ${bestDist.toFixed(1)}m`;
+        this.promptEl.textContent = `[ESPACE] ${best.name} — ${bestDist.toFixed(1)}m`;
         this.promptEl.style.display = 'block';
       } else {
         this.promptEl.style.display = 'none';
@@ -22165,6 +22734,7 @@
       if (!this.chainQueue || this.chainQueue.length === 0) return;
       for (let i = this.chainQueue.length - 1; i >= 0; i--) {
         const item = this.chainQueue[i];
+        if (!this.isPropActiveForStage(item.prop)) { this.chainQueue.splice(i, 1); continue; }
         item.delay -= safeDelta;
         if (item.delay <= 0) {
           this.chainQueue.splice(i, 1);
@@ -22180,7 +22750,7 @@
       this.dustTimer -= safeDelta;
       if (this.dustTimer > 0) return;
       this.dustTimer = 0.35 + Math.random() * 0.25;
-      const candidates = (this.wave31Props || []).filter((p) => p.mesh && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 24);
+      const candidates = (this.wave31Props || []).filter((p) => p.mesh && this.isPropActiveForStage(p) && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 24);
       if (candidates.length === 0) return;
       const p = candidates[Math.floor(Math.random() * candidates.length)];
       const ox = (Math.random() - 0.5) * 3.5;
@@ -22194,7 +22764,7 @@
     updateStructuralTension(safeDelta) {
       this.tensionTimer -= safeDelta;
       if (this.tensionTimer > 0) return;
-      const nearHeavy = (this.wave31Props || []).find((p) => !p.isTriggered && p.damage >= 180 && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 3.8);
+      const nearHeavy = (this.wave31Props || []).find((p) => this.isPropActiveForStage(p) && !p.isTriggered && p.damage >= 180 && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 3.8);
       if (nearHeavy) {
         this.tensionTimer = 3.6;
         audioManager.playStructuralTensionWarning?.(nearHeavy.x, nearHeavy.z);
@@ -22221,7 +22791,7 @@
       this.dropletTimer -= safeDelta;
       if (this.dropletTimer > 0) return;
       this.dropletTimer = 0.4 + Math.random() * 0.3;
-      const wetProps = (this.wave31Props || []).filter((p) => p.mesh && (p.id.includes('sump') || p.id.includes('airlock') || p.id.includes('sludge') || p.id.includes('hydro')) && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 22);
+      const wetProps = (this.wave31Props || []).filter((p) => p.mesh && this.isPropActiveForStage(p) && (p.id.includes('sump') || p.id.includes('airlock') || p.id.includes('sludge') || p.id.includes('hydro')) && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 22);
       if (wetProps.length === 0) return;
       const p = wetProps[Math.floor(Math.random() * wetProps.length)];
       const ox = (Math.random() - 0.5) * 2.2;
@@ -22234,7 +22804,7 @@
       this.electricArcTimer -= safeDelta;
       if (this.electricArcTimer > 0) return;
       this.electricArcTimer = 0.35 + Math.random() * 0.3;
-      const sparkProps = (this.wave31Props || []).filter((p) => p.mesh && (p.shock || p.id.includes('transformer') || p.id.includes('switchboard') || p.id.includes('charging_alcove')) && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 22);
+      const sparkProps = (this.wave31Props || []).filter((p) => p.mesh && this.isPropActiveForStage(p) && (p.shock || p.id.includes('transformer') || p.id.includes('switchboard') || p.id.includes('charging_alcove')) && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 22);
       if (sparkProps.length === 0) return;
       const p = sparkProps[Math.floor(Math.random() * sparkProps.length)];
       const ox = (Math.random() - 0.5) * 1.8;
@@ -22282,6 +22852,7 @@
     }
 
     segmentIntersectsCollider(startX, startZ, endX, endZ, collider, padding = 0) {
+      if (!collider || collider.disabled) return false;
       const minX = collider.minX - padding;
       const maxX = collider.maxX + padding;
       const minZ = collider.minZ - padding;
@@ -22332,6 +22903,99 @@
       return true;
     }
 
+    // Locomotion queries use authored solids/support meshes, not a global
+    // imaginary ceiling. Unknown legacy colliders stay conservative solids.
+    isCreaturePoseClear(bounds) {
+      if (!bounds || bounds.isEmpty() || ![
+        ...bounds.min.toArray(), ...bounds.max.toArray()
+      ].every(Number.isFinite) || bounds.min.y < -0.035 ||
+        Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x), Math.abs(bounds.min.z), Math.abs(bounds.max.z)) >= 73.4) return false;
+      const tolerance = .025;
+      for (const collider of this.colliders) {
+        if (collider.disabled) continue;
+        let solid;
+        if (collider.mesh?.parent) {
+          collider.mesh.updateWorldMatrix(true, false);
+          if (!collider.creatureBounds || !collider.creatureBoundsMatrix?.equals(collider.mesh.matrixWorld)) {
+            collider.mesh.updateMatrixWorld(true);
+            collider.creatureBounds = new THREE.Box3().setFromObject(collider.mesh);
+            collider.creatureBoundsMatrix = collider.mesh.matrixWorld.clone();
+          }
+          solid = collider.creatureBounds;
+        } else {
+          solid = new THREE.Box3(
+            new THREE.Vector3(collider.minX, -1, collider.minZ),
+            new THREE.Vector3(collider.maxX, 32, collider.maxZ)
+          );
+        }
+        if (bounds.max.x > solid.min.x + tolerance && bounds.min.x < solid.max.x - tolerance &&
+          bounds.max.z > solid.min.z + tolerance && bounds.min.z < solid.max.z - tolerance &&
+          bounds.max.y > solid.min.y + tolerance && bounds.min.y < solid.max.y - tolerance) return false;
+      }
+      return true;
+    }
+
+    getCreatureCeilingSupportAt(x, z, previous = null) {
+      if (![x, z].every(Number.isFinite)) return null;
+      for (const support of this.ceilingSupports || []) {
+        if (previous && support.mesh !== previous.mesh) continue;
+        if (!support.mesh?.parent) continue;
+        support.mesh.updateMatrixWorld(true);
+        const bounds = new THREE.Box3().setFromObject(support.mesh);
+        const along = support.alongX ? x : z, across = support.alongX ? z : x;
+        const minAlong = support.alongX ? bounds.min.x : bounds.min.z;
+        const maxAlong = support.alongX ? bounds.max.x : bounds.max.z;
+        const minAcross = support.alongX ? bounds.min.z : bounds.min.x;
+        const maxAcross = support.alongX ? bounds.max.z : bounds.max.x;
+        if (along < minAlong + .35 || along > maxAlong - .35 || across < minAcross - .24 || across > maxAcross + .24) continue;
+        return { ...support, bounds, undersideY: bounds.min.y };
+      }
+      return null;
+    }
+
+    findCreatureCeilingSupport(x, z, { radius = 1, height = 5, front = 1.8, maxApproach = 18, fits = null } = {}) {
+      if (![x, z, radius, height, front, maxApproach].every(Number.isFinite) || radius <= 0 || height <= 0) return null;
+      const candidates = [];
+      for (const support of this.ceilingSupports || []) {
+        if (!support.mesh?.parent) continue;
+        support.mesh.updateMatrixWorld(true);
+        const beam = new THREE.Box3().setFromObject(support.mesh), center = beam.getCenter(new THREE.Vector3());
+        if (beam.min.y < height + .6) continue;
+        for (const wall of this.walls) {
+          if (!wall.parent) continue;
+          wall.updateMatrixWorld(true);
+          const box = new THREE.Box3().setFromObject(wall), size = box.getSize(new THREE.Vector3());
+          // Entry requires an actual wall/beam junction, with the beam leading
+          // out into the room rather than being embedded inside the wall.
+          if (box.max.y < beam.min.y || (support.alongX ? size.z <= size.x : size.x <= size.z)) continue;
+          if (support.alongX ? center.z < box.min.z || center.z > box.max.z : center.x < box.min.x || center.x > box.max.x) continue;
+          for (const sign of [-1, 1]) {
+            const gap = Math.max(front + .18, radius + .72);
+            const entryX = support.alongX ? (sign > 0 ? box.max.x + gap : box.min.x - gap) : center.x;
+            const entryZ = support.alongX ? center.z : (sign > 0 ? box.max.z + gap : box.min.z - gap);
+            const distance = Math.hypot(entryX - x, entryZ - z);
+            if (distance > maxApproach || this.checkCollision(entryX, entryZ, radius)) continue;
+            const found = this.getCreatureCeilingSupportAt(entryX, entryZ, support);
+            if (!found) continue;
+            const normal = { x: support.alongX ? sign : 0, z: support.alongX ? 0 : sign };
+            candidates.push({ ...found, wall, x: entryX, z: entryZ, normal, yaw: Math.atan2(-normal.x, -normal.z), distance });
+          }
+        }
+      }
+      candidates.sort((a, b) => a.distance - b.distance);
+      for (const candidate of candidates.slice(0, 12)) {
+        if (typeof fits === 'function' && !fits(candidate)) continue;
+        const route = this.hasLineOfSight(x, z, candidate.x, candidate.z, radius)
+          ? [{ x: candidate.x, z: candidate.z }]
+          : this.findPath(x, z, candidate.x, candidate.z, { padding: radius, step: 1.25 });
+        if (!route.length || Math.hypot(route.at(-1).x - candidate.x, route.at(-1).z - candidate.z) > .35) continue;
+        let routeLength = 0, previous = { x, z };
+        for (const point of route) { routeLength += Math.hypot(point.x - previous.x, point.z - previous.z); previous = point; }
+        if (routeLength <= maxApproach * 1.7) return { ...candidate, route, routeLength };
+      }
+      return null;
+    }
+
     // Audit QA #18 : Lissage biseauté des colliders AABB pour supprimer les accrochages d'angle
     checkCollision(nextX, nextZ, padding = 0, bevel = 0.28) {
       if (!Number.isFinite(nextX) || !Number.isFinite(nextZ)) return true;
@@ -22358,13 +23022,40 @@
       return false;
     }
 
-    findPath(startX, startZ, endX, endZ, {
+    findPath(startX, startZ, endX, endZ, options = {}) {
+      if (!options || typeof options !== 'object' || ![startX, startZ, endX, endZ].every(Number.isFinite)) return [];
+      const { step = 2.5, padding = .72, min = -70, max = 70 } = options;
+      if (![step, padding, min, max].every(Number.isFinite) || step < 1.25 || step > 10 || padding < 0 ||
+        min < -70 || max > 70 || min >= max || this.checkCollision(startX, startZ, padding)) return [];
+      const destination = { x: Math.max(min, Math.min(max, endX)), z: Math.max(min, Math.min(max, endZ)) };
+      const goalFree = !this.checkCollision(destination.x, destination.z, padding);
+      const valid = (route) => {
+        let previous = { x: startX, z: startZ };
+        for (const point of route) {
+          if (!point || ![point.x, point.z].every(Number.isFinite) || this.checkCollision(point.x, point.z, padding) ||
+            !this.hasLineOfSight(previous.x, previous.z, point.x, point.z, padding)) return false;
+          previous = point;
+        }
+        return route.length > 0 && (!goalFree || Math.hypot(previous.x - destination.x, previous.z - destination.z) <= .05);
+      };
+      const coarse = this.findPathOnGrid(startX, startZ, endX, endZ, { step, padding, min, max });
+      if (valid(coarse)) return coarse;
+      // A coarse lattice can miss a real, collision-free doorway. Refine once,
+      // with the same geometry and clearance, never by ignoring a collider.
+      if (step <= 1.25) return [];
+      const fine = this.findPathOnGrid(startX, startZ, endX, endZ, { step: 1.25, padding, min, max });
+      return valid(fine) ? fine : [];
+    }
+
+    findPathOnGrid(startX, startZ, endX, endZ, {
       step = 2.5,
       padding = 0.72,
       min = -70,
       max = 70
     } = {}) {
-      if (![startX, startZ, endX, endZ].every(Number.isFinite)) return [];
+      if (![startX, startZ, endX, endZ, step, padding, min, max].every(Number.isFinite) ||
+        step < 1.25 || step > 10 || padding < 0 || min < -70 || max > 70 || min >= max ||
+        this.checkCollision(startX, startZ, padding)) return [];
       const destination = {
         x: Math.max(min, Math.min(max, endX)),
         z: Math.max(min, Math.min(max, endZ))
@@ -22387,7 +23078,7 @@
       const clampIndex = (value) => Math.max(0, Math.min(gridSize - 1, value));
       const indexOf = (value) => clampIndex(Math.round((value - min) / step));
 
-      const nearestFreeNode = (worldX, worldZ) => {
+      const nearestFreeNode = (worldX, worldZ, requireConnection = true) => {
         const centerX = indexOf(worldX);
         const centerZ = indexOf(worldZ);
         for (let radius = 0; radius < gridSize; radius++) {
@@ -22400,6 +23091,7 @@
               if (ix < 0 || iz < 0 || ix >= gridSize || iz >= gridSize) continue;
               const point = pointOf(ix, iz);
               if (this.checkCollision(point.x, point.z, padding)) continue;
+              if (requireConnection && !this.hasLineOfSight(worldX, worldZ, point.x, point.z, padding)) continue;
               const distance = Math.hypot(point.x - worldX, point.z - worldZ);
               if (!best || distance < best.distance) best = { ix, iz, point, distance };
             }
@@ -22410,7 +23102,7 @@
       };
 
       const startNode = nearestFreeNode(startX, startZ);
-      const goalNode = nearestFreeNode(endX, endZ);
+      const goalNode = nearestFreeNode(endX, endZ, !this.checkCollision(endX, endZ, padding));
       if (!startNode || !goalNode) return [];
 
       const directions = [
@@ -22450,6 +23142,7 @@
           if (closed.has(neighborKey)) continue;
           const neighborPoint = pointOf(ix, iz);
           if (this.checkCollision(neighborPoint.x, neighborPoint.z, padding)) continue;
+          if (!this.hasLineOfSight(currentPoint.x, currentPoint.z, neighborPoint.x, neighborPoint.z, padding)) continue;
           if (
             offsetX !== 0 &&
             offsetZ !== 0 &&
@@ -22504,7 +23197,7 @@
       let anchor = { x: startX, z: startZ };
       let cursor = 0;
       while (cursor < rawPath.length) {
-        let farthest = cursor;
+        let farthest = -1;
         for (let candidate = rawPath.length - 1; candidate >= cursor; candidate--) {
           if (this.hasLineOfSight(
             anchor.x,
@@ -22517,6 +23210,7 @@
             break;
           }
         }
+        if (farthest < 0) return [];
         smoothed.push(rawPath[farthest]);
         anchor = rawPath[farthest];
         cursor = farthest + 1;
@@ -24668,6 +25362,16 @@
       this.leapComplete = null;
       this.leapTrailCooldown = 0;
       this.attachedHost = null;
+      this.facehuggerVariant = 'standard';
+      this.attachmentBaseScale = null;
+      this.creatureEnvelope = null;
+      this.creatureAnimationTime = 0;
+      this.ceilingTransition = null;
+      this.ceilingSupport = null;
+      this.ceilingAction = null;
+      this.ceilingAnchors = new Set();
+      this.isEmerging = false;
+      this.isBiologicalTransition = false;
       this.isChrysalis = false;
       this.actionAnimation = 0;
       this.actionType = '';
@@ -24717,109 +25421,608 @@
     }
 
     toggleCeilingProwl() {
-      if (this.form !== 'drone') return;
-      if (this.isInVent) {
-        // Audit QA #23 : Transition directe fluide conduit-plafond [C] -> [Q]
-        this.isInVent = false;
-        this.currentVent = null;
-        this.isCeilingProwling = true;
-        this.mesh?.position.set(this.x, 5.85, this.z);
-        if (this.detailedModel) {
-          this.detailedModel.rotation.x = Math.PI;
-          this.detailedModel.position.y = 0;
-        }
-        audioManager.playVentEnter?.();
-        rendererEngine.addScreenShake?.(0.15, 0.12);
-        showToast('TRANSITION CONDUIT -> PLAFOND DIRECTE [Q] : Émergence directe sur les poutrelles suspendues !');
-        appendSensorLog('[TRAQUE 3D] Sortie directe du réseau de ventilation vers les superstructures du plafond.', 'stealth');
-        window.HiveSystems?.vfx?.floatingText?.(this.x, 6.2, this.z, 'TRANSITION PLAFOND DIRECTE [Q]', '#38bdf8', true);
-        return;
+      if (window.gameInstance?.isSystemPaused) return false;
+      if (this.disposalTransfer) { stationMap.cancelIncineratorTransfer?.(this.disposalTransfer); return false; }
+      if (this.form !== 'drone' || !this.mesh || this.isDefeated || this.health <= 0 || this.isEmerging || this.isBiologicalTransition) return false;
+      if (this.ceilingTransition?.phase === 'APPROACH' || this.ceilingTransition?.phase === 'ALIGN') {
+        this.cancelCeilingTransition(); return true;
       }
-      this.isCeilingProwling = !this.isCeilingProwling;
-      if (this.isCeilingProwling) {
-        this.mesh?.position.set(this.x, 5.85, this.z);
-        if (this.detailedModel) {
-          this.detailedModel.rotation.x = Math.PI; // Tête en bas agrippé aux poutres métalliques
-          this.detailedModel.position.y = 0;
-        }
-        audioManager.playVentEnter?.();
-        rendererEngine.addScreenShake?.(0.12, 0.1);
-        window.HiveSystems?.vfx?.burst(this.x, this.z, 0x64748b, 10, 0.08, 1.0);
-        showToast('PAROI & PLAFOND ACTIF [Q] : Suspendu aux superstructures ! Chute mortelle prête [ESPACE].');
-        appendSensorLog('[TRAQUE 3D] Escalade aux poutrelles du plafond. Angle mort total des patrouilles.', 'stealth');
-        window.HiveSystems?.vfx?.floatingText?.(this.x, 6.2, this.z, 'SUSPENDU AU PLAFOND [Q]', '#38bdf8', true);
-      } else {
-        this.mesh?.position.set(this.x, 0, this.z);
-        if (this.detailedModel) {
-          this.detailedModel.rotation.x = this.isProwling ? 0.42 : 0;
-          this.detailedModel.position.y = this.isProwling ? -0.35 : 0;
-        }
-        audioManager.playWetImpact?.(this.x, this.z);
-        showToast('DESCENTE AU SOL [Q] : Posture au sol rétablie.');
-        appendSensorLog('[TRAQUE 3D] Descente furtive sur le pont.', 'bio');
+      if (this.ceilingTransition || this.isCeilingProwling) return this.beginCeilingDescent();
+      if (this.isInVent || this.isLeaping || this.draggedHost || this.isChrysalis) {
+        showToast('Émergez au sol et libérez votre prise avant de rejoindre une paroi.'); return false;
       }
+      const envelope = this.creatureEnvelope;
+      const support = envelope && this.findCeilingSupport();
+      if (!support) {
+        showToast('Aucune jonction mur/poutre accessible avec ce gabarit à proximité.'); return false;
+      }
+      this.moveTarget = null; this.moveWaypoints = [];
+      this.isProwling = false;
+      this.ceilingTransition = { ...this.captureLocomotionContext(), phase: 'APPROACH', support, route: support.route.slice(), elapsed: 0 };
+      showToast('Approche de la paroi, escalade puis verrouillage sous la poutre. [Q] pour interrompre.');
+      return true;
     }
 
-    dropFromCeiling(target = null) {
-      if (!this.isCeilingProwling) return false;
-      this.isCeilingProwling = false;
-      this.mesh?.position.set(this.x, 0, this.z);
-      if (this.detailedModel) {
-        this.detailedModel.rotation.x = this.isProwling ? 0.42 : 0;
-        this.detailedModel.position.y = this.isProwling ? -0.35 : 0;
-      }
-      audioManager.playBoneCrunch?.();
-      audioManager.playXenoRoar?.();
-      rendererEngine.addScreenShake?.(0.48, 0.28);
-      window.HiveSystems?.vfx?.burst(this.x, this.z, 0xef4444, 22, 0.18, 1.8);
-      window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0xef4444, 5.5);
+    isLocomotionBusy() { return !!(this.ceilingTransition || this.ceilingAction || this.disposalTransfer); }
 
-      if (target) {
-        const dropDmg = 120;
-        target.takeDamage(dropDmg, this);
-        target.staggerTimer = 1.3;
-        window.HiveSystems?.vfx?.floatingText?.(target.x, 2.5, target.z, `-${dropDmg} CHUTE MORTELLE !`, '#ef4444', true);
-        showToast(`CHUTE MORTELLE DU PLAFOND ! ${target.name} broyé sous l'impact !`);
-        appendSensorLog(`[AMBUSH VERTICALE] Plongeon foudroyant sur ${target.name}. Dommages critiques.`, 'alert');
-      } else {
-        showToast('Atterrissage lourd sur le pont.');
+    findCeilingSupport() {
+      return this.creatureEnvelope && stationMap.findCreatureCeilingSupport?.(this.x, this.z, {
+        ...this.creatureEnvelope, fits: support => this.canFitCeilingTransition(support)
+      });
+    }
+
+    captureLocomotionContext() {
+      const game = window.gameInstance;
+      return { game, stage: game?.currentStage, stageIndex: game?.currentStageIndex, mesh: this.mesh, form: this.form, caste: this.adultCaste };
+    }
+
+    isLocomotionContextCurrent(state) {
+      const game = window.gameInstance;
+      return !!state && game === state.game && game?.campaignActive && game.isRunning &&
+        game.currentStage === state.stage && game.currentStageIndex === state.stageIndex &&
+        this.mesh === state.mesh && this.form === state.form && this.adultCaste === state.caste &&
+        !this.isDefeated && Number.isFinite(this.health) && this.health > 0;
+    }
+
+    getCreaturePoseBounds(x = this.x, y = 0, z = this.z, roll = 0, yaw = this.mesh?.rotation.y || 0) {
+      if (!this.creatureEnvelope?.bounds) return null;
+      const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, roll, 'YXZ'));
+      return this.creatureEnvelope.bounds.clone().applyMatrix4(new THREE.Matrix4().compose(
+        new THREE.Vector3(x, y, z), rotation, new THREE.Vector3(1, 1, 1)
+      ));
+    }
+
+    canFitCeilingTransition(support) {
+      if (!this.creatureEnvelope || !support) return false;
+      for (let sample = 0; sample <= 24; sample++) {
+        const roll = Math.PI * sample / 24;
+        const zero = this.getCreaturePoseBounds(support.x, 0, support.z, roll, support.yaw);
+        const y = support.undersideY - .07 - zero.max.y;
+        const bounds = this.getCreaturePoseBounds(support.x, y, support.z, roll, support.yaw);
+        if (!stationMap.isCreaturePoseClear?.(bounds)) return false;
       }
       return true;
     }
 
+    cancelCeilingTransition({ land = true } = {}) {
+      this.cancelCeilingAction({ restorePose: true });
+      this.ceilingTransition = null;
+      this.ceilingSupport = null;
+      this.isCeilingProwling = false;
+      if (land && this.mesh) {
+        this.mesh.rotation.set(0, this.mesh.rotation.y, 0, 'YXZ');
+        this.mesh.position.set(this.x, 0, this.z);
+        this.applyGroundContact();
+      }
+    }
+
+    applyGroundContact() {
+      if (!this.mesh || !this.detailedModel || this.attachedHost || this.isLeaping) return;
+      this.mesh.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(this.detailedModel);
+      if (Number.isFinite(bounds.min.y)) this.mesh.position.y += .015 - bounds.min.y;
+    }
+
+    constrainCreatureContacts(ceilingY = null, fitToCeiling = false) {
+      if (!this.mesh || !this.detailedModel) return false;
+      this.mesh.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(this.detailedModel);
+      let correction = 0;
+      if (Number.isFinite(ceilingY) && (fitToCeiling || bounds.max.y > ceilingY - .045)) correction = ceilingY - .045 - bounds.max.y;
+      if (bounds.min.y + correction < .015) correction = .015 - bounds.min.y;
+      if (Number.isFinite(ceilingY) && bounds.max.y + correction > ceilingY - .025) return false;
+      this.mesh.position.y += correction;
+      return true;
+    }
+
+    beginCeilingDescent(target = null, { releaseFirst = true } = {}) {
+      if (this.ceilingAction) {
+        this.releaseCeilingAction(releaseFirst);
+        if (releaseFirst) return true;
+      }
+      if (this.ceilingTransition?.phase === 'DESCEND_POSITION') return true;
+      if ((!this.isCeilingProwling && !this.ceilingTransition) || this.ceilingTransition?.phase === 'DESCEND') return false;
+      const previous = this.ceilingTransition || this.ceilingSupport;
+      if (!this.isLocomotionContextCurrent(previous)) { this.cancelCeilingTransition(); return false; }
+      const landing = this.findCeilingLanding(previous, !!target);
+      if (!landing) {
+        showToast('Aucun atterrissage libre pour ce gabarit sur ce segment de poutre.'); return false;
+      }
+      if (landing.distance > .05) {
+        if (!this.isCeilingProwling) { previous.descendAfterAscent = true; return true; }
+        this.ceilingTransition = { ...this.captureLocomotionContext(), phase: 'DESCEND_POSITION', support: previous.support,
+          yaw: this.mesh.rotation.y, landing, elapsed: 0 };
+        this.moveTarget = null; this.moveWaypoints = [];
+        showToast('Sol obstrué : déplacement sous la poutre vers un atterrissage libre.');
+        return true;
+      }
+      const startY = Math.max(0, this.mesh.position.y);
+      this.ceilingTransition = {
+        ...this.captureLocomotionContext(), phase: 'DESCEND', support: previous.support,
+        elapsed: 0, startY, startRoll: this.mesh.rotation.z, yaw: this.mesh.rotation.y,
+        duration: Math.max(.55, Math.sqrt(2 * startY / 18)),
+        target: target && window.gameInstance?.humans?.includes(target) ? target : null,
+        targetMesh: target?.mesh || null
+      };
+      this.isCeilingProwling = false;
+      this.ceilingSupport = null;
+      this.moveTarget = null; this.moveWaypoints = [];
+      return true;
+    }
+
+    findCeilingLanding(previous, attack = false) {
+      const live = previous.support && stationMap.getCreatureCeilingSupportAt?.(this.x, this.z, previous.support);
+      const yaw = this.mesh.rotation.y, roll = this.mesh.rotation.z;
+      const offsets = attack || !live ? [0] : [0, 2.5, -2.5, 5, -5, 7.5, -7.5, 10, -10, 12.5, -12.5, 15, -15, 17.5, -17.5];
+      for (const offset of offsets) {
+        const x = this.x + (live?.alongX ? offset : 0), z = this.z + (!live?.alongX ? offset : 0);
+        if (stationMap.checkCollision(x, z, this.creatureEnvelope.radius)) continue;
+        const support = live && stationMap.getCreatureCeilingSupportAt(x, z, live);
+        if (offset && !support) continue;
+        let clear = true;
+        const startY = offset ? support.undersideY - .07 - this.getCreaturePoseBounds(x, 0, z, Math.PI, yaw).max.y : this.mesh.position.y;
+        const duration = Math.max(.55, Math.sqrt(2 * Math.max(0, startY) / 18));
+        for (let index = 0; index <= 24; index++) {
+          const t = index / 24, eased = t * t * (3 - 2 * t), angle = roll * (1 - eased);
+          const zero = this.getCreaturePoseBounds(x, 0, z, angle, yaw);
+          const y = Math.max(.015 - zero.min.y, startY - 9 * Math.pow(t * duration, 2));
+          if (!stationMap.isCreaturePoseClear(this.getCreaturePoseBounds(x, y, z, angle, yaw))) { clear = false; break; }
+          if (offset) {
+            const alongX = this.x + (x - this.x) * t, alongZ = this.z + (z - this.z) * t;
+            const intermediate = stationMap.getCreatureCeilingSupportAt(alongX, alongZ, live);
+            if (!intermediate) { clear = false; break; }
+            const hangY = intermediate.undersideY - .07 - this.getCreaturePoseBounds(alongX, 0, alongZ, Math.PI, yaw).max.y;
+            if (!stationMap.isCreaturePoseClear(this.getCreaturePoseBounds(alongX, hangY, alongZ, Math.PI, yaw))) { clear = false; break; }
+          }
+        }
+        if (clear) return { x, z, distance: Math.abs(offset) };
+      }
+      return null;
+    }
+
+    updateCeilingLocomotion(delta) {
+      const state = this.ceilingTransition || this.ceilingSupport;
+      if (!this.isLocomotionContextCurrent(state)) { this.cancelCeilingTransition(); return; }
+      if (window.gameInstance?.isSystemPaused || !(delta > 0)) return;
+      const support = state.support && stationMap.getCreatureCeilingSupportAt?.(state.support.x, state.support.z, state.support);
+      if (state.phase !== 'DESCEND' && !support) {
+        if (state.phase === 'DESCEND_POSITION') { this.ceilingTransition = null; this.ceilingSupport = state; }
+        this.beginCeilingDescent(); return;
+      }
+      const smooth = value => value * value * (3 - 2 * value);
+      if (!this.ceilingTransition) {
+        const input = this.ceilingAction ? { dx: 0, dy: 0 } : inputManager.getMovementVector();
+        const alongX = support.alongX;
+        let direction = alongX ? input.dx : input.dy;
+        if (!direction && this.moveTarget) direction = Math.sign((alongX ? this.moveTarget.x - this.x : this.moveTarget.z - this.z));
+        const step = Math.min(this.speed * 60, 5.5) * delta * Math.sign(direction);
+        const nextX = this.x + (alongX ? step : 0), nextZ = this.z + (alongX ? 0 : step);
+        const nextSupport = stationMap.getCreatureCeilingSupportAt?.(nextX, nextZ, support);
+        const zero = this.getCreaturePoseBounds(nextX, 0, nextZ, Math.PI, state.yaw);
+        const y = nextSupport ? nextSupport.undersideY - .07 - zero.max.y : this.mesh.position.y;
+        if (nextSupport && stationMap.isCreaturePoseClear?.(this.getCreaturePoseBounds(nextX, y, nextZ, Math.PI, state.yaw))) {
+          this.x = nextX; this.z = nextZ; this.mesh.position.set(this.x, y, this.z);
+        }
+        animateProceduralModel(this.mesh, { phase: this.creatureAnimationTime * 7, movement: direction ? .35 : .03 });
+        this.mesh.rotation.set(0, state.yaw, Math.PI, 'YXZ');
+        if (!this.constrainCreatureContacts(support.undersideY, true)) this.beginCeilingDescent();
+        return;
+      }
+      if (state.phase === 'DESCEND_POSITION') {
+        const distance = Math.hypot(state.landing.x - this.x, state.landing.z - this.z);
+        const amount = Math.min(distance, Math.min(this.speed * 60, 5.5) * delta);
+        const nextX = this.x + (distance ? (state.landing.x - this.x) / distance * amount : 0);
+        const nextZ = this.z + (distance ? (state.landing.z - this.z) / distance * amount : 0);
+        const current = stationMap.getCreatureCeilingSupportAt(nextX, nextZ, state.support);
+        if (!current) { this.ceilingTransition = null; this.beginCeilingDescent(); return; }
+        const y = current.undersideY - .07 - this.getCreaturePoseBounds(nextX, 0, nextZ, Math.PI, state.yaw).max.y;
+        if (!stationMap.isCreaturePoseClear(this.getCreaturePoseBounds(nextX, y, nextZ, Math.PI, state.yaw))) {
+          this.ceilingTransition = null; this.beginCeilingDescent(); return;
+        }
+        this.x = nextX; this.z = nextZ; this.mesh.position.set(this.x, y, this.z);
+        this.mesh.rotation.set(0, state.yaw, Math.PI, 'YXZ');
+        animateProceduralModel(this.mesh, { phase: this.creatureAnimationTime * 7, movement: .3 });
+        this.constrainCreatureContacts(current.undersideY, true);
+        if (distance <= amount + .03) {
+          this.ceilingTransition = null;
+          this.ceilingSupport = { ...this.captureLocomotionContext(), support: { ...state.support, ...current }, yaw: state.yaw };
+          this.beginCeilingDescent();
+        }
+        return;
+      }
+      if (state.phase === 'APPROACH') {
+        const point = state.route[0];
+        if (!point) { state.phase = 'ALIGN'; state.elapsed = 0; return; }
+        const distance = Math.hypot(point.x - this.x, point.z - this.z);
+        const amount = Math.min(distance, Math.min(this.speed * 60, 7) * delta);
+        const dx = distance > 0 ? (point.x - this.x) / distance : 0, dz = distance > 0 ? (point.z - this.z) / distance : 0;
+        const nextX = this.x + dx * amount, nextZ = this.z + dz * amount;
+        if (stationMap.checkCollision(nextX, nextZ, this.creatureEnvelope.radius)) { this.cancelCeilingTransition(); return; }
+        this.x = nextX; this.z = nextZ; this.mesh.position.set(this.x, 0, this.z);
+        if (distance > .01) this.mesh.rotation.y = Math.atan2(dx, dz);
+        animateProceduralModel(this.mesh, { phase: this.creatureAnimationTime * 8, movement: .65 });
+        this.applyGroundContact();
+        if (distance <= amount + .04) state.route.shift();
+        return;
+      }
+      state.elapsed += delta;
+      if (state.phase === 'ALIGN') {
+        const difference = Math.atan2(Math.sin(state.support.yaw - this.mesh.rotation.y), Math.cos(state.support.yaw - this.mesh.rotation.y));
+        this.mesh.rotation.y += Math.sign(difference) * Math.min(Math.abs(difference), delta * 5);
+        if (Math.abs(difference) < .03) { state.phase = 'CLIMB'; state.elapsed = 0; state.climbStartY = this.mesh.position.y; }
+        return;
+      }
+      let roll = 0, y = 0, yaw = state.support?.yaw ?? state.yaw;
+      if (state.phase === 'CLIMB') {
+        const duration = Math.max(.8, (support.undersideY - this.creatureEnvelope.height) / 2.8);
+        const progress = Math.min(1, state.elapsed / duration);
+        const goalY = Math.max(0, support.undersideY - this.creatureEnvelope.height - .07);
+        y = (state.climbStartY || 0) + (goalY - (state.climbStartY || 0)) * smooth(progress);
+        if (progress >= 1) { state.phase = 'ROLL'; state.elapsed = 0; }
+      } else if (state.phase === 'ROLL') {
+        const progress = Math.min(1, state.elapsed / 1.05);
+        roll = Math.PI * smooth(progress);
+        y = support.undersideY - .07 - this.getCreaturePoseBounds(this.x, 0, this.z, roll, yaw).max.y;
+        if (progress >= 1) {
+          this.ceilingSupport = { ...this.captureLocomotionContext(), support: { ...state.support, ...support }, yaw };
+          this.ceilingTransition = null; this.isCeilingProwling = true;
+          audioManager.playVentEnter?.();
+          appendSensorLog('[TRAQUE] Griffes verrouillées sous une poutre réelle après escalade de la paroi.', 'stealth');
+          if (state.descendAfterAscent) this.beginCeilingDescent();
+        }
+      } else if (state.phase === 'DESCEND') {
+        const progress = Math.min(1, state.elapsed / state.duration);
+        roll = state.startRoll * (1 - smooth(progress));
+        yaw = state.yaw;
+        const zero = this.getCreaturePoseBounds(this.x, 0, this.z, roll, yaw);
+        y = Math.max(.015 - zero.min.y, state.startY - 9 * state.elapsed * state.elapsed);
+        if (progress >= 1) {
+          this.cancelCeilingTransition();
+          const target = state.target;
+          if (target && target.mesh === state.targetMesh && window.gameInstance.humans.includes(target) &&
+            !target.isIncapacitated && !target.isCocooned && Math.hypot(target.x - this.x, target.z - this.z) <= 5.5 &&
+            stationMap.hasLineOfSight(this.x, this.z, target.x, target.z, .1)) {
+            target.takeDamage(120, this); target.staggerTimer = 1.3;
+            window.HiveSystems?.vfx?.floatingText?.(target.x, 2.5, target.z, '-120 CHUTE MORTELLE', '#ef4444', true);
+          }
+          audioManager.playWetImpact?.(this.x, this.z);
+          rendererEngine.addScreenShake?.(.25, .2);
+          return;
+        }
+      }
+      const bounds = this.getCreaturePoseBounds(this.x, y, this.z, roll, yaw);
+      if (!stationMap.isCreaturePoseClear?.(bounds)) {
+        if (state.phase === 'DESCEND') { state.elapsed = Math.max(0, state.elapsed - delta); return; }
+        this.beginCeilingDescent(); return;
+      }
+      this.mesh.position.set(this.x, y, this.z);
+      this.mesh.rotation.set(0, yaw, roll, 'YXZ');
+      animateProceduralModel(this.mesh, { phase: this.creatureAnimationTime * 7, movement: .22, attack: .18 });
+      if (!this.constrainCreatureContacts(state.phase === 'DESCEND' ? null : support.undersideY, state.phase === 'ROLL' || this.isCeilingProwling)) this.beginCeilingDescent();
+    }
+
+    dropFromCeiling(target = null) {
+      if (!this.isCeilingProwling || this.ceilingAction) return false;
+      return this.beginCeilingDescent(target);
+    }
+
     // Chantier 27 : Réflexe d'Empalement Vertical Suspendu & Kidnapping au Plafond (Alien 1979 - Brett)
     executeCeilingImpale(target = null) {
-      if (!this.isCeilingProwling) return false;
+      if (!this.isCeilingProwling || this.isLocomotionBusy() || window.gameInstance?.isSystemPaused ||
+        !this.isLocomotionContextCurrent(this.ceilingSupport)) return false;
       const humans = window.gameInstance?.humans || [];
       const victim = target || humans.filter((h) => (
         !h.isIncapacitated && !h.isCocooned &&
         Math.hypot(h.x - this.x, h.z - this.z) <= 5.8
       )).sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z))[0];
 
-      if (!victim) {
+      if (!victim || !humans.includes(victim) || !victim.mesh?.parent || victim.isIncapacitated || victim.isCocooned ||
+        !Number.isFinite(victim.hp) || victim.hp <= 0 || Math.hypot(victim.x - this.x, victim.z - this.z) > 5.8 ||
+        !stationMap.hasLineOfSight(this.x, this.z, victim.x, victim.z, .1)) {
         showToast("Aucune proie directement sous votre surplomb (5.8m). Patientez au plafond [Q] qu'elle passe sous vous !");
         return false;
       }
-
-      audioManager.playInnerJawSnap?.(victim.x, victim.z);
-      audioManager.playWetImpact?.(victim.x, victim.z);
-      audioManager.playCocoonWeave?.(victim.x, victim.z);
-      rendererEngine.addScreenShake?.(0.35, 0.2);
-      window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0xef4444, 25, 0.16, 1.8);
-      window.HiveSystems?.vfx?.beam?.(this.x, 5.85, this.z, victim.x, 0.8, victim.z, 0x0c121e);
-
-      victim.takeDamage?.(140, this);
-      victim.isCocooned = true;
-      victim.isIncapacitated = true;
-      if (victim.mesh) {
-        victim.mesh.position.y = 5.2; // Hissé au plafond !
-        victim.mesh.rotation.x = Math.PI;
+      const support = stationMap.getCreatureCeilingSupportAt(this.x, this.z, this.ceilingSupport.support);
+      if (!support) return false;
+      victim.mesh.updateMatrixWorld(true);
+      const localBounds = new THREE.Box3().setFromObject(victim.mesh).applyMatrix4(victim.mesh.matrixWorld.clone().invert());
+      const startPosition = victim.mesh.position.clone(), startQuaternion = victim.mesh.quaternion.clone();
+      const endQuaternion = startQuaternion.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI));
+      const reach = Math.min(1.25, this.creatureEnvelope.front * .62), yaw = this.ceilingSupport.yaw;
+      const endPosition = new THREE.Vector3(this.x + Math.sin(yaw) * reach, 0, this.z + Math.cos(yaw) * reach);
+      const endBox = localBounds.clone().applyMatrix4(new THREE.Matrix4().compose(endPosition, endQuaternion, victim.mesh.scale));
+      endPosition.y = support.undersideY - .18 - endBox.max.y;
+      const action = {
+        ...this.captureLocomotionContext(), phase: 'WINDUP', elapsed: 0, target: victim, targetMesh: victim.mesh,
+        startPosition, startQuaternion, scale: victim.mesh.scale.clone(), endPosition, endQuaternion,
+        localBounds, support, hit: false, wasRestrained: !!victim.isRestrained, wasCocooned: !!victim.isCocooned,
+        lastSafePosition: startPosition.clone(), lastSafeQuaternion: startQuaternion.clone(), afterReleaseDescend: false
+      };
+      for (let sample = 0; sample <= 24; sample++) {
+        if (!stationMap.isCreaturePoseClear(this.getCeilingVictimPose(action, sample / 24).bounds)) {
+          showToast('Trajectoire de capture obstruée : la victime ne peut être hissée sans heurter le décor.'); return false;
+        }
       }
-
-      showToast(`KIDNAPPING VERTICAL SILENCIEUX ! ${victim.name} empalé et hissé dans la pénombre des combles (Brett 1979) !`);
-      appendSensorLog(`[KIDNAPPING PLAFOND] ${victim.name} soustrait à la patrouille sans un bruit. Zéro alerte sonore.`, 'stealth');
-      window.HiveSystems?.vfx?.floatingText?.(victim.x, 3.2, victim.z, 'ENLÈVEMENT SILENCIEUX DU PLAFOND', '#38bdf8', true);
+      this.ceilingAction = action;
+      this.moveTarget = null; this.moveWaypoints = [];
+      audioManager.playTailWhip?.(this.x, this.z);
+      showToast('Dard en approche. Maintenez la prise ; Q libère puis fait descendre.');
       return true;
+    }
+
+    getCeilingVictimPose(action, progress, release = false) {
+      const eased = progress * progress * (3 - 2 * progress);
+      const from = release ? action.releasePosition : action.startPosition;
+      const to = release ? (action.releaseLandingPosition || action.startPosition) : action.endPosition;
+      const quaternion = (release ? action.releaseQuaternion : action.startQuaternion).clone()
+        .slerp(release ? action.landingQuaternion : action.endQuaternion, eased);
+      const position = from.clone().lerp(to, eased);
+      if (release) position.y = from.y - 9 * Math.pow(progress * action.releaseDuration, 2);
+      const zero = action.localBounds.clone().applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(position.x, 0, position.z), quaternion, action.scale));
+      position.y = Math.max(position.y, .015 - zero.min.y);
+      const bounds = zero.translate(new THREE.Vector3(0, position.y, 0));
+      return { position, quaternion, bounds };
+    }
+
+    getCeilingVictimBounds(victim) {
+      victim.mesh.updateMatrixWorld(true);
+      const model = getAnimationModel(victim.mesh);
+      return window.HiveAssetLibrary?.handlesRoot?.(model)
+        ? window.HiveAssetLibrary.getModelBounds(model, new THREE.Box3())
+        : new THREE.Box3().setFromObject(victim.mesh);
+    }
+
+    constrainCeilingVictim(action) {
+      const victim = action.target, bounds = this.getCeilingVictimBounds(victim);
+      const ceiling = action.phase === 'RELEASE' ? null : action.support.undersideY - .12;
+      let offset = Number.isFinite(ceiling) && bounds.max.y > ceiling ? ceiling - bounds.max.y : 0;
+      if (bounds.min.y + offset < .015) offset = .015 - bounds.min.y;
+      if (Number.isFinite(ceiling) && bounds.max.y + offset > ceiling + .015) return false;
+      victim.mesh.position.y += offset;
+      bounds.translate(new THREE.Vector3(0, offset, 0));
+      return stationMap.isCreaturePoseClear(bounds);
+    }
+
+    poseCeilingVictim(action, delta) {
+      const victim = action.target, model = getAnimationModel(victim.mesh), library = window.HiveAssetLibrary;
+      const alive = victim.hp > 0;
+      if (model && library?.handlesRoot?.(model)) {
+        const runtime = library.getRuntime?.(model);
+        // Reset the owned overlay before advancing clips. Unkeyed bones must
+        // not accumulate an extra shoulder/neck rotation every fixed step.
+        for (const pose of runtime?.bindPose || []) {
+          pose.bone.quaternion.copy(pose.quaternion); pose.bone.position.copy(pose.position);
+        }
+        library.setState(model, { frozen: false, movement: 0, attack: 0, dead: !alive });
+        library.updateModel(model, alive ? delta : 0);
+        const strain = alive ? .42 + Math.sin(this.creatureAnimationTime * 6) * .12 : .07;
+        for (const [key, angle] of [
+          ['leftUpperArm', -.75 * strain], ['rightUpperArm', -.75 * strain],
+          ['leftForeArm', -.9 * strain], ['rightForeArm', -.9 * strain], ['spine', -.18 * strain],
+          ['leftThigh', .12 * strain], ['rightThigh', -.12 * strain], ['head', .12 * strain]
+        ]) {
+          const pose = runtime?.bindPose?.find(entry => entry.key === key);
+          if (pose?.bone && pose.x) pose.bone.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(pose.x, angle));
+        }
+        library.setState(model, { frozen: true });
+      } else animateProceduralModel(victim.mesh, { phase: this.creatureAnimationTime * 6, attack: alive ? .55 : 0, crouch: alive ? .18 : .08 });
+    }
+
+    cancelCeilingAction({ restorePose = false } = {}) {
+      const action = this.ceilingAction;
+      if (!action) return;
+      this.ceilingAction = null;
+      const victim = action.target;
+      if (victim?.ceilingActionOwner === action) {
+        delete victim.ceilingActionOwner;
+        victim.isRestrained = action.wasRestrained;
+        victim.isCocooned = action.wasCocooned;
+        const model = victim.mesh && getAnimationModel(victim.mesh);
+        if (model) window.HiveAssetLibrary?.setState?.(model, { frozen: false, movement: 0, attack: 0, dead: victim.hp <= 0 });
+        if (restorePose && victim.mesh === action.targetMesh && victim.mesh.parent) {
+          victim.mesh.position.copy(action.startPosition);
+          victim.mesh.quaternion.copy(action.startQuaternion);
+          if (victim.isIncapacitated) victim.mesh.rotation.z += Math.PI / 2;
+          victim.x = victim.mesh.position.x; victim.z = victim.mesh.position.z;
+          window.HiveModelFactory?.placeOnGround?.(victim.mesh, .015);
+        }
+      }
+    }
+
+    releaseCeilingAction(descendAfter = false) {
+      const action = this.ceilingAction;
+      if (!action) return false;
+      if (action.phase === 'WINDUP') {
+        this.cancelCeilingAction();
+        return descendAfter ? this.beginCeilingDescent() : true;
+      }
+      action.afterReleaseDescend ||= descendAfter;
+      if (action.phase === 'RELEASE') return true;
+      action.phase = 'RELEASE'; action.elapsed = 0;
+      action.releasePosition = action.targetMesh.position.clone();
+      action.releaseQuaternion = action.targetMesh.quaternion.clone();
+      action.landingQuaternion = action.startQuaternion.clone();
+      if (action.target.isIncapacitated || action.target.hp <= 0) action.landingQuaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2));
+      action.releaseDuration = Math.max(.65, Math.sqrt(2 * Math.max(0, action.releasePosition.y) / 18));
+      // Recheck the landing corridor at release time: a deployed obstacle must
+      // not force the captive back into a now-occupied original floor point.
+      const landings = [action.startPosition.clone()];
+      for (const radius of [1.6, 3.2, 4.8, 6.4]) for (let index = 0; index < 12; index++) {
+        const angle = index * Math.PI / 6;
+        landings.push(new THREE.Vector3(action.startPosition.x + Math.cos(angle) * radius, 0, action.startPosition.z + Math.sin(angle) * radius));
+      }
+      action.releaseLandingPosition = null;
+      for (const landing of landings) {
+        action.releaseLandingPosition = landing;
+        let clear = true;
+        for (let index = 0; index <= 20; index++) {
+          if (!stationMap.isCreaturePoseClear(this.getCeilingVictimPose(action, index / 20, true).bounds)) { clear = false; break; }
+        }
+        if (clear) return true;
+      }
+      action.releaseLandingPosition = action.startPosition.clone();
+      action.phase = 'HOLD'; action.elapsed = 0;
+      if (this.anchorCeilingVictim(action)) {
+        const descend = action.afterReleaseDescend;
+        this.ceilingAction = null;
+        showToast('Sol obstrué : prise fixée à la poutre par résine. Descente vers un passage libre.');
+        if (descend) this.beginCeilingDescent();
+      } else {
+        action.failureReason = 'no-safe-release-or-anchor';
+        showToast('Impossible de libérer ou d’ancrer sans collision : prise arrêtée. Q permet de réessayer.');
+      }
+      return true;
+    }
+
+    anchorCeilingVictim(action) {
+      const victim = action.target, game = window.gameInstance;
+      const support = stationMap.getCreatureCeilingSupportAt(this.x, this.z, action.support);
+      if (!support || !this.isLocomotionContextCurrent(action) || victim.mesh !== action.targetMesh || !victim.mesh?.parent) return false;
+      victim.mesh.position.copy(action.lastSafePosition); victim.mesh.quaternion.copy(action.lastSafeQuaternion);
+      const bounds = this.getCeilingVictimBounds(victim);
+      if (!stationMap.isCreaturePoseClear(bounds) || bounds.max.y > support.undersideY - .025) return false;
+      // Reuse the existing cocoon's resin material, not a newly generated asset.
+      const template = window.HiveModelFactory?.createCeilingCocoon?.();
+      if (!template) return false;
+      let sampleMaterial = null;
+      template.traverse(child => {
+        if (!sampleMaterial && child.material) sampleMaterial = Array.isArray(child.material) ? child.material[0] : child.material;
+      });
+      const resin = sampleMaterial?.clone();
+      window.HiveModelFactory.disposeModel(template);
+      if (!resin) return false;
+      const group = new THREE.Group(); group.name = 't140_supported_resin_anchor';
+      const center = bounds.getCenter(new THREE.Vector3()), size = bounds.getSize(new THREE.Vector3());
+      const materials = [resin];
+      for (let index = 0; index < 6; index++) {
+        const angle = index * Math.PI / 3;
+        const from = new THREE.Vector3(center.x + Math.cos(angle) * size.x * .42, bounds.max.y - size.y * .28, center.z + Math.sin(angle) * size.z * .42);
+        const to = new THREE.Vector3(
+          Math.max(support.bounds.min.x + .03, Math.min(support.bounds.max.x - .03, this.x + Math.cos(angle) * .16)),
+          support.undersideY - .02,
+          Math.max(support.bounds.min.z + .03, Math.min(support.bounds.max.z - .03, center.z + Math.sin(angle) * .28))
+        );
+        const middle = from.clone().lerp(to, .55); middle.y -= .1;
+        const material = index === 0 ? resin : resin.clone(); if (index) materials.push(material);
+        const strand = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([from, middle, to]), 12, .045, 6, false), material);
+        strand.name = `anchored_resin_strand_${index}`; group.add(strand);
+      }
+      for (let band = 0; band < 2; band++) {
+        const points = [];
+        for (let index = 0; index < 16; index++) {
+          const angle = index * Math.PI / 8;
+          points.push(new THREE.Vector3(center.x + Math.cos(angle) * size.x * .53, center.y + (band ? .45 : -.45), center.z + Math.sin(angle) * size.z * .53));
+        }
+        const material = resin.clone(); materials.push(material);
+        group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points, true), 24, .06, 6, true), material));
+      }
+      (rendererEngine.propsGroup || rendererEngine.scene).add(group);
+      (game.biologicalRemains ||= new Set()).add(group);
+      const record = {
+        target: victim, targetMesh: victim.mesh, support, group, game, disposed: false,
+        initialUsedAsHost: !!victim.usedAsHost, initialConsumed: !!victim.isConsumedByCycle,
+        isCurrent: () => !record.disposed && window.gameInstance === game && game.humans.includes(victim) && victim.mesh === record.targetMesh && !!victim.mesh?.parent && !!support.mesh.parent &&
+          !!victim.usedAsHost === record.initialUsedAsHost && !!victim.isConsumedByCycle === record.initialConsumed,
+        dispose: () => {
+          if (record.disposed) return false;
+          record.disposed = true;
+          game.biologicalRemains?.delete(group); this.ceilingAnchors.delete(record);
+          if (victim.ceilingAnchor === record) {
+            delete victim.ceilingAnchor;
+            victim.isRestrained = action.wasRestrained; victim.isCocooned = action.wasCocooned;
+            const model = victim.mesh && getAnimationModel(victim.mesh);
+            if (model) window.HiveAssetLibrary?.setState?.(model, { frozen: false });
+          }
+          rendererEngine.removeObject(group);
+          return true;
+        }
+      };
+      if (victim.ceilingActionOwner === action) delete victim.ceilingActionOwner;
+      victim.ceilingAnchor = record; victim.isRestrained = false;
+      victim.isCocooned = victim.hp > 0 && victim.hostEligibility === 'viable' && !victim.usedAsHost && !victim.isConsumedByCycle;
+      if (victim.hp <= 0) { victim.isConsumedByCycle = true; victim.hostEligibility = 'none'; }
+      this.ceilingAnchors.add(record);
+      return true;
+    }
+
+    updateCeilingAction(delta) {
+      const action = this.ceilingAction;
+      if (!action) return;
+      const victim = action.target, game = window.gameInstance;
+      if (!this.isLocomotionContextCurrent(action) || !game.humans.includes(victim) || victim.mesh !== action.targetMesh || !victim.mesh?.parent) {
+        this.cancelCeilingAction({ restorePose: true }); return;
+      }
+      if (game.isSystemPaused || !(delta > 0)) return;
+      if (action.phase !== 'RELEASE' && !stationMap.getCreatureCeilingSupportAt(this.x, this.z, action.support)) {
+        this.releaseCeilingAction(false);
+        this.beginCeilingDescent(null, { releaseFirst: false });
+      }
+      action.elapsed += delta;
+      if (action.phase === 'WINDUP') {
+        if (victim.isIncapacitated || victim.hp <= 0 || Math.hypot(victim.x - action.startPosition.x, victim.z - action.startPosition.z) > .4 ||
+          victim.mesh.quaternion.angleTo(action.startQuaternion) > .4 || !stationMap.hasLineOfSight(this.x, this.z, victim.x, victim.z, .1)) {
+          this.cancelCeilingAction(); return;
+        }
+        animateProceduralModel(this.mesh, { phase: this.creatureAnimationTime * 8, attack: Math.min(1, action.elapsed / .32) });
+        if (action.elapsed < .32) return;
+        action.hit = true;
+        victim.ceilingActionOwner = action; victim.isRestrained = true;
+        // Commit the phase before invoking another actor: re-entrancy or a
+        // failed presentation sink must never schedule this wound twice.
+        action.phase = 'HOIST'; action.elapsed = 0;
+        try { victim.takeDamage(140, this); }
+        catch (error) { this.cancelCeilingAction({ restorePose: true }); throw error; }
+        if (!this.isLocomotionContextCurrent(action) || victim.mesh !== action.targetMesh || !victim.mesh?.parent) { this.cancelCeilingAction({ restorePose: true }); return; }
+        action.scale.copy(victim.mesh.scale);
+        if (victim.hp <= 0) { victim.isConsumedByCycle = true; victim.hostEligibility = 'none'; }
+        victim.stress = 100;
+        audioManager.playWetImpact?.(victim.x, victim.z);
+        window.HiveSystems?.vfx?.beam?.(this.x, this.mesh.position.y - this.creatureEnvelope.height * .45, this.z, victim.x, 2.7, victim.z, 0x0c121e);
+        window.HiveSystems?.vfx?.floatingText?.(victim.x, 3, victim.z, '-140 DARD DE QUEUE', '#ef4444', true);
+      }
+      const progress = action.phase === 'HOIST' ? Math.min(1, action.elapsed / 1.05)
+        : (action.phase === 'RELEASE' ? Math.min(1, action.elapsed / action.releaseDuration) : 1);
+      const pose = this.getCeilingVictimPose(action, progress, action.phase === 'RELEASE');
+      if (!stationMap.isCreaturePoseClear(pose.bounds) || (action.phase !== 'RELEASE' && pose.bounds.max.y > action.support.undersideY - .08)) {
+        if (action.phase !== 'RELEASE') this.releaseCeilingAction(true);
+        else action.elapsed = Math.max(0, action.elapsed - delta);
+        return;
+      }
+      victim.mesh.position.copy(pose.position); victim.mesh.quaternion.copy(pose.quaternion);
+      victim.x = pose.position.x; victim.z = pose.position.z;
+      victim.attackAnimation = victim.isIncapacitated ? 0 : .55;
+      this.poseCeilingVictim(action, delta);
+      if (!this.constrainCeilingVictim(action)) {
+        // Revert to the tested rest rig before releasing; presentation cannot
+        // force a grabbed actor through a solid or below its floor plane.
+        const model = getAnimationModel(victim.mesh), runtime = window.HiveAssetLibrary?.getRuntime?.(model);
+        if (runtime) {
+          for (const bonePose of runtime.bindPose || []) {
+            bonePose.bone.quaternion.copy(bonePose.quaternion); bonePose.bone.position.copy(bonePose.position);
+          }
+          window.HiveAssetLibrary.setState(model, { frozen: true });
+        } else animateProceduralModel(victim.mesh, { phase: 0, movement: 0, attack: 0, crouch: 0 });
+        if (!this.constrainCeilingVictim(action)) {
+          victim.mesh.position.copy(action.lastSafePosition); victim.mesh.quaternion.copy(action.lastSafeQuaternion);
+          this.releaseCeilingAction(true); return;
+        }
+      }
+      action.lastSafePosition.copy(victim.mesh.position); action.lastSafeQuaternion.copy(pose.quaternion);
+      if (action.phase === 'HOIST' && progress >= 1) {
+        action.phase = 'HOLD'; action.elapsed = 0;
+        // A corpse can be hauled up (Brett-like aftermath), never reused as a
+        // viable implantation host or counted as a living royal resource.
+        victim.isCocooned = victim.hp > 0;
+        showToast('Prise maintenue sous la poutre. Q : libérer la victime puis descendre.');
+      } else if (action.phase === 'RELEASE' && progress >= 1) {
+        const descend = action.afterReleaseDescend;
+        this.cancelCeilingAction();
+        victim.isCocooned = action.wasCocooned;
+        victim.staggerTimer = Math.max(victim.staggerTimer || 0, .8);
+        window.HiveModelFactory?.placeOnGround?.(victim.mesh, .015);
+        audioManager.playWetImpact?.(victim.x, victim.z);
+        if (descend) this.beginCeilingDescent();
+      }
     }
 
     // Chantier 31 : Immersion Aquatique Furtive & Nage Ondulatoire (Alien: Resurrection)
@@ -25317,51 +26520,151 @@
       appendSensorLog('[DEATH THROES] Xénomorphe en état d\'agonie berserk critique. Risque acide extrême.', 'alert');
     }
 
-    toggleDragHost() {
-      if (this.draggedHost) {
-        showToast(`Hôte ${this.draggedHost.name} relâché au sol.`);
-        this.draggedHost = null;
-        return;
-      }
-      const humans = window.gameInstance?.humans || [];
-      const incapacitated = humans.filter((h) => (
-        (h.isIncapacitated || h.hp <= 0) && !h.isCocooned && !h.isConsumedByCycle &&
-        Math.hypot(h.x - this.x, h.z - this.z) <= 4.0
-      )).sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z))[0];
+    canTransportOnGround() {
+      const game = window.gameInstance;
+      return game?.campaignActive === true && game.isRunning === true && !game.isSystemPaused &&
+        game.currentStageIndex === 4 && this.form === 'drone' && !!this.mesh && this.mesh.visible !== false &&
+        !this.isDefeated && !this.isChrysalis && !this.isEmerging && !this.isBiologicalTransition &&
+        !this.isInVent && !this.isCeilingProwling && !this.isLeaping && !this.attachedHost &&
+        !this.isLocomotionBusy?.();
+    }
 
-      if (!incapacitated) {
-        showToast('Aucun corps neutralisé à portée (4.0m) à traîner [V].');
-        return;
+    getTransportGeometry(host) {
+      if (!host?.mesh) return null;
+      const mesh = host.mesh, model = getAnimationModel(mesh), library = window.HiveAssetLibrary;
+      const position = mesh.position.clone(), quaternion = mesh.quaternion.clone();
+      // Measure the actual posed skin in actor-local coordinates, not the bind
+      // pose AABB of a skinned avatar with arms stretched out.
+      mesh.position.set(0, 0, 0); mesh.quaternion.identity(); mesh.updateMatrixWorld(true);
+      let bounds;
+      try { bounds = model && library?.handlesRoot?.(model) ? library.getModelBounds(model) : new THREE.Box3().setFromObject(mesh); }
+      finally { mesh.position.copy(position); mesh.quaternion.copy(quaternion); mesh.updateMatrixWorld(true); }
+      if (!bounds || bounds.isEmpty() || ![...bounds.min.toArray(), ...bounds.max.toArray()].every(Number.isFinite)) return null;
+      const size = bounds.getSize(new THREE.Vector3());
+      if (size.y > 5.2 || size.x > 2.5 || size.z > 1.7) return null;
+      const points = [], rows = Math.max(1, Math.ceil(size.y / .4)), columns = Math.max(1, Math.ceil(size.x / .4));
+      for (let row = 0; row <= rows; row++) for (let column = 0; column <= columns; column++) {
+        points.push(new THREE.Vector3(bounds.min.x + size.x * column / columns, bounds.min.y + size.y * row / rows, (bounds.min.z + bounds.max.z) / 2));
       }
-      this.draggedHost = incapacitated;
-      showToast(`CORPS SAISI [V] : Vous traînez ${incapacitated.name}. Approchez d'une paroi pour l'emmurer [V ou F].`);
-      appendSensorLog(`[CAPTURE] Proie ${incapacitated.name} saisie par les griffes. Transport vers le nid.`, 'bio');
+      return { bounds: bounds.clone(), points, size };
+    }
+
+    getTransportQuaternion(yaw = 0) {
+      return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2));
+    }
+
+    transportBodyFitsAt(geometry, position, quaternion, ignoredProp = null) {
+      if (!geometry?.points?.length || ![...position.toArray(),...quaternion.toArray()].every(Number.isFinite)) return false;
+      for (const local of geometry.points) {
+        const point = local.clone().applyQuaternion(quaternion).add(position);
+        if (Math.abs(point.x) >= 73.2 || Math.abs(point.z) >= 73.2) return false;
+        if (!ignoredProp) {
+          if (stationMap.checkCollision(point.x, point.z, .12)) return false;
+        } else {
+          for (const collider of stationMap.colliders || []) {
+            if (collider.disabled || collider === ignoredProp.collider || collider.mesh === ignoredProp.mesh || Object.values(collider).includes(ignoredProp)) continue;
+            if (point.x > collider.minX - .12 && point.x < collider.maxX + .12 && point.z > collider.minZ - .12 && point.z < collider.maxZ + .12) return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    cancelDragHost() {
+      const host = this.draggedHost, state = this.dragTransport;
+      this.draggedHost = null; this.dragTransport = null;
+      if (!host) return false;
+      if (host.transportOwner === this) {
+        host.transportOwner = null; host.isBeingDragged = false; host.transportRestingPose = true;
+        host.isRestrained = state?.wasRestrained || false;
+        if (host.mesh && state?.geometry) {
+          host.mesh.quaternion.copy(this.getTransportQuaternion(state.yaw));
+          host.mesh.position.set(host.x, -state.geometry.bounds.min.z + .025, host.z);
+        }
+      }
+      return true;
+    }
+
+    toggleDragHost() {
+      if (this.draggedHost) { const name = this.draggedHost.name; this.cancelDragHost(); showToast(`Corps de ${name} relâché au sol.`); return true; }
+      if (!this.canTransportOnGround()) return false;
+      const game = window.gameInstance;
+      const candidates = (game.humans || []).filter(host => host?.mesh && host.mesh.visible !== false &&
+        (host.isIncapacitated || host.hp <= 0) && !host.isCocooned && !host.isDisposed &&
+        !host.transportOwner && !host.disposalOwner && !host.ceilingActionOwner &&
+        Math.abs(host.mesh.position.y) <= .8 && Math.hypot(host.x - this.x, host.z - this.z) <= 2.8 &&
+        stationMap.hasLineOfSight(this.x, this.z, host.x, host.z, .12))
+        .sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z));
+      for (const host of candidates) {
+        const geometry = this.getTransportGeometry(host);
+        if (!geometry) continue;
+        const yaw = this.mesh.rotation.y || 0, quaternion = this.getTransportQuaternion(yaw);
+        const position = new THREE.Vector3(host.x, -geometry.bounds.min.z + .025, host.z);
+        if (!this.transportBodyFitsAt(geometry, position, quaternion)) continue;
+        this.draggedHost = host;
+        this.dragTransport = { host, mesh: host.mesh, geometry, yaw, game, stage: game.currentStage, playerMesh: this.mesh,
+          lastPlayer: { x: this.x, z: this.z, yaw }, wasRestrained: !!host.isRestrained };
+        host.transportOwner = this; host.isBeingDragged = true; host.isRestrained = true;
+        const model=getAnimationModel(host.mesh);
+        if(model)window.HiveAssetLibrary?.setState?.(model,{frozen:true});
+        host.mesh.quaternion.copy(quaternion); host.mesh.position.copy(position);
+        showToast(`Corps saisi : ${host.name}. Transport au sol ; V relâche ou fixe un hôte viable près d’une paroi.`);
+        return true;
+      }
+      showToast('Approchez un corps au sol, accessible sans cloison et sans autre prise en cours.');
+      return false;
+    }
+
+    updateDraggedHost(deltaSeconds) {
+      const host = this.draggedHost, state = this.dragTransport, game = window.gameInstance;
+      if (!host || !state) return false;
+      if (game !== state.game || game?.currentStage !== state.stage || this.mesh !== state.playerMesh ||
+        host.mesh !== state.mesh || !game.humans.includes(host) || host.transportOwner !== this || host.isDisposed) {
+        this.cancelDragHost(); return false;
+      }
+      if (game.isSystemPaused) return false;
+      if (!this.canTransportOnGround()) { this.cancelDragHost();return false; }
+      const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(.05, deltaSeconds)) : 0;
+      if (!delta) return false;
+      const travel = Math.hypot(this.x - state.lastPlayer.x, this.z - state.lastPlayer.z), actorStep = 2.4 * delta;
+      if (travel > actorStep) {
+        this.x = state.lastPlayer.x + (this.x - state.lastPlayer.x) / travel * actorStep;
+        this.z = state.lastPlayer.z + (this.z - state.lastPlayer.z) / travel * actorStep;
+        this.mesh.position.set(this.x, this.mesh.position.y, this.z);
+      }
+      const facing = this.mesh.rotation.y || 0;
+      const difference = Math.atan2(Math.sin(facing - state.yaw), Math.cos(facing - state.yaw));
+      const yaw = state.yaw + Math.max(-3.2 * delta, Math.min(3.2 * delta, difference));
+      const targetX = this.x - Math.sin(yaw) * 1.25, targetZ = this.z - Math.cos(yaw) * 1.25;
+      const distance = Math.hypot(targetX - host.x, targetZ - host.z), bodyStep = Math.min(distance, 3.2 * delta);
+      const x = distance > 1e-7 ? host.x + (targetX - host.x) / distance * bodyStep : host.x;
+      const z = distance > 1e-7 ? host.z + (targetZ - host.z) / distance * bodyStep : host.z;
+      const quaternion = this.getTransportQuaternion(yaw), position = new THREE.Vector3(x, -state.geometry.bounds.min.z + .025, z);
+      if (!this.transportBodyFitsAt(state.geometry, position, quaternion) || stationMap.checkCollision(this.x, this.z, this.creatureEnvelope?.radius || .8)) {
+        this.x = state.lastPlayer.x; this.z = state.lastPlayer.z;
+        this.mesh.position.set(this.x, this.mesh.position.y, this.z); this.mesh.rotation.y = state.lastPlayer.yaw;
+        this.moveTarget = null; this.moveWaypoints = [];
+        return false;
+      }
+      host.x = x; host.z = z; host.mesh.position.copy(position); host.mesh.quaternion.copy(quaternion);
+      state.yaw = yaw; state.lastPlayer = { x: this.x, z: this.z, yaw: facing };
+      return true;
     }
 
     wallCocoonDraggedHost() {
-      if (!this.draggedHost) return false;
-      const host = this.draggedHost;
-      if (this.isCeilingProwling) {
-        // Chantier 39 : Cocon suspendu aux poutrelles du plafond (Aliens 1986)
-        stationMap.hangCeilingCocoon?.(host);
-        host.isCocooned = true;
-        host.isIncapacitated = true;
-        if (host.mesh) host.mesh.position.y = 4.8;
-        this.draggedHost = null;
-        return true;
-      }
-      host.cocoonInResin();
-      host.isCocooned = true;
-      host.isIncapacitated = true;
-      if (host.mesh) {
-        host.mesh.rotation.set(0, 0, 0);
-        host.mesh.position.y = 1.25;
-      }
+      const host = this.draggedHost, state = this.dragTransport;
+      if (!this.canTransportOnGround() || !host?.mesh || host.transportOwner !== this || !state ||
+        host.hp <= 0 || host.isConsumedByCycle || host.usedAsHost || host.isDisposed || host.isSynthetic?.() || host.hostEligibility !== 'viable') return false;
+      const nearWall = (stationMap.colliders || []).some(collider => !collider.disabled && collider.isWall &&
+        host.x >= collider.minX - .9 && host.x <= collider.maxX + .9 && host.z >= collider.minZ - .9 && host.z <= collider.maxZ + .9);
+      if (!nearWall || !stationMap.hasLineOfSight(this.x, this.z, host.x, host.z, .12)) return false;
+      this.cancelDragHost();
+      if (host.cocoonInResin() === false) return false;
+      host.isCocooned = true; host.isIncapacitated = true; host.transportRestingPose = false;
+      host.mesh.rotation.set(0,state.yaw,0);host.mesh.position.set(host.x,0,host.z);
       window.HiveSystems?.vfx?.spawnWallCocoon?.(host.x, 0, host.z);
-      window.HiveSystems?.vfx?.burst(host.x, host.z, 0x9d4edd, 20, 0.16, 1.6);
       audioManager.playWetImpact?.(host.x, host.z);
-      audioManager.playAcidSizzle?.();
-      this.draggedHost = null;
       return true;
     }
 
@@ -26974,6 +28277,55 @@
       return ADULT_CASTE_PROFILES[this.adultCaste] || ADULT_CASTE_PROFILES.drone;
     }
 
+    getJuvenileModelScale() { return .50; }
+
+    getJuvenileClearance() {
+      const factory = window.HiveModelFactory;
+      if (!factory?.createChestburster) return null;
+      if (!this.juvenileClearanceCache) {
+        const probe = factory.createChestburster(false);
+        if (!probe) return null;
+        try {
+          probe.scale.multiplyScalar(this.getJuvenileModelScale());
+          probe.updateMatrixWorld(true);
+          const bounds = new THREE.Box3().setFromObject(probe), size = bounds.getSize(new THREE.Vector3());
+          bounds.translate(new THREE.Vector3(0, -bounds.min.y, 0));
+          this.juvenileClearanceCache = { bounds, height: size.y,
+            radius: Math.max(.18, Math.abs(bounds.min.x), Math.abs(bounds.max.x)),
+            front: Math.max(.18, bounds.max.z), rear: Math.max(.18, -bounds.min.z) };
+        } finally { factory.disposeModel(probe); }
+      }
+      return { ...this.juvenileClearanceCache, bounds: this.juvenileClearanceCache.bounds.clone() };
+    }
+
+    getAdultClearance(caste = this.adultCaste) {
+      const factory = window.HiveModelFactory;
+      if (!factory || !ADULT_CASTE_PROFILES[caste]) return null;
+      this.adultClearanceCache ||= new Map();
+      if (!this.adultClearanceCache.has(caste)) {
+        const special = {
+          belugamorph: 'createBelugamorph', snake_drone: 'createSnakeDrone', mantis_drone: 'createMantisDrone',
+          bull_drone: 'createBullDrone', gorilla_drone: 'createGorillaDrone', boar_drone: 'createBoarDrone',
+          scorpion_drone: 'createScorpionDrone', cougar_drone: 'createCougarDrone', worker_drone: 'createWorkerDrone',
+          rhino_drone: 'createRhinoDrone', crab_drone: 'createCrabDrone'
+        };
+        const probe = special[caste] ? factory[special[caste]]?.() : factory.createAdult?.(caste);
+        if (!probe) return null;
+        try {
+          probe.scale.multiplyScalar(1.14);
+          probe.updateMatrixWorld(true);
+          const bounds = new THREE.Box3().setFromObject(probe), size = bounds.getSize(new THREE.Vector3());
+          bounds.translate(new THREE.Vector3(0, -bounds.min.y, 0));
+          this.adultClearanceCache.set(caste, {
+            bounds, radius: Math.max(.18, Math.abs(bounds.min.x), Math.abs(bounds.max.x)),
+            height: size.y, front: Math.max(.18, bounds.max.z), rear: Math.max(.18, -bounds.min.z)
+          });
+        } finally { factory.disposeModel(probe); }
+      }
+      const cached = this.adultClearanceCache.get(caste);
+      return { ...cached, bounds: cached.bounds.clone() };
+    }
+
     // Chantier 110 : Adaptation Embryonnaire & Mutations Génétiques Actives (agility / acid / carapace)
     setEmbryoMutation(mutation = 'carapace') {
       const valid = ['agility', 'acid', 'carapace'].includes(mutation) ? mutation : 'carapace';
@@ -26993,20 +28345,36 @@
       return this.embryoMutation;
     }
 
-    setAdultCaste(caste, restoreHealth = true) {
-      this.adultCaste = ADULT_CASTE_PROFILES[caste] ? caste : 'drone';
+    setAdultCaste(caste, options = {}) {
+      // Legacy boolean arguments remain accepted, but never grant healing or
+      // authorize a live morphology swap. Configure the future adult while it
+      // is still an embryo/juvenile; a living adult needs the actual mue state.
+      const next = ADULT_CASTE_PROFILES[caste] ? caste : null;
+      if (!next) return false;
+      const activeStage = window.gameInstance?.currentStage;
+      const authorizedMolt = options && typeof options === 'object' &&
+        options.lifecycle === activeStage && activeStage?.step === 'EMERGING' &&
+        activeStage?.chrysalisTimer >= 100 && activeStage?.biomassHunted >= 3 && activeStage?.emergenceCaste === next;
+      if (this.form === 'drone' && next !== this.adultCaste && !authorizedMolt) return false;
+      if (this.form === 'drone' && next === this.adultCaste) return true;
+      const previousRatio = this.maxHealth > 0 ? Math.max(0, Math.min(1, this.health / this.maxHealth)) : 1;
+      this.adultCaste = next;
       window.HiveSystems?.unlockCodex?.([this.adultCaste, 'codex_castes_etendues']);
       // Selecting the future morphology during implantation must not grant
       // adult statistics to the egg, Facehugger or juvenile forms.
-      if (this.form !== 'drone') return;
+      if (this.form !== 'drone') return true;
       const profile = this.getAdultProfile();
       this.maxHealth = profile.maxHealth + (this.embryoMutation === 'carapace' ? 45 : 0);
       this.speed = profile.speed * (this.embryoMutation === 'agility' ? 1.18 : 1.0);
-      if (restoreHealth) this.health = this.maxHealth;
+      this.health = Math.min(this.maxHealth, this.maxHealth * previousRatio);
       if (this.mesh) this.createMesh();
+      return true;
     }
 
     clearMesh() {
+      this.cancelDragHost?.();
+      if (this.disposalTransfer) stationMap.cancelIncineratorTransfer?.(this.disposalTransfer);
+      this.cancelCeilingTransition({ land: false });
       if (this.mesh) {
         rendererEngine.removeObject(this.mesh);
         this.mesh = null;
@@ -27014,6 +28382,10 @@
       if (this.attachedHost) this.attachedHost.isRestrained = false;
       this.attachedHost = null;
       this.detailedModel = null;
+      this.creatureEnvelope = null;
+      this.attachmentBaseScale = null;
+      this.isEmerging = false;
+      this.isBiologicalTransition = false;
     }
 
     createMesh() {
@@ -27023,7 +28395,8 @@
       let detailedModel = null;
       if (factory) {
         if (this.form === 'egg') detailedModel = factory.createEgg?.(this.eggIsOpen);
-        else if (this.form === 'facehugger') detailedModel = factory.createFacehugger?.();
+        else if (this.form === 'facehugger') detailedModel = this.facehuggerVariant === 'royal'
+          ? factory.createRoyalFacehugger?.() : factory.createFacehugger?.();
         else if (this.form === 'chestburster') detailedModel = factory.createChestburster?.(this.isChrysalis);
         else if (this.form === 'drone') {
           if (this.adultCaste === 'belugamorph') detailedModel = factory.createBelugamorph?.();
@@ -27045,8 +28418,19 @@
           ? 1.14
           : (this.form === 'facehugger'
             ? 0.92
-            : (this.form === 'chestburster' ? (this.isChrysalis ? 1.55 : 0.94) : 1.05));
-        detailedModel.scale.setScalar(modelScale);
+            : (this.form === 'chestburster' ? (this.isChrysalis ? 1.55 : this.getJuvenileModelScale()) : 1));
+        // Multiplication retains intrinsic variant scaling (royal parasite1.28).
+        detailedModel.scale.multiplyScalar(modelScale);
+        detailedModel.updateMatrixWorld(true);
+        const localBounds = new THREE.Box3().setFromObject(detailedModel);
+        detailedModel.position.y -= localBounds.min.y;
+        localBounds.translate(new THREE.Vector3(0, -localBounds.min.y, 0));
+        const extent = localBounds.getSize(new THREE.Vector3());
+        this.creatureEnvelope = {
+          bounds: localBounds, height: extent.y, radius: Math.max(.18, Math.max(Math.abs(localBounds.min.x), Math.abs(localBounds.max.x))),
+          front: Math.max(.18, localBounds.max.z), rear: Math.max(.18, -localBounds.min.z)
+        };
+        this.attachmentBaseScale = detailedModel.scale.clone();
         group.add(detailedModel);
         this.detailedModel = detailedModel;
         if (this.isProwling && this.form === 'drone') {
@@ -27207,7 +28591,13 @@
     }
 
     setForm(form) {
+      this.cancelCeilingTransition({ land: false });
       this.form = form;
+      this.isInVent = false;
+      this.currentVent = null;
+      this.isProwling = false;
+      this.isWallMimic = false;
+      this.isHiveMelded = false;
       this.isLeaping = false;
       this.leapHost = null;
       this.leapComplete = null;
@@ -27423,8 +28813,9 @@
     }
 
     setMoveTarget(x, z) {
-      if (this.form === 'egg' || this.isLeaping || this.attachedHost || this.isChrysalis) return;
-      const padding = this.form === 'drone' ? 0.88 : (this.form === 'facehugger' ? 0.34 : 0.28);
+      if (this.form === 'egg' || this.isLeaping || this.attachedHost || this.isChrysalis || this.isLocomotionBusy() || this.isEmerging || this.isBiologicalTransition) return;
+      if (this.isCeilingProwling) { this.moveTarget = { x, z }; return; }
+      const padding = this.creatureEnvelope?.radius || (this.form === 'facehugger' ? .34 : .88);
       const path = stationMap.findPath(this.x, this.z, x, z, {
         step: 2.5,
         padding
@@ -27435,7 +28826,7 @@
     }
 
     enterVent(vent) {
-      if (this.isInVent || !vent) return;
+      if (this.isInVent || !vent || this.isLocomotionBusy() || this.isCeilingProwling || this.isEmerging || this.isBiologicalTransition) return;
       this.isInVent = true;
       this.currentVent = vent;
       audioManager.playVentEnter?.();
@@ -27457,17 +28848,17 @@
 
     exitVent(vent) {
       if (!this.isInVent) return;
-      this.isInVent = false;
+      const clearance = this.creatureEnvelope?.radius || .4;
       let targetX = vent.x;
       let targetZ = vent.z;
       // Audit QA #18 : Dégagement automatique (auto-nudge) à la sortie des conduits [C] pour éliminer tout coincement d'angle
-      if (stationMap.checkCollision(targetX, targetZ, 0.4)) {
-        for (let r = 0.8; r <= 2.2; r += 0.7) {
+      if (stationMap.checkCollision(targetX, targetZ, clearance)) {
+        for (let r = clearance + .8; r <= clearance + 4; r += .6) {
           let found = false;
           for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
             const nx = vent.x + Math.cos(a) * r;
             const nz = vent.z + Math.sin(a) * r;
-            if (!stationMap.checkCollision(nx, nz, 0.35)) {
+            if (!stationMap.checkCollision(nx, nz, clearance)) {
               targetX = nx;
               targetZ = nz;
               found = true;
@@ -27477,6 +28868,11 @@
           if (found) break;
         }
       }
+      if (stationMap.checkCollision(targetX, targetZ, clearance)) {
+        showToast('Sortie trop encombrée pour ce gabarit ; choisissez une autre grille.');
+        return false;
+      }
+      this.isInVent = false;
       this.x = targetX;
       this.z = targetZ;
       this.mesh?.position.set(this.x, 0, this.z);
@@ -27529,7 +28925,7 @@
       arcHeight = 3.6,
       useFaceAnchor = true
     } = {}) {
-      if (!host || !this.mesh || this.isLeaping) return false;
+      if (!host || !this.mesh || this.isLeaping || this.isLocomotionBusy() || this.isCeilingProwling || this.isEmerging || this.isBiologicalTransition) return false;
       this.moveTarget = null;
       this.isLeaping = true;
       this.leapElapsed = 0;
@@ -27554,13 +28950,48 @@
       this.z = host.z;
       this.mesh.parent?.remove(this.mesh);
       host.faceAnchor.add(this.mesh);
-      this.mesh.position.set(0, 0, 0);
-      this.mesh.rotation.set(Math.PI / 2, 0, Math.PI);
-      this.detailedModel?.userData?.setFoldedPose?.(true);
+      // Back faces outward (+face Z), rear tail turns down around the neck.
+      this.mesh.position.set(0, -.035, .12);
+      this.mesh.rotation.set(Math.PI / 2, Math.PI, 0);
       this.attachedHost = host;
       host.isRestrained = true;
       animateProceduralModel(this.mesh, { phase: 0, attack: 0.75, crouch: 0.5 });
+      this.detailedModel?.userData?.setFoldedPose?.(true);
+      this.updateFaceAttachmentPose();
       return true;
+    }
+
+    updateFaceAttachmentPose() {
+      const host = this.attachedHost, detail = this.detailedModel;
+      if (!host?.faceAnchor || !detail?.userData?.setAttachmentPose) return false;
+      const model = getAnimationModel(host.mesh), runtime = window.HiveAssetLibrary?.getRuntime?.(model);
+      const head = runtime?.bindings?.head, neck = runtime?.bindings?.neck;
+      const height = Math.max(1, Number(model?.userData?.height) || 4.25);
+      host.mesh?.updateMatrixWorld(true);
+      const faceOrigin = host.faceAnchor.getWorldPosition(new THREE.Vector3());
+      const forwardWorld = host.faceAnchor.localToWorld(new THREE.Vector3(0, 0, 1)).sub(faceOrigin).normalize();
+      let centerWorld, axisWorld;
+      if (neck && head) {
+        centerWorld = neck.getWorldPosition(new THREE.Vector3());
+        axisWorld = head.getWorldPosition(new THREE.Vector3()).sub(centerWorld).normalize();
+        if (axisWorld.lengthSq() < .5) axisWorld = host.faceAnchor.localToWorld(new THREE.Vector3(0, 1, 0)).sub(faceOrigin).normalize();
+        centerWorld.addScaledVector(axisWorld, height * .014);
+      } else {
+        // Existing procedural rigs lack a shared neck binding. This explicit
+        // rig-relative fallback sits below/behind their authored face anchor;
+        // it is not a claim about canonical centimetres or imported anatomy.
+        centerWorld = host.faceAnchor.localToWorld(new THREE.Vector3(0, -height * .09, -height * .085));
+        axisWorld = host.faceAnchor.localToWorld(new THREE.Vector3(0, 1, 0)).sub(faceOrigin).normalize();
+      }
+      const sideWorld = new THREE.Vector3().crossVectors(axisWorld, forwardWorld).normalize();
+      const radiusWorld = Math.min(.32, Math.max(.11, height * .052));
+      this.mesh.updateMatrixWorld(true);
+      const center = detail.worldToLocal(centerWorld.clone());
+      const axis = detail.worldToLocal(centerWorld.clone().add(axisWorld)).sub(center).normalize();
+      const forward = detail.worldToLocal(centerWorld.clone().add(forwardWorld)).sub(center).normalize();
+      const radius = detail.worldToLocal(centerWorld.clone().addScaledVector(sideWorld, radiusWorld)).distanceTo(center);
+      return detail.userData.setAttachmentPose({ neckCenter: center, neckAxis: axis, neckForward: forward,
+        neckRadius: radius, elapsed: this.creatureAnimationTime });
     }
 
     detachFromHost({ releaseHost = true, hide = false } = {}) {
@@ -27576,6 +29007,7 @@
       if (releaseHost && host) host.isRestrained = false;
       this.attachedHost = null;
       this.mesh.visible = !hide;
+      this.attachmentBaseScale = this.detailedModel?.scale.clone() || null;
     }
 
     triggerAttack(type = 'melee') {
@@ -27585,7 +29017,15 @@
 
     update(deltaSeconds = 1 / 60) {
       if (!this.mesh) return;
-      const safeDelta = Math.max(0, deltaSeconds);
+      const locomotionOwner = this.ceilingTransition || this.ceilingSupport;
+      for (const anchor of [...this.ceilingAnchors]) if (!anchor.isCurrent()) anchor.dispose();
+      if (locomotionOwner && !this.isLocomotionContextCurrent(locomotionOwner)) this.cancelCeilingTransition({ land: false });
+      if (this.ceilingAction && !this.isLocomotionContextCurrent(this.ceilingAction)) this.cancelCeilingAction({ restorePose: true });
+      if (this.isDefeated || this.health <= 0) return;
+      if (window.gameInstance?.isSystemPaused) return;
+      const safeDelta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(.05, deltaSeconds)) : 0;
+      this.creatureAnimationTime += safeDelta;
+      this.updateCeilingAction(safeDelta);
       this.actionAnimation = Math.max(0, this.actionAnimation - safeDelta * 3.4);
 
       // Chantier 123 : Surtension Bio-Génétique Z-01
@@ -27650,6 +29090,13 @@
         }
       }
 
+      if (this.ceilingTransition || this.isCeilingProwling) {
+        this.updateCeilingLocomotion(safeDelta);
+        return;
+      }
+
+      if (this.isBiologicalTransition || this.disposalTransfer) return;
+
       if (this.form === 'egg') {
         if (this.eggIsOpen && this.eggOpeningProgress < 1) {
           this.eggOpeningProgress = Math.min(1, this.eggOpeningProgress + safeDelta / 0.9);
@@ -27709,20 +29156,21 @@
         this.x = this.attachedHost.x;
         this.z = this.attachedHost.z;
         animateProceduralModel(this.mesh, {
-          phase: Date.now() * 0.01,
-          attack: 0.72 + Math.sin(Date.now() * 0.012) * 0.16,
+          phase: this.creatureAnimationTime * 10,
+          attack: 0.72 + Math.sin(this.creatureAnimationTime * 12) * 0.16,
           crouch: 0.45
         });
         this.detailedModel?.userData?.setFoldedPose?.(true);
-        const gripPulse = 1 + Math.sin(Date.now() * 0.014) * 0.018;
-        const attachmentScale = 0.92 * gripPulse;
-        this.detailedModel?.scale.setScalar(attachmentScale);
-        if (this.mesh) this.mesh.rotation.y = Math.sin(Date.now() * 0.01) * 0.018;
+        const gripPulse = 1 + Math.sin(this.creatureAnimationTime * 14) * 0.012;
+        if (this.detailedModel && this.attachmentBaseScale) this.detailedModel.scale.copy(this.attachmentBaseScale).multiplyScalar(gripPulse);
+        if (this.mesh) this.mesh.rotation.set(Math.PI / 2, Math.PI, Math.sin(this.creatureAnimationTime * 10) * .012);
+        this.updateFaceAttachmentPose();
         return;
       }
 
       if (this.form !== 'egg' && !this.isLeaping && !this.isChrysalis) {
-        let { dx, dy } = inputManager.getMovementVector();
+        let { dx, dy } = this.isEmerging ? { dx: 0, dy: 0 } : inputManager.getMovementVector();
+        if (this.isEmerging) { this.moveTarget = null; this.moveWaypoints = []; }
         let remainingDistance = Infinity;
         if (dx !== 0 || dy !== 0) {
           this.moveTarget = null;
@@ -27753,10 +29201,10 @@
         const nextX = this.x + dx * movementStep;
         const nextZ = this.z + dy * movementStep;
 
-        if (!stationMap.checkCollision(nextX, nextZ)) {
+        if (!stationMap.checkCollision(nextX, nextZ, this.creatureEnvelope?.radius || .18)) {
           this.x = nextX;
           this.z = nextZ;
-          this.mesh.position.set(this.x, this.isCeilingProwling ? 5.85 : 0, this.z);
+          this.mesh.position.set(this.x, 0, this.z);
         } else if (this.moveTarget) {
           this.moveTarget = null;
           this.moveWaypoints = [];
@@ -27766,21 +29214,9 @@
           this.mesh.rotation.y = Math.atan2(dx, dy);
         }
 
-        // Suivi et traînée physique du corps de l'hôte capturé (Hadley's Hope 1:1)
-        if (this.draggedHost && this.draggedHost.mesh) {
-          const rotY = this.mesh.rotation.y;
-          const dragDist = 1.6;
-          const hostX = this.x - Math.sin(rotY) * dragDist;
-          const hostZ = this.z - Math.cos(rotY) * dragDist;
-          this.draggedHost.x = hostX;
-          this.draggedHost.z = hostZ;
-          this.draggedHost.mesh.position.set(hostX, 0.22, hostZ);
-          this.draggedHost.mesh.rotation.z = Math.PI / 2;
-        }
-
-        if (this.isCeilingProwling) {
-          this.mesh.position.y = 5.85;
-        }
+        // The carried body has its own swept floor footprint; failed body
+        // movement rolls the actor back to the last shared collision-free pose.
+        if (this.draggedHost) this.updateDraggedHost(safeDelta);
 
         // Canon H.R. Giger — Sécrétions de salive visqueuse perlant des mâchoires
         if (this.form === 'drone' && !this.isInVent && !this.isCeilingProwling) {
@@ -27840,16 +29276,18 @@
         }
 
         animateProceduralModel(this.mesh, {
-          phase: Date.now() * (this.form === 'facehugger' ? 0.014 : 0.009),
+          phase: this.creatureAnimationTime * (this.form === 'facehugger' ? 14 : 9),
           movement: dx !== 0 || dy !== 0 ? 1 : 0.08,
           attack: this.actionAnimation,
           pulse: this.form === 'chestburster' ? 0.4 : 0
         });
+        if (!this.isEmerging) this.applyGroundContact();
       } else if (this.isChrysalis) {
         animateProceduralModel(this.mesh, {
-          phase: Date.now() * 0.006,
+          phase: this.creatureAnimationTime * 6,
           pulse: 1
         });
+        this.applyGroundContact();
       }
     }
   }
@@ -27940,6 +29378,8 @@
       this.suppressionBurstTimer = 0;
       this.mesh = null;
       this.targetPos = { x, z };
+      this.importedAnimationMesh = null;
+      this.importedAnimationRoot = null;
       this.patrolOrigin = { x, z };
       this.aiState = 'PATROL';
       this.patrolWait = 0;
@@ -27947,6 +29387,7 @@
       this.isBursting = false;
       this.isInfected = false;
       this.infectionState = 'NONE';
+      this.isRecoveringFromFacehugger = false;
       this.isRestrained = false;
       this.isCocooned = false;
       this.isIncapacitated = false;
@@ -27977,7 +29418,9 @@
       this.navigationGoal = null;
       this.pathWaypoints = [];
       this.navigationRepathTimer = 0;
+      this.navigationBlocked = false;
       this.stuckTimer = 0;
+      this.lastKnownThreat = null;
       this.animationPhase = Math.random() * Math.PI * 2;
       this.attackAnimation = 0;
       this.staggerTimer = 0;
@@ -28016,6 +29459,7 @@
     choosePatrolWaypoint() {
       this.navigationGoal = null;
       this.pathWaypoints = [];
+      this.navigationBlocked = false;
       this.targetPos = this.findFreeWaypoint(20);
       this.aiState = 'PATROL';
       this.patrolWait = 0;
@@ -28477,33 +29921,104 @@
     }
 
     planNavigation(tx, tz, force = false) {
+      if (![tx, tz].every(Number.isFinite)) return false;
       if (
         !force &&
         this.navigationGoal &&
-        Math.hypot(this.navigationGoal.x - tx, this.navigationGoal.z - tz) < 1
+        (this.navigationRepathTimer > 0 ||
+          (Math.hypot(this.navigationGoal.x - tx, this.navigationGoal.z - tz) < 1 &&
+            (this.pathWaypoints.length > 0 || Math.hypot(this.x - tx, this.z - tz) < .8)))
       ) {
-        return;
+        return false;
       }
       this.navigationGoal = { x: tx, z: tz };
       this.pathWaypoints = stationMap.findPath(this.x, this.z, tx, tz);
-      this.targetPos = this.pathWaypoints[0] || this.navigationGoal;
+      this.navigationBlocked = this.pathWaypoints.length === 0 && Math.hypot(this.x - tx, this.z - tz) >= .8;
+      this.targetPos = this.pathWaypoints[0] || (this.navigationBlocked ? { x: this.x, z: this.z } : this.navigationGoal);
       this.navigationRepathTimer = 0.8;
       this.stuckTimer = 0;
+      return true;
     }
 
     updateNavigation(deltaSeconds) {
       if (!this.navigationGoal) return;
-      this.navigationRepathTimer -= deltaSeconds;
+      this.navigationRepathTimer = Math.max(0, this.navigationRepathTimer - deltaSeconds);
       while (
         this.pathWaypoints.length > 0 &&
         Math.hypot(
           this.pathWaypoints[0].x - this.x,
           this.pathWaypoints[0].z - this.z
-        ) < 0.8
+        ) < 0.025
       ) {
+        const next = this.pathWaypoints[1] || this.navigationGoal;
+        if (next && !stationMap.hasLineOfSight(this.x, this.z, next.x, next.z, .72)) {
+          // Reach the checked corner itself before changing direction. If a
+          // newly placed solid blocks the next segment, replan at the existing
+          // cadence instead of pruning the corner or cutting through it.
+          if (Math.hypot(this.pathWaypoints[0].x - this.x, this.pathWaypoints[0].z - this.z) <= 1e-4) {
+            this.navigationBlocked = true;
+            this.targetPos = { x: this.x, z: this.z };
+            if (this.navigationRepathTimer <= 0) this.planNavigation(this.navigationGoal.x, this.navigationGoal.z, true);
+            return;
+          }
+          break;
+        }
         this.pathWaypoints.shift();
       }
-      this.targetPos = this.pathWaypoints[0] || this.navigationGoal;
+      this.targetPos = this.pathWaypoints[0] || (this.navigationBlocked ? { x: this.x, z: this.z } : this.navigationGoal);
+    }
+
+    rememberThreat(target, source = 'visual') {
+      if (!target || ![target.x, target.z].every(Number.isFinite)) return false;
+      // A copied observation is deliberately not a live position reference.
+      this.lastKnownThreat = { x: target.x, z: target.z, target, remaining: 4, source };
+      return true;
+    }
+
+    receiveThreatReport(x, z, target = null) {
+      if (![x, z].every(Number.isFinite) || this.isIncapacitated || this.isCocooned || this.isLured) return false;
+      if (this.lastKnownThreat?.source === 'visual' && this.lastKnownThreat.remaining > 3) return false;
+      this.lastKnownThreat = { x, z, target, remaining: 4, source: 'radio' };
+      this.aiState = 'SEARCH';
+      this.planNavigation(x, z);
+      return true;
+    }
+
+    fleeFrom(x, z) {
+      if (![x, z].every(Number.isFinite)) return false;
+      const away = Math.atan2(this.z - z, this.x - x);
+      for (const offset of [0, .55, -.55, 1.1, -1.1]) {
+        const tx = Math.max(-69, Math.min(69, this.x + Math.cos(away + offset) * 9));
+        const tz = Math.max(-69, Math.min(69, this.z + Math.sin(away + offset) * 9));
+        if (stationMap.checkCollision(tx, tz, .45)) continue;
+        this.planNavigation(tx, tz, true);
+        if (this.navigationBlocked) continue;
+        this.isLured = false;
+        this.aiState = 'FLEE';
+        return true;
+      }
+      return false;
+    }
+
+    canObserveThreat(target) {
+      if (!target || ![target.x, target.z].every(Number.isFinite) || target.isDestroyed || target.isIncapacitated ||
+        target.isDisposed || target.transportOwner || target.disposalOwner) return false;
+      const game = window.gameInstance;
+      const isPlayer = target === playerCreature;
+      if (isPlayer && (target.isBiologicalTransition || target.mesh?.visible === false || target.isInVent || target.isCeilingProwling ||
+        game?.currentStageIndex === 1 || (game?.currentStageIndex === 3 &&
+          !['HUNT_FAUNA', 'CHRYSALIS', 'EMERGING'].includes(game.currentStage?.step)))) return false;
+      const distance = Math.hypot(target.x - this.x, target.z - this.z);
+      const dark = (rendererEngine?.powerSabotagedTimer || 0) > 0;
+      const prowling = isPlayer && target.isProwling;
+      const range = dark ? (prowling ? 8 : 14) : (prowling ? 14 : 26);
+      if (distance > range || (isPlayer && target.isWallMimic && !this.isCyberHound && distance > 1.4)) return false;
+      if (!stationMap.hasLineOfSight(this.x, this.z, target.x, target.z)) return false;
+      if (distance <= 3.2 || this.isCyberHound) return true;
+      const facing = this.mesh?.rotation.y || 0;
+      const angle = Math.atan2(target.x - this.x, target.z - this.z);
+      const difference = Math.abs(Math.atan2(Math.sin(angle - facing), Math.cos(angle - facing)));
+      return difference <= (dark ? Math.PI / 4 : Math.PI * .375);
     }
 
     collapseForBurst() {
@@ -28516,8 +30031,50 @@
       }
     }
 
+    updateImportedAnimation(deltaSeconds) {
+      if (!this.mesh || !(deltaSeconds > 0) || this.isCocooned || this.isBursting ||
+        (this.isIncapacitated && !this.isBionicCrawl) || this.isRecoveringFromFacehugger || this.ceilingActionOwner || this.transportOwner || this.disposalOwner) return;
+      const library = window.HiveAssetLibrary;
+      if (!library?.getRuntime || !library.updateModel) return;
+      if (this.importedAnimationMesh !== this.mesh ||
+        (this.importedAnimationRoot && library.getRuntime(this.importedAnimationRoot)?.disposed)) {
+        this.importedAnimationMesh = this.mesh;
+        this.importedAnimationRoot = null;
+        this.mesh.traverse((child) => {
+          const runtime = library.getRuntime(child);
+          if (!this.importedAnimationRoot && runtime && !runtime.disposed) this.importedAnimationRoot = child;
+        });
+      }
+      const model = this.importedAnimationRoot;
+      if (!model) return;
+      if (this.isIncapacitated) library.setState?.(model, { movement: 0, attack: 0 });
+      library.updateModel(model, deltaSeconds);
+      // Only the ordinary actor's child model is grounded. Cycle and ceiling
+      // controllers own their lifted/recovery pose and never reach this path.
+      window.HiveModelFactory?.placeOnGround?.(model, .015);
+    }
+
     update(deltaSeconds = 1 / 60) {
-      const safeDelta = Math.max(0, deltaSeconds);
+      const safeDelta = Number.isFinite(deltaSeconds) ? Math.max(0, deltaSeconds) : 0;
+      if (this.ceilingAnchor) {
+        if (this.ceilingAnchor.isCurrent?.()) return;
+        this.ceilingAnchor.dispose?.();
+      }
+      // PlayerCreature's T140 controller already applies the victim's rig pose
+      // as well as its checked root trajectory. No second animation/patrol or
+      // bionic-corpse update may overwrite that exclusive ownership.
+      if (this.mesh && (this.ceilingActionOwner || this.transportOwner || this.disposalOwner)) return;
+      if (this.isRecoveringFromFacehugger || window.gameInstance?.isSystemPaused) return;
+      try {
+      if (this.mesh && this.transportRestingPose && !this.isIncapacitated && !this.isDisposed) {
+        this.mesh.rotation.set(0, this.mesh.rotation.y, 0);
+        this.mesh.position.y = 0;
+        const library = window.HiveAssetLibrary;
+        if (library?.getRuntime && library.setState) this.mesh.traverse((child) => {
+          if (library.getRuntime(child)) library.setState(child, { frozen: false, dead: false });
+        });
+        this.transportRestingPose = false;
+      }
       // Chantier 101 : Survie Bionique Post-Démembrement des Synthétiques (Ash 1979 / Bishop 1986 / Rook Romulus)
       if (this.mesh && this.isIncapacitated && this.isBionicCrawl && !this.isCocooned) {
         this.bionicCrawlTimer = (this.bionicCrawlTimer || 0) - safeDelta;
@@ -28552,14 +30109,20 @@
         if (this.bionicTelemetryCooldown <= 0) {
           this.bionicTelemetryCooldown = 6.0;
           (window.gameInstance?.humans || []).forEach((ally) => {
-            if (ally !== this && !ally.isIncapacitated && Math.hypot(ally.x - this.x, ally.z - this.z) <= 26) {
-              ally.targetPos = { x: playerCreature.x, z: playerCreature.z };
+            if (this.lastKnownThreat && ally !== this && !ally.isIncapacitated && !this.isFactionHostile(ally) && !ally.isFactionHostile?.(this) && Math.hypot(ally.x - this.x, ally.z - this.z) <= 26) {
+              ally.receiveThreatReport?.(this.lastKnownThreat.x, this.lastKnownThreat.z, this.lastKnownThreat.target);
             }
           });
         }
         return;
       }
       if (!this.mesh || this.isBursting || this.isCocooned || this.isIncapacitated) return;
+      // The cycle owns the host's recovery pose; patrol/perception must not
+      // overwrite a supported collapse, awakening or corpse-discovery beat.
+      if (this.lastKnownThreat) {
+        this.lastKnownThreat.remaining -= safeDelta;
+        if (this.lastKnownThreat.remaining <= 0) this.lastKnownThreat = null;
+      }
       // Chantier 115 : Les synthétiques ont un sang laiteux et sont totalement insensibles au stress, à la panique et à la catatonie
       if (this.isSynthetic()) {
         this.stress = 0;
@@ -28619,14 +30182,17 @@
       // Audit QA #98 : Réaction Panique des Civils face aux Dangers Industriels Actifs
       const isUnarmed = ['civilian', 'scientist', 'technician', 'surveyor'].includes(this.type);
       if (isUnarmed && !this.isRestrained && !this.isLured) {
-        const hazardNearby = (stationMap.steamVents || []).some((v) => (v.timer || 0) < 1.2 && Math.hypot(v.x - this.x, v.z - this.z) <= 3.8) ||
-                             (stationMap.leadDrainageSluices || []).some((ls) => ls.isOpen && Math.hypot(ls.x - this.x, ls.z - this.z) <= 4.2) ||
-                             (stationMap.furnaceAirIntakes || []).some((ai) => ai.isPurged && Math.hypot(ai.x - this.x, ai.z - this.z) <= 4.5) ||
-                             (stationMap.blastFurnaceTuyeres || []).some((bt) => bt.isOxygenInjected && Math.hypot(bt.x - this.x, bt.z - this.z) <= 4.5) ||
-                             (stationMap.emergencyBatteryBanks || []).some((bb) => bb.isDischarged && Math.hypot(bb.x - this.x, bb.z - this.z) <= 4.0);
+        const hazardNearby = (stationMap.steamVents || []).find((v) => v.isRuptured && v.timer > 0 && Math.hypot(v.x - this.x, v.z - this.z) <= 3.8) ||
+                             (stationMap.leadDrainageSluices || []).find((ls) => ls.isOpen && Math.hypot(ls.x - this.x, ls.z - this.z) <= 4.2) ||
+                             (stationMap.furnaceAirIntakes || []).find((ai) => ai.isPurged && Math.hypot(ai.x - this.x, ai.z - this.z) <= 4.5) ||
+                             (stationMap.blastFurnaceTuyeres || []).find((bt) => bt.isOxygenInjected && Math.hypot(bt.x - this.x, bt.z - this.z) <= 4.5) ||
+                             (stationMap.emergencyBatteryBanks || []).find((bb) => bb.isDischarged && Math.hypot(bb.x - this.x, bb.z - this.z) <= 4.0);
         if (hazardNearby) {
           this.stress = Math.min(100, this.stress + 45 * safeDelta);
-          this.aiState = 'FLEE';
+          if (this.aiState !== 'FLEE' || !this.navigationGoal ||
+            Math.hypot(this.navigationGoal.x - this.x, this.navigationGoal.z - this.z) < .8) {
+            this.fleeFrom(hazardNearby.x, hazardNearby.z);
+          }
           this.hazardFleeTimer = (this.hazardFleeTimer || 0) + safeDelta;
           if (this.hazardFleeTimer > 2.0) {
             this.hazardFleeTimer = 0;
@@ -28692,7 +30258,7 @@
         return;
       }
 
-      if (this.isLured) this.updateNavigation(safeDelta);
+      if (this.navigationGoal) this.updateNavigation(safeDelta);
 
       let combatTarget = playerCreature;
       let isEngagingHostileFaction = false;
@@ -28701,17 +30267,17 @@
         if (royalTarget?.isActive) {
           const playerDistance = Math.hypot(playerCreature.x - this.x, playerCreature.z - this.z);
           const royalDistance = Math.hypot(royalTarget.x - this.x, royalTarget.z - this.z);
-          if (royalDistance < playerDistance) combatTarget = royalTarget;
+          if (royalDistance < playerDistance && this.canObserveThreat(royalTarget)) combatTarget = royalTarget;
         }
       }
       if (window.gameInstance?.currentStageIndex === 5) {
         const livingUnits = window.gameInstance.currentStage?.rtsUnits?.filter((unit) => !unit.isDestroyed) || [];
         const activeCycles = window.gameInstance.currentStage?.incubationCycles?.filter((cycle) => cycle.isActive) || [];
-        combatTarget = [...livingUnits, ...activeCycles].reduce((closest, target) => {
+        combatTarget = [...livingUnits, ...activeCycles].filter((target) => this.canObserveThreat(target)).reduce((closest, target) => {
           const distance = Math.hypot(target.x - this.x, target.z - this.z);
           if (!closest || distance < closest.distance) return { unit: target, distance };
           return closest;
-        }, null)?.unit || playerCreature;
+        }, null)?.unit || this.lastKnownThreat?.target || playerCreature;
       }
       let distToPlayer = Math.hypot(combatTarget.x - this.x, combatTarget.z - this.z);
       let hasLineOfSight = stationMap.hasLineOfSight(
@@ -28748,22 +30314,24 @@
       const currentStageStep = window.gameInstance?.currentStage?.step;
       const inVentStealth = combatTarget === playerCreature && playerCreature.isInVent;
       const inCeilingStealth = combatTarget === playerCreature && playerCreature.isCeilingProwling;
-      const biologicalTargetDetectable = (currentStageIndex !== 3 ||
+      const playerHiddenByCycle = combatTarget === playerCreature && (playerCreature.isBiologicalTransition || playerCreature.mesh?.visible === false);
+      let biologicalTargetDetectable = !playerHiddenByCycle && (combatTarget !== playerCreature || currentStageIndex !== 1) && (currentStageIndex !== 3 ||
         currentStageStep === 'HUNT_FAUNA' ||
-        currentStageStep === 'CHRYSALIS') && !inVentStealth && !inCeilingStealth;
+        currentStageStep === 'CHRYSALIS' || currentStageStep === 'EMERGING') && !inVentStealth && !inCeilingStealth;
 
       // Chantier 92 : Escarmouche Inter-Factions si le prédateur est hors de portée ou furtif
-      if (isCombatant && (!hasLineOfSight || distToPlayer > 18 || inVentStealth || inCeilingStealth || currentStageIndex === 1)) {
+      if (isCombatant && (!hasLineOfSight || !this.canObserveThreat(combatTarget) || distToPlayer > 18 || inVentStealth || inCeilingStealth || currentStageIndex === 1)) {
         const nearbyHostile = (window.gameInstance?.humans || []).find((other) => (
           other !== this && !other.isIncapacitated && !other.isCocooned && this.isFactionHostile(other) &&
           Math.hypot(other.x - this.x, other.z - this.z) <= 16 &&
-          stationMap.hasLineOfSight(this.x, this.z, other.x, other.z)
+          this.canObserveThreat(other)
         ));
         if (nearbyHostile) {
           combatTarget = nearbyHostile;
           distToPlayer = Math.hypot(combatTarget.x - this.x, combatTarget.z - this.z);
           hasLineOfSight = true;
           isEngagingHostileFaction = true;
+          biologicalTargetDetectable = true;
         }
       }
 
@@ -28771,7 +30339,7 @@
       if (this.radioAlertCooldown > 0) this.radioAlertCooldown -= safeDelta;
       // Chantier 104 : Cécité Doppler du Détecteur M314 par Immobilité Absolue & Masquage Eau (Aliens 1986 / Isolation)
       const isTargetDopplerStill = combatTarget === playerCreature && (playerCreature.isDopplerInvisible || (playerCreature.acousticMaskTimer && playerCreature.acousticMaskTimer > 0));
-      if (biologicalTargetDetectable && !isTargetDopplerStill && distToPlayer < 24 && this.motionPingCooldown <= 0) {
+      if (isCombatant && biologicalTargetDetectable && !isTargetDopplerStill && distToPlayer < 24 && this.motionPingCooldown <= 0) {
         if (this.type !== 'scientist' && this.type !== 'labhound' && this.type !== 'labrodent') {
           audioManager.playMotionTrackerPing(distToPlayer);
         }
@@ -28787,14 +30355,14 @@
       }
 
       // Canon 1:1 Lore — Directive 937 : Les synthétiques protègent le spécimen biologique au détriment de l'équipage
-      if (isCombatant && ['synthetic', 'android'].includes(this.type) && hasLineOfSight && distToPlayer <= 16 && !this.saidOrder937) {
+      if (isCombatant && ['synthetic', 'android'].includes(this.type) && this.canObserveThreat(combatTarget) && distToPlayer <= 16 && !this.saidOrder937) {
         this.saidOrder937 = true;
         showToast(`${this.name} : [ORDRE SPÉCIAL 937] Confinement de l'organisme engagé. Équipage sacrifiable.`);
         appendSensorLog(`[SYNTHÉTIQUE] ${this.name} applique la Directive 937 : la préservation du spécimen surpasse toute vie humaine.`, 'alert');
       }
 
       // Canon 1:1 Lore — Steel Team Weyland-Yutani (Marvel Comics: Alien: Icarus)
-      if (isCombatant && ['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type) && hasLineOfSight && distToPlayer <= 16 && !this.saidSteelTeamDirective) {
+      if (isCombatant && ['weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid'].includes(this.type) && this.canObserveThreat(combatTarget) && distToPlayer <= 16 && !this.saidSteelTeamDirective) {
         this.saidSteelTeamDirective = true;
         showToast(`${this.name} : [STEEL TEAM WEYLAND-YUTANI] Unité synthétique d'élite engagée.`);
         appendSensorLog(`[STEEL TEAM] ${this.name} déploie les lames thermiques et armes à concussion. Priorité capture génétique.`, 'alert');
@@ -28803,31 +30371,9 @@
       const inDarkness = (rendererEngine?.powerSabotagedTimer || 0) > 0;
       this.ensureFlashlight(inDarkness && isCombatant);
 
-      let targetInVisualField = true;
-      if (inDarkness) {
-        // Dans le noir complet, l'humain ne peut voir le prédateur que s'il est très proche (≤ 3.2m)
-        // ou s'il est éclairé dans le cône de sa lampe torche portée à l'épaule (~45 degrés, ≤ 14m)
-        if (distToPlayer > 3.2) {
-          const facingAngle = this.mesh ? this.mesh.rotation.y : 0;
-          const toTargetAngle = Math.atan2(combatTarget.x - this.x, combatTarget.z - this.z);
-          let diffAngle = Math.abs(facingAngle - toTargetAngle);
-          while (diffAngle > Math.PI) diffAngle = Math.abs(diffAngle - Math.PI * 2);
-          const inFlashlightCone = diffAngle <= Math.PI / 4 && distToPlayer <= 14;
-          if (!inFlashlightCone) {
-            targetInVisualField = false;
-          }
-        }
-      }
-
-      // Chantier 73 : Capteur mono-optique Weyland-Yutani du Cyber-Hound (ignore brume et pénombre)
-      if (this.isCyberHound) {
-        targetInVisualField = true;
-      } else if (combatTarget === playerCreature && playerCreature.isWallMimic) {
-        // Chantier 80 : Posture de Mimétisme Biologique de Résine (98% d'invisibilité optique)
-        if (distToPlayer > 1.4) {
-          targetInVisualField = false;
-        }
-      }
+      // Observation requires a clear sight line in both bright and dark rooms.
+      // Tracking equipment may still ping through a wall; a ping is not sight.
+      const targetInVisualField = this.canObserveThreat(combatTarget);
 
       // Lures have narrative priority. Otherwise armed humans investigate and
       // pursue a detected biological target while civilians keep patrolling.
@@ -28850,17 +30396,20 @@
           const scream = civilianScreams[Math.floor(Math.random() * civilianScreams.length)];
           window.HiveSystems?.vfx?.floatingText?.(this.x, 2.7, this.z, scream, '#f87171', true);
         }
-        const panicAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
-        const fleeStepX = this.x + Math.cos(panicAngle) * 4.8;
-        const fleeStepZ = this.z + Math.sin(panicAngle) * 4.8;
-        if (!stationMap.checkCollision(fleeStepX, fleeStepZ)) {
-          this.targetPos = { x: fleeStepX, z: fleeStepZ };
-          this.aiState = 'FLEE';
-        }
+        if (this.aiState !== 'FLEE' || !this.navigationGoal || this.navigationRepathTimer <= 0) this.fleeFrom(combatTarget.x, combatTarget.z);
       }
       if (!this.isLured && isCombatant && biologicalTargetDetectable && targetInVisualField && distToPlayer <= maxDetectionDist) {
-        this.aiState = hasLineOfSight && distToPlayer <= attackRangeDist ? 'ATTACK' : 'CHASE';
-        this.targetPos = { x: combatTarget.x, z: combatTarget.z };
+        this.rememberThreat(combatTarget);
+        const holdAttack = this.aiState === 'ATTACK' && distToPlayer <= attackRangeDist + 1.5;
+        this.aiState = distToPlayer <= attackRangeDist || holdAttack ? 'ATTACK' : 'CHASE';
+        const approachRange = this.isCyberHound ? 2.1 : (['powerloader', 'exosuit'].includes(this.type) ? 3.5 : attackRangeDist + 1.5);
+        if (this.aiState === 'CHASE' || distToPlayer > approachRange) this.planNavigation(combatTarget.x, combatTarget.z);
+        else {
+          if (!this.navigationGoal) this.targetPos = { x: this.x, z: this.z };
+          const angle = Math.atan2(combatTarget.x - this.x, combatTarget.z - this.z);
+          const turn = Math.atan2(Math.sin(angle - this.mesh.rotation.y), Math.cos(angle - this.mesh.rotation.y));
+          this.mesh.rotation.y += turn * Math.min(1, safeDelta * 7);
+        }
 
         // Chantier 73 : Aboiement d'alerte et morsure de blocage au tendon du Cyber-Hound
         if (this.isCyberHound) {
@@ -28870,9 +30419,8 @@
             audioManager.playCyberHoundBark?.(this.x, this.z);
             window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'ABOIEMENT SYNTHÉTIQUE D’ALERTE !', '#ef4444', true);
             (window.gameInstance?.humans || []).forEach((ally) => {
-              if (ally !== this && !ally.isIncapacitated && !ally.isCocooned && Math.hypot(ally.x - this.x, ally.z - this.z) <= 35) {
-                ally.aiState = 'CHASE';
-                ally.targetPos = { x: combatTarget.x, z: combatTarget.z };
+              if (ally !== this && !ally.isIncapacitated && !ally.isCocooned && !this.isFactionHostile(ally) && !ally.isFactionHostile?.(this) && Math.hypot(ally.x - this.x, ally.z - this.z) <= 35) {
+                ally.receiveThreatReport?.(combatTarget.x, combatTarget.z, combatTarget);
               }
             });
           }
@@ -28913,13 +30461,12 @@
 
             // Portée d'alerte étouffée : seuls les alliés directs à proximité (< 6.5m) entendent les cris
             const nearbyAllies = (window.gameInstance?.humans || []).filter((h) => (
-              h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
+              h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured && !this.isFactionHostile(h) && !h.isFactionHostile?.(this) &&
               Math.hypot(h.x - this.x, h.z - this.z) <= 6.5
             ));
             nearbyAllies.forEach((ally) => {
               if (ally.aiState === 'PATROL') {
-                ally.aiState = 'CHASE';
-                ally.targetPos = { x: combatTarget.x, z: combatTarget.z };
+                ally.receiveThreatReport?.(combatTarget.x, combatTarget.z, combatTarget);
                 window.HiveSystems?.vfx?.floatingText?.(ally.x, 2.6, ally.z, 'APPEL VOCAL DIRECT !', '#cbd5e1', false);
               }
             });
@@ -28954,14 +30501,13 @@
             }
 
             const allies = (window.gameInstance?.humans || []).filter((h) => (
-              h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
+              h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured && !this.isFactionHostile(h) && !h.isFactionHostile?.(this) &&
               ['guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator', 'commando', 'android', 'synthetic', 'weyland_cyber_hound'].includes(h.type) &&
               Math.hypot(h.x - this.x, h.z - this.z) <= 35
             ));
             allies.forEach((ally) => {
               if (ally.aiState === 'PATROL') {
-                ally.aiState = 'CHASE';
-                ally.targetPos = { x: combatTarget.x, z: combatTarget.z };
+                ally.receiveThreatReport?.(combatTarget.x, combatTarget.z, combatTarget);
                 window.HiveSystems?.vfx?.floatingText?.(ally.x, 2.6, ally.z, radioBark, barkColor, false);
               }
             });
@@ -28975,7 +30521,8 @@
           const backX = this.x + Math.cos(retreatAngle) * 3.5;
           const backZ = this.z + Math.sin(retreatAngle) * 3.5;
           if (!stationMap.checkCollision(backX, backZ)) {
-            this.targetPos = { x: backX, z: backZ };
+            this.aiState = 'REPOSITION';
+            this.planNavigation(backX, backZ);
           }
         }
 
@@ -28993,7 +30540,8 @@
               window.HiveSystems?.vfx?.floatingText?.(this.x, 2.5, this.z, '+45 PV STIMULANT', '#22c55e', true);
               showToast(`${this.name} s'est injecté un stimulant hypospray (+45 PV) !`);
             } else if (distToPlayer > 6.0) {
-              this.targetPos = { x: availableMed.x, z: availableMed.z };
+              this.aiState = 'REPOSITION';
+              this.planNavigation(availableMed.x, availableMed.z);
             }
           }
         }
@@ -29009,7 +30557,10 @@
             }
           }
         }
-      } else if (!this.isLured && (this.aiState === 'CHASE' || this.aiState === 'ATTACK')) {
+      } else if (!this.isLured && isCombatant && this.lastKnownThreat) {
+        this.aiState = 'SEARCH';
+        this.planNavigation(this.lastKnownThreat.x, this.lastKnownThreat.z);
+      } else if (!this.isLured && ['CHASE', 'ATTACK', 'SEARCH', 'REPOSITION'].includes(this.aiState)) {
         this.choosePatrolWaypoint();
       }
 
@@ -29017,7 +30568,9 @@
       if (!isSyntheticEntity && this.type !== 'labrodent') {
         let stressDelta = -3.5 * safeDelta;
         if (inDarkness) stressDelta += 6.5 * safeDelta;
-        if (distToPlayer < 14) stressDelta += (1 - distToPlayer / 14) * 28 * safeDelta;
+        const knownDistance = targetInVisualField ? distToPlayer : (this.lastKnownThreat
+          ? Math.hypot(this.lastKnownThreat.x - this.x, this.lastKnownThreat.z - this.z) : Infinity);
+        if (knownDistance < 14) stressDelta += (1 - knownDistance / 14) * 28 * safeDelta;
         if (this.hp < this.maxHp * 0.45) stressDelta += 14 * safeDelta;
 
         this.stress = Math.max(0, Math.min(100, (this.stress || 0) + stressDelta));
@@ -29153,21 +30706,22 @@
             window.HiveSystems?.vfx?.ring?.(targetDroneX, targetDroneZ, 0x06b6d4, 6.0);
 
             const distDroneToPlayer = Math.hypot(playerCreature.x - targetDroneX, playerCreature.z - targetDroneZ);
-            if (distDroneToPlayer <= 7.5) {
+            if (distDroneToPlayer <= 7.5 && stationMap.hasLineOfSight(targetDroneX, targetDroneZ, playerCreature.x, playerCreature.z)) {
               if (playerCreature.isCamouflaged) {
                 playerCreature.isCamouflaged = false;
                 playerCreature.camouflageCooldown = 4.0;
                 window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 3.2, playerCreature.z, 'CAMOUFLAGE DÉTECTÉ PAR SCAN DRONE !', '#06b6d4', true);
                 audioManager.playRadioAlertBeep?.();
               }
-              this.aiState = 'ATTACK';
-              this.targetPos = { x: playerCreature.x, z: playerCreature.z };
+              this.rememberThreat(playerCreature, 'scanner');
+              this.aiState = 'SEARCH';
+              this.planNavigation(playerCreature.x, playerCreature.z);
             }
           }
 
           this.droneEmpCooldown = (this.droneEmpCooldown || 0) - safeDelta;
           const distDroneToPlayer = Math.hypot(playerCreature.x - targetDroneX, playerCreature.z - targetDroneZ);
-          if (distDroneToPlayer <= 6.0 && this.droneEmpCooldown <= 0) {
+          if (distDroneToPlayer <= 6.0 && this.droneEmpCooldown <= 0 && stationMap.hasLineOfSight(targetDroneX, targetDroneZ, playerCreature.x, playerCreature.z)) {
             this.droneEmpCooldown = 14.0;
             audioManager.playDroneEmpBurst?.(targetDroneX, targetDroneZ);
             rendererEngine.addScreenShake?.(0.25, 0.2);
@@ -29707,7 +31261,9 @@
             // Chantier 213 & Audit QA #59 : Médecin de Combat USCM & Pistolet de Service M4A3 / Hypospray
             this.medicHealCooldown = (this.medicHealCooldown || 0) - safeDelta;
             const humans = window.gameInstance?.humans || [];
-            const injuredAlly = (this.medicHealCooldown <= 0) && humans.find((h) => h !== this && !h.isIncapacitated && !h.isCocooned && (h.hp < h.maxHp * 0.6 || h.staggerTimer > 0) && Math.hypot(h.x - this.x, h.z - this.z) <= 6.5);
+            const injuredAlly = (this.medicHealCooldown <= 0) && humans.find((h) => h !== this && !h.isIncapacitated && !h.isCocooned &&
+              !h.ceilingActionOwner && !h.transportOwner && !h.disposalOwner && !h.isBeingDragged && !h.isRecoveringFromFacehugger && !h.isDisposed &&
+              (h.hp < h.maxHp * 0.6 || h.staggerTimer > 0) && Math.hypot(h.x - this.x, h.z - this.z) <= 6.5);
             if (injuredAlly) {
               this.medicHealCooldown = 5.0;
               this.shootCooldown = 1.6;
@@ -29851,10 +31407,12 @@
           }
       }
 
+      let movedThisTick = false;
       const dist = Math.hypot(this.targetPos.x - this.x, this.targetPos.z - this.z);
-      const holdMaxDist = this.type === 'powerloader' ? 3.5 : 12;
-      const shouldHoldAttackPosition = !this.isCyberHound && this.aiState === 'ATTACK' && hasLineOfSight && distToPlayer <= holdMaxDist;
-      if (dist > 0.5 && !shouldHoldAttackPosition) {
+      const holdMaxDist = this.isCyberHound ? 2.1 : (['powerloader', 'exosuit'].includes(this.type) ? 3.5 : attackRangeDist + 1.5);
+      const shouldHoldAttackPosition = this.aiState === 'ATTACK' && hasLineOfSight && distToPlayer <= holdMaxDist;
+      const followingNavigation = !!this.navigationGoal;
+      if (dist > (followingNavigation ? .001 : .5) && !shouldHoldAttackPosition) {
         const baseSpeed = this.isLured ? 0.12 : (this.type === 'powerloader' ? (this.aiState === 'ATTACK' ? 0.078 : 0.06) : (this.isCyberHound ? 0.16 : 0.08));
         const onResinSlow = (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0 && !['powerloader', 'exosuit', 'weyland_heavy_mech'].includes(this.type)) ? 0.75 : 1.0;
         const speed = baseSpeed * onResinSlow;
@@ -29871,29 +31429,33 @@
         const frameScale = safeDelta * 60;
         const directionX = (this.targetPos.x - this.x) / dist;
         const directionZ = (this.targetPos.z - this.z) / dist;
-        const nextX = this.x + directionX * speed * frameScale;
-        const nextZ = this.z + directionZ * speed * frameScale;
+        const distanceThisTick = followingNavigation ? Math.min(dist, speed * frameScale) : speed * frameScale;
+        const nextX = this.x + directionX * distanceThisTick;
+        const nextZ = this.z + directionZ * distanceThisTick;
+        const canMoveTo = (x, z) => !stationMap.checkCollision(x, z, followingNavigation ? .72 : 0) &&
+          (!followingNavigation || (stationMap.hasLineOfSight(this.x, this.z, x, z, .72) &&
+            stationMap.hasLineOfSight(x, z, this.targetPos.x, this.targetPos.z, .72)));
         let moved = false;
-        if (!stationMap.checkCollision(nextX, nextZ)) {
+        if (canMoveTo(nextX, nextZ)) {
           this.x = nextX; this.z = nextZ;
           moved = true;
         } else {
           // Axis sliding, then a perpendicular sidestep, keeps pursuit from
           // freezing against the station's rectangular colliders.
-          if (Math.abs(directionX) > 1e-4 && !stationMap.checkCollision(nextX, this.z)) {
+          if (Math.abs(directionX) > 1e-4 && canMoveTo(nextX, this.z)) {
             this.x = nextX;
             moved = true;
-          } else if (Math.abs(directionZ) > 1e-4 && !stationMap.checkCollision(this.x, nextZ)) {
+          } else if (Math.abs(directionZ) > 1e-4 && canMoveTo(this.x, nextZ)) {
             this.z = nextZ;
             moved = true;
           } else {
-            const sideX = -directionZ * speed * frameScale;
-            const sideZ = directionX * speed * frameScale;
-            if (!stationMap.checkCollision(this.x + sideX, this.z + sideZ)) {
+            const sideX = -directionZ * distanceThisTick;
+            const sideZ = directionX * distanceThisTick;
+            if (canMoveTo(this.x + sideX, this.z + sideZ)) {
               this.x += sideX;
               this.z += sideZ;
               moved = true;
-            } else if (!stationMap.checkCollision(this.x - sideX, this.z - sideZ)) {
+            } else if (canMoveTo(this.x - sideX, this.z - sideZ)) {
               this.x -= sideX;
               this.z -= sideZ;
               moved = true;
@@ -29913,9 +31475,12 @@
           }
         }
         if (moved) {
+          movedThisTick = true;
           this.stuckTimer = 0;
           this.mesh.position.set(this.x, 0, this.z);
-          this.mesh.rotation.y = Math.atan2(directionX, directionZ);
+          this.mesh.rotation.y = this.aiState === 'REPOSITION' && this.lastKnownThreat
+            ? Math.atan2(this.lastKnownThreat.x - this.x, this.lastKnownThreat.z - this.z)
+            : Math.atan2(directionX, directionZ);
           this.animationPhase += safeDelta * (this.type === 'labrodent' ? 17 : 8);
           this.footstepCooldown -= safeDelta;
           if (this.footstepCooldown <= 0 && this.type !== 'labrodent') {
@@ -29977,10 +31542,13 @@
       }
       animateProceduralModel(this.mesh, {
         phase: this.animationPhase,
-        movement: dist > 0.5 ? (this.type === 'labrodent' ? 1 : 0.78) : 0.06,
+        movement: movedThisTick ? (this.type === 'labrodent' ? 1 : 0.78) : 0,
         attack: this.attackAnimation,
         crouch: this.isInfected ? 0.18 : 0
       });
+      } finally {
+        this.updateImportedAnimation(safeDelta);
+      }
     }
   }
 
@@ -31068,8 +32636,16 @@
       this.implantProgress = 0;
       this.lastImplantPercent = -1;
       this.isRoyal = false;
+      this.attachedElapsed = 0;
+      this.postImplantPhase = null;
+      this.phaseElapsed = 0;
+      this.deadHusk = null;
+      this.recoveryRoute = null;
+      this.recoveryDestination = null;
     }
     init() {
+      this.ownerGame = window.gameInstance;
+      playerCreature.facehuggerVariant = 'standard';
       playerCreature.setForm('facehugger');
       alarmSystem.setLevel(1);
       this.isRoyal = window.gameInstance?.activeOrigin?.id === 'hive' || window.gameInstance?.activeOrigin?.id === 'juggernaut';
@@ -31103,6 +32679,15 @@
       window.HiveSystems?.setMission(2, 0, 'Approcher un hôte viable sans toucher les équipes de capture.');
     }
     updateHUD() {
+      if (this.postImplantPhase) {
+        const labels = { ATTACHED_HOLD: 'IMPLANTATION TERMINÉE — MAINTIEN', COLLAPSE: 'ÉVANOUISSEMENT DE L’HÔTE', HUSK_FALL: 'DÉTACHEMENT DU PARASITE', UNCONSCIOUS: 'HÔTE INCONSCIENT', WAKE: 'REPRISE DE CONSCIENCE', DISCOVER: 'DÉCOUVERTE DU CADAVRE', PANIC_FLEE: 'FUITE DE L’HÔTE', FADE_OUT: 'CHANGEMENT DE SECTEUR', RELOCATING: 'DÉPLACEMENT VERS UN SECTEUR ABRITÉ', FADE_IN: 'MÊME HÔTE — NOUVEAU SECTEUR' };
+        const label = labels[this.postImplantPhase] || 'CYCLE BIOLOGIQUE';
+        document.getElementById('bio-title').textContent = label;
+        document.getElementById('stage-instructions').textContent = 'Suivez le même hôte : le parasite se détache avant son réveil. La croissance reste interne.';
+        document.getElementById('action-buttons-container').innerHTML = `<button type="button" class="act-btn" disabled>${label}</button>`;
+        setHudBar('sec', 'IMPLANTATION ACHEVÉE', 100);
+        return;
+      }
       document.getElementById('stage-badge').textContent = 'PHASE 2 : FACEHUGGER (ACTION RÉELLE)';
       document.getElementById('bio-title').textContent = 'STATUT DU FACEHUGGER — RECHERCHE D\'HÔTE';
       setHudBar(
@@ -31124,14 +32709,14 @@
         ? '<strong>Lutte :</strong><br><br>• Le parasite est replié sur le visage et sa queue verrouille la nuque.<br>• Pressez Espace ou le bouton pour resserrer l’étreinte.<br>• Maintenez l’agrippement jusqu’à implantation complète.'
         : (this.isBonding
           ? '<strong>Bond en cours :</strong><br><br>• Trajectoire verrouillée sur le visage de l’hôte.'
-          : `<strong>Choix d’hôte :</strong><br><br>• Imani Kade produit un Drone polyvalent.<br>• L’animal de service produit un Runner quadrupède.<br>• Un commando blindé produit un Warrior.<br>• Masque d’Aster Rho : ${maskStatus}. Chaque bond arrache une attache avant toute implantation.<br>• Déplacez-vous puis bondissez à courte portée.`);
+          : `<strong>Choix d’hôte :</strong><br><br>• Un hôte humain permet le développement d’un Drone.<br>• L’animal de service produit un Runner quadrupède.<br>• L’équipement militaire n’est pas un caractère génétique.<br>• Masque d’Aster Rho : ${maskStatus}. Chaque bond arrache une attache avant toute implantation.<br>• Déplacez-vous puis bondissez à courte portée.`);
       const actionsContainer = document.getElementById('action-buttons-container');
       actionsContainer.innerHTML = this.isAttacking
         ? `<button type="button" id="btn-action-leap" class="act-btn" style="border-color: #f59e0b;">RESSERRER L’ÉTREINTE — ${Math.round(this.implantProgress)}% [ESPACE]</button>`
         : `
           <button type="button" id="btn-action-leap" class="act-btn" ${this.isBonding ? 'disabled' : ''} style="border-color: #39ff14;">${this.isBonding ? 'BOND EN COURS…' : 'BONDIR SUR LE VISAGE [ESPACE]'}</button>
           <button type="button" id="btn-thermal-vision" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.15);"><span class="key-badge">I</span>VISION THERMIQUE</button>
-          ${!this.isRoyal ? '<button type="button" id="btn-royal-mutate" class="act-btn" style="border-color: #9333ea; background: rgba(147,51,234,0.18);"><span class="key-badge">R</span>MUTATION ROYALE (Alien 3)</button>' : '<button type="button" class="act-btn" disabled style="border-color: #a855f7; color: #c084fc;">FACEHUGGER ROYAL ACTIF</button>'}
+          ${this.isRoyal ? '<button type="button" class="act-btn" disabled style="border-color: #a855f7; color: #c084fc;">VARIANTE ROYALE — LIGNÉE DE CAMPAGNE</button>' : ''}
         `;
       document.getElementById('btn-action-leap').onclick = () => this.isAttacking ? this.tightenGrip() : this.attemptLeap();
       const btnThermal = document.getElementById('btn-thermal-vision');
@@ -31141,31 +32726,29 @@
     }
 
     applyRoyalMutation(silent = false) {
+      const origin = window.gameInstance?.activeOrigin?.id;
+      if (!['hive', 'juggernaut'].includes(origin) || playerCreature.form !== 'facehugger' || this.postImplantPhase || this.isBonding || this.isAttacking) return false;
+      if (this.isRoyal && playerCreature.facehuggerVariant === 'royal' && playerCreature.mesh && playerCreature.detailedModel) return true;
       this.isRoyal = true;
+      playerCreature.facehuggerVariant = 'royal';
       playerCreature.maxHealth = 220;
       playerCreature.health = 220;
-      if (playerCreature.mesh) {
-        rendererEngine.removeObject(playerCreature.mesh);
-      }
-      const royalModel = window.HiveModelFactory?.createRoyalFacehugger?.();
-      if (royalModel) {
-        playerCreature.mesh = royalModel;
-        playerCreature.mesh.position.set(playerCreature.x, 0.35, playerCreature.z);
-        rendererEngine.scene.add(playerCreature.mesh);
-      }
+      playerCreature.createMesh();
       if (!silent) {
         audioManager.playXenoRoar?.();
         audioManager.playAcidSizzle?.();
         window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0x9333ea, 26, 0.16, 1.4);
         window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0xa855f7, 3.2);
-        showToast('MUTATION FACEHUGGER ROYAL (Alien 3) : Palmures chitineuses blindées, portée de bond +35% et inoculation embryonnaire Royale !');
-        appendSensorLog('[MUTATION ROYALE] Facehugger surdéveloppé à palmures d\'acier. Porteur de l\'embryon Prétorien/Reine.', 'bio');
+        showToast('VARIANTE ROYALE : lignée spécialisée de cette campagne, distincte du cycle commun.');
+        appendSensorLog('[LIGNÉE ROYALE] Variante de campagne ; ni blindage universel ni double implantation automatique.', 'bio');
       }
       this.updateHUD();
+      return true;
     }
     // Chantier 117 : Chute Verticale Directe du Facehugger depuis la Bouche de Ventilation (Alien 1979 / Isolation)
     executeVentDropAmbush(target) {
-      if (!target || target.isIncapacitated || target.isCocooned) return;
+      if (!target || target.isIncapacitated || target.isCocooned || target.isInfected || target.usedAsHost || target.hostEligibility === 'none' || this.postImplantPhase || this.isCompleted) return;
+      if (!stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, target.x, target.z, .12)) return;
       playerCreature.isInVent = false;
       playerCreature.currentVent = null;
       playerCreature.x = target.x;
@@ -31189,7 +32772,10 @@
         this.updateHUD();
       } else {
         this.targetHost = target;
+        this.configureHostLineage(target);
         this.isAttacking = playerCreature.attachToFace(target);
+        this.attachedElapsed = 0;
+        if (this.isAttacking) this.poseAttachedHost(0);
         this.implantProgress = this.isAttacking ? 25 : 0;
         audioManager.playFacehuggerGrip?.(target.x, target.z);
         window.HiveSystems?.vfx?.burst(target.x, target.z, 0xd97706, 20, 0.12, 2.4);
@@ -31199,12 +32785,12 @@
     }
 
     attemptLeap() {
-      if (this.isAttacking || this.isBonding || this.isCompleted) return;
+      if (this.isAttacking || this.isBonding || this.isCompleted || this.postImplantPhase) return;
       const humans = window.gameInstance ? window.gameInstance.humans : [];
       let closestHost = null;
       let closestDistance = Infinity;
       for (const human of humans) {
-        if (human.isInfected || human.isCocooned || human.hostEligibility === 'none' || human.usedAsHost) continue;
+        if (human.isInfected || human.isCocooned || human.isIncapacitated || human.hostEligibility === 'none' || human.usedAsHost) continue;
         const distance = Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z);
         if (distance < closestDistance) {
           closestHost = human;
@@ -31291,19 +32877,6 @@
       }
 
       this.targetHost = closestHost;
-      if (window.gameInstance) {
-        window.gameInstance.hostProfile = closestHost.type;
-        const armoredHostTypes = ['commando', 'smartgunner', 'gyro', 'marine', 'heavy', 'guard', 'uscm_sniper', 'weyland_commando_mk2', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic', 'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander', 'uscm_breacher_shotgun', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_smartgun_flamer'];
-        let adultCaste = closestHost.type === 'labhound'
-          ? 'runner'
-          : (armoredHostTypes.includes(closestHost.type) ? 'warrior' : 'drone');
-        if (this.isRoyal) {
-          adultCaste = 'praetorian';
-          window.gameInstance.hostProfile = 'royal_host';
-          appendSensorLog(`[LIGNÉE ROYALE] Embryon royal inoculé dans ${closestHost.name} : émergence garantie d'un Prétorien de la Ruche !`, 'bio');
-        }
-        playerCreature.setAdultCaste(adultCaste);
-      }
       this.isBonding = true;
       this.implantProgress = 0;
       audioManager.playFacehuggerLeap();
@@ -31312,6 +32885,9 @@
         if (this.isCompleted || this.targetHost !== closestHost) return;
         this.isBonding = false;
         this.isAttacking = playerCreature.attachToFace(closestHost);
+        if (this.isAttacking) this.configureHostLineage(closestHost);
+        this.attachedElapsed = 0;
+        if (this.isAttacking) this.poseAttachedHost(0);
         this.implantProgress = this.isAttacking ? 15 : 0;
         audioManager.playFacehuggerGrip?.(closestHost.x, closestHost.z);
         window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0xd97706, 16, 0.11, 2.4);
@@ -31324,8 +32900,16 @@
       });
     }
 
+    configureHostLineage(host) {
+      if (!host || host.isIncapacitated || host.usedAsHost || host.isSynthetic?.() || host.hostEligibility !== 'viable' || host.maskAttachments > 0) return false;
+      const adultCaste = this.isRoyal ? 'praetorian' : (host.type === 'labhound' ? 'runner' : 'drone');
+      if (!playerCreature.setAdultCaste(adultCaste)) return false;
+      if (window.gameInstance) window.gameInstance.hostProfile = this.isRoyal ? 'royal_host' : host.type;
+      return true;
+    }
+
     tightenGrip() {
-      if (!this.isAttacking || this.isCompleted) return;
+      if (!this.isAttacking || this.isCompleted || this.postImplantPhase) return;
       const gripPower = this.isRoyal ? 24 : 14;
       this.implantProgress = Math.min(100, this.implantProgress + gripPower);
       audioManager.playHeartbeat(1.2);
@@ -31334,29 +32918,299 @@
     }
 
     finishImplantationIfReady() {
-      if (this.implantProgress < 100 || this.isCompleted || !this.targetHost) return;
+      if (this.implantProgress < 100 || this.attachedElapsed < 2 || this.isCompleted || this.postImplantPhase || !this.targetHost?.mesh) return false;
       this.targetHost.isInfected = true;
       this.targetHost.infectionState = 'RECOVERING';
       this.targetHost.usedAsHost = true;
-      this.targetHost.isRestrained = false;
+      this.targetHost.isRestrained = true;
+      this.targetHost.isRecoveringFromFacehugger = true;
+      playerCreature.isBiologicalTransition = true;
+      this.isAttacking = false;
+      playerCreature.moveTarget = null;
+      playerCreature.moveWaypoints = [];
       window.gameInstance?.syncCampaignCharacter?.(this.targetHost, { alive: true });
-      playerCreature.detachFromHost({ releaseHost: true, hide: true });
+      this.setRecoveryPhase('ATTACHED_HOLD');
+      return true;
+    }
 
-      // Canon 1:1 Lore — Le Facehugger se détache, meurt et son cadavre desséché reste au sol (Alien 1979 / Medlab)
-      const deadHusk = window.HiveModelFactory?.createDeadFacehuggerHusk?.();
-      if (deadHusk) {
-        deadHusk.position.set(this.targetHost.x + 0.7, 0.04, this.targetHost.z + 0.5);
-        rendererEngine.propsGroup.add(deadHusk);
+    setRecoveryPhase(phase) {
+      this.postImplantPhase = phase;
+      this.phaseElapsed = 0;
+      (this.recoveryPhases ||= []).push(phase);
+      this.updateHUD();
+    }
+
+    poseAttachedHost(delta) {
+      const game = window.gameInstance, host = this.targetHost;
+      if (!host?.mesh || host.isIncapacitated || game?.isSystemPaused ||
+        (this.ownerGame && (game !== this.ownerGame || game.currentStage !== this))) return false;
+      host.isRecoveringFromFacehugger = true;
+      host.isRestrained = true;
+      this.attachedPoseTime = (this.attachedPoseTime || 0) + delta;
+      const phase = this.attachedPoseTime, model = getAnimationModel(host.mesh), library = window.HiveAssetLibrary;
+      if (!model || !library?.handlesRoot?.(model)) {
+        animateProceduralModel(host.mesh, { phase: phase * 6, attack: .65 + Math.sin(phase * 5) * .12, crouch: .22 });
+        return true;
       }
+      // The imported pack has no removal/struggle clip. Sample its authored
+      // idle, then own an explicit two-arm defensive overlay rather than
+      // silently falling back from the generic "attack" state to idle.
+      library.setState(model, { frozen: false, movement: 0, attack: 0, dead: false, folded: false });
+      library.updateModel(model, delta);
+      const runtime = library.getRuntime?.(model);
+      if (!runtime?.bindings) return false;
+      for (const pose of runtime.bindPose || []) {
+        if (/^(left|right)(UpperArm|ForeArm|Hand)$/.test(pose.key) || pose.key === 'spine' || pose.key === 'neck' || pose.key === 'head') {
+          pose.bone.quaternion.copy(pose.quaternion);pose.bone.position.copy(pose.position);
+        }
+      }
+      host.mesh.updateMatrixWorld(true);
+      const actorQ = host.mesh.getWorldQuaternion(new THREE.Quaternion());
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(actorQ), forward = new THREE.Vector3(0, 0, 1).applyQuaternion(actorQ);
+      const face = host.faceAnchor?.getWorldPosition(new THREE.Vector3()) || runtime.bindings.head?.getWorldPosition(new THREE.Vector3());
+      if (!face) return false;
+      const align = (bone, child, target) => {
+        const origin = bone.getWorldPosition(new THREE.Vector3());
+        const from = child.getWorldPosition(new THREE.Vector3()).sub(origin), to = target.clone().sub(origin);
+        if (from.lengthSq() < 1e-8 || to.lengthSq() < 1e-8) return;
+        const world = new THREE.Quaternion().setFromUnitVectors(from.normalize(), to.normalize()).multiply(bone.getWorldQuaternion(new THREE.Quaternion()));
+        bone.quaternion.copy(bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(world));
+        host.mesh.updateMatrixWorld(true);
+      };
+      for (const [side, fallbackSign] of [['left', -1], ['right', 1]]) {
+        const upper = runtime.bindings[side + 'UpperArm'], elbow = runtime.bindings[side + 'ForeArm'], hand = runtime.bindings[side + 'Hand'];
+        if (!upper || !elbow || !hand) continue;
+        const shoulder = upper.getWorldPosition(new THREE.Vector3()), joint = elbow.getWorldPosition(new THREE.Vector3()), wrist = hand.getWorldPosition(new THREE.Vector3());
+        const sign = Math.sign(shoulder.clone().sub(face).dot(right)) || fallbackSign;
+        const a = shoulder.distanceTo(joint), b = joint.distanceTo(wrist);
+        if (a < .001 || b < .001) continue;
+        const pull = .5 + .5 * Math.sin(phase * 5.4 + (sign < 0 ? 0 : Math.PI));
+        const target = face.clone().addScaledVector(right, sign * ((this.isRoyal ? .76 : .58) + pull * .08))
+          .addScaledVector(forward, .12 + pull * .10).add(new THREE.Vector3(0, -.07 - pull * .09, 0));
+        const direction = target.clone().sub(shoulder), distance = Math.max(Math.abs(a - b) + .002, Math.min(a + b - .002, direction.length()));
+        direction.normalize();target.copy(shoulder).addScaledVector(direction, distance);
+        const pole = right.clone().multiplyScalar(sign).add(new THREE.Vector3(0, -.55, 0));
+        pole.addScaledVector(direction, -pole.dot(direction)).normalize();
+        const along = (a * a + distance * distance - b * b) / (2 * distance), bend = Math.sqrt(Math.max(0, a * a - along * along));
+        const elbowTarget = shoulder.clone().addScaledVector(direction, along).addScaledVector(pole, bend);
+        align(upper, elbow, elbowTarget);align(elbow, hand, target);
+      }
+      // Global asset updates and HumanAI must not overwrite this owned pose.
+      library.setState(model, { frozen: true });
+      return true;
+    }
 
-      this.isCompleted = true;
-      window.HiveSystems?.updateObjective(2, 2);
-      window.HiveSystems?.narrative('PALIMPSESTE', 'Organisme implanté. Les protocoles humains passent en quarantaine totale.');
-      if (window.gameInstance) window.gameInstance.advanceStage(this);
-      audioManager.playAcidSizzle();
+    poseRecoveringHost(delta, standing, effort = 0) {
+      const host = this.targetHost;
+      if (!host?.mesh) return;
+      const model = getAnimationModel(host.mesh);
+      const library = window.HiveAssetLibrary;
+      if (model && library?.handlesRoot?.(model)) {
+        library.setState(model, { movement: 0, attack: 0, dead: false, folded: false, frozen: false });
+        library.updateModel(model, delta);
+        const runtime = library.getRuntime?.(model);
+        for (const [key, angle] of [['leftThigh', .8 * effort], ['rightThigh', .8 * effort], ['leftShin', -1.05 * effort], ['rightShin', -1.05 * effort], ['spine', -.22 * effort], ['leftUpperArm', -.52 * effort], ['rightUpperArm', -.52 * effort]]) {
+          const pose = runtime?.bindPose?.find((entry) => entry.key === key);
+          if (pose?.bone && pose.x) pose.bone.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(pose.x, angle));
+        }
+        // The global asset tick must not overwrite this stage-owned recovery pose.
+        library.setState(model, { frozen: true });
+      } else animateProceduralModel(host.mesh, { phase: this.phaseElapsed * 2, movement: 0, crouch: effort, attack: .2 * effort });
+      host.mesh.rotation.z = -(Math.PI / 2) * (1 - standing);
+      host.mesh.position.set(host.x, 0, host.z);
+      host.mesh.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(host.mesh);
+      if (Number.isFinite(bounds.min.y)) host.mesh.position.y += .035 - bounds.min.y;
+    }
+
+    releaseRecoveryPose() {
+      const host = this.targetHost;
+      if (!host) return;
+      host.isRecoveringFromFacehugger = false;
+      host.isRestrained = false;
+      host.mesh?.rotation.set(0, host.mesh.rotation.y, 0);
+      if (host.mesh) host.mesh.position.set(host.x, 0, host.z);
+      const model = getAnimationModel(host.mesh);
+      if (model) window.HiveAssetLibrary?.setState?.(model, { frozen: false, movement: 0, attack: 0, dead: false });
+    }
+
+    beginHuskFall() {
+      const host = this.targetHost;
+      const start = new THREE.Vector3(host.x, .8, host.z);
+      host.faceAnchor?.getWorldPosition(start);
+      playerCreature.detachFromHost({ releaseHost: false, hide: true });
+      host.isRestrained = true;
+      this.deadHusk = window.HiveModelFactory?.createDeadFacehuggerHusk?.() || null;
+      if (this.deadHusk) {
+        this.deadHusk.position.copy(start);
+        rendererEngine.propsGroup.add(this.deadHusk);
+        (this.ownerGame.biologicalRemains ||= new Set()).add(this.deadHusk);
+      }
+      this.huskStart = start;
+      this.huskEnd = { x: host.x, z: host.z };
+      for (let i = 0; i < 12; i++) {
+        const angle = i * Math.PI / 6;
+        const x = host.x + Math.cos(angle) * .9, z = host.z + Math.sin(angle) * .9;
+        if (!stationMap.checkCollision(x, z, .12)) { this.huskEnd = { x, z }; break; }
+      }
+      audioManager.playWetImpact?.(host.x, host.z);
+    }
+
+    findRecoveryDestination() {
+      const host = this.targetHost;
+      const candidates = [...(stationMap.recoveryRoomAnchors || [])];
+      candidates.sort((a, b) => Math.hypot(a.x - host.x, a.z - host.z) - Math.hypot(b.x - host.x, b.z - host.z));
+      const nearest = candidates.filter((point) => point.sector).sort((a, b) => Math.hypot(a.x - host.x, a.z - host.z) - Math.hypot(b.x - host.x, b.z - host.z))[0];
+      const hasOtherSector = nearest && candidates.some((point) => point.sector && point.sector !== nearest.sector);
+      this.recoveryOriginSector ||= nearest?.sector || null;
+      if (!candidates.length) for (const radius of [16, 24, 32]) for (let i = 0; i < 12; i++) {
+        candidates.push({ id: 'reachable-shelter', x: host.x + Math.cos(i * Math.PI / 6) * radius, z: host.z + Math.sin(i * Math.PI / 6) * radius });
+      }
+      let fallback = null;
+      for (const candidate of candidates) {
+        if (this.failedRecoveryDestinations?.has(candidate.id)) continue;
+        if (hasOtherSector && candidate.sector === this.recoveryOriginSector) continue;
+        if (!Number.isFinite(candidate.x) || !Number.isFinite(candidate.z) || Math.hypot(candidate.x - host.x, candidate.z - host.z) < 8 || stationMap.checkCollision(candidate.x, candidate.z, .45)) continue;
+        const route = stationMap.findPath(host.x, host.z, candidate.x, candidate.z, { padding: .45 });
+        const end = route.at(-1);
+        if (!end || Math.hypot(end.x - candidate.x, end.z - candidate.z) > 1.5) continue;
+        const result = { destination: candidate, route };
+        if (!stationMap.hasLineOfSight(host.x, host.z, candidate.x, candidate.z, .45)) return result;
+        fallback ||= result;
+      }
+      return fallback;
+    }
+
+    moveRecoveryRoute(delta) {
+      const host = this.targetHost;
+      this.recoveryRepathCooldown = Math.max(0, (this.recoveryRepathCooldown || 0) - delta);
+      while (this.recoveryRoute?.length && Math.hypot(this.recoveryRoute[0].x - host.x, this.recoveryRoute[0].z - host.z) < .16) this.recoveryRoute.shift();
+      const next = this.recoveryRoute?.[0];
+      if (!next) {
+        if (Math.hypot(this.recoveryDestination.x - host.x, this.recoveryDestination.z - host.z) <= .8) return true;
+        if (this.recoveryRepathCooldown <= 0) {
+          this.recoveryRepathCooldown = .8;
+          this.recoveryRoute = stationMap.findPath(host.x, host.z, this.recoveryDestination.x, this.recoveryDestination.z, { padding: .45 });
+        }
+        return false;
+      }
+      const distance = Math.hypot(next.x - host.x, next.z - host.z);
+      const step = Math.min(distance, 4.2 * delta);
+      const x = host.x + (next.x - host.x) / distance * step, z = host.z + (next.z - host.z) / distance * step;
+      if (stationMap.checkCollision(x, z, .45)) {
+        this.recoveryRoute = [];
+        return false;
+      }
+      host.mesh.rotation.y = Math.atan2(x - host.x, z - host.z);
+      host.x = x; host.z = z;
+      host.mesh.position.set(x, 0, z);
+      animateProceduralModel(host.mesh, { phase: this.phaseElapsed * 7, movement: 1 });
+      return false;
+    }
+
+    updateRecovery(delta) {
+      const host = this.targetHost;
+      if (!host?.mesh || host.isIncapacitated || host.isConsumedByCycle) {
+        if (!this.recoveryAborted) {
+          this.recoveryAborted = true;
+          this.destroy();
+          this.ownerGame?.showEndModal?.('Cycle interrompu', 'L’hôte a été perdu avant la maturation. Recommencez le cycle.');
+        }
+        return;
+      }
+      this.phaseElapsed += delta;
+      const t = this.phaseElapsed;
+      const ease = (value) => { const v = Math.max(0, Math.min(1, value)); return v * v * (3 - 2 * v); };
+      playerCreature.x = host.x; playerCreature.z = host.z;
+      playerCreature.moveTarget = null; playerCreature.moveWaypoints = [];
+      if (this.postImplantPhase === 'ATTACHED_HOLD') {
+        this.poseAttachedHost(delta);
+        if (t >= 2) this.setRecoveryPhase('COLLAPSE');
+      } else if (this.postImplantPhase === 'COLLAPSE') {
+        this.poseRecoveringHost(delta, 1 - ease(t / 1.2), Math.sin(Math.min(1, t / 1.2) * Math.PI));
+        if (t >= 1.2) { this.beginHuskFall(); this.setRecoveryPhase('HUSK_FALL'); }
+      } else if (this.postImplantPhase === 'HUSK_FALL') {
+        this.poseRecoveringHost(delta, 0, 0);
+        if (this.deadHusk) {
+          const progress = Math.min(1, t / .85);
+          this.deadHusk.position.set(this.huskStart.x + (this.huskEnd.x - this.huskStart.x) * progress, Math.max(.06, this.huskStart.y * (1 - progress * progress)), this.huskStart.z + (this.huskEnd.z - this.huskStart.z) * progress);
+          this.deadHusk.rotation.x = Math.PI * (.6 + .32 * progress);
+          this.deadHusk.updateMatrixWorld(true);
+          const bounds = new THREE.Box3().setFromObject(this.deadHusk);
+          if (bounds.min.y < .025) this.deadHusk.position.y += .025 - bounds.min.y;
+        }
+        if (t >= .85) {
+          if (this.deadHusk) window.HiveModelFactory?.placeOnGround?.(this.deadHusk, .025);
+          this.setRecoveryPhase('UNCONSCIOUS');
+        }
+      } else if (this.postImplantPhase === 'UNCONSCIOUS') {
+        this.poseRecoveringHost(delta, 0, 0);
+        if (t >= 2.4) { audioManager.playHostCough?.(host.x, host.z); this.setRecoveryPhase('WAKE'); }
+      } else if (this.postImplantPhase === 'WAKE') {
+        this.poseRecoveringHost(delta, ease(t / 2.6), Math.sin(Math.min(1, t / 2.6) * Math.PI));
+        if (t >= 2.6) this.setRecoveryPhase('DISCOVER');
+      } else if (this.postImplantPhase === 'DISCOVER') {
+        this.poseRecoveringHost(delta, 1, .3);
+        host.mesh.rotation.y = Math.atan2(this.huskEnd.x - host.x, this.huskEnd.z - host.z);
+        if (t >= 1.8) {
+          this.releaseRecoveryPose();
+          host.fleeFrom?.(this.huskEnd.x, this.huskEnd.z);
+          window.HiveSystems?.narrative(host.name, 'Qu’est-ce que… cette chose était sur mon visage ! Il faut sortir d’ici !');
+          this.setRecoveryPhase('PANIC_FLEE');
+        }
+      } else if (this.postImplantPhase === 'PANIC_FLEE') {
+        this.recoverySearchCooldown = Math.max(0, (this.recoverySearchCooldown || 0) - delta);
+        if (t >= 2.8 && this.recoverySearchCooldown <= 0) {
+          this.recoverySearchCooldown = 1.2;
+          this.recoverySearchAttempts = (this.recoverySearchAttempts || 0) + 1;
+          const shelter = this.findRecoveryDestination();
+          if (shelter) {
+            this.recoveryDestination = shelter.destination; this.recoveryRoute = shelter.route;
+            host.isRecoveringFromFacehugger = true; host.isRestrained = true;
+            this.setRecoveryPhase('FADE_OUT');
+          } else if (this.recoverySearchAttempts >= 5) {
+            this.recoveryAborted = true;
+            this.destroy();
+            this.ownerGame?.showEndModal?.('Voie de fuite inaccessible', 'L’hôte ne peut atteindre aucun secteur abrité par les passages disponibles. Recommencez le cycle.');
+          }
+        }
+      } else if (this.postImplantPhase === 'FADE_OUT') {
+        window.HiveSystems?.ui?.setBiologicalTransition?.(ease(t / .9), 'L’hôte fuit vers un autre secteur.');
+        if (t >= .9) this.setRecoveryPhase('RELOCATING');
+      } else if (this.postImplantPhase === 'RELOCATING') {
+        window.HiveSystems?.ui?.setBiologicalTransition?.(1, 'Même hôte — déplacement par les passages accessibles.');
+        if (this.moveRecoveryRoute(delta)) {
+          this.releaseRecoveryPose(); host.infectionState = 'GESTATING';
+          host.isRecoveringFromFacehugger = true; host.isRestrained = true;
+          host.navigationGoal = null; host.pathWaypoints = [];
+          rendererEngine.snapCameraTarget(host.x, host.z);
+          this.setRecoveryPhase('FADE_IN');
+        } else if (t >= 18) {
+          // A newly closed door cannot turn the fade into a teleport or an
+          // endless black screen. Try another reachable authored shelter.
+          (this.failedRecoveryDestinations ||= new Set()).add(this.recoveryDestination.id);
+          this.releaseRecoveryPose();
+          window.HiveSystems?.ui?.clearBiologicalTransition?.();
+          showToast('Le passage s’est fermé. L’hôte cherche une autre issue.');
+          this.setRecoveryPhase('PANIC_FLEE');
+        }
+      } else if (this.postImplantPhase === 'FADE_IN') {
+        this.poseRecoveringHost(delta, 1, .1);
+        window.HiveSystems?.ui?.setBiologicalTransition?.(1 - ease(t / 1.1), 'Le même hôte reprend son souffle dans un autre secteur.');
+        if (t >= 1.1) {
+          window.HiveSystems?.ui?.clearBiologicalTransition?.();
+          this.releaseRecoveryPose();
+          this.isCompleted = true;
+          playerCreature.isBiologicalTransition = false;
+          this.ownerGame.hostRecoveryRecord = { host, husk: this.deadHusk, destination: this.recoveryDestination, completed: true };
+          window.HiveSystems?.updateObjective(2, 2);
+          this.ownerGame.advanceStage(this);
+        }
+      }
     }
 
     handleKeyDown(key) {
+      if (this.postImplantPhase) return;
       if (key === 'i') {
         visionSystem.toggleThermal();
         return;
@@ -31385,11 +33239,25 @@
       else if (!this.isBonding) this.attemptLeap();
     }
     destroy() {
+      window.HiveSystems?.ui?.clearBiologicalTransition?.();
+      playerCreature.isBiologicalTransition = false;
+      this.releaseRecoveryPose();
       if (playerCreature.attachedHost) playerCreature.detachFromHost({ releaseHost: true, hide: true });
+      if (!this.isCompleted && this.deadHusk) {
+        rendererEngine.removeObject(this.deadHusk);
+        this.ownerGame?.biologicalRemains?.delete(this.deadHusk);
+      }
+      if (!this.isCompleted) this.deadHusk = null;
     }
     update(deltaSeconds = 1 / 60) {
+      const game = window.gameInstance;
+      if (game?.isSystemPaused || (this.ownerGame && (game !== this.ownerGame || game.currentStage !== this || !game.isRunning || !game.campaignActive))) return;
+      const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(.05, deltaSeconds)) : 0;
+      if (this.postImplantPhase) { this.updateRecovery(delta); return; }
       if (!this.isAttacking || this.isCompleted) return;
-      this.implantProgress = Math.min(100, this.implantProgress + (6 / 0.42) * Math.max(0, deltaSeconds));
+      this.attachedElapsed += delta;
+      this.poseAttachedHost(delta);
+      this.implantProgress = Math.min(100, this.implantProgress + (6 / 0.42) * delta);
       const displayedPercent = Math.floor(this.implantProgress);
       if (displayedPercent !== this.lastImplantPercent) {
         this.lastImplantPercent = displayedPercent;
@@ -31418,9 +33286,12 @@
       this.huntRepathCooldown = 0;
       this.rations = [];
       this.thoracicView = new ThoracicView();
+      this.emergenceElapsed = 0;
+      this.emergenceCocoon = null;
     }
 
     setInternalViewUI(active, bursting = false) {
+      this.internalViewActive = !!active;
       const app = document.getElementById('app-container');
       const controls = document.getElementById('thoracic-controls');
       const button = document.getElementById('btn-thoracic-erupt');
@@ -31431,21 +33302,52 @@
       if (status) {
         status.textContent = bursting
           ? 'Les plaques sternales cèdent sous la poussée.'
-          : 'Les contractions convergent vers le sternum.';
+          : (this.step === 'INTERNAL_GESTATION' ? `Gestation interne — ${Math.floor(this.gestationProgress)}%. Retour à l’hôte avec V.` : 'Les contractions convergent vers le sternum.');
       }
       if (button) {
-        button.disabled = bursting;
-        button.textContent = bursting ? 'RUPTURE DU STERNUM…' : 'PERFORER LE STERNUM [ESPACE]';
-        button.onclick = active && !bursting ? () => this.perforateSternum() : null;
+        const ready = this.step === 'READY_TO_BURST';
+        button.disabled = bursting || !ready;
+        button.textContent = bursting ? 'RUPTURE DU STERNUM…' : (ready ? 'PERFORER LE STERNUM [ESPACE]' : 'GESTATION EN COURS — PATIENTER');
+        button.onclick = active && ready && !bursting ? () => this.perforateSternum() : null;
       }
+      let exit = document.getElementById('btn-exit-internal-view');
+      if (!exit && controls && document.createElement) {
+        exit = document.createElement('button');
+        exit.id = 'btn-exit-internal-view'; exit.type = 'button'; exit.className = 'act-btn';
+        exit.textContent = 'RETOUR À L’HÔTE [V]'; controls.appendChild(exit);
+      }
+      if (exit) {
+        exit.hidden = !active || bursting;
+        exit.onclick = active && !bursting ? () => this.toggleInternalView() : null;
+      }
+    }
+
+    toggleInternalView() {
+      if (!['INTERNAL_GESTATION', 'READY_TO_BURST'].includes(this.step) || !this.infectedHost?.mesh) return false;
+      if (this.internalViewActive) {
+        this.thoracicView.deactivate(); this.setInternalViewUI(false);
+        rendererEngine.snapCameraTarget(this.infectedHost.x, this.infectedHost.z);
+      } else {
+        this.thoracicView.activate(this.infectedHost.x, this.infectedHost.z);
+        const camera = this.thoracicView.getCameraOverride();
+        if (camera) rendererEngine.snapCinematicCamera(camera);
+        this.setInternalViewUI(true);
+      }
+      return true;
     }
 
     init() {
       this.setInternalViewUI(false);
+      this.ownerGame = window.gameInstance;
+      playerCreature.isEmerging = false;
       playerCreature.setForm('chestburster');
       if (playerCreature.mesh) playerCreature.mesh.visible = false;
       alarmSystem.setLevel(2);
-      this.infectedHost = window.gameInstance?.humans.find((human) => human.isInfected && human.usedAsHost) || null;
+      const recovered = this.ownerGame?.hostRecoveryRecord;
+      this.infectedHost = recovered?.completed && recovered.host?.isInfected && recovered.host.usedAsHost &&
+        Number.isFinite(recovered.host.hp) && recovered.host.hp > 0 && !recovered.host.isIncapacitated && !recovered.host.isConsumedByCycle && this.ownerGame.humans.includes(recovered.host)
+        ? recovered.host
+        : (this.ownerGame?.humans.find((human) => human.isInfected && human.usedAsHost && Number.isFinite(human.hp) && human.hp > 0 && !human.isIncapacitated && !human.isConsumedByCycle) || null);
       if (!this.infectedHost && window.gameInstance) {
         const savedAster = window.gameInstance.campaignCharacters.asterRho;
         const restoredType = savedAster.usedAsHost
@@ -31465,8 +33367,9 @@
       }
       if (this.infectedHost) {
         this.infectedHost.isRestrained = false;
+        this.infectedHost.isRecoveringFromFacehugger = false;
         this.infectedHost.isBursting = false;
-        this.infectedHost.infectionState = 'RECOVERING';
+        this.infectedHost.infectionState = 'GESTATING';
         this.infectedHost.aiState = 'PATROL';
         this.infectedHost.choosePatrolWaypoint();
         playerCreature.x = this.infectedHost.x;
@@ -31474,9 +33377,9 @@
         playerCreature.mesh?.position.set(playerCreature.x, 0, playerCreature.z);
       }
       this.updateHUD();
-      appendSensorLog('[GESTATION] L’hôte reprend connaissance. La croissance demeure entièrement interne.', 'bio');
+      appendSensorLog('[GESTATION] Même hôte, après sa fuite vers un secteur abrité. La croissance demeure entièrement interne.', 'bio');
       window.HiveSystems?.setMission(3, 0, 'Maturer sans révéler la présence du parasite à l’extérieur.');
-      window.HiveSystems?.narrative('IMANI KADE', 'Je… je vais bien. Le sédatif doit se dissiper.');
+      window.HiveSystems?.narrative(this.infectedHost?.name || 'HÔTE', 'J’ai fui cette chose. Je dois reprendre mon souffle…');
     }
 
     updateHUD() {
@@ -31512,6 +33415,7 @@
         instructions.innerHTML = '<strong>Incubation silencieuse & Adaptation génétique :</strong><br><br>• Aucun organisme n’est visible sur l’hôte.<br>• Sélectionnez la mutation embryonnaire active.<br>• À maturité, la perception basculera dans la cage thoracique.';
         actionsContainer.innerHTML = `
           <button type="button" class="act-btn" disabled>GESTATION INTERNE — ${Math.floor(this.gestationProgress)}%</button>
+          <button type="button" id="btn-observe-internal-view" class="act-btn">OBSERVER LA GESTATION INTERNE [V]</button>
           <div style="display:flex;gap:6px;margin-top:6px;width:100%;justify-content:center;flex-wrap:wrap;">
             <button type="button" class="act-btn btn-mut" data-mutation="agility" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'agility' ? '#38bdf8' : '#334155'};background:${activeMut === 'agility' ? 'rgba(56,189,248,0.22)' : 'transparent'};">AGILITÉ (+18% VIT)</button>
             <button type="button" class="act-btn btn-mut" data-mutation="acid" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'acid' ? '#84cc16' : '#334155'};background:${activeMut === 'acid' ? 'rgba(132,204,22,0.22)' : 'transparent'};">SANG ACIDE (+40% DEG)</button>
@@ -31526,6 +33430,7 @@
             this.updateHUD();
           };
         });
+        document.getElementById('btn-observe-internal-view').onclick = () => this.toggleInternalView();
       } else if (this.step === 'READY_TO_BURST') {
         instructions.innerHTML = '<strong>Vue intra-thoracique :</strong><br><br>• Le sternum remplit le champ de vision.<br>• Déclenchez la poussée lorsque les contractions culminent.';
         actionsContainer.innerHTML = '<button type="button" id="btn-erupt-now" class="act-btn" style="border-color: #ef4444;">PERFORER LE STERNUM [ESPACE]</button>';
@@ -31533,6 +33438,9 @@
       } else if (this.step === 'BURST_SEQUENCE') {
         instructions.innerHTML = '<strong>Perforation :</strong><br><br>• La poussée fracture progressivement les plaques sternales.';
         actionsContainer.innerHTML = '<button type="button" class="act-btn" disabled>RUPTURE DU STERNUM…</button>';
+      } else if (this.step === 'BURST_EXTRACTION') {
+        instructions.textContent = 'Le juvénile se dégage du thorax et rejoint le sol par une trajectoire libre avant de reprendre le contrôle.';
+        actionsContainer.innerHTML = '<button type="button" class="act-btn" disabled>EXTRACTION DU THORAX — ATTERRISSAGE EN COURS</button>';
       } else if (this.step === 'HUNT_FAUNA') {
         const fed = this.biomassHunted >= 3;
         const livingRodents = this.rodents.filter((rodent) => !rodent.isIncapacitated && rodent.mesh).length;
@@ -31543,7 +33451,13 @@
         `;
         document.getElementById('btn-bite-rodent').onclick = () => this.attackNearbyRodent();
         document.getElementById('btn-start-chrysalis').onclick = () => {
-          if (!fed) return;
+          if (this.step !== 'HUNT_FAUNA' || this.biomassHunted < 3 || this.isCompleted ||
+            (this.ownerGame && (window.gameInstance !== this.ownerGame || this.ownerGame.currentStage !== this))) return;
+          const clearance = playerCreature.getAdultClearance?.();
+          if ((typeof playerCreature.getAdultClearance === 'function' && !clearance) || stationMap.checkCollision(playerCreature.x, playerCreature.z, clearance?.radius || .55)) {
+            showToast('Choisissez un espace libre assez large pour la morphologie adulte avant de tisser le cocon.');
+            return;
+          }
           this.step = 'CHRYSALIS';
           this.chrysalisTimer = 0;
           playerCreature.setChrysalis(true);
@@ -31575,46 +33489,124 @@
           };
         });
         if (isMature) document.getElementById('btn-emerge-drone').onclick = () => this.emergeAdultForm();
+      } else if (this.step === 'EMERGING') {
+        instructions.textContent = 'La membrane se déchire progressivement. L’adulte s’extrait du cocon avant de reprendre le contrôle du corps.';
+        actionsContainer.innerHTML = '<button type="button" class="act-btn" disabled>EXTRACTION DU COCON — ÉMERGENCE EN COURS</button>';
       }
     }
 
+    getBurstExtractionPose(plan, progress) {
+      const t = Math.max(0, Math.min(1, progress)), ease = t * t * (3 - 2 * t);
+      const x = plan.start.x + (plan.end.x - plan.start.x) * ease, z = plan.start.z + (plan.end.z - plan.start.z) * ease;
+      const y = t >= 1 ? 0 : plan.startY * (1 - ease) + Math.sin(t * Math.PI) * .18;
+      const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), plan.yaw);
+      const bounds = plan.clearance.bounds.clone().applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), rotation, new THREE.Vector3(1, 1, 1)));
+      return { x, y, z, bounds };
+    }
+
+    isBurstExtractionPoseClear(plan, progress) {
+      const pose = this.getBurstExtractionPose(plan, progress);
+      return !stationMap.checkCollision(pose.x, pose.z, plan.clearance.radius) &&
+        (!stationMap.isCreaturePoseClear || stationMap.isCreaturePoseClear(pose.bounds));
+    }
+
+    planBurstExtraction() {
+      const host = this.infectedHost, game = window.gameInstance;
+      if (!host?.mesh || host.isConsumedByCycle || host.isIncapacitated || !playerCreature.mesh || playerCreature.form !== 'chestburster' ||
+        (this.ownerGame && (game !== this.ownerGame || game.currentStage !== this))) return null;
+      const clearance = playerCreature.getJuvenileClearance?.() || playerCreature.creatureEnvelope;
+      if (!clearance?.bounds || !Number.isFinite(clearance.radius) || stationMap.checkCollision(host.x, host.z, clearance.radius)) return null;
+      host.mesh.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(host.mesh), startY = Math.max(.3, Math.min(2.4, (box.max.y - box.min.y) * .57));
+      const baseYaw = host.mesh.rotation.y || 0;
+      for (const distance of [1.5, 2.0, 2.4]) for (const turn of [0, .55, -.55, 1.1, -1.1, Math.PI / 2, -Math.PI / 2, Math.PI]) {
+        const yaw = baseYaw + turn, plan = { game, stage: this, host, hostMesh: host.mesh, playerMesh: playerCreature.mesh, clearance,
+          start: { x: host.x, z: host.z }, end: { x: host.x + Math.sin(yaw) * distance, z: host.z + Math.cos(yaw) * distance }, startY, yaw, elapsed: 0, duration: .85 };
+        let clear = true;
+        for (let sample = 0; sample <= 20; sample++) if (!this.isBurstExtractionPoseClear(plan, sample / 20)) { clear = false;break; }
+        if (clear) return plan;
+      }
+      return null;
+    }
+
     perforateSternum() {
-      if (this.step !== 'READY_TO_BURST') return;
+      if (this.step !== 'READY_TO_BURST') return false;
+      const plan = this.planBurstExtraction();
+      if (!plan) {
+        if (this.infectedHost) this.infectedHost.isRestrained = false;
+        showToast('Sortie thoracique obstruée. Attendez que l’hôte rejoigne un dégagement avant de pousser.');
+        return false;
+      }
+      this.burstExtraction = plan;
+      this.infectedHost.isRestrained = true;
+      playerCreature.isBiologicalTransition = true;
+      playerCreature.moveTarget = null;playerCreature.moveWaypoints = [];
       this.step = 'BURST_SEQUENCE';
       this.burstTimer = 0;
       this.burstCrackStage = 0;
       this.setInternalViewUI(true, true);
       audioManager.playSternumPressure?.();
       this.updateHUD();
+      return true;
     }
 
     finishBurstSequence() {
-      if (this.step !== 'BURST_SEQUENCE') return;
+      if (this.step !== 'BURST_SEQUENCE' || this.burstTimer < 1.25) return;
+      const plan = this.burstExtraction;
+      if (!plan || plan.game !== window.gameInstance || plan.game.currentStage !== this || playerCreature.mesh !== plan.playerMesh ||
+        this.infectedHost?.mesh !== plan.hostMesh || Math.hypot(this.infectedHost.x - plan.start.x, this.infectedHost.z - plan.start.z) > .05) return;
+      for (let sample = 0; sample <= 20; sample++) if (!this.isBurstExtractionPoseClear(plan, sample / 20)) {
+        this.step = 'READY_TO_BURST';this.burstExtraction = null;playerCreature.isBiologicalTransition = false;
+        this.infectedHost.isRestrained = false;this.setInternalViewUI(true);this.updateHUD();
+        showToast('Le passage s’est refermé. La rupture attend une nouvelle sortie libre.');return;
+      }
       this.thoracicView.deactivate();
       this.setInternalViewUI(false);
       if (this.infectedHost) {
         this.infectedHost.infectionState = 'BURST';
         this.infectedHost.isConsumedByCycle = true;
+        this.infectedHost.isIncapacitated = true;
+        this.infectedHost.hp = 0;
+        this.infectedHost.hostEligibility = 'none';
         this.infectedHost.isRestrained = false;
         this.infectedHost.collapseForBurst();
         if (this.infectedHost.characterKey === 'asterRho') {
           window.gameInstance?.syncCampaignCharacter?.(this.infectedHost, { alive: false });
         }
-        playerCreature.x = this.infectedHost.x;
-        playerCreature.z = this.infectedHost.z;
       }
       if (playerCreature.mesh) {
         playerCreature.mesh.visible = true;
-        playerCreature.mesh.position.set(playerCreature.x, 0, playerCreature.z);
-        playerCreature.mesh.rotation.set(0, 0, 0);
+        const start = this.getBurstExtractionPose(plan, 0);
+        playerCreature.x = start.x;playerCreature.z = start.z;
+        playerCreature.mesh.position.set(start.x, start.y, start.z);
+        playerCreature.mesh.rotation.set(0, plan.yaw, 0);
       }
-      this.step = 'HUNT_FAUNA';
+      this.step = 'BURST_EXTRACTION';
       rendererEngine.snapCameraTarget(playerCreature.x, playerCreature.z);
       audioManager.playBoneCrunch();
       audioManager.playChestburstScreech();
       audioManager.playWetImpact?.(playerCreature.x, playerCreature.z);
       window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0xef334f, 34, 0.16, 1.2);
       window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0xef334f, 2.2);
+      this.updateHUD();
+    }
+
+    updateBurstExtraction(delta) {
+      const plan = this.burstExtraction;
+      if (!plan || plan.game !== window.gameInstance || plan.game.currentStage !== this || playerCreature.mesh !== plan.playerMesh || this.infectedHost?.mesh !== plan.hostMesh) return;
+      const elapsed = Math.min(plan.duration, plan.elapsed + delta), progress = elapsed / plan.duration;
+      if (!this.isBurstExtractionPoseClear(plan, progress)) {
+        plan.blockedElapsed = (plan.blockedElapsed || 0) + delta;
+        if (!plan.blockedMessage) { plan.blockedMessage = true;showToast('La sortie du thorax est bloquée par un obstacle mobile.'); }
+        if (plan.blockedElapsed >= 3) plan.game.showEndModal?.('Sortie bloquée', 'Le passage s’est refermé pendant l’extraction. Recommencez depuis une zone dégagée.');
+        return;
+      }
+      plan.elapsed = elapsed;plan.blockedElapsed = 0;
+      const pose = this.getBurstExtractionPose(plan, progress);
+      playerCreature.x = pose.x;playerCreature.z = pose.z;playerCreature.mesh.position.set(pose.x, pose.y, pose.z);
+      animateProceduralModel(playerCreature.mesh, { phase: elapsed * 9, movement: .65 });
+      if (elapsed < plan.duration - 1e-7) return;
+      this.burstExtraction = null;playerCreature.isBiologicalTransition = false;this.step = 'HUNT_FAUNA';
       this.spawnRodents();
       this.investigationTimer = 14.0;
       this.investigatorSpawned = false;
@@ -31784,31 +33776,106 @@
     }
 
     emergeAdultForm() {
-      if (this.isCompleted) return;
-      this.isCompleted = true;
-      window.HiveSystems?.updateObjective(3, 3);
-      audioManager.playBoneCrunch();
-      audioManager.playXenoRoar();
-      audioManager.playChestburstScreech();
-      window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0x39ff14, 28, 0.16, 1.8);
-      window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0x9d4edd, 24, 0.12, 1.2);
-      window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0x39ff14, 3.8);
-      window.HiveSystems?.vfx?.transformation();
-      rendererEngine.addScreenShake?.(0.35);
-
-      if (window.HiveModelFactory?.createDiscardedExuvia) {
-        const exuvia = window.HiveModelFactory.createDiscardedExuvia();
-        exuvia.position.set(playerCreature.x, 0.02, playerCreature.z);
-        exuvia.rotation.y = playerCreature.mesh ? playerCreature.mesh.rotation.y : 0;
-        rendererEngine.propsGroup.add(exuvia);
+      if (this.isCompleted || this.step !== 'CHRYSALIS' || this.chrysalisTimer < 100 || this.biomassHunted < 3 ||
+        playerCreature.form !== 'chestburster' || !playerCreature.isChrysalis || !playerCreature.mesh ||
+        (this.ownerGame && (window.gameInstance !== this.ownerGame || this.ownerGame.currentStage !== this))) return false;
+      const start = { x: playerCreature.x, z: playerCreature.z };
+      const clearance = playerCreature.getAdultClearance?.();
+      if ((typeof playerCreature.getAdultClearance === 'function' && !clearance) || stationMap.checkCollision(start.x, start.z, clearance?.radius || .55)) {
+        showToast('Le gabarit adulte ne tient plus dans cet emplacement. L’émergence reste suspendue.');
+        return false;
       }
+      this.emergencePadding = clearance?.radius || .55;
+      let destination = null;
+      for (let i = 0; i < 12 && !destination; i++) {
+        const angle = i * Math.PI / 6;
+        let clear = true;
+        for (let distance = .3; distance <= 2.4; distance += .3) {
+          if (stationMap.checkCollision(start.x + Math.sin(angle) * distance, start.z + Math.cos(angle) * distance, this.emergencePadding)) { clear = false; break; }
+        }
+        if (clear) destination = { x: start.x + Math.sin(angle) * 2.4, z: start.z + Math.cos(angle) * 2.4, angle };
+      }
+      if (!destination) { showToast('Le passage devant le cocon est obstrué. Libérez une issue avant l’émergence.'); return false; }
+      this.step = 'EMERGING';
+      playerCreature.isEmerging = true;
+      this.emergenceCaste = playerCreature.adultCaste;
+      this.emergenceElapsed = 0;
+      this.emergenceStart = start;
+      this.emergenceDestination = destination;
+      this.emergenceCocoon = playerCreature.mesh;
+      this.emergenceCocoon.name = 'opening_chrysalis';
+      // Keep the actual membrane in the scene while the adult is created. It
+      // is not disposed/replaced by a transformation flash on the first tick.
+      playerCreature.mesh = null;
+      playerCreature.detailedModel = null;
+      playerCreature.setForm('drone');
+      playerCreature.mesh.visible = false;
+      playerCreature.mesh.rotation.y = destination.angle;
+      this.updateHUD();
+      audioManager.playBoneCrunch();
+      return true;
+    }
 
-      const adultProfile = playerCreature.getAdultProfile();
-      appendSensorLog(`[RÉFLEXE ADN 1:1] Métamorphose achevée selon le génome de l'hôte : émergence d'un ${adultProfile.label}.`, 'bio');
-      appendSensorLog('[MUE ROMULUS] La chrysalide se déchire le long de la suture centrale. Le prédateur adulte émerge des fluides amniotiques en laissant son exuvie vide.', 'bio');
-      if (window.gameInstance) window.gameInstance.advanceStage(this);
+    updateEmergence(delta) {
+      this.emergenceElapsed += delta;
+      const progress = Math.min(1, this.emergenceElapsed / 2.8);
+      const opening = Math.min(1, progress / .55);
+      const cocoon = this.emergenceCocoon;
+      const left = cocoon?.getObjectByName('suture_lip_left'), right = cocoon?.getObjectByName('suture_lip_right');
+      if (left) left.position.x = -.06 - opening * .62;
+      if (right) right.position.x = .06 + opening * .62;
+      for (let i = 0; i < 5; i++) {
+        const ligament = cocoon?.getObjectByName(`suture_ligament_${i}`);
+        if (ligament) ligament.visible = opening < (i + 1) / 6;
+      }
+      const membrane = cocoon?.getObjectByName('pod_membrane');
+      if (membrane?.material) {
+        if (!this.emergenceMembraneMaterial) {
+          this.emergenceMembraneMaterial = membrane.material.clone();
+          membrane.material = this.emergenceMembraneMaterial;
+          membrane.material.transparent = true;
+          membrane.material.depthWrite = false;
+        }
+        membrane.material.opacity = .86 * (1 - opening * .88);
+      }
+      for (const name of ['developing_cranial_dome', 'developing_torso']) {
+        const inner = cocoon?.getObjectByName(name);
+        if (inner) inner.visible = progress < .28;
+      }
+      const travel = Math.max(0, Math.min(1, (progress - .22) / .78));
+      const eased = travel * travel * (3 - 2 * travel);
+      const x = this.emergenceStart.x + (this.emergenceDestination.x - this.emergenceStart.x) * eased;
+      const z = this.emergenceStart.z + (this.emergenceDestination.z - this.emergenceStart.z) * eased;
+      if (stationMap.checkCollision(x, z, this.emergencePadding)) return;
+      playerCreature.x = x; playerCreature.z = z;
+      playerCreature.moveTarget = null; playerCreature.moveWaypoints = [];
+      playerCreature.mesh?.position.set(x, 0, z);
+      if (playerCreature.mesh) playerCreature.mesh.visible = progress >= .22;
+      if (playerCreature.detailedModel) playerCreature.detailedModel.rotation.x = .62 * (1 - eased);
+      if (playerCreature.mesh) {
+        playerCreature.mesh.updateMatrixWorld(true);
+        const bounds = new THREE.Box3().setFromObject(playerCreature.mesh);
+        if (Number.isFinite(bounds.min.y)) playerCreature.mesh.position.y += .025 - bounds.min.y;
+      }
+      setHudBar('sec', 'EXTRACTION DU COCON', progress * 100);
+      if (progress < 1) return;
+      this.isCompleted = true;
+      playerCreature.isEmerging = false;
+      if (playerCreature.detailedModel) playerCreature.detailedModel.rotation.x = 0;
+      if (cocoon) {
+        cocoon.name = 'discarded_chrysalis_exuvia';
+        (window.gameInstance.biologicalRemains ||= new Set()).add(cocoon);
+        this.emergenceCocoon = null;
+      }
+      window.HiveSystems?.updateObjective(3, 3);
+      audioManager.playXenoRoar?.();
+      window.HiveSystems?.vfx?.burst?.(x, z, 0xa855f7, 14, .09, .9);
+      appendSensorLog(`[MUE] Suture ouverte, extraction achevée : ${playerCreature.getAdultProfile().label}. L’exuvie reste au sol.`, 'bio');
+      window.gameInstance?.advanceStage(this);
     }
     handleKeyDown(key) {
+      if (this.step === 'EMERGING') return;
+      if (key === 'v') { this.toggleInternalView(); return; }
       if (key === 'i') {
         visionSystem.toggleThermal();
         return;
@@ -31843,13 +33910,23 @@
       return playerCreature;
     }
     getCameraOverride() {
-      return (this.step === 'READY_TO_BURST' || this.step === 'BURST_SEQUENCE')
+      return (this.internalViewActive || this.step === 'BURST_SEQUENCE')
         ? this.thoracicView.getCameraOverride()
         : null;
     }
     destroy() {
       this.setInternalViewUI(false);
       this.thoracicView.deactivate();
+      playerCreature.isEmerging = false;
+      if (this.burstExtraction) {
+        playerCreature.isBiologicalTransition = false;
+        if (this.infectedHost?.mesh === this.burstExtraction.hostMesh) this.infectedHost.isRestrained = false;
+        this.burstExtraction = null;
+      }
+      if (this.emergenceCocoon) {
+        rendererEngine.removeObject(this.emergenceCocoon);
+        this.emergenceCocoon = null;
+      }
       for (const rodent of this.rodents) {
         if (rodent.mesh) rodent.destroy();
       }
@@ -31878,7 +33955,11 @@
     }
 
     update(deltaSeconds = 1 / 60) {
-      const safeDelta = Math.max(0, deltaSeconds);
+      const game = window.gameInstance;
+      if (game?.isSystemPaused || (this.ownerGame && (game !== this.ownerGame || game.currentStage !== this || !game.isRunning || !game.campaignActive))) return;
+      const safeDelta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(.05, deltaSeconds)) : 0;
+      if (this.step === 'EMERGING') { this.updateEmergence(safeDelta); return; }
+      if (this.step === 'BURST_EXTRACTION') { this.updateBurstExtraction(safeDelta); return; }
       this.biteCooldown = Math.max(0, this.biteCooldown - safeDelta);
       this.huntRepathCooldown = Math.max(0, this.huntRepathCooldown - safeDelta);
 
@@ -31908,6 +33989,11 @@
       }
 
       if (this.step === 'INTERNAL_GESTATION') {
+        if (this.internalViewActive) {
+          this.thoracicView.update(safeDelta);
+          const status = document.getElementById('thoracic-status');
+          if (status) status.textContent = `Gestation interne — ${Math.floor(this.gestationProgress)}%. Retour à l’hôte avec V.`;
+        }
         this.recoveryElapsed += safeDelta;
         if (this.infectedHost) {
           playerCreature.x = this.infectedHost.x;
@@ -31928,7 +34014,7 @@
         if (this.gestationProgress >= 100) {
           this.step = 'READY_TO_BURST';
           if (this.infectedHost) {
-            this.infectedHost.isRestrained = true;
+            this.infectedHost.isRestrained = false;
             this.thoracicView.activate(this.infectedHost.x, this.infectedHost.z);
           } else {
             this.thoracicView.activate(playerCreature.x, playerCreature.z);
@@ -31941,6 +34027,7 @@
           this.updateHUD();
         }
       } else if (this.step === 'READY_TO_BURST') {
+        if (this.infectedHost) { playerCreature.x = this.infectedHost.x;playerCreature.z = this.infectedHost.z; }
         this.thoracicView.update(safeDelta);
       } else if (this.step === 'BURST_SEQUENCE') {
         this.burstTimer += safeDelta;
@@ -32082,43 +34169,7 @@
       const activeCaste = playerCreature.adultCaste || playerCreature.caste || 'drone';
       const actionsContainer = document.getElementById('action-buttons-container');
       actionsContainer.innerHTML = `
-        <div class="caste-selector-box" style="margin-bottom: 8px; padding: 6px; background: rgba(15,23,42,0.85); border: 1px solid #38bdf8; border-radius: 4px;">
-          <label for="select-adult-caste" style="font-size: 10px; color: #38bdf8; display: block; margin-bottom: 4px; letter-spacing: 1px;">MORPHOLOGIE XÉNOMORPHE (QA AUDIT #1) :</label>
-          <select id="select-adult-caste" style="width: 100%; background: #020617; color: #39ff14; border: 1px solid #22c55e; padding: 4px 6px; font-family: var(--font-hud); font-size: 11px;">
-            <option value="drone" ${activeCaste === 'drone' ? 'selected' : ''}>Drone (Alien 1979 / Isolation)</option>
-            <option value="warrior" ${activeCaste === 'warrior' ? 'selected' : ''}>Guerrier (Aliens 1986)</option>
-            <option value="runner" ${activeCaste === 'runner' ? 'selected' : ''}>Runner / Dog Alien (Alien 3)</option>
-            <option value="praetorian" ${activeCaste === 'praetorian' ? 'selected' : ''}>Prétorien Garde Royal (AvP)</option>
-            <option value="crusher" ${activeCaste === 'crusher' ? 'selected' : ''}>Crusher Bélier (Colonial Marines)</option>
-            <option value="boiler" ${activeCaste === 'boiler' ? 'selected' : ''}>Boiler Kamikaze Acide (Colonial Marines)</option>
-            <option value="carrier" ${activeCaste === 'carrier' ? 'selected' : ''}>Carrier Transporteur Ruche (AvP)</option>
-            <option value="newborn" ${activeCaste === 'newborn' ? 'selected' : ''}>Newborn Hybride Humain (Alien Resurrection)</option>
-            <option value="raven" ${activeCaste === 'raven' ? 'selected' : ''}>Raven Titan Cuirassé (Colonial Marines)</option>
-            <option value="king" ${activeCaste === 'king' ? 'selected' : ''}>King Xenomorph Royal (Rogue / Comics)</option>
-            <option value="bodyburster" ${activeCaste === 'bodyburster' ? 'selected' : ''}>Bodyburster / Backburster (Alien: Covenant)</option>
-            <option value="alpha" ${activeCaste === 'alpha' ? 'selected' : ''}>Alpha Xenomorph (Marvel Comics)</option>
-            <option value="neomorph" ${activeCaste === 'neomorph' ? 'selected' : ''}>Néomorphe de Sang (Alien: Covenant)</option>
-            <option value="deacon" ${activeCaste === 'deacon' ? 'selected' : ''}>Deacon Proto-Xéno (Prometheus)</option>
-            <option value="deacon_adult" ${activeCaste === 'deacon_adult' ? 'selected' : ''}>Deacon Apex Archon (Prometheus Lore Étendu)</option>
-            <option value="deaconess" ${activeCaste === 'deaconess' ? 'selected' : ''}>The Deaconess Proto-Queen (Fire and Stone)</option>
-            <option value="predalien" ${activeCaste === 'predalien' ? 'selected' : ''}>Predalien Hybride Yautja (AvP Lore Officiel)</option>
-            <option value="spitter" ${activeCaste === 'spitter' ? 'selected' : ''}>Spitter Sniper Acide (Colonial Marines)</option>
-            <option value="abomination" ${activeCaste === 'abomination' ? 'selected' : ''}>The Abomination / Anomaly Hybrid (Romulus 2024)</option>
-            <option value="belugamorph" ${activeCaste === 'belugamorph' ? 'selected' : ''}>The Belugamorph / Bloodburster (Covenant)</option>
-            <option value="red_drone" ${activeCaste === 'red_drone' ? 'selected' : ''}>Guerrier Rouge de Charon (Genocide 1991)</option>
-            <option value="flying_drone" ${activeCaste === 'flying_drone' ? 'selected' : ''}>Alien Ailé de Charon (Kenner 1992)</option>
-            <option value="snake_drone" ${activeCaste === 'snake_drone' ? 'selected' : ''}>Alien Ophidien de Charon (Kenner 1992)</option>
-            <option value="mantis_drone" ${activeCaste === 'mantis_drone' ? 'selected' : ''}>Alien Mante Religieuse de Charon (Kenner 1992 / Dark Horse)</option>
-            <option value="bull_drone" ${activeCaste === 'bull_drone' ? 'selected' : ''}>Bull Alien / Taureau de Charon (Kenner 1992)</option>
-            <option value="gorilla_drone" ${activeCaste === 'gorilla_drone' ? 'selected' : ''}>Gorilla Alien / Quadrumane de Charon (Kenner 1992)</option>
-            <option value="boar_drone" ${activeCaste === 'boar_drone' ? 'selected' : ''}>Wild Boar Alien / Sanglier de Charon (Kenner 1992)</option>
-            <option value="scorpion_drone" ${activeCaste === 'scorpion_drone' ? 'selected' : ''}>Scorpion Alien / Arachnoïde de Charon (Kenner 1992)</option>
-            <option value="cougar_drone" ${activeCaste === 'cougar_drone' ? 'selected' : ''}>Cougar / Panther Alien de Charon (Kenner 1992)</option>
-            <option value="worker_drone" ${activeCaste === 'worker_drone' ? 'selected' : ''}>Ouvrière de Ruche Oviducte (Genocide / AvP)</option>
-            <option value="rhino_drone" ${activeCaste === 'rhino_drone' ? 'selected' : ''}>Rhino / Juggernaut Alien de Charon (Kenner 1992 / Genocide)</option>
-            <option value="crab_drone" ${activeCaste === 'crab_drone' ? 'selected' : ''}>Killer Crab Alien de Charon (Kenner 1992 / Dark Horse)</option>
-          </select>
-        </div>
+        <p class="caste-lineage-summary">LIGNÉE ISSUE DE L’HÔTE : ${adultLabel}. La morphologie est fixée par le cycle biologique, sans changement instantané.</p>
         <!-- Audit QA #21 & #26 : Badges de raccourcis visuels & Indicateurs de Cooldown dynamiques -->
         <style>
           .key-badge {
@@ -32205,7 +34256,6 @@
         <button type="button" id="btn-supersonic-tail" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);"><span class="key-badge">Y</span>FOUET BIFIDE SUPERSONIQUE</button>
         <button type="button" id="btn-spawn-swarmers" class="act-btn" data-tab-cat="predation" style="border-color: #090d16; background: rgba(15,23,42,0.45);"><span class="key-badge">U</span>NUÉE DE SWARMERS</button>
         <button type="button" id="btn-spread-creep" class="act-btn" data-tab-cat="stealth" style="border-color: #ec4899; background: rgba(236,72,153,0.2);"><span class="key-badge">F</span>ÉTENDRE HIVE CREEP</button>
-        <button type="button" id="btn-evolve-alpha" class="act-btn" data-tab-cat="predation" style="border-color: #dc2626; background: rgba(220,38,38,0.2);"><span class="key-badge">EVO</span>MUE EN ALPHA (MARVEL)</button>
         <button type="button" id="btn-direct-inoculation" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);"><span class="key-badge">G</span>IMPLANTATION DIRECTE</button>
         <button type="button" id="btn-airlock-purge" class="act-btn" data-tab-cat="environment" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);"><span class="key-badge">Y</span>PURGE SAS EXPLOSIF</button>
         <button type="button" id="btn-drag-host" class="act-btn" data-tab-cat="stealth" style="border-color: #f59e0b;"><span class="key-badge">V</span>TRAÎNER / COCON MURAL</button>
@@ -32252,15 +34302,6 @@
         <button type="button" id="btn-found-queen-hive" class="act-btn" data-tab-cat="stealth" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
       `;
 
-      const selectCaste = document.getElementById('select-adult-caste');
-      if (selectCaste) {
-        selectCaste.onchange = (e) => {
-          playerCreature.setAdultCaste(e.target.value);
-          playerCreature.createMesh();
-          this.updateHUD();
-          showToast(`MORPHOLOGIE MODIFIÉE : ${playerCreature.getAdultProfile().label.toUpperCase()}`);
-        };
-      }
       const btnKing = document.getElementById('btn-king-dominance');
       if (btnKing) btnKing.onclick = () => playerCreature.executeKingRoyalDominance();
       const btnBackburster = document.getElementById('btn-bodyburster-lunge');
@@ -32288,7 +34329,8 @@
 
       document.getElementById('btn-drone-ambush').onclick = () => this.executeAmbush();
       document.getElementById('btn-inner-jaw').onclick = () => this.executeInnerJaw();
-      document.getElementById('btn-tail-impale').onclick = () => this.executeTailImpale();
+      document.getElementById('btn-tail-impale').onclick = () => playerCreature.isCeilingProwling
+        ? this.executeCeilingCapture() : this.executeTailImpale();
       document.getElementById('btn-claw-swipe').onclick = () => this.executeClawSwipe();
       document.getElementById('btn-drone-hiss').onclick = () => this.executeTerrifyingHiss();
       document.getElementById('btn-acid-spit').onclick = () => this.executeAcidSpit();
@@ -32311,15 +34353,6 @@
       if (btnSwarmers) btnSwarmers.onclick = () => playerCreature.executeSpawnSwarmerPack();
       const btnCreep = document.getElementById('btn-spread-creep');
       if (btnCreep) btnCreep.onclick = () => playerCreature.executeSpreadHiveCreep();
-      const btnEvolveAlpha = document.getElementById('btn-evolve-alpha');
-      if (btnEvolveAlpha) {
-        btnEvolveAlpha.onclick = () => {
-          playerCreature.setAdultCaste('alpha');
-          playerCreature.createMesh();
-          this.updateHUD();
-          showToast('MUE EN ALPHA XENOMORPH CONFIRMÉE ! Le titan commande la ruche.');
-        };
-      }
       const btnDecoy = document.getElementById('btn-acoustic-decoy');
       if (btnDecoy) btnDecoy.onclick = () => playerCreature.executeAcousticDecoy();
       const btnFrenzy = document.getElementById('btn-neomorph-frenzy');
@@ -32362,11 +34395,8 @@
       if (btnRaven) btnRaven.onclick = () => playerCreature.executeRavenSeismicCharge();
       const btnDropEvisc = document.getElementById('btn-ceiling-drop-eviscerate');
       if (btnDropEvisc) {
-        btnDropEvisc.onclick = () => {
-          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.5);
-          if (target) playerCreature.executeCeilingDropEvisceration(target);
-          else showToast('Aucune cible sous la créature pour l\'éventration sternale.');
-        };
+        btnDropEvisc.textContent = 'PRISE CAUDALE SUSPENDUE [E / T]';
+        btnDropEvisc.onclick = () => this.executeCeilingCapture();
       }
       const btnDeacon = document.getElementById('btn-deacon-archon');
       if (btnDeacon) {
@@ -32746,325 +34776,325 @@
       playerCreature.executeAcidSpit(target);
 
       // Chantier 84, 85, 88 : Le crachat acide balistique dissout câbles d'ascenseur, cuves cryo et attaches de creuset à distance
-      const distElevator = (stationMap.freightElevators || []).find((e) => !e.cablesCut && Math.hypot(e.x - playerCreature.x, e.z - playerCreature.z) <= 15);
+      const distElevator = (stationMap.freightElevators || []).find((e) => stationMap.canInteractWithProp(e) && !e.cablesCut && Math.hypot(e.x - playerCreature.x, e.z - playerCreature.z) <= 15);
       if (distElevator) stationMap.snapElevatorCables(distElevator);
-      const distTank = (stationMap.nitrogenTanks || []).find((t) => !t.isRuptured && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 15);
+      const distTank = (stationMap.nitrogenTanks || []).find((t) => stationMap.canInteractWithProp(t) && !t.isRuptured && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 15);
       if (distTank) stationMap.shatterNitrogenTank(distTank);
-      const distCrucible = (stationMap.foundryCrucibles || []).find((c) => !c.isTilted && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 15);
+      const distCrucible = (stationMap.foundryCrucibles || []).find((c) => stationMap.canInteractWithProp(c) && !c.isTilted && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 15);
       if (distCrucible) stationMap.tiltFoundryCrucible(distCrucible);
 
       // QA Audit #3 & Chantiers 103, 106, 107, 108, 110 : Crachat acide balistique sur props Vague 11
-      const distSteam = (stationMap.highPressureSteamValves || []).find((v) => !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 15);
+      const distSteam = (stationMap.highPressureSteamValves || []).find((v) => stationMap.canInteractWithProp(v) && !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 15);
       if (distSteam) stationMap.ruptureHighPressureSteamValve(distSteam);
-      const distBarricade = (stationMap.titaniumBarricades || []).find((b) => !b.isDestroyed && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 15);
+      const distBarricade = (stationMap.titaniumBarricades || []).find((b) => stationMap.canInteractWithProp(b) && !b.isDestroyed && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 15);
       if (distBarricade) stationMap.damageTitaniumBarricade(distBarricade, 90);
-      const distMedibot = (stationMap.seegsonMedibots || []).find((m) => !m.isSabotaged && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 15);
+      const distMedibot = (stationMap.seegsonMedibots || []).find((m) => stationMap.canInteractWithProp(m) && !m.isSabotaged && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 15);
       if (distMedibot) stationMap.sabotageSeegsonMedibot(distMedibot);
-      const distHVCables = (stationMap.hangingHVCables || []).find((c) => !c.isSevered && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 15);
+      const distHVCables = (stationMap.hangingHVCables || []).find((c) => stationMap.canInteractWithProp(c) && !c.isSevered && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 15);
       if (distHVCables) stationMap.severHangingHVCables(distHVCables);
-      const distZeroG = (stationMap.zeroGGenerators || []).find((zg) => (!zg.activeTimer || zg.activeTimer <= 0) && Math.hypot(zg.x - playerCreature.x, zg.z - playerCreature.z) <= 15);
+      const distZeroG = (stationMap.zeroGGenerators || []).find((zg) => stationMap.canInteractWithProp(zg) && (!zg.activeTimer || zg.activeTimer <= 0) && Math.hypot(zg.x - playerCreature.x, zg.z - playerCreature.z) <= 15);
       if (distZeroG) stationMap.triggerZeroGGeneratorFlush(distZeroG);
 
       // Chantiers 112, 113, 114, 115, 117, 118, 120 : Crachat acide balistique sur props Vague 12
-      const distCryoPod = (stationMap.cryoStasisPods || []).find((cp) => !cp.isShattered && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 15);
+      const distCryoPod = (stationMap.cryoStasisPods || []).find((cp) => stationMap.canInteractWithProp(cp) && !cp.isShattered && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 15);
       if (distCryoPod) stationMap.shatterCryoStasisPod(distCryoPod);
-      const distSpore = (stationMap.hivePheromoneSpores || []).find((sp) => !sp.isTriggered && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 15);
+      const distSpore = (stationMap.hivePheromoneSpores || []).find((sp) => stationMap.canInteractWithProp(sp) && !sp.isTriggered && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 15);
       if (distSpore) stationMap.triggerHivePheromoneSpore(distSpore);
-      const distBarbed = (stationMap.barbedWireSpools || []).find((bw) => !bw.isCut && Math.hypot(bw.x - playerCreature.x, bw.z - playerCreature.z) <= 15);
+      const distBarbed = (stationMap.barbedWireSpools || []).find((bw) => stationMap.canInteractWithProp(bw) && !bw.isCut && Math.hypot(bw.x - playerCreature.x, bw.z - playerCreature.z) <= 15);
       if (distBarbed) stationMap.cutBarbedWireSpool(distBarbed, 90);
-      const distRecorder = (stationMap.flightRecorders || []).find((fr) => !fr.isPlayed && Math.hypot(fr.x - playerCreature.x, fr.z - playerCreature.z) <= 15);
+      const distRecorder = (stationMap.flightRecorders || []).find((fr) => stationMap.canInteractWithProp(fr) && !fr.isPlayed && Math.hypot(fr.x - playerCreature.x, fr.z - playerCreature.z) <= 15);
       if (distRecorder) stationMap.readFlightRecorder(distRecorder);
-      const distAuxGen = (stationMap.auxiliaryGenerators || []).find((ag) => !ag.isSabotaged && Math.hypot(ag.x - playerCreature.x, ag.z - playerCreature.z) <= 15);
+      const distAuxGen = (stationMap.auxiliaryGenerators || []).find((ag) => stationMap.canInteractWithProp(ag) && !ag.isSabotaged && Math.hypot(ag.x - playerCreature.x, ag.z - playerCreature.z) <= 15);
       if (distAuxGen) stationMap.sabotageAuxiliaryGenerator(distAuxGen);
-      const distLaser = (stationMap.laserDesignators || []).find((ld) => !ld.isDestroyed && Math.hypot(ld.x - playerCreature.x, ld.z - playerCreature.z) <= 15);
+      const distLaser = (stationMap.laserDesignators || []).find((ld) => stationMap.canInteractWithProp(ld) && !ld.isDestroyed && Math.hypot(ld.x - playerCreature.x, ld.z - playerCreature.z) <= 15);
       if (distLaser) stationMap.destroyLaserDesignator(distLaser, 90);
-      const distDock = (stationMap.orbitalDockingClamps || []).find((dc) => !dc.isEjected && Math.hypot(dc.x - playerCreature.x, dc.z - playerCreature.z) <= 15);
+      const distDock = (stationMap.orbitalDockingClamps || []).find((dc) => stationMap.canInteractWithProp(dc) && !dc.isEjected && Math.hypot(dc.x - playerCreature.x, dc.z - playerCreature.z) <= 15);
       if (distDock) stationMap.ejectOrbitalDockingClamp(distDock);
 
       // Chantiers 122, 124, 127, 128, 130 : Crachat acide balistique sur props Vague 13
-      const distForklift = (stationMap.forklifts || []).find((fl) => !fl.isRuptured && Math.hypot(fl.x - playerCreature.x, fl.z - playerCreature.z) <= 15);
+      const distForklift = (stationMap.forklifts || []).find((fl) => stationMap.canInteractWithProp(fl) && !fl.isRuptured && Math.hypot(fl.x - playerCreature.x, fl.z - playerCreature.z) <= 15);
       if (distForklift) stationMap.ruptureForkliftBattery(distForklift);
-      const distSprinkler = (stationMap.ceilingSprinklers || []).find((cs) => !cs.isSpraying && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 15);
+      const distSprinkler = (stationMap.ceilingSprinklers || []).find((cs) => stationMap.canInteractWithProp(cs) && !cs.isSpraying && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 15);
       if (distSprinkler) stationMap.triggerFireSprinklers(distSprinkler);
-      const distChute = (stationMap.toxicWasteChutes || []).find((tw) => !tw.isActive && Math.hypot(tw.x - playerCreature.x, tw.z - playerCreature.z) <= 15);
+      const distChute = (stationMap.toxicWasteChutes || []).find((tw) => stationMap.canInteractWithProp(tw) && !tw.isActive && Math.hypot(tw.x - playerCreature.x, tw.z - playerCreature.z) <= 15);
       if (distChute) stationMap.activateToxicWasteChute(distChute);
-      const distMortar = (stationMap.portableMortars || []).find((pm) => !pm.isDestroyed && Math.hypot(pm.x - playerCreature.x, pm.z - playerCreature.z) <= 15);
+      const distMortar = (stationMap.portableMortars || []).find((pm) => stationMap.canInteractWithProp(pm) && !pm.isDestroyed && Math.hypot(pm.x - playerCreature.x, pm.z - playerCreature.z) <= 15);
       if (distMortar) stationMap.destroyPortableMortar(distMortar, 90);
-      const distNarcissus = (stationMap.narcissusDocks || []).find((nd) => !nd.isSealed && Math.hypot(nd.x - playerCreature.x, nd.z - playerCreature.z) <= 15);
+      const distNarcissus = (stationMap.narcissusDocks || []).find((nd) => stationMap.canInteractWithProp(nd) && !nd.isSealed && Math.hypot(nd.x - playerCreature.x, nd.z - playerCreature.z) <= 15);
       if (distNarcissus) stationMap.sabotageNarcissusDock(distNarcissus);
 
       // Chantiers 132, 135, 137, 138, 140 : Crachat acide balistique sur props Vague 14
-      const distAPC = (stationMap.m577APCs || []).find((apc) => !apc.isSabotaged && Math.hypot(apc.x - playerCreature.x, apc.z - playerCreature.z) <= 15);
+      const distAPC = (stationMap.m577APCs || []).find((apc) => stationMap.canInteractWithProp(apc) && !apc.isSabotaged && Math.hypot(apc.x - playerCreature.x, apc.z - playerCreature.z) <= 15);
       if (distAPC) stationMap.sabotageM577APC(distAPC);
-      const distDefib = (stationMap.wallDefibrillators || []).find((wd) => !wd.isOverloaded && Math.hypot(wd.x - playerCreature.x, wd.z - playerCreature.z) <= 15);
+      const distDefib = (stationMap.wallDefibrillators || []).find((wd) => stationMap.canInteractWithProp(wd) && !wd.isOverloaded && Math.hypot(wd.x - playerCreature.x, wd.z - playerCreature.z) <= 15);
       if (distDefib) stationMap.dischargeWallDefibrillator(distDefib);
-      const distPurge = (stationMap.reactionPurgeVents || []).find((rp) => !rp.isFlushing && Math.hypot(rp.x - playerCreature.x, rp.z - playerCreature.z) <= 15);
+      const distPurge = (stationMap.reactionPurgeVents || []).find((rp) => stationMap.canInteractWithProp(rp) && !rp.isFlushing && Math.hypot(rp.x - playerCreature.x, rp.z - playerCreature.z) <= 15);
       if (distPurge) stationMap.triggerReactionPurgeVent(distPurge);
-      const distCam = (stationMap.thermalSurveillancePosts || []).find((tc) => !tc.isDestroyed && Math.hypot(tc.x - playerCreature.x, tc.z - playerCreature.z) <= 15);
+      const distCam = (stationMap.thermalSurveillancePosts || []).find((tc) => stationMap.canInteractWithProp(tc) && !tc.isDestroyed && Math.hypot(tc.x - playerCreature.x, tc.z - playerCreature.z) <= 15);
       if (distCam) stationMap.destroyThermalSurveillancePost(distCam, 90);
-      const distReactor = (stationMap.reactorDisconnectConsoles || []).find((rc) => !rc.isEvacuating && Math.hypot(rc.x - playerCreature.x, rc.z - playerCreature.z) <= 15);
+      const distReactor = (stationMap.reactorDisconnectConsoles || []).find((rc) => stationMap.canInteractWithProp(rc) && !rc.isEvacuating && Math.hypot(rc.x - playerCreature.x, rc.z - playerCreature.z) <= 15);
       if (distReactor) stationMap.triggerReactorEvacuationCountdown(distReactor);
 
       // Chantiers 142, 143, 145, 147, 148, 150 : Crachat acide balistique sur props Vague 15
-      const distCoolant = (stationMap.subzeroCoolantPanels || []).find((cp) => !cp.isRuptured && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 15);
+      const distCoolant = (stationMap.subzeroCoolantPanels || []).find((cp) => stationMap.canInteractWithProp(cp) && !cp.isRuptured && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 15);
       if (distCoolant) stationMap.ruptureSubZeroCoolant(distCoolant);
-      const distSniperPost = (stationMap.m42aSniperPosts || []).find((sp) => !sp.isDestroyed && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 15);
+      const distSniperPost = (stationMap.m42aSniperPosts || []).find((sp) => stationMap.canInteractWithProp(sp) && !sp.isDestroyed && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 15);
       if (distSniperPost) stationMap.destroyM42ASniperPost(distSniperPost, 90);
-      const distBulkhead = (stationMap.bulkheadShutterConsoles || []).find((bc) => Math.hypot(bc.x - playerCreature.x, bc.z - playerCreature.z) <= 15);
+      const distBulkhead = (stationMap.bulkheadShutterConsoles || []).find((bc) => stationMap.canInteractWithProp(bc) && Math.hypot(bc.x - playerCreature.x, bc.z - playerCreature.z) <= 15);
       if (distBulkhead) stationMap.toggleBulkheadShutters(distBulkhead);
-      const distChargingBay = (stationMap.syntheticChargingBays || []).find((cb) => !cb.isOverloaded && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 15);
+      const distChargingBay = (stationMap.syntheticChargingBays || []).find((cb) => stationMap.canInteractWithProp(cb) && !cb.isOverloaded && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 15);
       if (distChargingBay) stationMap.sabotageChargingBay(distChargingBay);
-      const distHoloDecoy = (stationMap.holographicDecoyProjectors || []).find((hd) => !hd.isDestroyed && Math.hypot(hd.x - playerCreature.x, hd.z - playerCreature.z) <= 15);
+      const distHoloDecoy = (stationMap.holographicDecoyProjectors || []).find((hd) => stationMap.canInteractWithProp(hd) && !hd.isDestroyed && Math.hypot(hd.x - playerCreature.x, hd.z - playerCreature.z) <= 15);
       if (distHoloDecoy) stationMap.destroyHolographicDecoy(distHoloDecoy, 80);
-      const distAtmoConsole = (stationMap.atmosphericDepressionConsoles || []).find((ac) => !ac.isDepressed && Math.hypot(ac.x - playerCreature.x, ac.z - playerCreature.z) <= 15);
+      const distAtmoConsole = (stationMap.atmosphericDepressionConsoles || []).find((ac) => stationMap.canInteractWithProp(ac) && !ac.isDepressed && Math.hypot(ac.x - playerCreature.x, ac.z - playerCreature.z) <= 15);
       if (distAtmoConsole) stationMap.triggerAtmosphericDepression(distAtmoConsole);
 
       // Chantiers 152, 153, 154, 156, 157, 158, 160 : Crachat acide balistique sur props Vague 16
-      const distSadar = (stationMap.sadarLaunchers || []).find((sl) => !sl.isFired && !sl.isDestroyed && Math.hypot(sl.x - playerCreature.x, sl.z - playerCreature.z) <= 15);
+      const distSadar = (stationMap.sadarLaunchers || []).find((sl) => stationMap.canInteractWithProp(sl) && !sl.isFired && !sl.isDestroyed && Math.hypot(sl.x - playerCreature.x, sl.z - playerCreature.z) <= 15);
       if (distSadar) stationMap.fireSadarRocket(distSadar);
-      const distOilPipe = (stationMap.hydraulicOilPipes || []).find((hop) => !hop.isRuptured && Math.hypot(hop.x - playerCreature.x, hop.z - playerCreature.z) <= 15);
+      const distOilPipe = (stationMap.hydraulicOilPipes || []).find((hop) => stationMap.canInteractWithProp(hop) && !hop.isRuptured && Math.hypot(hop.x - playerCreature.x, hop.z - playerCreature.z) <= 15);
       if (distOilPipe) stationMap.ruptureHydraulicOilPipe(distOilPipe);
-      const distLaserArch = (stationMap.laserDeconArches || []).find((lda) => !lda.isSabotaged && Math.hypot(lda.x - playerCreature.x, lda.z - playerCreature.z) <= 15);
+      const distLaserArch = (stationMap.laserDeconArches || []).find((lda) => stationMap.canInteractWithProp(lda) && !lda.isSabotaged && Math.hypot(lda.x - playerCreature.x, lda.z - playerCreature.z) <= 15);
       if (distLaserArch) stationMap.sabotageLaserDeconArch(distLaserArch);
-      const distCrane = (stationMap.magneticCraneContainers || []).find((mcc) => !mcc.isDropped && Math.hypot(mcc.x - playerCreature.x, mcc.z - playerCreature.z) <= 15);
+      const distCrane = (stationMap.magneticCraneContainers || []).find((mcc) => stationMap.canInteractWithProp(mcc) && !mcc.isDropped && Math.hypot(mcc.x - playerCreature.x, mcc.z - playerCreature.z) <= 15);
       if (distCrane) stationMap.releaseMagneticCrane(distCrane);
-      const distShotgun = (stationMap.zx76ShotgunRacks || []).find((sr) => !sr.isLooted && Math.hypot(sr.x - playerCreature.x, sr.z - playerCreature.z) <= 15);
+      const distShotgun = (stationMap.zx76ShotgunRacks || []).find((sr) => stationMap.canInteractWithProp(sr) && !sr.isLooted && Math.hypot(sr.x - playerCreature.x, sr.z - playerCreature.z) <= 15);
       if (distShotgun) stationMap.lootZX76ShotgunRack(distShotgun);
-      const distHalonGenerator = (stationMap.halonGasGenerators || []).find((hgg) => !hgg.isSuppressed && Math.hypot(hgg.x - playerCreature.x, hgg.z - playerCreature.z) <= 15);
+      const distHalonGenerator = (stationMap.halonGasGenerators || []).find((hgg) => stationMap.canInteractWithProp(hgg) && !hgg.isSuppressed && Math.hypot(hgg.x - playerCreature.x, hgg.z - playerCreature.z) <= 15);
       if (distHalonGenerator) stationMap.triggerHalonGasSuppression(distHalonGenerator);
-      const distRadio = (stationMap.surveillanceRadioConsoles || []).find((src) => !src.isIntercepting && Math.hypot(src.x - playerCreature.x, src.z - playerCreature.z) <= 15);
+      const distRadio = (stationMap.surveillanceRadioConsoles || []).find((src) => stationMap.canInteractWithProp(src) && !src.isIntercepting && Math.hypot(src.x - playerCreature.x, src.z - playerCreature.z) <= 15);
       if (distRadio) stationMap.interceptMarinesRadio(distRadio);
 
       // Chantiers 162, 164, 166, 167, 168, 170 : Crachat acide balistique sur props Vague 17
-      const distCO2 = (stationMap.co2Extinguishers || []).find((ce) => !ce.isDischarged && Math.hypot(ce.x - playerCreature.x, ce.z - playerCreature.z) <= 15);
+      const distCO2 = (stationMap.co2Extinguishers || []).find((ce) => stationMap.canInteractWithProp(ce) && !ce.isDischarged && Math.hypot(ce.x - playerCreature.x, ce.z - playerCreature.z) <= 15);
       if (distCO2) stationMap.dischargeCO2Extinguisher(distCO2);
-      const distIncinerator = (stationMap.biowasteIncinerators || []).find((bi) => !bi.isActive && Math.hypot(bi.x - playerCreature.x, bi.z - playerCreature.z) <= 15);
+      const distIncinerator = (stationMap.biowasteIncinerators || []).find((bi) => stationMap.canInteractWithProp(bi) && !bi.isActive && Math.hypot(bi.x - playerCreature.x, bi.z - playerCreature.z) <= 15);
       if (distIncinerator) stationMap.activateBioWasteIncinerator(distIncinerator);
-      const distEvaArm = (stationMap.evaRoboticArms || []).find((arm) => !arm.isOperating && Math.hypot(arm.x - playerCreature.x, arm.z - playerCreature.z) <= 15);
+      const distEvaArm = (stationMap.evaRoboticArms || []).find((arm) => stationMap.canInteractWithProp(arm) && !arm.isOperating && Math.hypot(arm.x - playerCreature.x, arm.z - playerCreature.z) <= 15);
       if (distEvaArm) stationMap.operateEvaRoboticArm(distEvaArm);
-      const distLaserClaymore = (stationMap.laserClaymoreMines || []).find((mine) => !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 15);
+      const distLaserClaymore = (stationMap.laserClaymoreMines || []).find((mine) => stationMap.canInteractWithProp(mine) && !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 15);
       if (distLaserClaymore) stationMap.triggerLaserClaymore(distLaserClaymore);
-      const distFreon = (stationMap.freonFogGenerators || []).find((ffg) => !ffg.isActive && Math.hypot(ffg.x - playerCreature.x, ffg.z - playerCreature.z) <= 15);
+      const distFreon = (stationMap.freonFogGenerators || []).find((ffg) => stationMap.canInteractWithProp(ffg) && !ffg.isActive && Math.hypot(ffg.x - playerCreature.x, ffg.z - playerCreature.z) <= 15);
       if (distFreon) stationMap.releaseFreonFog(distFreon);
-      const distBioScan = (stationMap.muthurBioScanConsoles || []).find((mbc) => !mbc.isAnalyzed && Math.hypot(mbc.x - playerCreature.x, mbc.z - playerCreature.z) <= 15);
+      const distBioScan = (stationMap.muthurBioScanConsoles || []).find((mbc) => stationMap.canInteractWithProp(mbc) && !mbc.isAnalyzed && Math.hypot(mbc.x - playerCreature.x, mbc.z - playerCreature.z) <= 15);
       if (distBioScan) stationMap.consultMuthurBioScan(distBioScan);
 
       // Chantiers 172, 174, 176, 177, 178, 180 : Crachat acide balistique sur props Vague 18
-      const distWaterCurtain = (stationMap.waterCurtains || []).find((wc) => !wc.isFlushing && Math.hypot(wc.x - playerCreature.x, wc.z - playerCreature.z) <= 15);
+      const distWaterCurtain = (stationMap.waterCurtains || []).find((wc) => stationMap.canInteractWithProp(wc) && !wc.isFlushing && Math.hypot(wc.x - playerCreature.x, wc.z - playerCreature.z) <= 15);
       if (distWaterCurtain) stationMap.triggerWaterCurtain(distWaterCurtain);
-      const distBulkheadPanel = (stationMap.bulkheadControlPanels || []).find((bcp) => !bcp.isSealed && Math.hypot(bcp.x - playerCreature.x, bcp.z - playerCreature.z) <= 15);
+      const distBulkheadPanel = (stationMap.bulkheadControlPanels || []).find((bcp) => stationMap.canInteractWithProp(bcp) && !bcp.isSealed && Math.hypot(bcp.x - playerCreature.x, bcp.z - playerCreature.z) <= 15);
       if (distBulkheadPanel) stationMap.operateBulkheadControlPanel(distBulkheadPanel);
-      const distGeothermal = (stationMap.geothermalTurbines || []).find((gt) => !gt.isBlasting && Math.hypot(gt.x - playerCreature.x, gt.z - playerCreature.z) <= 15);
+      const distGeothermal = (stationMap.geothermalTurbines || []).find((gt) => stationMap.canInteractWithProp(gt) && !gt.isBlasting && Math.hypot(gt.x - playerCreature.x, gt.z - playerCreature.z) <= 15);
       if (distGeothermal) stationMap.releaseGeothermalSteam(distGeothermal);
-      const distM24Wire = (stationMap.m24ElectricWireTurrets || []).find((m24) => !m24.isDestroyed && Math.hypot(m24.x - playerCreature.x, m24.z - playerCreature.z) <= 15);
+      const distM24Wire = (stationMap.m24ElectricWireTurrets || []).find((m24) => stationMap.canInteractWithProp(m24) && !m24.isDestroyed && Math.hypot(m24.x - playerCreature.x, m24.z - playerCreature.z) <= 15);
       if (distM24Wire) stationMap.triggerM24ElectricWire(distM24Wire);
-      const distCryoGel = (stationMap.subZeroCryoGelCanisters || []).find((cg) => !cg.isDischarged && Math.hypot(cg.x - playerCreature.x, cg.z - playerCreature.z) <= 15);
+      const distCryoGel = (stationMap.subZeroCryoGelCanisters || []).find((cg) => stationMap.canInteractWithProp(cg) && !cg.isDischarged && Math.hypot(cg.x - playerCreature.x, cg.z - playerCreature.z) <= 15);
       if (distCryoGel) stationMap.dischargeCryoGelCanister(distCryoGel);
-      const distAlcove = (stationMap.seegsonDiagnosticAlcoves || []).find((a) => Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) <= 15);
+      const distAlcove = (stationMap.seegsonDiagnosticAlcoves || []).find((a) => stationMap.canInteractWithProp(a) && Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) <= 15);
       if (distAlcove) stationMap.operateSeegsonDiagnosticAlcove(distAlcove);
 
       // Chantiers 182, 184, 186, 187, 188, 190 : Crachat acide balistique sur props Vague 19
-      const distJammer = (stationMap.acousticJammers || []).find((j) => !j.isDestroyed && Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 15);
+      const distJammer = (stationMap.acousticJammers || []).find((j) => stationMap.canInteractWithProp(j) && !j.isDestroyed && Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 15);
       if (distJammer) stationMap.operateAcousticJammer(distJammer);
-      const distSterilizer = (stationMap.cryoSterilizers || []).find((cs) => !cs.isDischarged && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 15);
+      const distSterilizer = (stationMap.cryoSterilizers || []).find((cs) => stationMap.canInteractWithProp(cs) && !cs.isDischarged && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 15);
       if (distSterilizer) stationMap.dischargeCryoSterilizer(distSterilizer);
-      const distEev = (stationMap.eevConsoles || []).find((eev) => !eev.isEjected && Math.hypot(eev.x - playerCreature.x, eev.z - playerCreature.z) <= 15);
+      const distEev = (stationMap.eevConsoles || []).find((eev) => stationMap.canInteractWithProp(eev) && !eev.isEjected && Math.hypot(eev.x - playerCreature.x, eev.z - playerCreature.z) <= 15);
       if (distEev) stationMap.operateEevConsole(distEev);
-      const distNapalm = (stationMap.napalmTraps || []).find((nt) => !nt.isDetonated && Math.hypot(nt.x - playerCreature.x, nt.z - playerCreature.z) <= 15);
+      const distNapalm = (stationMap.napalmTraps || []).find((nt) => stationMap.canInteractWithProp(nt) && !nt.isDetonated && Math.hypot(nt.x - playerCreature.x, nt.z - playerCreature.z) <= 15);
       if (distNapalm) stationMap.triggerM20BNapalm(distNapalm);
-      const distAmmonia = (stationMap.ammoniaPipes || []).find((ap) => !ap.isRuptured && Math.hypot(ap.x - playerCreature.x, ap.z - playerCreature.z) <= 15);
+      const distAmmonia = (stationMap.ammoniaPipes || []).find((ap) => stationMap.canInteractWithProp(ap) && !ap.isRuptured && Math.hypot(ap.x - playerCreature.x, ap.z - playerCreature.z) <= 15);
       if (distAmmonia) stationMap.ruptureAmmoniaPipe(distAmmonia);
-      const distBioCore = (stationMap.bioCoreInterfaces || []).find((bc) => !bc.isHarvested && Math.hypot(bc.x - playerCreature.x, bc.z - playerCreature.z) <= 15);
+      const distBioCore = (stationMap.bioCoreInterfaces || []).find((bc) => stationMap.canInteractWithProp(bc) && !bc.isHarvested && Math.hypot(bc.x - playerCreature.x, bc.z - playerCreature.z) <= 15);
       if (distBioCore) stationMap.harvestBioCoreJelly(distBioCore);
 
       // Chantiers 192, 194, 196, 197, 199, 200 : Crachat acide balistique sur props Vague 20
-      const distSmokeM94 = (stationMap.m94SmokeSystems || []).find((ss) => !ss.isTriggered && Math.hypot(ss.x - playerCreature.x, ss.z - playerCreature.z) <= 15);
+      const distSmokeM94 = (stationMap.m94SmokeSystems || []).find((ss) => stationMap.canInteractWithProp(ss) && !ss.isTriggered && Math.hypot(ss.x - playerCreature.x, ss.z - playerCreature.z) <= 15);
       if (distSmokeM94) stationMap.operateM94SmokeSystem(distSmokeM94);
-      const distCryoPurge = (stationMap.cryoPurgeStations || []).find((cp) => !cp.isPurging && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 15);
+      const distCryoPurge = (stationMap.cryoPurgeStations || []).find((cp) => stationMap.canInteractWithProp(cp) && !cp.isPurging && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 15);
       if (distCryoPurge) stationMap.triggerCryoPurgeC44(distCryoPurge);
-      const distFusion = (stationMap.fusionStations || []).find((fs) => !fs.isSabotaged && Math.hypot(fs.x - playerCreature.x, fs.z - playerCreature.z) <= 15);
+      const distFusion = (stationMap.fusionStations || []).find((fs) => stationMap.canInteractWithProp(fs) && !fs.isSabotaged && Math.hypot(fs.x - playerCreature.x, fs.z - playerCreature.z) <= 15);
       if (distFusion) stationMap.sabotageFusionStation(distFusion);
-      const distHydraulic = (stationMap.hydraulicSpurtManifolds || []).find((hm) => !hm.isRuptured && Math.hypot(hm.x - playerCreature.x, hm.z - playerCreature.z) <= 15);
+      const distHydraulic = (stationMap.hydraulicSpurtManifolds || []).find((hm) => stationMap.canInteractWithProp(hm) && !hm.isRuptured && Math.hypot(hm.x - playerCreature.x, hm.z - playerCreature.z) <= 15);
       if (distHydraulic) stationMap.ruptureHydraulicManifold(distHydraulic);
-      const distTelemetry = (stationMap.muthurTelemetryConsoles || []).find((tc) => !tc.isAnalyzed && Math.hypot(tc.x - playerCreature.x, tc.z - playerCreature.z) <= 15);
+      const distTelemetry = (stationMap.muthurTelemetryConsoles || []).find((tc) => stationMap.canInteractWithProp(tc) && !tc.isAnalyzed && Math.hypot(tc.x - playerCreature.x, tc.z - playerCreature.z) <= 15);
       if (distTelemetry) stationMap.consultMuthurTelemetry(distTelemetry);
-      const distCradle = (stationMap.ovipositorCradles || []).find((oc) => !oc.isCommuned && Math.hypot(oc.x - playerCreature.x, oc.z - playerCreature.z) <= 15);
+      const distCradle = (stationMap.ovipositorCradles || []).find((oc) => stationMap.canInteractWithProp(oc) && !oc.isCommuned && Math.hypot(oc.x - playerCreature.x, oc.z - playerCreature.z) <= 15);
       if (distCradle) stationMap.communeWithOvipositorCradle(distCradle);
 
       // Chantiers 202, 204, 206, 207, 209, 210 : Crachat acide balistique sur props Vague 21
-      const distIRSmokeM47 = (stationMap.m47IRSmokeDispensers || []).find((sd) => !sd.isTriggered && Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 15);
+      const distIRSmokeM47 = (stationMap.m47IRSmokeDispensers || []).find((sd) => stationMap.canInteractWithProp(sd) && !sd.isTriggered && Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 15);
       if (distIRSmokeM47) stationMap.operateM47IRSmokeDispenser(distIRSmokeM47);
-      const distCryoFlow = (stationMap.cryoFlowStations || []).find((cf) => !cf.isSpraying && Math.hypot(cf.x - playerCreature.x, cf.z - playerCreature.z) <= 15);
+      const distCryoFlow = (stationMap.cryoFlowStations || []).find((cf) => stationMap.canInteractWithProp(cf) && !cf.isSpraying && Math.hypot(cf.x - playerCreature.x, cf.z - playerCreature.z) <= 15);
       if (distCryoFlow) stationMap.triggerCryoFlowC50(distCryoFlow);
-      const distTokamak = (stationMap.hyperdyneTokamaks || []).find((ht) => !ht.isSabotaged && Math.hypot(ht.x - playerCreature.x, ht.z - playerCreature.z) <= 15);
+      const distTokamak = (stationMap.hyperdyneTokamaks || []).find((ht) => stationMap.canInteractWithProp(ht) && !ht.isSabotaged && Math.hypot(ht.x - playerCreature.x, ht.z - playerCreature.z) <= 15);
       if (distTokamak) stationMap.sabotageHyperdyneTokamak(distTokamak);
-      const distArgon = (stationMap.argonManifoldPipes || []).find((ap) => !ap.isRuptured && Math.hypot(ap.x - playerCreature.x, ap.z - playerCreature.z) <= 15);
+      const distArgon = (stationMap.argonManifoldPipes || []).find((ap) => stationMap.canInteractWithProp(ap) && !ap.isRuptured && Math.hypot(ap.x - playerCreature.x, ap.z - playerCreature.z) <= 15);
       if (distArgon) stationMap.ruptureArgonPipe(distArgon);
-      const distMuthurScrubber = (stationMap.muthurScrubberConsoles || []).find((sc) => !sc.isOperating && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 15);
+      const distMuthurScrubber = (stationMap.muthurScrubberConsoles || []).find((sc) => stationMap.canInteractWithProp(sc) && !sc.isOperating && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 15);
       if (distMuthurScrubber) stationMap.operateMuthurScrubber(distMuthurScrubber);
-      const distBiomassSarcophagus = (stationMap.biomassSarcophagi || []).find((bs) => !bs.isConverted && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 15);
+      const distBiomassSarcophagus = (stationMap.biomassSarcophagi || []).find((bs) => stationMap.canInteractWithProp(bs) && !bs.isConverted && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 15);
       if (distBiomassSarcophagus) stationMap.convertBiomassSarcophagus(distBiomassSarcophagus);
 
       // Chantiers 212, 214, 216, 217, 219, 220 : Crachat acide balistique sur props Vague 22
-      const distJammerM56 = (stationMap.m56JammerBoxes || []).find((jb) => !jb.isTriggered && Math.hypot(jb.x - playerCreature.x, jb.z - playerCreature.z) <= 15);
+      const distJammerM56 = (stationMap.m56JammerBoxes || []).find((jb) => stationMap.canInteractWithProp(jb) && !jb.isTriggered && Math.hypot(jb.x - playerCreature.x, jb.z - playerCreature.z) <= 15);
       if (distJammerM56) stationMap.operateM56JammerBox(distJammerM56);
-      const distCryoChamber = (stationMap.cryoChamberC60s || []).find((cc) => !cc.isTriggered && Math.hypot(cc.x - playerCreature.x, cc.z - playerCreature.z) <= 15);
+      const distCryoChamber = (stationMap.cryoChamberC60s || []).find((cc) => stationMap.canInteractWithProp(cc) && !cc.isTriggered && Math.hypot(cc.x - playerCreature.x, cc.z - playerCreature.z) <= 15);
       if (distCryoChamber) stationMap.triggerCryoChamberC60(distCryoChamber);
-      const distArcFurnace = (stationMap.arcFurnaceInverters || []).find((af) => !af.isSabotaged && Math.hypot(af.x - playerCreature.x, af.z - playerCreature.z) <= 15);
+      const distArcFurnace = (stationMap.arcFurnaceInverters || []).find((af) => stationMap.canInteractWithProp(af) && !af.isSabotaged && Math.hypot(af.x - playerCreature.x, af.z - playerCreature.z) <= 15);
       if (distArcFurnace) stationMap.sabotageArcFurnaceInverter(distArcFurnace);
-      const distEthylene = (stationMap.ethyleneFlarePipes || []).find((ef) => !ef.isRuptured && Math.hypot(ef.x - playerCreature.x, ef.z - playerCreature.z) <= 15);
+      const distEthylene = (stationMap.ethyleneFlarePipes || []).find((ef) => stationMap.canInteractWithProp(ef) && !ef.isRuptured && Math.hypot(ef.x - playerCreature.x, ef.z - playerCreature.z) <= 15);
       if (distEthylene) stationMap.ruptureEthyleneFlarePipe(distEthylene);
-      const distCasai = (stationMap.seegsonCasaiOverrides || []).find((co) => !co.isOverridden && Math.hypot(co.x - playerCreature.x, co.z - playerCreature.z) <= 15);
+      const distCasai = (stationMap.seegsonCasaiOverrides || []).find((co) => stationMap.canInteractWithProp(co) && !co.isOverridden && Math.hypot(co.x - playerCreature.x, co.z - playerCreature.z) <= 15);
       if (distCasai) stationMap.operateSeegsonCasaiOverride(distCasai);
-      const distBioVault = (stationMap.bioStasisVaults || []).find((bv) => !bv.isConsumed && Math.hypot(bv.x - playerCreature.x, bv.z - playerCreature.z) <= 15);
+      const distBioVault = (stationMap.bioStasisVaults || []).find((bv) => stationMap.canInteractWithProp(bv) && !bv.isConsumed && Math.hypot(bv.x - playerCreature.x, bv.z - playerCreature.z) <= 15);
       if (distBioVault) stationMap.consumeBioStasisVault(distBioVault);
 
       // Chantiers 222, 224, 226, 227, 229, 230 : Crachat acide balistique sur props Vague 23
-      const distCart = (stationMap.transitMagCarts || []).find((c) => !c.isPropelled && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 15);
+      const distCart = (stationMap.transitMagCarts || []).find((c) => stationMap.canInteractWithProp(c) && !c.isPropelled && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 15);
       if (distCart) stationMap.launchTransitMagCart(distCart);
-      const distHalonExtinguisher = (stationMap.halonExtinguishers || []).find((h) => !h.isDischarged && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 15);
+      const distHalonExtinguisher = (stationMap.halonExtinguishers || []).find((h) => stationMap.canInteractWithProp(h) && !h.isDischarged && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 15);
       if (distHalonExtinguisher) stationMap.triggerHalonExtinguisher(distHalonExtinguisher);
-      const distM20Claymore = (stationMap.m20ClaymoreMines || []).find((m) => m.isArmed && !m.isDetonated && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 15);
+      const distM20Claymore = (stationMap.m20ClaymoreMines || []).find((m) => stationMap.canInteractWithProp(m) && m.isArmed && !m.isDetonated && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 15);
       if (distM20Claymore) stationMap.detonateM20ClaymoreMine(distM20Claymore);
-      const distHeatExchanger = (stationMap.heatExchangerVents || []).find((v) => !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 15);
+      const distHeatExchanger = (stationMap.heatExchangerVents || []).find((v) => stationMap.canInteractWithProp(v) && !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 15);
       if (distHeatExchanger) stationMap.ruptureHeatExchangerVent(distHeatExchanger);
-      const distJackSocket = (stationMap.maintenanceJackSockets || []).find((j) => Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 15);
+      const distJackSocket = (stationMap.maintenanceJackSockets || []).find((j) => stationMap.canInteractWithProp(j) && Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 15);
       if (distJackSocket) stationMap.toggleMaintenanceJackSocket(distJackSocket);
-      const distJoeAlcove = (stationMap.workingJoeAlcoves || []).find((a) => !a.isSabotaged && Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) <= 15);
+      const distJoeAlcove = (stationMap.workingJoeAlcoves || []).find((a) => stationMap.canInteractWithProp(a) && !a.isSabotaged && Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) <= 15);
       if (distJoeAlcove) stationMap.sabotageWorkingJoeAlcove(distJoeAlcove);
 
       // Chantiers 233, 234, 237, 239, 240 : Crachat acide balistique sur props Vague 24
-      const distBioVaultAlpha = (stationMap.biocontainmentVaults || []).find((v) => !v.isCycling && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 15);
+      const distBioVaultAlpha = (stationMap.biocontainmentVaults || []).find((v) => stationMap.canInteractWithProp(v) && !v.isCycling && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 15);
       if (distBioVaultAlpha) stationMap.triggerBiocontainmentDecon(distBioVaultAlpha);
-      const distReactorRing = (stationMap.nostromoReactorRings || []).find((r) => !r.isSabotaged && Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 15);
+      const distReactorRing = (stationMap.nostromoReactorRings || []).find((r) => stationMap.canInteractWithProp(r) && !r.isSabotaged && Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 15);
       if (distReactorRing) stationMap.sabotageReactorRing(distReactorRing);
-      const distVentFlue = (stationMap.geothermalVentFlues || []).find((f) => !f.isVenting && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 15);
+      const distVentFlue = (stationMap.geothermalVentFlues || []).find((f) => stationMap.canInteractWithProp(f) && !f.isVenting && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 15);
       if (distVentFlue) stationMap.triggerGeothermalVentFlue(distVentFlue);
-      const distJettisonConsole = (stationMap.jettisonConsoles || []).find((jc) => !jc.isArming && !jc.isJettisoned && Math.hypot(jc.x - playerCreature.x, jc.z - playerCreature.z) <= 15);
+      const distJettisonConsole = (stationMap.jettisonConsoles || []).find((jc) => stationMap.canInteractWithProp(jc) && !jc.isArming && !jc.isJettisoned && Math.hypot(jc.x - playerCreature.x, jc.z - playerCreature.z) <= 15);
       if (distJettisonConsole) stationMap.triggerJettisonExplosiveBolts(distJettisonConsole);
-      const distLeadChannel = (stationMap.fiorinaLeadChannels || []).find((lc) => !lc.isBreached && Math.hypot(lc.x - playerCreature.x, lc.z - playerCreature.z) <= 15);
+      const distLeadChannel = (stationMap.fiorinaLeadChannels || []).find((lc) => stationMap.canInteractWithProp(lc) && !lc.isBreached && Math.hypot(lc.x - playerCreature.x, lc.z - playerCreature.z) <= 15);
       if (distLeadChannel) stationMap.breachFiorinaLeadSluice(distLeadChannel);
 
       // Chantiers 241, 243, 244, 246, 248 : Crachat acide balistique sur props Vague 25
-      const distGondola = (stationMap.maintenanceGondolas || []).find((g) => !g.isDropped && Math.hypot(g.x - playerCreature.x, g.z - playerCreature.z) <= 15);
+      const distGondola = (stationMap.maintenanceGondolas || []).find((g) => stationMap.canInteractWithProp(g) && !g.isDropped && Math.hypot(g.x - playerCreature.x, g.z - playerCreature.z) <= 15);
       if (distGondola) stationMap.dropMaintenanceGondola(distGondola);
-      const distShaftFan = (stationMap.ventilationShaftFans || []).find((f) => !f.isReversed && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 15);
+      const distShaftFan = (stationMap.ventilationShaftFans || []).find((f) => stationMap.canInteractWithProp(f) && !f.isReversed && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 15);
       if (distShaftFan) stationMap.sabotageVentilationFan(distShaftFan);
-      const distAtmosphericScrubber = (stationMap.atmosphericScrubbers || []).find((s) => !s.isRuptured && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 15);
+      const distAtmosphericScrubber = (stationMap.atmosphericScrubbers || []).find((s) => stationMap.canInteractWithProp(s) && !s.isRuptured && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 15);
       if (distAtmosphericScrubber) stationMap.punctureAtmosphericScrubber(distAtmosphericScrubber);
-      const distSentryBarricade = (stationMap.uscmSentryBarricades || []).find((b) => !b.isBreached && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 15);
+      const distSentryBarricade = (stationMap.uscmSentryBarricades || []).find((b) => stationMap.canInteractWithProp(b) && !b.isBreached && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 15);
       if (distSentryBarricade) stationMap.breachSentryBarricade(distSentryBarricade);
-      const distApolloTower = (stationMap.apolloServerTowers || []).find((at) => !at.isCorrupted && Math.hypot(at.x - playerCreature.x, at.z - playerCreature.z) <= 15);
+      const distApolloTower = (stationMap.apolloServerTowers || []).find((at) => stationMap.canInteractWithProp(at) && !at.isCorrupted && Math.hypot(at.x - playerCreature.x, at.z - playerCreature.z) <= 15);
       if (distApolloTower) stationMap.corruptApolloServerTower(distApolloTower);
 
       // Chantiers 251 à 260 : Crachat acide balistique sur props Vague 26
-      const distCryoMatrix = (stationMap.cryoVaultMatrices || []).find((cm) => !cm.isShattered && Math.hypot(cm.x - playerCreature.x, cm.z - playerCreature.z) <= 15);
+      const distCryoMatrix = (stationMap.cryoVaultMatrices || []).find((cm) => stationMap.canInteractWithProp(cm) && !cm.isShattered && Math.hypot(cm.x - playerCreature.x, cm.z - playerCreature.z) <= 15);
       if (distCryoMatrix) stationMap.shatterCryoManifold(distCryoMatrix);
-      const distChasmBridge = (stationMap.chasmBridges || []).find((cb) => Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 15);
+      const distChasmBridge = (stationMap.chasmBridges || []).find((cb) => stationMap.canInteractWithProp(cb) && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 15);
       if (distChasmBridge) stationMap.retractChasmBridge(distChasmBridge);
-      const distQuenchBasin = (stationMap.toxicQuenchBasins || []).find((qb) => !qb.isOverflowing && Math.hypot(qb.x - playerCreature.x, qb.z - playerCreature.z) <= 15);
+      const distQuenchBasin = (stationMap.toxicQuenchBasins || []).find((qb) => stationMap.canInteractWithProp(qb) && !qb.isOverflowing && Math.hypot(qb.x - playerCreature.x, qb.z - playerCreature.z) <= 15);
       if (distQuenchBasin) stationMap.overflowQuenchBasin(distQuenchBasin);
-      const distObsWindow = (stationMap.observationLabWindows || []).find((ow) => !ow.isShattered && Math.hypot(ow.x - playerCreature.x, ow.z - playerCreature.z) <= 15);
+      const distObsWindow = (stationMap.observationLabWindows || []).find((ow) => stationMap.canInteractWithProp(ow) && !ow.isShattered && Math.hypot(ow.x - playerCreature.x, ow.z - playerCreature.z) <= 15);
       if (distObsWindow) stationMap.shatterObservationWindow(distObsWindow);
-      const distCryoCentrifuge = (stationMap.cryoFuelCentrifuges || []).find((cf) => !cf.isOverloaded && Math.hypot(cf.x - playerCreature.x, cf.z - playerCreature.z) <= 15);
+      const distCryoCentrifuge = (stationMap.cryoFuelCentrifuges || []).find((cf) => stationMap.canInteractWithProp(cf) && !cf.isOverloaded && Math.hypot(cf.x - playerCreature.x, cf.z - playerCreature.z) <= 15);
       if (distCryoCentrifuge) stationMap.overloadCryoCentrifuge(distCryoCentrifuge);
-      const distRailSwitch = (stationMap.transitRailSwitches || []).find((ts) => !ts.isDischarged && Math.hypot(ts.x - playerCreature.x, ts.z - playerCreature.z) <= 15);
+      const distRailSwitch = (stationMap.transitRailSwitches || []).find((ts) => stationMap.canInteractWithProp(ts) && !ts.isDischarged && Math.hypot(ts.x - playerCreature.x, ts.z - playerCreature.z) <= 15);
       if (distRailSwitch) stationMap.shortCircuitThirdRail(distRailSwitch);
-      const distCraneArm = (stationMap.vehicleCraneArms || []).find((ca) => !ca.isSwinging && Math.hypot(ca.x - playerCreature.x, ca.z - playerCreature.z) <= 15);
+      const distCraneArm = (stationMap.vehicleCraneArms || []).find((ca) => stationMap.canInteractWithProp(ca) && !ca.isSwinging && Math.hypot(ca.x - playerCreature.x, ca.z - playerCreature.z) <= 15);
       if (distCraneArm) stationMap.swingVehicleCrane(distCraneArm);
-      const distDockClamp = (stationMap.corbelDockingClamps || []).find((dc) => !dc.isReleased && Math.hypot(dc.x - playerCreature.x, dc.z - playerCreature.z) <= 15);
+      const distDockClamp = (stationMap.corbelDockingClamps || []).find((dc) => stationMap.canInteractWithProp(dc) && !dc.isReleased && Math.hypot(dc.x - playerCreature.x, dc.z - playerCreature.z) <= 15);
       if (distDockClamp) stationMap.releaseDockingClamp(distDockClamp);
 
       // Chantiers 261 à 270 : Crachat acide balistique sur props Vague 27
-      const distRamp = (stationMap.narcissusBoardingRamps || []).find((nr) => Math.hypot(nr.x - playerCreature.x, nr.z - playerCreature.z) <= 15);
+      const distRamp = (stationMap.narcissusBoardingRamps || []).find((nr) => stationMap.canInteractWithProp(nr) && Math.hypot(nr.x - playerCreature.x, nr.z - playerCreature.z) <= 15);
       if (distRamp) stationMap.extendNarcissusRamp(distRamp);
-      const distSeismic = (stationMap.seismicPistons || []).find((sp) => !sp.isPumping && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 15);
+      const distSeismic = (stationMap.seismicPistons || []).find((sp) => stationMap.canInteractWithProp(sp) && !sp.isPumping && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 15);
       if (distSeismic) stationMap.triggerSeismicStabilizer(distSeismic);
-      const distBellows = (stationMap.furnaceBellowsDucts || []).find((fb) => !fb.isPurging && Math.hypot(fb.x - playerCreature.x, fb.z - playerCreature.z) <= 15);
+      const distBellows = (stationMap.furnaceBellowsDucts || []).find((fb) => stationMap.canInteractWithProp(fb) && !fb.isPurging && Math.hypot(fb.x - playerCreature.x, fb.z - playerCreature.z) <= 15);
       if (distBellows) stationMap.purgeFurnaceBellows(distBellows);
-      const distCryoSarcophagus = (stationMap.cryoSurgicalSarcophagi || []).find((cs) => !cs.isUnsealed && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 15);
+      const distCryoSarcophagus = (stationMap.cryoSurgicalSarcophagi || []).find((cs) => stationMap.canInteractWithProp(cs) && !cs.isUnsealed && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 15);
       if (distCryoSarcophagus) stationMap.unsealCryoSarcophagus(distCryoSarcophagus);
-      const distFuelPylon = (stationMap.fuelSiphonPylons || []).find((fp) => !fp.isVenting && Math.hypot(fp.x - playerCreature.x, fp.z - playerCreature.z) <= 15);
+      const distFuelPylon = (stationMap.fuelSiphonPylons || []).find((fp) => stationMap.canInteractWithProp(fp) && !fp.isVenting && Math.hypot(fp.x - playerCreature.x, fp.z - playerCreature.z) <= 15);
       if (distFuelPylon) stationMap.overpressureFuelSiphon(distFuelPylon);
-      const distShutter = (stationMap.securityShutterDoors || []).find((sd) => Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 15);
+      const distShutter = (stationMap.securityShutterDoors || []).find((sd) => stationMap.canInteractWithProp(sd) && Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 15);
       if (distShutter) stationMap.toggleSecurityShutter(distShutter);
-      const distSump = (stationMap.processingSumpSiphons || []).find((ps) => !ps.isFlushing && Math.hypot(ps.x - playerCreature.x, ps.z - playerCreature.z) <= 15);
+      const distSump = (stationMap.processingSumpSiphons || []).find((ps) => stationMap.canInteractWithProp(ps) && !ps.isFlushing && Math.hypot(ps.x - playerCreature.x, ps.z - playerCreature.z) <= 15);
       if (distSump) stationMap.flushProcessingSump(distSump);
-      const distAmmoPallet = (stationMap.munitionsHeavyPallets || []).find((mp) => !mp.isDetonated && Math.hypot(mp.x - playerCreature.x, mp.z - playerCreature.z) <= 15);
+      const distAmmoPallet = (stationMap.munitionsHeavyPallets || []).find((mp) => stationMap.canInteractWithProp(mp) && !mp.isDetonated && Math.hypot(mp.x - playerCreature.x, mp.z - playerCreature.z) <= 15);
       if (distAmmoPallet) stationMap.detonateMunitionsPallet(distAmmoPallet);
-      const distRechargeBay = (stationMap.syntheticRechargeBays || []).find((rb) => !rb.isOverloaded && Math.hypot(rb.x - playerCreature.x, rb.z - playerCreature.z) <= 15);
+      const distRechargeBay = (stationMap.syntheticRechargeBays || []).find((rb) => stationMap.canInteractWithProp(rb) && !rb.isOverloaded && Math.hypot(rb.x - playerCreature.x, rb.z - playerCreature.z) <= 15);
       if (distRechargeBay) stationMap.overloadSyntheticBay(distRechargeBay);
-      const distGantryHoist = (stationMap.foundryGantryHoists || []).find((gh) => !gh.isDropped && Math.hypot(gh.x - playerCreature.x, gh.z - playerCreature.z) <= 15);
+      const distGantryHoist = (stationMap.foundryGantryHoists || []).find((gh) => stationMap.canInteractWithProp(gh) && !gh.isDropped && Math.hypot(gh.x - playerCreature.x, gh.z - playerCreature.z) <= 15);
       if (distGantryHoist) stationMap.dropFoundryGantryLadle(distGantryHoist);
 
       // Chantiers 271 à 280 : Crachat acide balistique sur props Vague 28
-      const distCoolantHatch = (stationMap.nostromoCoolantHatches || []).find((h) => !h.isDecompressed && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 15);
+      const distCoolantHatch = (stationMap.nostromoCoolantHatches || []).find((h) => stationMap.canInteractWithProp(h) && !h.isDecompressed && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 15);
       if (distCoolantHatch) stationMap.decompressCoolantHatch(distCoolantHatch);
-      const distFlume = (stationMap.hadleyCoolantFlumes || []).find((f) => !f.isRuptured && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 15);
+      const distFlume = (stationMap.hadleyCoolantFlumes || []).find((f) => stationMap.canInteractWithProp(f) && !f.isRuptured && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 15);
       if (distFlume) stationMap.ruptureCoolantFlume(distFlume);
-      const distCounterweight = (stationMap.fiorinaCounterweightPistons || []).find((p) => !p.isDropped && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 15);
+      const distCounterweight = (stationMap.fiorinaCounterweightPistons || []).find((p) => stationMap.canInteractWithProp(p) && !p.isDropped && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 15);
       if (distCounterweight) stationMap.releaseCounterweightPiston(distCounterweight);
-      const distBioreactor = (stationMap.aurigaBioreactorDomes || []).find((d) => !d.isDestabilized && Math.hypot(d.x - playerCreature.x, d.z - playerCreature.z) <= 15);
+      const distBioreactor = (stationMap.aurigaBioreactorDomes || []).find((d) => stationMap.canInteractWithProp(d) && !d.isDestabilized && Math.hypot(d.x - playerCreature.x, d.z - playerCreature.z) <= 15);
       if (distBioreactor) stationMap.destabilizeBioreactor(distBioreactor);
-      const distRemus = (stationMap.remusGantryRails || []).find((r) => Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 15);
+      const distRemus = (stationMap.remusGantryRails || []).find((r) => stationMap.canInteractWithProp(r) && Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 15);
       if (distRemus) stationMap.traverseRemusGantry(distRemus);
-      const distSeegsonBooth = (stationMap.seegsonTestBooths || []).find((b) => !b.isGlitched && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 15);
+      const distSeegsonBooth = (stationMap.seegsonTestBooths || []).find((b) => stationMap.canInteractWithProp(b) && !b.isGlitched && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 15);
       if (distSeegsonBooth) stationMap.overloadSeegsonBooth(distSeegsonBooth);
-      const distIncubator = (stationMap.medlabIncubatorRacks || []).find((ir) => !ir.isShattered && Math.hypot(ir.x - playerCreature.x, ir.z - playerCreature.z) <= 15);
+      const distIncubator = (stationMap.medlabIncubatorRacks || []).find((ir) => stationMap.canInteractWithProp(ir) && !ir.isShattered && Math.hypot(ir.x - playerCreature.x, ir.z - playerCreature.z) <= 15);
       if (distIncubator) stationMap.shatterIncubatorRack(distIncubator);
-      const distSandbag = (stationMap.uscmSandbagBunkers || []).find((sb) => !sb.isBreached && Math.hypot(sb.x - playerCreature.x, sb.z - playerCreature.z) <= 15);
+      const distSandbag = (stationMap.uscmSandbagBunkers || []).find((sb) => stationMap.canInteractWithProp(sb) && !sb.isBreached && Math.hypot(sb.x - playerCreature.x, sb.z - playerCreature.z) <= 15);
       if (distSandbag) stationMap.breachSandbagBunker(distSandbag);
-      const distLouver = (stationMap.habitationLouverShutters || []).find((ls) => Math.hypot(ls.x - playerCreature.x, ls.z - playerCreature.z) <= 15);
+      const distLouver = (stationMap.habitationLouverShutters || []).find((ls) => stationMap.canInteractWithProp(ls) && Math.hypot(ls.x - playerCreature.x, ls.z - playerCreature.z) <= 15);
       if (distLouver) stationMap.cycleLouverShutter(distLouver);
-      const distWeir = (stationMap.quenchOverflowWeirs || []).find((qw) => !qw.isOpen && Math.hypot(qw.x - playerCreature.x, qw.z - playerCreature.z) <= 15);
+      const distWeir = (stationMap.quenchOverflowWeirs || []).find((qw) => stationMap.canInteractWithProp(qw) && !qw.isOpen && Math.hypot(qw.x - playerCreature.x, qw.z - playerCreature.z) <= 15);
       if (distWeir) stationMap.openQuenchWeir(distWeir);
 
       // Chantiers 281 à 290 : Crachat acide balistique sur props Vague 29
-      const distBlower = (stationMap.coolingBlowers || []).find((cb) => !cb.isOverdriven && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 15);
+      const distBlower = (stationMap.coolingBlowers || []).find((cb) => stationMap.canInteractWithProp(cb) && !cb.isOverdriven && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 15);
       if (distBlower) stationMap.overdriveCoolingBlower(distBlower);
-      const distTable = (stationMap.tacticalHoloTables || []).find((tt) => !tt.isHacked && Math.hypot(tt.x - playerCreature.x, tt.z - playerCreature.z) <= 15);
+      const distTable = (stationMap.tacticalHoloTables || []).find((tt) => stationMap.canInteractWithProp(tt) && !tt.isHacked && Math.hypot(tt.x - playerCreature.x, tt.z - playerCreature.z) <= 15);
       if (distTable) stationMap.hackTacticalTable(distTable);
-      const distLeadSluice = (stationMap.leadDrainageSluices || []).find((ls) => !ls.isOpen && Math.hypot(ls.x - playerCreature.x, ls.z - playerCreature.z) <= 15);
+      const distLeadSluice = (stationMap.leadDrainageSluices || []).find((ls) => stationMap.canInteractWithProp(ls) && !ls.isOpen && Math.hypot(ls.x - playerCreature.x, ls.z - playerCreature.z) <= 15);
       if (distLeadSluice) stationMap.releaseLeadSluice(distLeadSluice);
-      const distHoldingCage = (stationMap.specimenHoldingCages || []).find((hc) => !hc.isShocking && Math.hypot(hc.x - playerCreature.x, hc.z - playerCreature.z) <= 15);
+      const distHoldingCage = (stationMap.specimenHoldingCages || []).find((hc) => stationMap.canInteractWithProp(hc) && !hc.isShocking && Math.hypot(hc.x - playerCreature.x, hc.z - playerCreature.z) <= 15);
       if (distHoldingCage) stationMap.shortCircuitHoldingCage(distHoldingCage);
-      const distCarousel = (stationMap.stasisCarousels || []).find((sc) => Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 15);
+      const distCarousel = (stationMap.stasisCarousels || []).find((sc) => stationMap.canInteractWithProp(sc) && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 15);
       if (distCarousel) stationMap.spinStasisCarousel(distCarousel);
-      const distMonorail = (stationMap.monorailBufferStops || []).find((mb) => !mb.isCompressed && Math.hypot(mb.x - playerCreature.x, mb.z - playerCreature.z) <= 15);
+      const distMonorail = (stationMap.monorailBufferStops || []).find((mb) => stationMap.canInteractWithProp(mb) && !mb.isCompressed && Math.hypot(mb.x - playerCreature.x, mb.z - playerCreature.z) <= 15);
       if (distMonorail) stationMap.compressMonorailBuffer(distMonorail);
-      const distSuperheater = (stationMap.steamSuperheaters || []).find((sh) => !sh.isVenting && Math.hypot(sh.x - playerCreature.x, sh.z - playerCreature.z) <= 15);
+      const distSuperheater = (stationMap.steamSuperheaters || []).find((sh) => stationMap.canInteractWithProp(sh) && !sh.isVenting && Math.hypot(sh.x - playerCreature.x, sh.z - playerCreature.z) <= 15);
       if (distSuperheater) stationMap.ventSuperheaterSteam(distSuperheater);
-      const distWeaponRack = (stationMap.uscmWeaponRacks || []).find((wr) => !wr.isUnlocked && Math.hypot(wr.x - playerCreature.x, wr.z - playerCreature.z) <= 15);
+      const distWeaponRack = (stationMap.uscmWeaponRacks || []).find((wr) => stationMap.canInteractWithProp(wr) && !wr.isUnlocked && Math.hypot(wr.x - playerCreature.x, wr.z - playerCreature.z) <= 15);
       if (distWeaponRack) stationMap.unlockUscmWeaponRack(distWeaponRack);
-      const distAssemblyStation = (stationMap.syntheticAssemblyStations || []).find((as) => !as.isOverloaded && Math.hypot(as.x - playerCreature.x, as.z - playerCreature.z) <= 15);
+      const distAssemblyStation = (stationMap.syntheticAssemblyStations || []).find((as) => stationMap.canInteractWithProp(as) && !as.isOverloaded && Math.hypot(as.x - playerCreature.x, as.z - playerCreature.z) <= 15);
       if (distAssemblyStation) stationMap.overloadAssemblyStation(distAssemblyStation);
-      const distAirIntake = (stationMap.furnaceAirIntakes || []).find((ai) => !ai.isPurged && Math.hypot(ai.x - playerCreature.x, ai.z - playerCreature.z) <= 15);
+      const distAirIntake = (stationMap.furnaceAirIntakes || []).find((ai) => stationMap.canInteractWithProp(ai) && !ai.isPurged && Math.hypot(ai.x - playerCreature.x, ai.z - playerCreature.z) <= 15);
       if (distAirIntake) stationMap.purgeFurnaceAirIntake(distAirIntake);
 
       // Chantiers 291 à 300 : Crachat acide balistique sur props Vague 30
-      const distHoist = (stationMap.overheadMonorailHoists || []).find((mh) => !mh.isDropped && Math.hypot(mh.x - playerCreature.x, mh.z - playerCreature.z) <= 15);
+      const distHoist = (stationMap.overheadMonorailHoists || []).find((mh) => stationMap.canInteractWithProp(mh) && !mh.isDropped && Math.hypot(mh.x - playerCreature.x, mh.z - playerCreature.z) <= 15);
       if (distHoist) stationMap.dropMonorailHoist(distHoist);
-      const distBattery = (stationMap.emergencyBatteryBanks || []).find((bb) => !bb.isDischarged && Math.hypot(bb.x - playerCreature.x, bb.z - playerCreature.z) <= 15);
+      const distBattery = (stationMap.emergencyBatteryBanks || []).find((bb) => stationMap.canInteractWithProp(bb) && !bb.isDischarged && Math.hypot(bb.x - playerCreature.x, bb.z - playerCreature.z) <= 15);
       if (distBattery) stationMap.dischargeBatteryBank(distBattery);
-      const distQuenchBasket = (stationMap.heavyQuenchBaskets || []).find((qb) => !qb.isLowered && Math.hypot(qb.x - playerCreature.x, qb.z - playerCreature.z) <= 15);
+      const distQuenchBasket = (stationMap.heavyQuenchBaskets || []).find((qb) => stationMap.canInteractWithProp(qb) && !qb.isLowered && Math.hypot(qb.x - playerCreature.x, qb.z - playerCreature.z) <= 15);
       if (distQuenchBasket) stationMap.lowerQuenchBasket(distQuenchBasket);
-      const distCentrifuge = (stationMap.surgicalCryoCentrifuges || []).find((cc) => !cc.isSpunUp && Math.hypot(cc.x - playerCreature.x, cc.z - playerCreature.z) <= 15);
+      const distCentrifuge = (stationMap.surgicalCryoCentrifuges || []).find((cc) => stationMap.canInteractWithProp(cc) && !cc.isSpunUp && Math.hypot(cc.x - playerCreature.x, cc.z - playerCreature.z) <= 15);
       if (distCentrifuge) stationMap.spinUpCryoCentrifuge(distCentrifuge);
-      const distFuelManifold = (stationMap.fuelTransferManifolds || []).find((fm) => !fm.isPurged && Math.hypot(fm.x - playerCreature.x, fm.z - playerCreature.z) <= 15);
+      const distFuelManifold = (stationMap.fuelTransferManifolds || []).find((fm) => stationMap.canInteractWithProp(fm) && !fm.isPurged && Math.hypot(fm.x - playerCreature.x, fm.z - playerCreature.z) <= 15);
       if (distFuelManifold) stationMap.purgeFuelManifold(distFuelManifold);
-      const distScanner = (stationMap.baggageInspectionScanners || []).find((bs) => !bs.isJammed && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 15);
+      const distScanner = (stationMap.baggageInspectionScanners || []).find((bs) => stationMap.canInteractWithProp(bs) && !bs.isJammed && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 15);
       if (distScanner) stationMap.jamBaggageScanner(distScanner);
-      const distTurbogen = (stationMap.steamTurbogenerators || []).find((tg) => !tg.isOverdriven && Math.hypot(tg.x - playerCreature.x, tg.z - playerCreature.z) <= 15);
+      const distTurbogen = (stationMap.steamTurbogenerators || []).find((tg) => stationMap.canInteractWithProp(tg) && !tg.isOverdriven && Math.hypot(tg.x - playerCreature.x, tg.z - playerCreature.z) <= 15);
       if (distTurbogen) stationMap.overdriveSteamTurbogenerator(distTurbogen);
-      const distSled = (stationMap.ballisticTestSleds || []).find((bts) => !bts.isFired && Math.hypot(bts.x - playerCreature.x, bts.z - playerCreature.z) <= 15);
+      const distSled = (stationMap.ballisticTestSleds || []).find((bts) => stationMap.canInteractWithProp(bts) && !bts.isFired && Math.hypot(bts.x - playerCreature.x, bts.z - playerCreature.z) <= 15);
       if (distSled) stationMap.fireBallisticSled(distSled);
-      const distCableTray = (stationMap.apolloCableTrays || []).find((ct) => !ct.isTapped && Math.hypot(ct.x - playerCreature.x, ct.z - playerCreature.z) <= 15);
+      const distCableTray = (stationMap.apolloCableTrays || []).find((ct) => stationMap.canInteractWithProp(ct) && !ct.isTapped && Math.hypot(ct.x - playerCreature.x, ct.z - playerCreature.z) <= 15);
       if (distCableTray) stationMap.tapApolloCableTray(distCableTray);
-      const distTuyere = (stationMap.blastFurnaceTuyeres || []).find((bt) => !bt.isOxygenInjected && Math.hypot(bt.x - playerCreature.x, bt.z - playerCreature.z) <= 15);
+      const distTuyere = (stationMap.blastFurnaceTuyeres || []).find((bt) => stationMap.canInteractWithProp(bt) && !bt.isOxygenInjected && Math.hypot(bt.x - playerCreature.x, bt.z - playerCreature.z) <= 15);
       if (distTuyere) stationMap.injectBlastTuyereOxygen(distTuyere);
 
       // Chantiers 301 à 310 : Crachat acide balistique sur props Vague 31
-      const distWave31 = (stationMap.wave31Props || []).find((wp) => !wp.isTriggered && Math.hypot(wp.x - playerCreature.x, wp.z - playerCreature.z) <= 15);
+      const distWave31 = (stationMap.wave31Props || []).find((wp) => stationMap.canInteractWithProp(wp) && !wp.isTriggered && Math.hypot(wp.x - playerCreature.x, wp.z - playerCreature.z) <= 15);
       if (distWave31) stationMap.triggerWave31Prop(distWave31);
 
       // Audit QA #83 : Dégradation Structurelle de la Résine Organique sous Impact Acide
@@ -33075,908 +35105,911 @@
     }
 
     interactWithNearbyProps() {
+      if (playerCreature.draggedHost) {
+        const loadingChute=(stationMap.medlabAutopsyChutes||[]).find(chute=>stationMap.canInteractWithProp(chute)&&Math.hypot(chute.x-playerCreature.x,chute.z-playerCreature.z)<=5.5);
+        if (loadingChute) return stationMap.dumpCorpseIntoIncinerator(loadingChute);
+      }
       // 1. Cuves Cryogéniques LN2 (Chantier 84)
-      const nearTank = (stationMap.nitrogenTanks || []).find((t) => !t.isRuptured && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 5.5);
+      const nearTank = (stationMap.nitrogenTanks || []).find((t) => stationMap.canInteractWithProp(t) && !t.isRuptured && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 5.5);
       if (nearTank) {
         stationMap.shatterNitrogenTank(nearTank);
         return true;
       }
       // 2. Creuset de fonderie d'acier en fusion (Chantier 88)
-      const nearCrucible = (stationMap.foundryCrucibles || []).find((c) => !c.isTilted && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 6.5);
+      const nearCrucible = (stationMap.foundryCrucibles || []).find((c) => stationMap.canInteractWithProp(c) && !c.isTilted && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 6.5);
       if (nearCrucible) {
         stationMap.tiltFoundryCrucible(nearCrucible);
         return true;
       }
       // 3. Monte-charge / câbles de levage (Chantier 85)
-      const nearElevator = (stationMap.freightElevators || []).find((e) => !e.cablesCut && Math.hypot(e.x - playerCreature.x, e.z - playerCreature.z) <= 5.5);
+      const nearElevator = (stationMap.freightElevators || []).find((e) => stationMap.canInteractWithProp(e) && !e.cablesCut && Math.hypot(e.x - playerCreature.x, e.z - playerCreature.z) <= 5.5);
       if (nearElevator) {
         stationMap.snapElevatorCables(nearElevator);
         return true;
       }
       // 4. Sas de décontamination caustique (Chantier 93)
-      const nearDecon = (stationMap.deconAirlocks || []).find((da) => !da.isFlushing && Math.hypot(da.x - playerCreature.x, da.z - playerCreature.z) <= 5.5);
+      const nearDecon = (stationMap.deconAirlocks || []).find((da) => stationMap.canInteractWithProp(da) && !da.isFlushing && Math.hypot(da.x - playerCreature.x, da.z - playerCreature.z) <= 5.5);
       if (nearDecon) {
         stationMap.triggerDecontaminationAirlock(nearDecon);
         return true;
       }
       // 5. Grue industrielle suspendue Seegson (Chantier 96)
-      const nearCrane = (stationMap.industrialCranes || []).find((cr) => !cr.isCrushing && Math.hypot(cr.x - playerCreature.x, cr.z - playerCreature.z) <= 6.5);
+      const nearCrane = (stationMap.industrialCranes || []).find((cr) => stationMap.canInteractWithProp(cr) && !cr.isCrushing && Math.hypot(cr.x - playerCreature.x, cr.z - playerCreature.z) <= 6.5);
       if (nearCrane) {
         stationMap.operateCraneArm(nearCrane);
         return true;
       }
       // 6. Cœur de réacteur à fusion surchauffé (Chantier 98)
-      const nearReactor = (stationMap.fusionReactors || []).find((fr) => !fr.isOverloaded && Math.hypot(fr.x - playerCreature.x, fr.z - playerCreature.z) <= 6.5);
+      const nearReactor = (stationMap.fusionReactors || []).find((fr) => stationMap.canInteractWithProp(fr) && !fr.isOverloaded && Math.hypot(fr.x - playerCreature.x, fr.z - playerCreature.z) <= 6.5);
       if (nearReactor) {
         stationMap.overloadFusionReactorCore(nearReactor);
         return true;
       }
       // 7. Terminal rétro M.U.T.H.U.R. 6000 (Chantier 100)
-      const nearMuthur = (stationMap.muthurTerminals || []).find((mt) => (!mt.cooldown || mt.cooldown <= 0) && Math.hypot(mt.x - playerCreature.x, mt.z - playerCreature.z) <= 4.5);
+      const nearMuthur = (stationMap.muthurTerminals || []).find((mt) => stationMap.canInteractWithProp(mt) && (!mt.cooldown || mt.cooldown <= 0) && Math.hypot(mt.x - playerCreature.x, mt.z - playerCreature.z) <= 4.5);
       if (nearMuthur) {
         stationMap.interactMuthurTerminal(nearMuthur);
         return true;
       }
       // 8. Vanne Hydraulique de Vapeur 40 Bars (Chantier 103)
-      const nearSteam = (stationMap.highPressureSteamValves || []).find((v) => !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
+      const nearSteam = (stationMap.highPressureSteamValves || []).find((v) => stationMap.canInteractWithProp(v) && !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
       if (nearSteam) {
         stationMap.ruptureHighPressureSteamValve(nearSteam);
         return true;
       }
       // 9. Barricade en Titane USCM (Chantier 106)
-      const nearBarricade = (stationMap.titaniumBarricades || []).find((b) => !b.isDestroyed && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
+      const nearBarricade = (stationMap.titaniumBarricades || []).find((b) => stationMap.canInteractWithProp(b) && !b.isDestroyed && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
       if (nearBarricade) {
         stationMap.damageTitaniumBarricade(nearBarricade, 60);
         return true;
       }
       // 10. Robot Médical Seegson Medi-Bot (Chantier 107)
-      const nearMedibot = (stationMap.seegsonMedibots || []).find((m) => !m.isSabotaged && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 5.5);
+      const nearMedibot = (stationMap.seegsonMedibots || []).find((m) => stationMap.canInteractWithProp(m) && !m.isSabotaged && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 5.5);
       if (nearMedibot) {
         stationMap.sabotageSeegsonMedibot(nearMedibot);
         return true;
       }
       // 11. Câbles Haute Tension 50 000 V (Chantier 108)
-      const nearHV = (stationMap.hangingHVCables || []).find((c) => !c.isSevered && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+      const nearHV = (stationMap.hangingHVCables || []).find((c) => stationMap.canInteractWithProp(c) && !c.isSevered && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
       if (nearHV) {
         stationMap.severHangingHVCables(nearHV);
         return true;
       }
       // 12. Générateur Gyroscopique Zero-G (Chantier 110)
-      const nearZeroG = (stationMap.zeroGGenerators || []).find((zg) => (!zg.activeTimer || zg.activeTimer <= 0) && Math.hypot(zg.x - playerCreature.x, zg.z - playerCreature.z) <= 6.5);
+      const nearZeroG = (stationMap.zeroGGenerators || []).find((zg) => stationMap.canInteractWithProp(zg) && (!zg.activeTimer || zg.activeTimer <= 0) && Math.hypot(zg.x - playerCreature.x, zg.z - playerCreature.z) <= 6.5);
       if (nearZeroG) {
         stationMap.triggerZeroGGeneratorFlush(nearZeroG);
         return true;
       }
       // 13. Caisson d'Hyper-Sommeil Cryogénique (Chantier 112)
-      const nearCryoPod = (stationMap.cryoStasisPods || []).find((cp) => !cp.isShattered && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 5.5);
+      const nearCryoPod = (stationMap.cryoStasisPods || []).find((cp) => stationMap.canInteractWithProp(cp) && !cp.isShattered && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 5.5);
       if (nearCryoPod) {
         stationMap.shatterCryoStasisPod(nearCryoPod);
         return true;
       }
       // 14. Spore Phéromonale de Ruche (Chantier 113)
-      const nearSpore = (stationMap.hivePheromoneSpores || []).find((sp) => !sp.isTriggered && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 5.5);
+      const nearSpore = (stationMap.hivePheromoneSpores || []).find((sp) => stationMap.canInteractWithProp(sp) && !sp.isTriggered && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 5.5);
       if (nearSpore) {
         stationMap.triggerHivePheromoneSpore(nearSpore);
         return true;
       }
       // 15. Bobine de Fil Barbelé Concertina Électrifié (Chantier 114)
-      const nearBarbed = (stationMap.barbedWireSpools || []).find((bw) => !bw.isCut && Math.hypot(bw.x - playerCreature.x, bw.z - playerCreature.z) <= 5.5);
+      const nearBarbed = (stationMap.barbedWireSpools || []).find((bw) => stationMap.canInteractWithProp(bw) && !bw.isCut && Math.hypot(bw.x - playerCreature.x, bw.z - playerCreature.z) <= 5.5);
       if (nearBarbed) {
         stationMap.cutBarbedWireSpool(nearBarbed, 60);
         return true;
       }
       // 16. Enregistreur de Vol Blindé M7 Black Box (Chantier 115)
-      const nearRecorder = (stationMap.flightRecorders || []).find((fr) => !fr.isPlayed && Math.hypot(fr.x - playerCreature.x, fr.z - playerCreature.z) <= 5.5);
+      const nearRecorder = (stationMap.flightRecorders || []).find((fr) => stationMap.canInteractWithProp(fr) && !fr.isPlayed && Math.hypot(fr.x - playerCreature.x, fr.z - playerCreature.z) <= 5.5);
       if (nearRecorder) {
         stationMap.readFlightRecorder(nearRecorder);
         return true;
       }
       // 17. Panneau de Générateur Auxiliaire de Secours (Chantier 117)
-      const nearAuxGen = (stationMap.auxiliaryGenerators || []).find((ag) => !ag.isSabotaged && Math.hypot(ag.x - playerCreature.x, ag.z - playerCreature.z) <= 5.5);
+      const nearAuxGen = (stationMap.auxiliaryGenerators || []).find((ag) => stationMap.canInteractWithProp(ag) && !ag.isSabotaged && Math.hypot(ag.x - playerCreature.x, ag.z - playerCreature.z) <= 5.5);
       if (nearAuxGen) {
         stationMap.sabotageAuxiliaryGenerator(nearAuxGen);
         return true;
       }
       // 18. Tourelle de Désignation Laser Tactique (Chantier 118)
-      const nearLaser = (stationMap.laserDesignators || []).find((ld) => !ld.isDestroyed && Math.hypot(ld.x - playerCreature.x, ld.z - playerCreature.z) <= 5.5);
+      const nearLaser = (stationMap.laserDesignators || []).find((ld) => stationMap.canInteractWithProp(ld) && !ld.isDestroyed && Math.hypot(ld.x - playerCreature.x, ld.z - playerCreature.z) <= 5.5);
       if (nearLaser) {
         stationMap.destroyLaserDesignator(nearLaser, 60);
         return true;
       }
       // 19. Verrou de Serrage d'Amarrage Orbital (Chantier 120)
-      const nearDock = (stationMap.orbitalDockingClamps || []).find((dc) => !dc.isEjected && Math.hypot(dc.x - playerCreature.x, dc.z - playerCreature.z) <= 5.5);
+      const nearDock = (stationMap.orbitalDockingClamps || []).find((dc) => stationMap.canInteractWithProp(dc) && !dc.isEjected && Math.hypot(dc.x - playerCreature.x, dc.z - playerCreature.z) <= 5.5);
       if (nearDock) {
         stationMap.ejectOrbitalDockingClamp(nearDock);
         return true;
       }
       // 20. Chariot Élévateur Industriel Lithium (Chantier 122)
-      const nearForklift = (stationMap.forklifts || []).find((fl) => !fl.isRuptured && Math.hypot(fl.x - playerCreature.x, fl.z - playerCreature.z) <= 5.5);
+      const nearForklift = (stationMap.forklifts || []).find((fl) => stationMap.canInteractWithProp(fl) && !fl.isRuptured && Math.hypot(fl.x - playerCreature.x, fl.z - playerCreature.z) <= 5.5);
       if (nearForklift) {
         stationMap.ruptureForkliftBattery(nearForklift);
         return true;
       }
       // 21. Buse Incendie Automatique Halon/Eau (Chantier 124)
-      const nearSprinkler = (stationMap.ceilingSprinklers || []).find((cs) => !cs.isSpraying && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 5.5);
+      const nearSprinkler = (stationMap.ceilingSprinklers || []).find((cs) => stationMap.canInteractWithProp(cs) && !cs.isSpraying && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 5.5);
       if (nearSprinkler) {
         stationMap.triggerFireSprinklers(nearSprinkler);
         return true;
       }
       // 22. Trémie de Décharge Déchets Toxiques (Chantier 127)
-      const nearChute = (stationMap.toxicWasteChutes || []).find((tw) => !tw.isActive && Math.hypot(tw.x - playerCreature.x, tw.z - playerCreature.z) <= 5.5);
+      const nearChute = (stationMap.toxicWasteChutes || []).find((tw) => stationMap.canInteractWithProp(tw) && !tw.isActive && Math.hypot(tw.x - playerCreature.x, tw.z - playerCreature.z) <= 5.5);
       if (nearChute) {
         stationMap.activateToxicWasteChute(nearChute);
         return true;
       }
       // 23. Tourelle Mortier M40 USCM Shrapnel (Chantier 128)
-      const nearMortar = (stationMap.portableMortars || []).find((pm) => !pm.isDestroyed && Math.hypot(pm.x - playerCreature.x, pm.z - playerCreature.z) <= 5.5);
+      const nearMortar = (stationMap.portableMortars || []).find((pm) => stationMap.canInteractWithProp(pm) && !pm.isDestroyed && Math.hypot(pm.x - playerCreature.x, pm.z - playerCreature.z) <= 5.5);
       if (nearMortar) {
         stationMap.destroyPortableMortar(nearMortar, 60);
         return true;
       }
       // 24. Sas d'Amarrage Navette de Sauvetage Narcissus (Chantier 130)
-      const nearNarcissus = (stationMap.narcissusDocks || []).find((nd) => !nd.isSealed && Math.hypot(nd.x - playerCreature.x, nd.z - playerCreature.z) <= 5.5);
+      const nearNarcissus = (stationMap.narcissusDocks || []).find((nd) => stationMap.canInteractWithProp(nd) && !nd.isSealed && Math.hypot(nd.x - playerCreature.x, nd.z - playerCreature.z) <= 5.5);
       if (nearNarcissus) {
         stationMap.sabotageNarcissusDock(nearNarcissus);
         return true;
       }
       // 25. Transport Blindé M577 APC USCM (Chantier 132)
-      const nearAPC = (stationMap.m577APCs || []).find((apc) => !apc.isSabotaged && Math.hypot(apc.x - playerCreature.x, apc.z - playerCreature.z) <= 5.5);
+      const nearAPC = (stationMap.m577APCs || []).find((apc) => stationMap.canInteractWithProp(apc) && !apc.isSabotaged && Math.hypot(apc.x - playerCreature.x, apc.z - playerCreature.z) <= 5.5);
       if (nearAPC) {
         stationMap.sabotageM577APC(nearAPC);
         return true;
       }
       // 26. Sas de Condensation d'Eau (Chantier 134)
-      const nearWaterVent = (stationMap.waterDropletVents || []).find((wd) => Math.hypot(wd.x - playerCreature.x, wd.z - playerCreature.z) <= 4.5);
+      const nearWaterVent = (stationMap.waterDropletVents || []).find((wd) => stationMap.canInteractWithProp(wd) && Math.hypot(wd.x - playerCreature.x, wd.z - playerCreature.z) <= 4.5);
       if (nearWaterVent) {
         stationMap.triggerWaterDropletVent(nearWaterVent);
         return true;
       }
       // 27. Défibrillateur Médical Seegson 5000V (Chantier 135)
-      const nearDefib = (stationMap.wallDefibrillators || []).find((wd) => !wd.isOverloaded && Math.hypot(wd.x - playerCreature.x, wd.z - playerCreature.z) <= 4.5);
+      const nearDefib = (stationMap.wallDefibrillators || []).find((wd) => stationMap.canInteractWithProp(wd) && !wd.isOverloaded && Math.hypot(wd.x - playerCreature.x, wd.z - playerCreature.z) <= 4.5);
       if (nearDefib) {
         stationMap.dischargeWallDefibrillator(nearDefib);
         return true;
       }
       // 28. Tuyère SAS C-30 Poussée Réactionnelle (Chantier 137)
-      const nearPurge = (stationMap.reactionPurgeVents || []).find((rp) => !rp.isFlushing && Math.hypot(rp.x - playerCreature.x, rp.z - playerCreature.z) <= 5.5);
+      const nearPurge = (stationMap.reactionPurgeVents || []).find((rp) => stationMap.canInteractWithProp(rp) && !rp.isFlushing && Math.hypot(rp.x - playerCreature.x, rp.z - playerCreature.z) <= 5.5);
       if (nearPurge) {
         stationMap.triggerReactionPurgeVent(nearPurge);
         return true;
       }
       // 29. Poste Surveillance Thermique USCM (Chantier 138)
-      const nearCam = (stationMap.thermalSurveillancePosts || []).find((tc) => !tc.isDestroyed && Math.hypot(tc.x - playerCreature.x, tc.z - playerCreature.z) <= 4.5);
+      const nearCam = (stationMap.thermalSurveillancePosts || []).find((tc) => stationMap.canInteractWithProp(tc) && !tc.isDestroyed && Math.hypot(tc.x - playerCreature.x, tc.z - playerCreature.z) <= 4.5);
       if (nearCam) {
         stationMap.destroyThermalSurveillancePost(nearCam, 60);
         return true;
       }
       // 30. Console Déconnexion Réacteur Principal & Évacuation (Chantier 140)
-      const nearReactorConsole = (stationMap.reactorDisconnectConsoles || []).find((rc) => !rc.isEvacuating && Math.hypot(rc.x - playerCreature.x, rc.z - playerCreature.z) <= 4.5);
+      const nearReactorConsole = (stationMap.reactorDisconnectConsoles || []).find((rc) => stationMap.canInteractWithProp(rc) && !rc.isEvacuating && Math.hypot(rc.x - playerCreature.x, rc.z - playerCreature.z) <= 4.5);
       if (nearReactorConsole) {
         stationMap.triggerReactorEvacuationCountdown(nearReactorConsole);
         return true;
       }
       // 31. Panneau Réfrigération Cryogénique Sub-Zero Coolant (Chantier 142)
-      const nearCoolant = (stationMap.subzeroCoolantPanels || []).find((cp) => !cp.isRuptured && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 4.5);
+      const nearCoolant = (stationMap.subzeroCoolantPanels || []).find((cp) => stationMap.canInteractWithProp(cp) && !cp.isRuptured && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 4.5);
       if (nearCoolant) {
         stationMap.ruptureSubZeroCoolant(nearCoolant);
         return true;
       }
       // 32. Affût Sniper Smart-Scoped M42A USCM (Chantier 143)
-      const nearSniperPost = (stationMap.m42aSniperPosts || []).find((sp) => !sp.isDestroyed && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 4.5);
+      const nearSniperPost = (stationMap.m42aSniperPosts || []).find((sp) => stationMap.canInteractWithProp(sp) && !sp.isDestroyed && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 4.5);
       if (nearSniperPost) {
         stationMap.destroyM42ASniperPost(nearSniperPost, 120);
         return true;
       }
       // 33. Trappe de Plancher Caillebotis Pop-Up (Chantier 144)
-      const nearUnderfloor = (stationMap.underfloorGrates || []).find((ug) => Math.hypot(ug.x - playerCreature.x, ug.z - playerCreature.z) <= 3.8);
+      const nearUnderfloor = (stationMap.underfloorGrates || []).find((ug) => stationMap.canInteractWithProp(ug) && Math.hypot(ug.x - playerCreature.x, ug.z - playerCreature.z) <= 3.8);
       if (nearUnderfloor) {
         const ambushed = stationMap.executeUnderfloorGrateAmbush(nearUnderfloor);
         if (ambushed) return true;
       }
       // 34. Console Volets Anti-Souffle Confinement (Chantier 145)
-      const nearBulkhead = (stationMap.bulkheadShutterConsoles || []).find((bc) => Math.hypot(bc.x - playerCreature.x, bc.z - playerCreature.z) <= 4.5);
+      const nearBulkhead = (stationMap.bulkheadShutterConsoles || []).find((bc) => stationMap.canInteractWithProp(bc) && Math.hypot(bc.x - playerCreature.x, bc.z - playerCreature.z) <= 4.5);
       if (nearBulkhead) {
         stationMap.toggleBulkheadShutters(nearBulkhead);
         return true;
       }
       // 35. Module Recharge Synthétiques Seegson (Chantier 147)
-      const nearChargingBay = (stationMap.syntheticChargingBays || []).find((cb) => !cb.isOverloaded && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 4.5);
+      const nearChargingBay = (stationMap.syntheticChargingBays || []).find((cb) => stationMap.canInteractWithProp(cb) && !cb.isOverloaded && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 4.5);
       if (nearChargingBay) {
         stationMap.sabotageChargingBay(nearChargingBay);
         return true;
       }
       // 36. Projecteur Holographique Tactique USCM (Chantier 148)
-      const nearHoloDecoy = (stationMap.holographicDecoyProjectors || []).find((hd) => !hd.isDestroyed && Math.hypot(hd.x - playerCreature.x, hd.z - playerCreature.z) <= 4.5);
+      const nearHoloDecoy = (stationMap.holographicDecoyProjectors || []).find((hd) => stationMap.canInteractWithProp(hd) && !hd.isDestroyed && Math.hypot(hd.x - playerCreature.x, hd.z - playerCreature.z) <= 4.5);
       if (nearHoloDecoy) {
         stationMap.destroyHolographicDecoy(nearHoloDecoy, 80);
         return true;
       }
       // 37. Console Purge Atmosphérique N2/O2 M.U.T.H.U.R. (Chantier 150)
-      const nearAtmoConsole = (stationMap.atmosphericDepressionConsoles || []).find((ac) => !ac.isDepressed && Math.hypot(ac.x - playerCreature.x, ac.z - playerCreature.z) <= 4.5);
+      const nearAtmoConsole = (stationMap.atmosphericDepressionConsoles || []).find((ac) => stationMap.canInteractWithProp(ac) && !ac.isDepressed && Math.hypot(ac.x - playerCreature.x, ac.z - playerCreature.z) <= 4.5);
       if (nearAtmoConsole) {
         stationMap.triggerAtmosphericDepression(nearAtmoConsole);
         return true;
       }
       // 38. Affût Lance-Roquettes M83A2 SADAR USCM (Chantier 152)
-      const nearSadar = (stationMap.sadarLaunchers || []).find((sl) => !sl.isFired && !sl.isDestroyed && Math.hypot(sl.x - playerCreature.x, sl.z - playerCreature.z) <= 4.5);
+      const nearSadar = (stationMap.sadarLaunchers || []).find((sl) => stationMap.canInteractWithProp(sl) && !sl.isFired && !sl.isDestroyed && Math.hypot(sl.x - playerCreature.x, sl.z - playerCreature.z) <= 4.5);
       if (nearSadar) {
         stationMap.fireSadarRocket(nearSadar);
         return true;
       }
       // 39. Réseau de Canalisations d'Huile Hydraulique (Chantier 153)
-      const nearOil = (stationMap.hydraulicOilPipes || []).find((hop) => !hop.isRuptured && Math.hypot(hop.x - playerCreature.x, hop.z - playerCreature.z) <= 4.5);
+      const nearOil = (stationMap.hydraulicOilPipes || []).find((hop) => stationMap.canInteractWithProp(hop) && !hop.isRuptured && Math.hypot(hop.x - playerCreature.x, hop.z - playerCreature.z) <= 4.5);
       if (nearOil) {
         stationMap.ruptureHydraulicOilPipe(nearOil);
         return true;
       }
       // 40. SAS Quarantaine Médicale Laser UV (Chantier 154)
-      const nearLaserArch = (stationMap.laserDeconArches || []).find((lda) => !lda.isSabotaged && Math.hypot(lda.x - playerCreature.x, lda.z - playerCreature.z) <= 4.5);
+      const nearLaserArch = (stationMap.laserDeconArches || []).find((lda) => stationMap.canInteractWithProp(lda) && !lda.isSabotaged && Math.hypot(lda.x - playerCreature.x, lda.z - playerCreature.z) <= 4.5);
       if (nearLaserArch) {
         stationMap.sabotageLaserDeconArch(nearLaserArch);
         return true;
       }
       // 41. Grue Magnétique & Conteneur 10T (Chantier 156)
-      const nearMagneticCrane = (stationMap.magneticCraneContainers || []).find((mcc) => !mcc.isDropped && Math.hypot(mcc.x - playerCreature.x, mcc.z - playerCreature.z) <= 4.5);
+      const nearMagneticCrane = (stationMap.magneticCraneContainers || []).find((mcc) => stationMap.canInteractWithProp(mcc) && !mcc.isDropped && Math.hypot(mcc.x - playerCreature.x, mcc.z - playerCreature.z) <= 4.5);
       if (nearMagneticCrane) {
         stationMap.releaseMagneticCrane(nearMagneticCrane);
         return true;
       }
       // 42. Râtelier Fusils à Pompe ZX-76 (Chantier 157)
-      const nearShotgun = (stationMap.zx76ShotgunRacks || []).find((sr) => !sr.isLooted && Math.hypot(sr.x - playerCreature.x, sr.z - playerCreature.z) <= 4.5);
+      const nearShotgun = (stationMap.zx76ShotgunRacks || []).find((sr) => stationMap.canInteractWithProp(sr) && !sr.isLooted && Math.hypot(sr.x - playerCreature.x, sr.z - playerCreature.z) <= 4.5);
       if (nearShotgun) {
         stationMap.lootZX76ShotgunRack(nearShotgun);
         return true;
       }
       // 43. Générateur Brouillard Halon (Chantier 158)
-      const nearHalonGenerator = (stationMap.halonGasGenerators || []).find((hgg) => !hgg.isSuppressed && Math.hypot(hgg.x - playerCreature.x, hgg.z - playerCreature.z) <= 4.5);
+      const nearHalonGenerator = (stationMap.halonGasGenerators || []).find((hgg) => stationMap.canInteractWithProp(hgg) && !hgg.isSuppressed && Math.hypot(hgg.x - playerCreature.x, hgg.z - playerCreature.z) <= 4.5);
       if (nearHalonGenerator) {
         stationMap.triggerHalonGasSuppression(nearHalonGenerator);
         return true;
       }
       // 44. Terminal Surveillance Weyland & Radio USCM (Chantier 160)
-      const nearRadio = (stationMap.surveillanceRadioConsoles || []).find((src) => !src.isIntercepting && Math.hypot(src.x - playerCreature.x, src.z - playerCreature.z) <= 4.5);
+      const nearRadio = (stationMap.surveillanceRadioConsoles || []).find((src) => stationMap.canInteractWithProp(src) && !src.isIntercepting && Math.hypot(src.x - playerCreature.x, src.z - playerCreature.z) <= 4.5);
       if (nearRadio) {
         stationMap.interceptMarinesRadio(nearRadio);
         return true;
       }
       // 45. Extincteur Portatif CO2 Seegson (Chantier 162)
-      const nearCO2 = (stationMap.co2Extinguishers || []).find((ce) => !ce.isDischarged && Math.hypot(ce.x - playerCreature.x, ce.z - playerCreature.z) <= 4.5);
+      const nearCO2 = (stationMap.co2Extinguishers || []).find((ce) => stationMap.canInteractWithProp(ce) && !ce.isDischarged && Math.hypot(ce.x - playerCreature.x, ce.z - playerCreature.z) <= 4.5);
       if (nearCO2) {
         stationMap.dischargeCO2Extinguisher(nearCO2);
         return true;
       }
       // 46. Incinérateur Central 1200°C Fiorina 161 (Chantier 164)
-      const nearIncinerator = (stationMap.biowasteIncinerators || []).find((bi) => !bi.isActive && Math.hypot(bi.x - playerCreature.x, bi.z - playerCreature.z) <= 5.5);
+      const nearIncinerator = (stationMap.biowasteIncinerators || []).find((bi) => stationMap.canInteractWithProp(bi) && !bi.isActive && Math.hypot(bi.x - playerCreature.x, bi.z - playerCreature.z) <= 5.5);
       if (nearIncinerator) {
         stationMap.activateBioWasteIncinerator(nearIncinerator);
         return true;
       }
       // 47. Bras Manipulateur Industriel EVA (Chantier 166)
-      const nearEvaArm = (stationMap.evaRoboticArms || []).find((arm) => !arm.isOperating && Math.hypot(arm.x - playerCreature.x, arm.z - playerCreature.z) <= 5.5);
+      const nearEvaArm = (stationMap.evaRoboticArms || []).find((arm) => stationMap.canInteractWithProp(arm) && !arm.isOperating && Math.hypot(arm.x - playerCreature.x, arm.z - playerCreature.z) <= 5.5);
       if (nearEvaArm) {
         stationMap.operateEvaRoboticArm(nearEvaArm);
         return true;
       }
       // 48. Mine Claymore Laser M18A3 USCM (Chantier 167)
-      const nearLaserClaymore = (stationMap.laserClaymoreMines || []).find((mine) => !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 4.5);
+      const nearLaserClaymore = (stationMap.laserClaymoreMines || []).find((mine) => stationMap.canInteractWithProp(mine) && !mine.isTriggered && Math.hypot(mine.x - playerCreature.x, mine.z - playerCreature.z) <= 4.5);
       if (nearLaserClaymore) {
         stationMap.triggerLaserClaymore(nearLaserClaymore);
         return true;
       }
       // 49. Générateur Fréon Glacial Sub-Zero (Chantier 168)
-      const nearFreon = (stationMap.freonFogGenerators || []).find((ffg) => !ffg.isActive && Math.hypot(ffg.x - playerCreature.x, ffg.z - playerCreature.z) <= 5.5);
+      const nearFreon = (stationMap.freonFogGenerators || []).find((ffg) => stationMap.canInteractWithProp(ffg) && !ffg.isActive && Math.hypot(ffg.x - playerCreature.x, ffg.z - playerCreature.z) <= 5.5);
       if (nearFreon) {
         stationMap.releaseFreonFog(nearFreon);
         return true;
       }
       // 50. Console Bio-Scan MUTHUR 6000 (Chantier 170)
-      const nearBioScan = (stationMap.muthurBioScanConsoles || []).find((mbc) => !mbc.isAnalyzed && Math.hypot(mbc.x - playerCreature.x, mbc.z - playerCreature.z) <= 4.5);
+      const nearBioScan = (stationMap.muthurBioScanConsoles || []).find((mbc) => stationMap.canInteractWithProp(mbc) && !mbc.isAnalyzed && Math.hypot(mbc.x - playerCreature.x, mbc.z - playerCreature.z) <= 4.5);
       if (nearBioScan) {
         stationMap.consultMuthurBioScan(nearBioScan);
         return true;
       }
       // 51. Rideau d'Eau Industriel Haute Pression (Chantier 172)
-      const nearWaterCurtain = (stationMap.waterCurtains || []).find((wc) => !wc.isFlushing && Math.hypot(wc.x - playerCreature.x, wc.z - playerCreature.z) <= 5.5);
+      const nearWaterCurtain = (stationMap.waterCurtains || []).find((wc) => stationMap.canInteractWithProp(wc) && !wc.isFlushing && Math.hypot(wc.x - playerCreature.x, wc.z - playerCreature.z) <= 5.5);
       if (nearWaterCurtain) {
         stationMap.triggerWaterCurtain(nearWaterCurtain);
         return true;
       }
       // 52. Poste de Contrôle des SAS Étanches d'Urgence Weyland (Chantier 174)
-      const nearBulkheadPanel = (stationMap.bulkheadControlPanels || []).find((bcp) => !bcp.isSealed && Math.hypot(bcp.x - playerCreature.x, bcp.z - playerCreature.z) <= 5.5);
+      const nearBulkheadPanel = (stationMap.bulkheadControlPanels || []).find((bcp) => stationMap.canInteractWithProp(bcp) && !bcp.isSealed && Math.hypot(bcp.x - playerCreature.x, bcp.z - playerCreature.z) <= 5.5);
       if (nearBulkheadPanel) {
         stationMap.operateBulkheadControlPanel(nearBulkheadPanel);
         return true;
       }
       // 53. Générateur d'Énergie Thermique & Soupape Fiorina 161 (Chantier 176)
-      const nearGeothermal = (stationMap.geothermalTurbines || []).find((gt) => !gt.isBlasting && Math.hypot(gt.x - playerCreature.x, gt.z - playerCreature.z) <= 5.5);
+      const nearGeothermal = (stationMap.geothermalTurbines || []).find((gt) => stationMap.canInteractWithProp(gt) && !gt.isBlasting && Math.hypot(gt.x - playerCreature.x, gt.z - playerCreature.z) <= 5.5);
       if (nearGeothermal) {
         stationMap.releaseGeothermalSteam(nearGeothermal);
         return true;
       }
       // 54. Tourelle de Barbelés Micro-Électrifiés M24 USCM (Chantier 177)
-      const nearM24 = (stationMap.m24ElectricWireTurrets || []).find((m24) => !m24.isDestroyed && Math.hypot(m24.x - playerCreature.x, m24.z - playerCreature.z) <= 4.5);
+      const nearM24 = (stationMap.m24ElectricWireTurrets || []).find((m24) => stationMap.canInteractWithProp(m24) && !m24.isDestroyed && Math.hypot(m24.x - playerCreature.x, m24.z - playerCreature.z) <= 4.5);
       if (nearM24) {
         stationMap.triggerM24ElectricWire(nearM24);
         return true;
       }
       // 55. Réservoir Pressurisé de Gel Cryogénique Sub-Zero LN2 (Chantier 178)
-      const nearCryoGel = (stationMap.subZeroCryoGelCanisters || []).find((cg) => !cg.isDischarged && Math.hypot(cg.x - playerCreature.x, cg.z - playerCreature.z) <= 4.5);
+      const nearCryoGel = (stationMap.subZeroCryoGelCanisters || []).find((cg) => stationMap.canInteractWithProp(cg) && !cg.isDischarged && Math.hypot(cg.x - playerCreature.x, cg.z - playerCreature.z) <= 4.5);
       if (nearCryoGel) {
         stationMap.dischargeCryoGelCanister(nearCryoGel);
         return true;
       }
       // 56. Console de Diagnostic Synthétique Seegson & Alcôve Working Joe (Chantier 180)
-      const nearAlcove = (stationMap.seegsonDiagnosticAlcoves || []).find((a) => Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) <= 4.5);
+      const nearAlcove = (stationMap.seegsonDiagnosticAlcoves || []).find((a) => stationMap.canInteractWithProp(a) && Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) <= 4.5);
       if (nearAlcove) {
         stationMap.operateSeegsonDiagnosticAlcove(nearAlcove);
         return true;
       }
       // 57. Système de Brouilleur Acoustique Ultrasonique USCM M20 (Chantier 182)
-      const nearAcousticJammer = (stationMap.acousticJammers || []).find((j) => !j.isDestroyed && Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 4.5);
+      const nearAcousticJammer = (stationMap.acousticJammers || []).find((j) => stationMap.canInteractWithProp(j) && !j.isDestroyed && Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 4.5);
       if (nearAcousticJammer) {
         stationMap.operateAcousticJammer(nearAcousticJammer);
         return true;
       }
       // 58. Unité Autonome de Décontamination Cryo-Stérilisante (Chantier 184)
-      const nearSterilizer = (stationMap.cryoSterilizers || []).find((s) => !s.isDischarged && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.0);
+      const nearSterilizer = (stationMap.cryoSterilizers || []).find((s) => stationMap.canInteractWithProp(s) && !s.isDischarged && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.0);
       if (nearSterilizer) {
         stationMap.dischargeCryoSterilizer(nearSterilizer);
         return true;
       }
       // 59. Poste de Contrôle des SAS d'Éjection de Capsule EEV Type 37 (Chantier 186)
-      const nearEev = (stationMap.eevConsoles || []).find((c) => !c.isEjected && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 4.5);
+      const nearEev = (stationMap.eevConsoles || []).find((c) => stationMap.canInteractWithProp(c) && !c.isEjected && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 4.5);
       if (nearEev) {
         stationMap.operateEevConsole(nearEev);
         return true;
       }
       // 60. Mine Antipersonnel Incendiaire M20B Napalm Trap (Chantier 187)
-      const nearNapalmTrap = (stationMap.napalmTraps || []).find((t) => !t.isDetonated && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 4.0);
+      const nearNapalmTrap = (stationMap.napalmTraps || []).find((t) => stationMap.canInteractWithProp(t) && !t.isDetonated && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 4.0);
       if (nearNapalmTrap) {
         stationMap.triggerM20BNapalm(nearNapalmTrap);
         return true;
       }
       // 61. Canalisations d'Ammoniac Industriel 60 Bars (Chantier 188)
-      const nearAmmonia = (stationMap.ammoniaPipes || []).find((p) => !p.isRuptured && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 4.5);
+      const nearAmmonia = (stationMap.ammoniaPipes || []).find((p) => stationMap.canInteractWithProp(p) && !p.isRuptured && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 4.5);
       if (nearAmmonia) {
         stationMap.ruptureAmmoniaPipe(nearAmmonia);
         return true;
       }
       // 62. Terminal Bio-Core Nursery & Synthèse de Gelée Royale (Chantier 190)
-      const nearBioCore = (stationMap.bioCoreInterfaces || []).find((b) => !b.isHarvested && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 4.5);
+      const nearBioCore = (stationMap.bioCoreInterfaces || []).find((b) => stationMap.canInteractWithProp(b) && !b.isHarvested && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 4.5);
       if (nearBioCore) {
         stationMap.harvestBioCoreJelly(nearBioCore);
         return true;
       }
       // 63. Système M94 Smoke Screen Aérosol USCM (Chantier 192)
-      const nearSmoke = (stationMap.m94SmokeSystems || []).find((s) => !s.isTriggered && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 4.5);
+      const nearSmoke = (stationMap.m94SmokeSystems || []).find((s) => stationMap.canInteractWithProp(s) && !s.isTriggered && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 4.5);
       if (nearSmoke) {
         stationMap.operateM94SmokeSystem(nearSmoke);
         return true;
       }
       // 64. Station de Purge Cryogénique Rapide C-44 Fiorina (Chantier 194)
-      const nearCryoPurge = (stationMap.cryoPurgeStations || []).find((c) => !c.isPurging && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 4.5);
+      const nearCryoPurge = (stationMap.cryoPurgeStations || []).find((c) => stationMap.canInteractWithProp(c) && !c.isPurging && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 4.5);
       if (nearCryoPurge) {
         stationMap.triggerCryoPurgeC44(nearCryoPurge);
         return true;
       }
       // 65. Station de Rechargement de Batteries à Fusion Seegson (Chantier 196)
-      const nearFusion = (stationMap.fusionStations || []).find((f) => !f.isSabotaged && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 4.5);
+      const nearFusion = (stationMap.fusionStations || []).find((f) => stationMap.canInteractWithProp(f) && !f.isSabotaged && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 4.5);
       if (nearFusion) {
         stationMap.sabotageFusionStation(nearFusion);
         return true;
       }
       // 66. Collecteur Hydraulique à Haute Pression Sous-Pression (Chantier 197)
-      const nearHydraulic = (stationMap.hydraulicSpurtManifolds || []).find((h) => !h.isRuptured && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
+      const nearHydraulic = (stationMap.hydraulicSpurtManifolds || []).find((h) => stationMap.canInteractWithProp(h) && !h.isRuptured && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
       if (nearHydraulic) {
         stationMap.ruptureHydraulicManifold(nearHydraulic);
         return true;
       }
       // 67. Console de Télémétrie et Surveillance Weyland-Yutani M.U.T.H.U.R. 6000 (Chantier 199)
-      const nearTelemetry = (stationMap.muthurTelemetryConsoles || []).find((t) => !t.isAnalyzed && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 4.5);
+      const nearTelemetry = (stationMap.muthurTelemetryConsoles || []).find((t) => stationMap.canInteractWithProp(t) && !t.isAnalyzed && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 4.5);
       if (nearTelemetry) {
         stationMap.consultMuthurTelemetry(nearTelemetry);
         return true;
       }
       // 68. Berceau d'Oviposition et de Gestation Reine Biomécanique (Chantier 200)
-      const nearCradle = (stationMap.ovipositorCradles || []).find((c) => !c.isCommuned && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 4.5);
+      const nearCradle = (stationMap.ovipositorCradles || []).find((c) => stationMap.canInteractWithProp(c) && !c.isCommuned && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 4.5);
       if (nearCradle) {
         stationMap.communeWithOvipositorCradle(nearCradle);
         return true;
       }
       // 69. Diffuseur d'Aérosol Fumigène Infrarouge M47 USCM (Chantier 202)
-      const nearIRSmoke = (stationMap.m47IRSmokeDispensers || []).find((sd) => !sd.isTriggered && Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 5.5);
+      const nearIRSmoke = (stationMap.m47IRSmokeDispensers || []).find((sd) => stationMap.canInteractWithProp(sd) && !sd.isTriggered && Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 5.5);
       if (nearIRSmoke) {
         stationMap.operateM47IRSmokeDispenser(nearIRSmoke);
         return true;
       }
       // 70. Poste de Dispersion Cryogénique Hyperbare Cryo-Flow C-50 (Chantier 204)
-      const nearCryoFlow = (stationMap.cryoFlowStations || []).find((cf) => !cf.isSpraying && Math.hypot(cf.x - playerCreature.x, cf.z - playerCreature.z) <= 5.5);
+      const nearCryoFlow = (stationMap.cryoFlowStations || []).find((cf) => stationMap.canInteractWithProp(cf) && !cf.isSpraying && Math.hypot(cf.x - playerCreature.x, cf.z - playerCreature.z) <= 5.5);
       if (nearCryoFlow) {
         stationMap.triggerCryoFlowC50(nearCryoFlow);
         return true;
       }
       // 71. Purgeur de Fuite Tokamak Hyperdyne Dynamics (Chantier 206)
-      const nearTokamak = (stationMap.hyperdyneTokamaks || []).find((ht) => !ht.isSabotaged && Math.hypot(ht.x - playerCreature.x, ht.z - playerCreature.z) <= 5.5);
+      const nearTokamak = (stationMap.hyperdyneTokamaks || []).find((ht) => stationMap.canInteractWithProp(ht) && !ht.isSabotaged && Math.hypot(ht.x - playerCreature.x, ht.z - playerCreature.z) <= 5.5);
       if (nearTokamak) {
         stationMap.sabotageHyperdyneTokamak(nearTokamak);
         return true;
       }
       // 72. Canalisation Haute Pression Gaz Neutre Argon (Chantier 207)
-      const nearArgon = (stationMap.argonManifoldPipes || []).find((ap) => !ap.isRuptured && Math.hypot(ap.x - playerCreature.x, ap.z - playerCreature.z) <= 5.5);
+      const nearArgon = (stationMap.argonManifoldPipes || []).find((ap) => stationMap.canInteractWithProp(ap) && !ap.isRuptured && Math.hypot(ap.x - playerCreature.x, ap.z - playerCreature.z) <= 5.5);
       if (nearArgon) {
         stationMap.ruptureArgonPipe(nearArgon);
         return true;
       }
       // 73. Pupitre d'Épuration Atmosphérique et Dépressurisation Sélective MUTHUR 6000 (Chantier 209)
-      const nearMuthurScrubber = (stationMap.muthurScrubberConsoles || []).find((sc) => !sc.isOperating && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 5.5);
+      const nearMuthurScrubber = (stationMap.muthurScrubberConsoles || []).find((sc) => stationMap.canInteractWithProp(sc) && !sc.isOperating && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 5.5);
       if (nearMuthurScrubber) {
         stationMap.operateMuthurScrubber(nearMuthurScrubber);
         return true;
       }
       // 74. Sarcophage de Stase et Conversion de Biomasse Ingénieur (Chantier 210)
-      const nearSarcophagus = (stationMap.biomassSarcophagi || []).find((bs) => !bs.isConverted && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 5.5);
+      const nearSarcophagus = (stationMap.biomassSarcophagi || []).find((bs) => stationMap.canInteractWithProp(bs) && !bs.isConverted && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 5.5);
       if (nearSarcophagus) {
         stationMap.convertBiomassSarcophagus(nearSarcophagus);
         return true;
       }
       // 75. Système de Brouilleur Électromagnétique Portatif USCM M56 (Chantier 212)
-      const nearM56Jammer = (stationMap.m56JammerBoxes || []).find((b) => !b.isTriggered && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
+      const nearM56Jammer = (stationMap.m56JammerBoxes || []).find((b) => stationMap.canInteractWithProp(b) && !b.isTriggered && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
       if (nearM56Jammer) {
         stationMap.operateM56JammerBox(nearM56Jammer);
         return true;
       }
       // 76. Poste de Contrôle Cryo-Containment Chamber C-60 (Chantier 214)
-      const nearCryoChamber = (stationMap.cryoChamberC60s || []).find((c) => !c.isTriggered && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+      const nearCryoChamber = (stationMap.cryoChamberC60s || []).find((c) => stationMap.canInteractWithProp(c) && !c.isTriggered && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
       if (nearCryoChamber) {
         stationMap.triggerCryoChamberC60(nearCryoChamber);
         return true;
       }
       // 77. Générateur Magnétique Weyland Arc-Furnace Inverter (Chantier 216)
-      const nearArcFurnace = (stationMap.arcFurnaceInverters || []).find((inv) => !inv.isSabotaged && Math.hypot(inv.x - playerCreature.x, inv.z - playerCreature.z) <= 5.5);
+      const nearArcFurnace = (stationMap.arcFurnaceInverters || []).find((inv) => stationMap.canInteractWithProp(inv) && !inv.isSabotaged && Math.hypot(inv.x - playerCreature.x, inv.z - playerCreature.z) <= 5.5);
       if (nearArcFurnace) {
         stationMap.sabotageArcFurnaceInverter(nearArcFurnace);
         return true;
       }
       // 78. Collecteur d'Éthylène Haute Température & Torche Industrielle (Chantier 217)
-      const nearEthylene = (stationMap.ethyleneFlarePipes || []).find((p) => !p.isRuptured && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 5.5);
+      const nearEthylene = (stationMap.ethyleneFlarePipes || []).find((p) => stationMap.canInteractWithProp(p) && !p.isRuptured && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 5.5);
       if (nearEthylene) {
         stationMap.ruptureEthyleneFlarePipe(nearEthylene);
         return true;
       }
       // 79. Terminal Réseau C.A.S.A.I. Seegson Synthetic Security Override (Chantier 219)
-      const nearCasai = (stationMap.seegsonCasaiOverrides || []).find((c) => !c.isOverridden && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+      const nearCasai = (stationMap.seegsonCasaiOverrides || []).find((c) => stationMap.canInteractWithProp(c) && !c.isOverridden && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
       if (nearCasai) {
         stationMap.operateSeegsonCasaiOverride(nearCasai);
         return true;
       }
       // 80. Couveuse Biologique Bio-Stasis Pathogène Noir A0-3959X (Chantier 220)
-      const nearBioVault = (stationMap.bioStasisVaults || []).find((v) => !v.isConsumed && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
+      const nearBioVault = (stationMap.bioStasisVaults || []).find((v) => stationMap.canInteractWithProp(v) && !v.isConsumed && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
       if (nearBioVault) {
         stationMap.consumeBioStasisVault(nearBioVault);
         return true;
       }
       // 81. Wagonnet de Transit Mag-Lev AP-14 (Chantier 222)
-      const nearMagCart = (stationMap.transitMagCarts || []).find((c) => !c.isPropelled && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+      const nearMagCart = (stationMap.transitMagCarts || []).find((c) => stationMap.canInteractWithProp(c) && !c.isPropelled && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
       if (nearMagCart) {
         stationMap.launchTransitMagCart(nearMagCart);
         return true;
       }
       // 82. Diffuseur Automatique Gaz Halon 1301 (Chantier 224)
-      const nearHalonExtinguisher = (stationMap.halonExtinguishers || []).find((h) => !h.isDischarged && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.5);
+      const nearHalonExtinguisher = (stationMap.halonExtinguishers || []).find((h) => stationMap.canInteractWithProp(h) && !h.isDischarged && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.5);
       if (nearHalonExtinguisher) {
         stationMap.triggerHalonExtinguisher(nearHalonExtinguisher);
         return true;
       }
       // 83. Mine Directionnelle USCM M20 Claymore (Chantier 226)
-      const nearM20Claymore = (stationMap.m20ClaymoreMines || []).find((m) => m.isArmed && !m.isDetonated && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 5.5);
+      const nearM20Claymore = (stationMap.m20ClaymoreMines || []).find((m) => stationMap.canInteractWithProp(m) && m.isArmed && !m.isDetonated && Math.hypot(m.x - playerCreature.x, m.z - playerCreature.z) <= 5.5);
       if (nearM20Claymore) {
         stationMap.detonateM20ClaymoreMine(nearM20Claymore);
         return true;
       }
       // 84. Échangeur Thermique Primaire AP-14 (Chantier 227)
-      const nearHeatExchanger = (stationMap.heatExchangerVents || []).find((v) => !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
+      const nearHeatExchanger = (stationMap.heatExchangerVents || []).find((v) => stationMap.canInteractWithProp(v) && !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
       if (nearHeatExchanger) {
         stationMap.ruptureHeatExchangerVent(nearHeatExchanger);
         return true;
       }
       // 85. Niche Organique Camouflage Résine (Chantier 228)
-      const nearResinWall = (stationMap.resinCamouflageWalls || []).find((w) => w.isActive && Math.hypot(w.x - playerCreature.x, w.z - playerCreature.z) <= 5.5);
+      const nearResinWall = (stationMap.resinCamouflageWalls || []).find((w) => stationMap.canInteractWithProp(w) && w.isActive && Math.hypot(w.x - playerCreature.x, w.z - playerCreature.z) <= 5.5);
       if (nearResinWall) {
         stationMap.interactResinCamouflageWall(nearResinWall);
         return true;
       }
       // 86. Boîtier Sevastopol Maintenance Jack Socket (Chantier 229)
-      const nearJackSocket = (stationMap.maintenanceJackSockets || []).find((j) => Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 5.5);
+      const nearJackSocket = (stationMap.maintenanceJackSockets || []).find((j) => stationMap.canInteractWithProp(j) && Math.hypot(j.x - playerCreature.x, j.z - playerCreature.z) <= 5.5);
       if (nearJackSocket) {
         stationMap.toggleMaintenanceJackSocket(nearJackSocket);
         return true;
       }
       // 87. Alcôve de Charge 15kV Working Joe Apollo (Chantier 230)
-      const nearJoeAlcove = (stationMap.workingJoeAlcoves || []).find((a) => !a.isSabotaged && Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) <= 5.5);
+      const nearJoeAlcove = (stationMap.workingJoeAlcoves || []).find((a) => stationMap.canInteractWithProp(a) && !a.isSabotaged && Math.hypot(a.x - playerCreature.x, a.z - playerCreature.z) <= 5.5);
       if (nearJoeAlcove) {
         stationMap.sabotageWorkingJoeAlcove(nearJoeAlcove);
         return true;
       }
       // 88. Chambre d'Isolation Spécimen Alpha Weyland-Yutani (Chantier 233)
-      const nearVault = (stationMap.biocontainmentVaults || []).find((v) => !v.isCycling && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
+      const nearVault = (stationMap.biocontainmentVaults || []).find((v) => stationMap.canInteractWithProp(v) && !v.isCycling && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
       if (nearVault) {
         stationMap.triggerBiocontainmentDecon(nearVault);
         return true;
       }
       // 89. Anneau Toroïdal Réacteur Classe M Nostromo (Chantier 234)
-      const nearRing = (stationMap.nostromoReactorRings || []).find((r) => !r.isSabotaged && Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 5.5);
+      const nearRing = (stationMap.nostromoReactorRings || []).find((r) => stationMap.canInteractWithProp(r) && !r.isSabotaged && Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 5.5);
       if (nearRing) {
         stationMap.sabotageReactorRing(nearRing);
         return true;
       }
       // 90. Cheminée d'Évacuation Géothermique Sevastopol (Chantier 237)
-      const nearFlue = (stationMap.geothermalVentFlues || []).find((f) => !f.isVenting && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 5.5);
+      const nearFlue = (stationMap.geothermalVentFlues || []).find((f) => stationMap.canInteractWithProp(f) && !f.isVenting && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 5.5);
       if (nearFlue) {
         stationMap.triggerGeothermalVentFlue(nearFlue);
         return true;
       }
       // 91. Pupitre d'Éjection Pyrotechnique Weyland-Yutani (Chantier 239)
-      const nearJettison = (stationMap.jettisonConsoles || []).find((jc) => !jc.isArming && !jc.isJettisoned && Math.hypot(jc.x - playerCreature.x, jc.z - playerCreature.z) <= 5.5);
+      const nearJettison = (stationMap.jettisonConsoles || []).find((jc) => stationMap.canInteractWithProp(jc) && !jc.isArming && !jc.isJettisoned && Math.hypot(jc.x - playerCreature.x, jc.z - playerCreature.z) <= 5.5);
       if (nearJettison) {
         stationMap.triggerJettisonExplosiveBolts(nearJettison);
         return true;
       }
       // 92. Rigole de Coulée de Plomb Fiorina 161 (Chantier 240)
-      const nearLead = (stationMap.fiorinaLeadChannels || []).find((lc) => !lc.isBreached && Math.hypot(lc.x - playerCreature.x, lc.z - playerCreature.z) <= 5.5);
+      const nearLead = (stationMap.fiorinaLeadChannels || []).find((lc) => stationMap.canInteractWithProp(lc) && !lc.isBreached && Math.hypot(lc.x - playerCreature.x, lc.z - playerCreature.z) <= 5.5);
       if (nearLead) {
         stationMap.breachFiorinaLeadSluice(nearLead);
         return true;
       }
       // 93. Nacelle d'Entretien Suspendue Sevastopol (Chantier 241)
-      const nearGondola = (stationMap.maintenanceGondolas || []).find((g) => !g.isDropped && Math.hypot(g.x - playerCreature.x, g.z - playerCreature.z) <= 6.0);
+      const nearGondola = (stationMap.maintenanceGondolas || []).find((g) => stationMap.canInteractWithProp(g) && !g.isDropped && Math.hypot(g.x - playerCreature.x, g.z - playerCreature.z) <= 6.0);
       if (nearGondola) {
         stationMap.dropMaintenanceGondola(nearGondola);
         return true;
       }
       // 94. Cellule d'Isolement Synthétique Weyland-Yutani (Chantier 242)
-      const nearSynthCell = (stationMap.syntheticCells || []).find((c) => !c.isSealed && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+      const nearSynthCell = (stationMap.syntheticCells || []).find((c) => stationMap.canInteractWithProp(c) && !c.isSealed && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
       if (nearSynthCell) {
         stationMap.sealSyntheticCell(nearSynthCell);
         return true;
       }
       // 95. Rotor de Puits de Ventilation Primaire Renaissance (Chantier 243)
-      const nearShaftFan = (stationMap.ventilationShaftFans || []).find((f) => !f.isSabotaged && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 5.5);
+      const nearShaftFan = (stationMap.ventilationShaftFans || []).find((f) => stationMap.canInteractWithProp(f) && !f.isSabotaged && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 5.5);
       if (nearShaftFan) {
         stationMap.sabotageVentilationFan(nearShaftFan);
         return true;
       }
       // 96. Colonne d'Épuration Atmosphérique Sevastopol (Chantier 244)
-      const nearAtmosphericScrubber = (stationMap.atmosphericScrubbers || []).find((s) => !s.isPunctured && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
+      const nearAtmosphericScrubber = (stationMap.atmosphericScrubbers || []).find((s) => stationMap.canInteractWithProp(s) && !s.isPunctured && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
       if (nearAtmosphericScrubber) {
         stationMap.punctureAtmosphericScrubber(nearAtmosphericScrubber);
         return true;
       }
       // 97. Chambre d'Inversion Gravitationnelle Fiorina 161 (Chantier 245)
-      const nearGrav = (stationMap.gravityInversionChambers || []).find((gc) => !gc.isCycling && Math.hypot(gc.x - playerCreature.x, gc.z - playerCreature.z) <= 6.5);
+      const nearGrav = (stationMap.gravityInversionChambers || []).find((gc) => stationMap.canInteractWithProp(gc) && !gc.isCycling && Math.hypot(gc.x - playerCreature.x, gc.z - playerCreature.z) <= 6.5);
       if (nearGrav) {
         stationMap.triggerGravityInversion(nearGrav);
         return true;
       }
       // 98. Barricade Déployable USCM Hadley's Hope (Chantier 246)
-      const nearSentryBarricade = (stationMap.uscmSentryBarricades || []).find((b) => !b.isBreached && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
+      const nearSentryBarricade = (stationMap.uscmSentryBarricades || []).find((b) => stationMap.canInteractWithProp(b) && !b.isBreached && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 5.5);
       if (nearSentryBarricade) {
         stationMap.breachSentryBarricade(nearSentryBarricade);
         return true;
       }
       // 99. Baie Serveurs Apollo AI Sevastopol (Chantier 248)
-      const nearApollo = (stationMap.apolloServerTowers || []).find((t) => !t.isCorrupted && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 5.5);
+      const nearApollo = (stationMap.apolloServerTowers || []).find((t) => stationMap.canInteractWithProp(t) && !t.isCorrupted && Math.hypot(t.x - playerCreature.x, t.z - playerCreature.z) <= 5.5);
       if (nearApollo) {
         stationMap.corruptApolloServerTower(nearApollo);
         return true;
       }
       // 100. Théâtre de Dissection Weyland USM Auriga (Chantier 249)
-      const nearDissection = (stationMap.dissectionTheaters || []).find((dt) => !dt.isStrapped && Math.hypot(dt.x - playerCreature.x, dt.z - playerCreature.z) <= 5.5);
+      const nearDissection = (stationMap.dissectionTheaters || []).find((dt) => stationMap.canInteractWithProp(dt) && !dt.isStrapped && Math.hypot(dt.x - playerCreature.x, dt.z - playerCreature.z) <= 5.5);
       if (nearDissection) {
         stationMap.strapVictimToDissectionTable(nearDissection);
         return true;
       }
       // 101. Matrice Cryogénique Nostromo (Chantier 251)
-      const nearCryoMatrix = (stationMap.cryoVaultMatrices || []).find((cm) => !cm.isShattered && Math.hypot(cm.x - playerCreature.x, cm.z - playerCreature.z) <= 5.5);
+      const nearCryoMatrix = (stationMap.cryoVaultMatrices || []).find((cm) => stationMap.canInteractWithProp(cm) && !cm.isShattered && Math.hypot(cm.x - playerCreature.x, cm.z - playerCreature.z) <= 5.5);
       if (nearCryoMatrix) {
         stationMap.shatterCryoManifold(nearCryoMatrix);
         return true;
       }
       // 102. Passerelle Rétractable Operations Chasm (Chantier 252)
-      const nearChasmBridge = (stationMap.chasmBridges || []).find((cb) => Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 6.0);
+      const nearChasmBridge = (stationMap.chasmBridges || []).find((cb) => stationMap.canInteractWithProp(cb) && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 6.0);
       if (nearChasmBridge) {
         stationMap.retractChasmBridge(nearChasmBridge);
         return true;
       }
       // 103. Bassin de Trempe Toxique Fiorina 161 (Chantier 253)
-      const nearQuenchBasin = (stationMap.toxicQuenchBasins || []).find((qb) => !qb.isOverflowing && Math.hypot(qb.x - playerCreature.x, qb.z - playerCreature.z) <= 5.5);
+      const nearQuenchBasin = (stationMap.toxicQuenchBasins || []).find((qb) => stationMap.canInteractWithProp(qb) && !qb.isOverflowing && Math.hypot(qb.x - playerCreature.x, qb.z - playerCreature.z) <= 5.5);
       if (nearQuenchBasin) {
         stationMap.overflowQuenchBasin(nearQuenchBasin);
         return true;
       }
       // 104. Baie Vitrée sans Tain Laboratoire Auriga (Chantier 254)
-      const nearObsWindow = (stationMap.observationLabWindows || []).find((ow) => !ow.isShattered && Math.hypot(ow.x - playerCreature.x, ow.z - playerCreature.z) <= 5.5);
+      const nearObsWindow = (stationMap.observationLabWindows || []).find((ow) => stationMap.canInteractWithProp(ow) && !ow.isShattered && Math.hypot(ow.x - playerCreature.x, ow.z - playerCreature.z) <= 5.5);
       if (nearObsWindow) {
         stationMap.shatterObservationWindow(nearObsWindow);
         return true;
       }
       // 105. Centrifugeuse Cryogénique Renaissance (Chantier 255)
-      const nearCryoCentrifuge = (stationMap.cryoFuelCentrifuges || []).find((cf) => !cf.isOverloaded && Math.hypot(cf.x - playerCreature.x, cf.z - playerCreature.z) <= 5.5);
+      const nearCryoCentrifuge = (stationMap.cryoFuelCentrifuges || []).find((cf) => stationMap.canInteractWithProp(cf) && !cf.isOverloaded && Math.hypot(cf.x - playerCreature.x, cf.z - playerCreature.z) <= 5.5);
       if (nearCryoCentrifuge) {
         stationMap.overloadCryoCentrifuge(nearCryoCentrifuge);
         return true;
       }
       // 106. Aiguillage Ferroviaire & 3e Rail Sevastopol (Chantier 256)
-      const nearRailSwitch = (stationMap.transitRailSwitches || []).find((ts) => !ts.isDischarged && Math.hypot(ts.x - playerCreature.x, ts.z - playerCreature.z) <= 5.5);
+      const nearRailSwitch = (stationMap.transitRailSwitches || []).find((ts) => stationMap.canInteractWithProp(ts) && !ts.isDischarged && Math.hypot(ts.x - playerCreature.x, ts.z - playerCreature.z) <= 5.5);
       if (nearRailSwitch) {
         stationMap.shortCircuitThirdRail(nearRailSwitch);
         return true;
       }
       // 107. Goulotte Incinérateur MedLab Hadley (Chantier 257)
-      const nearAutopsyChute = (stationMap.medlabAutopsyChutes || []).find((ac) => Math.hypot(ac.x - playerCreature.x, ac.z - playerCreature.z) <= 5.5);
+      const nearAutopsyChute = (stationMap.medlabAutopsyChutes || []).find((ac) => stationMap.canInteractWithProp(ac) && Math.hypot(ac.x - playerCreature.x, ac.z - playerCreature.z) <= 5.5);
       if (nearAutopsyChute) {
-        stationMap.dumpCorpseIntoIncinerator(nearAutopsyChute);
-        return true;
+        return stationMap.dumpCorpseIntoIncinerator(nearAutopsyChute);
       }
       // 108. Bras de Grue d'Atelier APC M577 USCM (Chantier 258)
-      const nearCraneArm = (stationMap.vehicleCraneArms || []).find((ca) => !ca.isSwinging && Math.hypot(ca.x - playerCreature.x, ca.z - playerCreature.z) <= 6.0);
+      const nearCraneArm = (stationMap.vehicleCraneArms || []).find((ca) => stationMap.canInteractWithProp(ca) && !ca.isSwinging && Math.hypot(ca.x - playerCreature.x, ca.z - playerCreature.z) <= 6.0);
       if (nearCraneArm) {
         stationMap.swingVehicleCrane(nearCraneArm);
         return true;
       }
       // 109. Parabole d'Interception Lorenz Systech (Chantier 259)
-      const nearCommsDish = (stationMap.lorenzCommsDishes || []).find((ld) => !ld.isJammed && Math.hypot(ld.x - playerCreature.x, ld.z - playerCreature.z) <= 5.5);
+      const nearCommsDish = (stationMap.lorenzCommsDishes || []).find((ld) => stationMap.canInteractWithProp(ld) && !ld.isJammed && Math.hypot(ld.x - playerCreature.x, ld.z - playerCreature.z) <= 5.5);
       if (nearCommsDish) {
         stationMap.jamLorenzCommsUplink(nearCommsDish);
         return true;
       }
       // 110. Mors d'Amarrage Sas Corbel (Chantier 260)
-      const nearDockClamp = (stationMap.corbelDockingClamps || []).find((dc) => !dc.isReleased && Math.hypot(dc.x - playerCreature.x, dc.z - playerCreature.z) <= 6.0);
+      const nearDockClamp = (stationMap.corbelDockingClamps || []).find((dc) => stationMap.canInteractWithProp(dc) && !dc.isReleased && Math.hypot(dc.x - playerCreature.x, dc.z - playerCreature.z) <= 6.0);
       if (nearDockClamp) {
         stationMap.releaseDockingClamp(nearDockClamp);
         return true;
       }
       // 111. Rampe d'Accès Navette Narcissus (Chantier 261)
-      const nearRamp = (stationMap.narcissusBoardingRamps || []).find((nr) => Math.hypot(nr.x - playerCreature.x, nr.z - playerCreature.z) <= 6.5);
+      const nearRamp = (stationMap.narcissusBoardingRamps || []).find((nr) => stationMap.canInteractWithProp(nr) && Math.hypot(nr.x - playerCreature.x, nr.z - playerCreature.z) <= 6.5);
       if (nearRamp) {
         stationMap.extendNarcissusRamp(nearRamp);
         return true;
       }
       // 112. Piston Stabilisateur Sismique Hadley (Chantier 262)
-      const nearSeismic = (stationMap.seismicPistons || []).find((sp) => !sp.isPumping && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 6.0);
+      const nearSeismic = (stationMap.seismicPistons || []).find((sp) => stationMap.canInteractWithProp(sp) && !sp.isPumping && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 6.0);
       if (nearSeismic) {
         stationMap.triggerSeismicStabilizer(nearSeismic);
         return true;
       }
       // 113. Soufflet Haut Fourneau Fiorina (Chantier 263)
-      const nearBellows = (stationMap.furnaceBellowsDucts || []).find((fb) => !fb.isPurging && Math.hypot(fb.x - playerCreature.x, fb.z - playerCreature.z) <= 6.0);
+      const nearBellows = (stationMap.furnaceBellowsDucts || []).find((fb) => stationMap.canInteractWithProp(fb) && !fb.isPurging && Math.hypot(fb.x - playerCreature.x, fb.z - playerCreature.z) <= 6.0);
       if (nearBellows) {
         stationMap.purgeFurnaceBellows(nearBellows);
         return true;
       }
       // 114. Sarcophage Stasique Cryo-Chirurgical Auriga (Chantier 264)
-      const nearSarco = (stationMap.cryoSurgicalSarcophagi || []).find((cs) => !cs.isUnsealed && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 6.0);
+      const nearSarco = (stationMap.cryoSurgicalSarcophagi || []).find((cs) => stationMap.canInteractWithProp(cs) && !cs.isUnsealed && Math.hypot(cs.x - playerCreature.x, cs.z - playerCreature.z) <= 6.0);
       if (nearSarco) {
         stationMap.unsealCryoSarcophagus(nearSarco);
         return true;
       }
       // 115. Pylône de Siphonnage Propergol Renaissance (Chantier 265)
-      const nearFuelPylon = (stationMap.fuelSiphonPylons || []).find((fp) => !fp.isVenting && Math.hypot(fp.x - playerCreature.x, fp.z - playerCreature.z) <= 6.0);
+      const nearFuelPylon = (stationMap.fuelSiphonPylons || []).find((fp) => stationMap.canInteractWithProp(fp) && !fp.isVenting && Math.hypot(fp.x - playerCreature.x, fp.z - playerCreature.z) <= 6.0);
       if (nearFuelPylon) {
         stationMap.overpressureFuelSiphon(nearFuelPylon);
         return true;
       }
       // 116. Rideau Roulant de Sécurité Sevastopol (Chantier 266)
-      const nearShutter = (stationMap.securityShutterDoors || []).find((sd) => Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 6.0);
+      const nearShutter = (stationMap.securityShutterDoors || []).find((sd) => stationMap.canInteractWithProp(sd) && Math.hypot(sd.x - playerCreature.x, sd.z - playerCreature.z) <= 6.0);
       if (nearShutter) {
         stationMap.toggleSecurityShutter(nearShutter);
         return true;
       }
       // 117. Siphon Puisard Traitement Hadley (Chantier 267)
-      const nearSump = (stationMap.processingSumpSiphons || []).find((ps) => !ps.isFlushing && Math.hypot(ps.x - playerCreature.x, ps.z - playerCreature.z) <= 6.0);
+      const nearSump = (stationMap.processingSumpSiphons || []).find((ps) => stationMap.canInteractWithProp(ps) && !ps.isFlushing && Math.hypot(ps.x - playerCreature.x, ps.z - playerCreature.z) <= 6.0);
       if (nearSump) {
         stationMap.flushProcessingSump(nearSump);
         return true;
       }
       // 118. Palette Munitions Lourdes USCM (Chantier 268)
-      const nearPallet = (stationMap.munitionsHeavyPallets || []).find((mp) => !mp.isDetonated && Math.hypot(mp.x - playerCreature.x, mp.z - playerCreature.z) <= 6.0);
+      const nearPallet = (stationMap.munitionsHeavyPallets || []).find((mp) => stationMap.canInteractWithProp(mp) && !mp.isDetonated && Math.hypot(mp.x - playerCreature.x, mp.z - playerCreature.z) <= 6.0);
       if (nearPallet) {
         stationMap.detonateMunitionsPallet(nearPallet);
         return true;
       }
       // 119. Alcôve Recharge Synthétiques Sevastopol (Chantier 269)
-      const nearSynthBay = (stationMap.syntheticRechargeBays || []).find((sb) => !sb.isOverloaded && Math.hypot(sb.x - playerCreature.x, sb.z - playerCreature.z) <= 6.0);
+      const nearSynthBay = (stationMap.syntheticRechargeBays || []).find((sb) => stationMap.canInteractWithProp(sb) && !sb.isOverloaded && Math.hypot(sb.x - playerCreature.x, sb.z - playerCreature.z) <= 6.0);
       if (nearSynthBay) {
         stationMap.overloadSyntheticBay(nearSynthBay);
         return true;
       }
       // 120. Treuil de Pont Roulant Fonderie Fiorina (Chantier 270)
-      const nearFoundryHoist = (stationMap.foundryGantryHoists || []).find((gh) => !gh.isDropped && Math.hypot(gh.x - playerCreature.x, gh.z - playerCreature.z) <= 6.0);
+      const nearFoundryHoist = (stationMap.foundryGantryHoists || []).find((gh) => stationMap.canInteractWithProp(gh) && !gh.isDropped && Math.hypot(gh.x - playerCreature.x, gh.z - playerCreature.z) <= 6.0);
       if (nearFoundryHoist) {
         stationMap.dropFoundryGantryLadle(nearFoundryHoist);
         return true;
       }
       // 121. Sas Cryo Nostromo E-Deck (Chantier 271)
-      const nearCoolantHatch = (stationMap.nostromoCoolantHatches || []).find((h) => !h.isDecompressed && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 6.0);
+      const nearCoolantHatch = (stationMap.nostromoCoolantHatches || []).find((h) => stationMap.canInteractWithProp(h) && !h.isDecompressed && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 6.0);
       if (nearCoolantHatch) {
         stationMap.decompressCoolantHatch(nearCoolantHatch);
         return true;
       }
       // 122. Flume Caloporteur Processeur Hadley (Chantier 272)
-      const nearFlume = (stationMap.hadleyCoolantFlumes || []).find((f) => !f.isRuptured && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 6.0);
+      const nearFlume = (stationMap.hadleyCoolantFlumes || []).find((f) => stationMap.canInteractWithProp(f) && !f.isRuptured && Math.hypot(f.x - playerCreature.x, f.z - playerCreature.z) <= 6.0);
       if (nearFlume) {
         stationMap.ruptureCoolantFlume(nearFlume);
         return true;
       }
       // 123. Piston Contrepoids Gaine Fiorina (Chantier 273)
-      const nearCounterweight = (stationMap.fiorinaCounterweightPistons || []).find((p) => !p.isDropped && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 6.0);
+      const nearCounterweight = (stationMap.fiorinaCounterweightPistons || []).find((p) => stationMap.canInteractWithProp(p) && !p.isDropped && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 6.0);
       if (nearCounterweight) {
         stationMap.releaseCounterweightPiston(nearCounterweight);
         return true;
       }
       // 124. Dôme Bioréacteur Séquençage Auriga (Chantier 274)
-      const nearBioreactor = (stationMap.aurigaBioreactorDomes || []).find((d) => !d.isDestabilized && Math.hypot(d.x - playerCreature.x, d.z - playerCreature.z) <= 6.0);
+      const nearBioreactor = (stationMap.aurigaBioreactorDomes || []).find((d) => stationMap.canInteractWithProp(d) && !d.isDestabilized && Math.hypot(d.x - playerCreature.x, d.z - playerCreature.z) <= 6.0);
       if (nearBioreactor) {
         stationMap.destabilizeBioreactor(nearBioreactor);
         return true;
       }
       // 125. Rail Portique Fret Remus (Chantier 275)
-      const nearRemus = (stationMap.remusGantryRails || []).find((r) => Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 6.0);
+      const nearRemus = (stationMap.remusGantryRails || []).find((r) => stationMap.canInteractWithProp(r) && Math.hypot(r.x - playerCreature.x, r.z - playerCreature.z) <= 6.0);
       if (nearRemus) {
         stationMap.traverseRemusGantry(nearRemus);
         return true;
       }
       // 126. Cabine Test Synthétiques Seegson (Chantier 276)
-      const nearSeegsonBooth = (stationMap.seegsonTestBooths || []).find((b) => !b.isGlitched && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 6.0);
+      const nearSeegsonBooth = (stationMap.seegsonTestBooths || []).find((b) => stationMap.canInteractWithProp(b) && !b.isGlitched && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 6.0);
       if (nearSeegsonBooth) {
         stationMap.overloadSeegsonBooth(nearSeegsonBooth);
         return true;
       }
       // 127. Batterie Racks Couveuses MedLab (Chantier 277)
-      const nearIncubator = (stationMap.medlabIncubatorRacks || []).find((ir) => !ir.isShattered && Math.hypot(ir.x - playerCreature.x, ir.z - playerCreature.z) <= 6.0);
+      const nearIncubator = (stationMap.medlabIncubatorRacks || []).find((ir) => stationMap.canInteractWithProp(ir) && !ir.isShattered && Math.hypot(ir.x - playerCreature.x, ir.z - playerCreature.z) <= 6.0);
       if (nearIncubator) {
         stationMap.shatterIncubatorRack(nearIncubator);
         return true;
       }
       // 128. Bunker Sacs de Sable USCM (Chantier 278)
-      const nearSandbag = (stationMap.uscmSandbagBunkers || []).find((sb) => !sb.isBreached && Math.hypot(sb.x - playerCreature.x, sb.z - playerCreature.z) <= 6.0);
+      const nearSandbag = (stationMap.uscmSandbagBunkers || []).find((sb) => stationMap.canInteractWithProp(sb) && !sb.isBreached && Math.hypot(sb.x - playerCreature.x, sb.z - playerCreature.z) <= 6.0);
       if (nearSandbag) {
         stationMap.breachSandbagBunker(nearSandbag);
         return true;
       }
       // 129. Persiennes Circulation Air Sevastopol (Chantier 279)
-      const nearLouver = (stationMap.habitationLouverShutters || []).find((ls) => Math.hypot(ls.x - playerCreature.x, ls.z - playerCreature.z) <= 6.0);
+      const nearLouver = (stationMap.habitationLouverShutters || []).find((ls) => stationMap.canInteractWithProp(ls) && Math.hypot(ls.x - playerCreature.x, ls.z - playerCreature.z) <= 6.0);
       if (nearLouver) {
         stationMap.cycleLouverShutter(nearLouver);
         return true;
       }
       // 130. Déversoir Trop-Plein Fosse Trempe Fiorina (Chantier 280)
-      const nearWeir = (stationMap.quenchOverflowWeirs || []).find((qw) => !qw.isOpen && Math.hypot(qw.x - playerCreature.x, qw.z - playerCreature.z) <= 6.0);
+      const nearWeir = (stationMap.quenchOverflowWeirs || []).find((qw) => stationMap.canInteractWithProp(qw) && !qw.isOpen && Math.hypot(qw.x - playerCreature.x, qw.z - playerCreature.z) <= 6.0);
       if (nearWeir) {
         stationMap.openQuenchWeir(nearWeir);
         return true;
       }
       // 131. Soufflerie Cryogénique Nostromo (Chantier 281)
-      const nearBlower = (stationMap.coolingBlowers || []).find((cb) => !cb.isOverdriven && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 6.0);
+      const nearBlower = (stationMap.coolingBlowers || []).find((cb) => stationMap.canInteractWithProp(cb) && !cb.isOverdriven && Math.hypot(cb.x - playerCreature.x, cb.z - playerCreature.z) <= 6.0);
       if (nearBlower) {
         stationMap.overdriveCoolingBlower(nearBlower);
         return true;
       }
       // 132. Table Tactique Holographique Hadley (Chantier 282)
-      const nearTable = (stationMap.tacticalHoloTables || []).find((tt) => !tt.isHacked && Math.hypot(tt.x - playerCreature.x, tt.z - playerCreature.z) <= 6.0);
+      const nearTable = (stationMap.tacticalHoloTables || []).find((tt) => stationMap.canInteractWithProp(tt) && !tt.isHacked && Math.hypot(tt.x - playerCreature.x, tt.z - playerCreature.z) <= 6.0);
       if (nearTable) {
         stationMap.hackTacticalTable(nearTable);
         return true;
       }
       // 133. Rigole Coulée Plomb Fiorina (Chantier 283)
-      const nearLeadSluice = (stationMap.leadDrainageSluices || []).find((ls) => !ls.isOpen && Math.hypot(ls.x - playerCreature.x, ls.z - playerCreature.z) <= 6.0);
+      const nearLeadSluice = (stationMap.leadDrainageSluices || []).find((ls) => stationMap.canInteractWithProp(ls) && !ls.isOpen && Math.hypot(ls.x - playerCreature.x, ls.z - playerCreature.z) <= 6.0);
       if (nearLeadSluice) {
         stationMap.releaseLeadSluice(nearLeadSluice);
         return true;
       }
       // 134. Cage Spécimen Xénomorphe Auriga (Chantier 284)
-      const nearHoldingCage = (stationMap.specimenHoldingCages || []).find((hc) => !hc.isShocking && Math.hypot(hc.x - playerCreature.x, hc.z - playerCreature.z) <= 6.0);
+      const nearHoldingCage = (stationMap.specimenHoldingCages || []).find((hc) => stationMap.canInteractWithProp(hc) && !hc.isShocking && Math.hypot(hc.x - playerCreature.x, hc.z - playerCreature.z) <= 6.0);
       if (nearHoldingCage) {
         stationMap.shortCircuitHoldingCage(nearHoldingCage);
         return true;
       }
       // 135. Carrousel Stase Cryo Romulus (Chantier 285)
-      const nearCarousel = (stationMap.stasisCarousels || []).find((sc) => Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 6.0);
+      const nearCarousel = (stationMap.stasisCarousels || []).find((sc) => stationMap.canInteractWithProp(sc) && Math.hypot(sc.x - playerCreature.x, sc.z - playerCreature.z) <= 6.0);
       if (nearCarousel) {
         stationMap.spinStasisCarousel(nearCarousel);
         return true;
       }
       // 136. Butoir Hydraulique Monorail Sevastopol (Chantier 286)
-      const nearMonorail = (stationMap.monorailBufferStops || []).find((mb) => !mb.isCompressed && Math.hypot(mb.x - playerCreature.x, mb.z - playerCreature.z) <= 6.0);
+      const nearMonorail = (stationMap.monorailBufferStops || []).find((mb) => stationMap.canInteractWithProp(mb) && !mb.isCompressed && Math.hypot(mb.x - playerCreature.x, mb.z - playerCreature.z) <= 6.0);
       if (nearMonorail) {
         stationMap.compressMonorailBuffer(nearMonorail);
         return true;
       }
       // 137. Surchauffeur Vapeur Processeur Hadley (Chantier 287)
-      const nearSuperheater = (stationMap.steamSuperheaters || []).find((sh) => !sh.isVenting && Math.hypot(sh.x - playerCreature.x, sh.z - playerCreature.z) <= 6.0);
+      const nearSuperheater = (stationMap.steamSuperheaters || []).find((sh) => stationMap.canInteractWithProp(sh) && !sh.isVenting && Math.hypot(sh.x - playerCreature.x, sh.z - playerCreature.z) <= 6.0);
       if (nearSuperheater) {
         stationMap.ventSuperheaterSteam(nearSuperheater);
         return true;
       }
       // 138. Râtelier d'Armes Lourdes USCM (Chantier 288)
-      const nearWeaponRack = (stationMap.uscmWeaponRacks || []).find((wr) => !wr.isUnlocked && Math.hypot(wr.x - playerCreature.x, wr.z - playerCreature.z) <= 6.0);
+      const nearWeaponRack = (stationMap.uscmWeaponRacks || []).find((wr) => stationMap.canInteractWithProp(wr) && !wr.isUnlocked && Math.hypot(wr.x - playerCreature.x, wr.z - playerCreature.z) <= 6.0);
       if (nearWeaponRack) {
         stationMap.unlockUscmWeaponRack(nearWeaponRack);
         return true;
       }
       // 139. Banc Assemblage Synthétiques Seegson (Chantier 289)
-      const nearAssemblyStation = (stationMap.syntheticAssemblyStations || []).find((as) => !as.isOverloaded && Math.hypot(as.x - playerCreature.x, as.z - playerCreature.z) <= 6.0);
+      const nearAssemblyStation = (stationMap.syntheticAssemblyStations || []).find((as) => stationMap.canInteractWithProp(as) && !as.isOverloaded && Math.hypot(as.x - playerCreature.x, as.z - playerCreature.z) <= 6.0);
       if (nearAssemblyStation) {
         stationMap.overloadAssemblyStation(nearAssemblyStation);
         return true;
       }
       // 140. Prise d'Air Venturi Fonderie Fiorina (Chantier 290)
-      const nearAirIntake = (stationMap.furnaceAirIntakes || []).find((ai) => !ai.isPurged && Math.hypot(ai.x - playerCreature.x, ai.z - playerCreature.z) <= 6.0);
+      const nearAirIntake = (stationMap.furnaceAirIntakes || []).find((ai) => stationMap.canInteractWithProp(ai) && !ai.isPurged && Math.hypot(ai.x - playerCreature.x, ai.z - playerCreature.z) <= 6.0);
       if (nearAirIntake) {
         stationMap.purgeFurnaceAirIntake(nearAirIntake);
         return true;
       }
       // 141. Treuil de Pont Roulant Nostromo (Chantier 291)
-      const nearMonorailHoist = (stationMap.overheadMonorailHoists || []).find((mh) => !mh.isDropped && Math.hypot(mh.x - playerCreature.x, mh.z - playerCreature.z) <= 6.0);
+      const nearMonorailHoist = (stationMap.overheadMonorailHoists || []).find((mh) => stationMap.canInteractWithProp(mh) && !mh.isDropped && Math.hypot(mh.x - playerCreature.x, mh.z - playerCreature.z) <= 6.0);
       if (nearMonorailHoist) {
         stationMap.dropMonorailHoist(nearMonorailHoist);
         return true;
       }
       // 142. Baie d'Accumulateurs de Secours Hadley (Chantier 292)
-      const nearBattery = (stationMap.emergencyBatteryBanks || []).find((bb) => !bb.isDischarged && Math.hypot(bb.x - playerCreature.x, bb.z - playerCreature.z) <= 6.0);
+      const nearBattery = (stationMap.emergencyBatteryBanks || []).find((bb) => stationMap.canInteractWithProp(bb) && !bb.isDischarged && Math.hypot(bb.x - playerCreature.x, bb.z - playerCreature.z) <= 6.0);
       if (nearBattery) {
         stationMap.dischargeBatteryBank(nearBattery);
         return true;
       }
       // 143. Panier de Trempe à Scories Fiorina (Chantier 293)
-      const nearQuenchBasket = (stationMap.heavyQuenchBaskets || []).find((qb) => !qb.isLowered && Math.hypot(qb.x - playerCreature.x, qb.z - playerCreature.z) <= 6.0);
+      const nearQuenchBasket = (stationMap.heavyQuenchBaskets || []).find((qb) => stationMap.canInteractWithProp(qb) && !qb.isLowered && Math.hypot(qb.x - playerCreature.x, qb.z - playerCreature.z) <= 6.0);
       if (nearQuenchBasket) {
         stationMap.lowerQuenchBasket(nearQuenchBasket);
         return true;
       }
       // 144. Centrifugeuse Cryo-Chirurgicale Auriga (Chantier 294)
-      const nearCentrifuge = (stationMap.surgicalCryoCentrifuges || []).find((cc) => !cc.isSpunUp && Math.hypot(cc.x - playerCreature.x, cc.z - playerCreature.z) <= 6.0);
+      const nearCentrifuge = (stationMap.surgicalCryoCentrifuges || []).find((cc) => stationMap.canInteractWithProp(cc) && !cc.isSpunUp && Math.hypot(cc.x - playerCreature.x, cc.z - playerCreature.z) <= 6.0);
       if (nearCentrifuge) {
         stationMap.spinUpCryoCentrifuge(nearCentrifuge);
         return true;
       }
       // 145. Collecteur de Carburant Cryo Romulus (Chantier 295)
-      const nearFuelManifold = (stationMap.fuelTransferManifolds || []).find((fm) => !fm.isPurged && Math.hypot(fm.x - playerCreature.x, fm.z - playerCreature.z) <= 6.0);
+      const nearFuelManifold = (stationMap.fuelTransferManifolds || []).find((fm) => stationMap.canInteractWithProp(fm) && !fm.isPurged && Math.hypot(fm.x - playerCreature.x, fm.z - playerCreature.z) <= 6.0);
       if (nearFuelManifold) {
         stationMap.purgeFuelManifold(nearFuelManifold);
         return true;
       }
       // 146. Portique Scanner à Rayons X Sevastopol (Chantier 296)
-      const nearScanner = (stationMap.baggageInspectionScanners || []).find((bs) => !bs.isJammed && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 6.0);
+      const nearScanner = (stationMap.baggageInspectionScanners || []).find((bs) => stationMap.canInteractWithProp(bs) && !bs.isJammed && Math.hypot(bs.x - playerCreature.x, bs.z - playerCreature.z) <= 6.0);
       if (nearScanner) {
         stationMap.jamBaggageScanner(nearScanner);
         return true;
       }
       // 147. Turbogénérateur Géothermique Hadley (Chantier 297)
-      const nearTurbogen = (stationMap.steamTurbogenerators || []).find((tg) => !tg.isOverdriven && Math.hypot(tg.x - playerCreature.x, tg.z - playerCreature.z) <= 6.0);
+      const nearTurbogen = (stationMap.steamTurbogenerators || []).find((tg) => stationMap.canInteractWithProp(tg) && !tg.isOverdriven && Math.hypot(tg.x - playerCreature.x, tg.z - playerCreature.z) <= 6.0);
       if (nearTurbogen) {
         stationMap.overdriveSteamTurbogenerator(nearTurbogen);
         return true;
       }
       // 148. Stand de Tir & Chariot Balistique USCM (Chantier 298)
-      const nearSled = (stationMap.ballisticTestSleds || []).find((bts) => !bts.isFired && Math.hypot(bts.x - playerCreature.x, bts.z - playerCreature.z) <= 6.0);
+      const nearSled = (stationMap.ballisticTestSleds || []).find((bts) => stationMap.canInteractWithProp(bts) && !bts.isFired && Math.hypot(bts.x - playerCreature.x, bts.z - playerCreature.z) <= 6.0);
       if (nearSled) {
         stationMap.fireBallisticSled(nearSled);
         return true;
       }
       // 149. Chemin de Câbles Faisceau Apollo Seegson (Chantier 299)
-      const nearCableTray = (stationMap.apolloCableTrays || []).find((ct) => !ct.isTapped && Math.hypot(ct.x - playerCreature.x, ct.z - playerCreature.z) <= 6.0);
+      const nearCableTray = (stationMap.apolloCableTrays || []).find((ct) => stationMap.canInteractWithProp(ct) && !ct.isTapped && Math.hypot(ct.x - playerCreature.x, ct.z - playerCreature.z) <= 6.0);
       if (nearCableTray) {
         stationMap.tapApolloCableTray(nearCableTray);
         return true;
       }
       // 150. Tuyère de Soufflage Haut Fourneau Fiorina (Chantier 300)
-      const nearBlastTuyere = (stationMap.blastFurnaceTuyeres || []).find((bt) => !bt.isOxygenInjected && Math.hypot(bt.x - playerCreature.x, bt.z - playerCreature.z) <= 6.0);
+      const nearBlastTuyere = (stationMap.blastFurnaceTuyeres || []).find((bt) => stationMap.canInteractWithProp(bt) && !bt.isOxygenInjected && Math.hypot(bt.x - playerCreature.x, bt.z - playerCreature.z) <= 6.0);
       if (nearBlastTuyere) {
         stationMap.injectBlastTuyereOxygen(nearBlastTuyere);
         return true;
       }
       // 151 à 160. Props Vague 31 (Chantiers 301 à 310)
-      const nearWave31 = (stationMap.wave31Props || []).find((wp) => !wp.isTriggered && Math.hypot(wp.x - playerCreature.x, wp.z - playerCreature.z) <= 6.0);
+      const nearWave31 = (stationMap.wave31Props || []).find((wp) => stationMap.canInteractWithProp(wp) && !wp.isTriggered && Math.hypot(wp.x - playerCreature.x, wp.z - playerCreature.z) <= 6.0);
       if (nearWave31) {
         stationMap.triggerWave31Prop(nearWave31);
         return true;
@@ -33990,37 +36023,37 @@
         }
       }
       // Chantier 121 : Projecteur Industriel Orientable
-      const nearSearchlight = (stationMap.industrialSearchlights || []).find((s) => !s.isBroken && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
+      const nearSearchlight = (stationMap.industrialSearchlights || []).find((s) => stationMap.canInteractWithProp(s) && !s.isBroken && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
       if (nearSearchlight) {
         stationMap.shatterSearchlight(nearSearchlight);
         return true;
       }
       // Chantier 122 : Caisse de Munitions M41A Explosive
-      const nearAmmoCrate = (stationMap.m41aAmmoCrates || []).find((c) => !c.isDestroyed && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
+      const nearAmmoCrate = (stationMap.m41aAmmoCrates || []).find((c) => stationMap.canInteractWithProp(c) && !c.isDestroyed && Math.hypot(c.x - playerCreature.x, c.z - playerCreature.z) <= 5.5);
       if (nearAmmoCrate) {
         stationMap.detonateAmmoCrate(nearAmmoCrate);
         return true;
       }
       // Chantier 123 : Cuve Transgénique Z-01 Auriga/Romulus
-      const nearTransgenicIncubator = (stationMap.transgenicIncubators || []).find((i) => !i.isRuptured && Math.hypot(i.x - playerCreature.x, i.z - playerCreature.z) <= 5.5);
+      const nearTransgenicIncubator = (stationMap.transgenicIncubators || []).find((i) => stationMap.canInteractWithProp(i) && !i.isRuptured && Math.hypot(i.x - playerCreature.x, i.z - playerCreature.z) <= 5.5);
       if (nearTransgenicIncubator) {
         stationMap.ruptureTransgenicIncubator(nearTransgenicIncubator);
         return true;
       }
       // Chantier 125 : Buse de Décharge Cryogénique LN2
-      const nearMistVent = (stationMap.cryoCoolingMistVents || []).find((v) => !v.isPunctured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
+      const nearMistVent = (stationMap.cryoCoolingMistVents || []).find((v) => stationMap.canInteractWithProp(v) && !v.isPunctured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 5.5);
       if (nearMistVent) {
         stationMap.punctureCryoMistVent(nearMistVent);
         return true;
       }
       // Chantier 126 : Bobine Magnétique Mag-Lev
-      const nearMaglev = (stationMap.maglevCoilStations || []).find((s) => (!s.cooldown || s.cooldown <= 0) && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
+      const nearMaglev = (stationMap.maglevCoilStations || []).find((s) => stationMap.canInteractWithProp(s) && (!s.cooldown || s.cooldown <= 0) && Math.hypot(s.x - playerCreature.x, s.z - playerCreature.z) <= 5.5);
       if (nearMaglev) {
         stationMap.overchargeMaglevCoil(nearMaglev);
         return true;
       }
       // Chantier 129 : Capsule de Survie Cryogénique EEV Type 37
-      const nearEEV = (stationMap.eevEscapePods || []).find((p) => !p.isSabotaged && !p.isEjected && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 5.5);
+      const nearEEV = (stationMap.eevEscapePods || []).find((p) => stationMap.canInteractWithProp(p) && !p.isSabotaged && !p.isEjected && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 5.5);
       if (nearEEV) {
         stationMap.sabotageEEVPod(nearEEV);
         return true;
@@ -34081,41 +36114,26 @@
       playerCreature.toggleCeilingProwl();
     }
 
+    executeCeilingCapture() {
+      if (!playerCreature.isCeilingProwling || playerCreature.isLocomotionBusy?.()) return false;
+      const { human: target } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated &&
+        Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= 5.5);
+      if (!target) { showToast('Aucune cible sous la créature pour la prise caudale.'); return false; }
+      return playerCreature.executeCeilingImpale(target);
+    }
+
     executeDragOrWallCocoon() {
-      // Audit QA #79 : Cocon Aérien Suspendu aux Poutres de Plafond
-      if (playerCreature.isCeilingProwling) {
-        const humans = window.gameInstance?.humans || [];
-        const stunnedHost = humans.find((h) => !h.isCocooned && (h.isIncapacitated || h.staggerTimer > 0) && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.5);
-        if (stunnedHost) {
-          stationMap.suspendOverheadCocoon(stunnedHost);
-          this.capturedHosts++;
-          this.updateCooldownBadges();
-          this.updateRoyalButton();
-          return;
-        }
+      if (window.gameInstance?.currentStage !== this || !playerCreature.canTransportOnGround?.()) return false;
+      const carried=playerCreature.draggedHost;
+      if (!carried) return playerCreature.toggleDragHost();
+      if (playerCreature.wallCocoonDraggedHost()) {
+        this.capturedHosts++;
+        this.updateCooldownBadges();this.updateRoyalButton();
+        return true;
       }
-      if (playerCreature.draggedHost) {
-        let nearWall = false;
-        for (const col of stationMap.colliders) {
-          if (
-            playerCreature.x >= col.minX - 3.2 && playerCreature.x <= col.maxX + 3.2 &&
-            playerCreature.z >= col.minZ - 3.2 && playerCreature.z <= col.maxZ + 3.2
-          ) {
-            nearWall = true; break;
-          }
-        }
-        if (nearWall) {
-          playerCreature.wallCocoonDraggedHost();
-          this.capturedHosts++;
-          this.updateCooldownBadges();
-      this.updateRoyalButton();
-        } else {
-          showToast('Approchez le corps d\'un mur pour l\'emmurer dans la résine [V], ou pressez V pour relâcher.');
-          playerCreature.toggleDragHost();
-        }
-      } else {
-        playerCreature.toggleDragHost();
-      }
+      playerCreature.cancelDragHost();
+      showToast('Corps relâché au sol. Seul un hôte vivant et viable peut être fixé à une paroi accessible.');
+      return true;
     }
 
     toggleVentInfiltration() {
@@ -34149,10 +36167,10 @@
         return;
       }
       if (playerCreature.isCeilingProwling) {
-        if (key === '1' || key === 'e' || key === '3' || key === 't') {
-          playerCreature.executeCeilingImpale();
+        if (key === 'e' || key === 't') {
+          this.executeCeilingCapture();
           this.updateCooldownBadges();
-      this.updateRoyalButton();
+          this.updateRoyalButton();
           return;
         }
       }
@@ -35601,9 +37619,9 @@
 
       actionsContainer.innerHTML = `
         <button type="button" id="btn-toggle-ovipositor" class="act-btn" style="border-color: ${oviBtnBorder}; background: ${oviBtnBg}; font-weight: bold;">${oviBtnLabel}</button>
-        <button type="button" id="btn-spawn-drone" class="act-btn">CYCLE DRONE — HÔTE STANDARD (30 Bio)</button>
+        <button type="button" id="btn-spawn-drone" class="act-btn">CYCLE DRONE — HÔTE HUMANOÏDE (30 Bio)</button>
         <button type="button" id="btn-spawn-runner" class="act-btn">CYCLE RUNNER — HÔTE QUADRUPÈDE (30 Bio)</button>
-        <button type="button" id="btn-spawn-warrior" class="act-btn">CYCLE WARRIOR — HÔTE COMMANDO/BLINDÉ (45 Bio)</button>
+        <button type="button" id="btn-spawn-warrior" class="act-btn">MUE WARRIOR — DRONE MATURE (45 Bio)</button>
         <button type="button" id="btn-spawn-worker" class="act-btn">SPÉCIALISER DRONE EN WORKER (25 Bio)</button>
         <button type="button" id="btn-spawn-prowler" class="act-btn">SPÉCIALISER DRONE EN PROWLER (40 Bio)</button>
         <button type="button" id="btn-spawn-spitter" class="act-btn">SPÉCIALISER DRONE EN SPITTER (50 Bio)</button>
@@ -35638,15 +37656,15 @@
       return (window.gameInstance?.humans || []).find((host) => {
         if (!host.isCocooned || host.usedAsHost || host.hostEligibility !== 'viable') return false;
         if (caste === 'runner') return host.type === 'labhound';
-        if (caste === 'warrior') return this.isArmoredHost(host);
         if (caste === 'offspring') return true;
-        if (caste === 'drone') return host.type !== 'labhound' && !this.isArmoredHost(host);
+        if (caste === 'drone') return host.type !== 'labhound';
         return false;
       }) || null;
     }
 
     findSpecializationPrecursor(caste) {
       const precursorMap = {
+        warrior: ['drone'],
         worker: ['drone'],
         prowler: ['drone'],
         spitter: ['drone'],
@@ -35662,17 +37680,21 @@
     }
 
     canBeginCycle(caste, cost) {
+      if (!['drone', 'runner', 'warrior', 'worker', 'prowler', 'spitter', 'burster', 'crusher', 'praetorian', 'palatine', 'offspring'].includes(caste) ||
+        !Number.isFinite(cost) || cost <= 0) return false;
       if (
         this.biomass < cost ||
         this.queen?.isDestroyed ||
         !this.queen?.attachedToOvipositor ||
         this.incubationCycles.filter((cycle) => cycle.isActive).length >= 3
       ) return false;
-      if (['drone', 'runner', 'warrior', 'offspring'].includes(caste)) return Boolean(this.findCompatibleHost(caste));
+      if (['drone', 'runner', 'offspring'].includes(caste)) return Boolean(this.findCompatibleHost(caste));
       return Boolean(this.findSpecializationPrecursor(caste));
     }
 
     spawnUnit(caste, cost) {
+      if (!['drone', 'runner', 'warrior', 'worker', 'prowler', 'spitter', 'burster', 'crusher', 'praetorian', 'palatine', 'offspring'].includes(caste) ||
+        !Number.isFinite(cost) || cost <= 0) return;
       if (this.biomass < cost) {
         showToast(`Biomasse insuffisante : ${cost} requise.`);
         return;
@@ -35686,20 +37708,19 @@
         return;
       }
 
-      const usesHost = ['drone', 'runner', 'warrior', 'offspring'].includes(caste);
+      const usesHost = ['drone', 'runner', 'offspring'].includes(caste);
       const host = usesHost ? this.findCompatibleHost(caste) : null;
       const precursor = usesHost ? null : this.findSpecializationPrecursor(caste);
       if (usesHost && !host) {
         const requirement = caste === 'runner'
           ? 'un quadrupède'
-          : (caste === 'warrior'
-            ? 'un commando ou soldat blindé'
-            : (caste === 'offspring' ? 'n’importe quel hôte viable pour infusion Z-01' : 'un humanoïde standard'));
+          : (caste === 'offspring' ? 'un hôte viable pour l’infusion expérimentale Z-01' : 'un humanoïde viable');
         showToast(`Cycle ${caste.toUpperCase()} impossible : ${requirement} cocoonisé est requis.`);
         return;
       }
       if (!usesHost && !precursor) {
         const precursorReq = {
+          warrior: 'DRONE',
           worker: 'DRONE',
           prowler: 'DRONE',
           spitter: 'DRONE',
@@ -36147,6 +38168,7 @@
       };
       this.royalCycleRecord = null;
       this.lastTimestamp = null;
+      this.biologicalRemains = new Set();
       this.renderResumeAt = 0;
       this.lastSoftwareRenderAt = -Infinity;
       this.mobileHudMedia = null;
@@ -36280,11 +38302,15 @@
 
     handleKeyDown(key) {
       if (this.isSystemPaused) return;
+      if (this.isLocomotionBusy() && key !== 'q' && key !== 'escape') return;
+      if (this.currentStageIndex === 4 && playerCreature.isCeilingProwling &&
+        !['q', ' ', 'e', 't', 'escape', 'm', 'l', 'p', 'i', 'f1', 'f2', 'f3'].includes(key)) return;
       if (key === 'm') {
         this.motionTracker?.toggleCollapse();
         return;
       }
-      if (key === 't' && this.currentStageIndex !== 5 && !playerCreature.isCeilingProwling) {
+      if (key === 't' && this.currentStageIndex !== 5 &&
+        (this.currentStageIndex !== 4 || inputManager.isKeyPressed('shift'))) {
         this.motionTracker?.toggleFocusedMode();
         return;
       }
@@ -36318,8 +38344,18 @@
       if (this.currentStage && this.currentStage.handleKeyDown) this.currentStage.handleKeyDown(key);
     }
 
+    isLocomotionBusy() {
+      return this.currentStageIndex === 4 && Boolean(playerCreature.isLocomotionBusy?.());
+    }
+
+    getLocomotionState() {
+      return { busy: this.isLocomotionBusy(), hanging: this.currentStageIndex === 4 && Boolean(playerCreature.isCeilingProwling),
+        ceilingActionPhase: this.currentStageIndex === 4 ? playerCreature.ceilingAction?.phase || null : null };
+    }
+
     loadStage(index) {
       if (index < 1 || index > 5) return;
+      if (this.currentStageIndex === 4 && index !== 4) playerCreature.cancelCeilingTransition?.({ land: false });
       if (this.currentStage && this.currentStage.destroy) this.currentStage.destroy();
       inputManager.reset();
       this.currentStageIndex = index;
@@ -36395,7 +38431,12 @@
     resetWorldState() {
       if (this.currentStage?.destroy) this.currentStage.destroy();
       this.currentStage = null;
+      this.hostRecoveryRecord = null;
+      playerCreature.cancelCeilingTransition?.({ land: false });
       this.clearHumans();
+      for (const remnant of this.biologicalRemains || []) rendererEngine.removeObject(remnant);
+      this.biologicalRemains?.clear?.();
+      window.HiveSystems?.ui?.setBiologicalTransition?.(0, '');
       resinGrid.reset();
       pheromoneSystem.reset();
       inputManager.reset();
@@ -36551,7 +38592,15 @@
     }
 
     clearHumans() {
-      for (const human of this.humans) human.destroy();
+      // Drop actor ownership while meshes and intake state still exist. Stage
+      // replacement and campaign reset share this exact cleanup path.
+      playerCreature.cancelCeilingAction?.({ restorePose: true });
+      for (const transfer of [...(stationMap.incineratorTransfers || [])]) stationMap.cancelIncineratorTransfer?.(transfer);
+      playerCreature.cancelDragHost?.();
+      for (const human of this.humans) {
+        human.ceilingAnchor?.dispose?.();
+        human.destroy();
+      }
       this.humans = [];
     }
 

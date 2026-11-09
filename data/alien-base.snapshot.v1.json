@@ -1,0 +1,888 @@
+{
+  "schemaVersion": "1.0.0",
+  "origin": "darknigthmare/alien_base",
+  "scope": "public-minimal",
+  "evidence": "identity-and-source-only-not-playable",
+  "records": [
+    {
+      "id": "character:amanda-ripley",
+      "kind": "character",
+      "name": "Amanda Ripley"
+    },
+    {
+      "id": "character:andy",
+      "kind": "character",
+      "name": "Andy"
+    },
+    {
+      "id": "character:annalee-call",
+      "kind": "character",
+      "name": "Annalee Call"
+    },
+    {
+      "id": "character:apone",
+      "kind": "character",
+      "name": "Apone"
+    },
+    {
+      "id": "character:arthur-dallas",
+      "kind": "character",
+      "name": "Arthur Dallas"
+    },
+    {
+      "id": "character:ash",
+      "kind": "character",
+      "name": "Ash"
+    },
+    {
+      "id": "character:bishop",
+      "kind": "character",
+      "name": "Bishop"
+    },
+    {
+      "id": "character:brett",
+      "kind": "character",
+      "name": "Brett"
+    },
+    {
+      "id": "character:burke",
+      "kind": "character",
+      "name": "Carter Burke"
+    },
+    {
+      "id": "character:david-8",
+      "kind": "character",
+      "name": "David 8"
+    },
+    {
+      "id": "character:dwayne-hicks",
+      "kind": "character",
+      "name": "Dwayne Hicks"
+    },
+    {
+      "id": "character:elizabeth-shaw",
+      "kind": "character",
+      "name": "Elizabeth Shaw"
+    },
+    {
+      "id": "character:ellen-ripley",
+      "kind": "character",
+      "name": "Ellen Ripley"
+    },
+    {
+      "id": "character:hudson",
+      "kind": "character",
+      "name": "Hudson"
+    },
+    {
+      "id": "character:kane",
+      "kind": "character",
+      "name": "Kane"
+    },
+    {
+      "id": "character:lambert",
+      "kind": "character",
+      "name": "Lambert"
+    },
+    {
+      "id": "character:newt",
+      "kind": "character",
+      "name": "Rebecca « Newt » Jorden"
+    },
+    {
+      "id": "character:parker",
+      "kind": "character",
+      "name": "Parker"
+    },
+    {
+      "id": "character:rain-carradine",
+      "kind": "character",
+      "name": "Rain Carradine"
+    },
+    {
+      "id": "character:ripley-8",
+      "kind": "character",
+      "name": "Ripley 8"
+    },
+    {
+      "id": "character:vasquez",
+      "kind": "character",
+      "name": "Vasquez"
+    },
+    {
+      "id": "character:walter",
+      "kind": "character",
+      "name": "Walter"
+    },
+    {
+      "id": "equipment:containment",
+      "kind": "equipment",
+      "name": "Kit de confinement xéno"
+    },
+    {
+      "id": "equipment:m314",
+      "kind": "equipment",
+      "name": "M314 — Détecteur de mouvement"
+    },
+    {
+      "id": "equipment:trauma",
+      "kind": "equipment",
+      "name": "Kit de traumatologie"
+    },
+    {
+      "id": "equipment:welder",
+      "kind": "equipment",
+      "name": "Chalumeau de découpe"
+    },
+    {
+      "id": "faction:colonists",
+      "kind": "faction",
+      "name": "Colons de la frontière"
+    },
+    {
+      "id": "faction:synthetics",
+      "kind": "faction",
+      "name": "Personnel synthétique"
+    },
+    {
+      "id": "faction:uscm",
+      "kind": "faction",
+      "name": "Colonial Marines — USCM"
+    },
+    {
+      "id": "faction:weyland-yutani",
+      "kind": "faction",
+      "name": "Weyland-Yutani"
+    },
+    {
+      "id": "location:fiorina-161",
+      "kind": "location",
+      "name": "Fiorina 161"
+    },
+    {
+      "id": "location:hadleys-hope",
+      "kind": "location",
+      "name": "Hadley’s Hope"
+    },
+    {
+      "id": "location:lethe",
+      "kind": "location",
+      "name": "Lethe"
+    },
+    {
+      "id": "location:lv-223",
+      "kind": "location",
+      "name": "LV-223"
+    },
+    {
+      "id": "location:lv-426",
+      "kind": "location",
+      "name": "LV-426 / Acheron"
+    },
+    {
+      "id": "location:lv-895",
+      "kind": "location",
+      "name": "LV-895"
+    },
+    {
+      "id": "location:renaissance",
+      "kind": "location",
+      "name": "Renaissance"
+    },
+    {
+      "id": "location:sevastopol",
+      "kind": "location",
+      "name": "Sevastopol"
+    },
+    {
+      "id": "vehicle:m577",
+      "kind": "vehicle",
+      "name": "M577 Armored Personnel Carrier"
+    },
+    {
+      "id": "vehicle:narcissus",
+      "kind": "vehicle",
+      "name": "Narcissus Lifeboat"
+    },
+    {
+      "id": "vehicle:p5000",
+      "kind": "vehicle",
+      "name": "P-5000 Powered Work Loader"
+    },
+    {
+      "id": "vehicle:ud4l",
+      "kind": "vehicle",
+      "name": "UD-4L Cheyenne Dropship"
+    },
+    {
+      "id": "vessel:uscss-nostromo",
+      "kind": "vessel",
+      "name": "USCSS Nostromo"
+    },
+    {
+      "id": "vessel:usm-auriga",
+      "kind": "vessel",
+      "name": "USM Auriga"
+    },
+    {
+      "id": "vessel:uss-sulaco",
+      "kind": "vessel",
+      "name": "USS Sulaco"
+    },
+    {
+      "id": "weapon:ithaca37",
+      "kind": "weapon",
+      "name": "Ithaca Model 37 — Fusil à pompe"
+    },
+    {
+      "id": "weapon:m240",
+      "kind": "weapon",
+      "name": "M240 — Incinérateur"
+    },
+    {
+      "id": "weapon:m41a",
+      "kind": "weapon",
+      "name": "M41A — Fusil à impulsion"
+    },
+    {
+      "id": "weapon:m56",
+      "kind": "weapon",
+      "name": "M56 — Smartgun"
+    },
+    {
+      "id": "weapon:model39",
+      "kind": "weapon",
+      "name": "Smith & Wesson Model 39 — Pistolet"
+    },
+    {
+      "id": "weapon:sentry",
+      "kind": "weapon",
+      "name": "UA 571-C — Sentinelle"
+    },
+    {
+      "id": "weapon:vp70",
+      "kind": "weapon",
+      "name": "Heckler & Koch VP70 — Pistolet"
+    },
+    {
+      "id": "xeno:adult-1979",
+      "kind": "organism",
+      "name": "Drone xénomorphe"
+    },
+    {
+      "id": "xeno:chestburster",
+      "kind": "organism",
+      "name": "Chestburster"
+    },
+    {
+      "id": "xeno:facehugger",
+      "kind": "organism",
+      "name": "Facehugger"
+    },
+    {
+      "id": "xeno:ovomorph",
+      "kind": "organism",
+      "name": "Œuf xénomorphe"
+    },
+    {
+      "id": "xeno:queen-1986",
+      "kind": "organism",
+      "name": "Reine xénomorphe"
+    },
+    {
+      "id": "xeno:warrior-1986",
+      "kind": "organism",
+      "name": "Guerrier xénomorphe"
+    }
+  ],
+  "crosswalks": [
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CASTES",
+      "legacyId": "ovomorphe",
+      "sharedId": "xeno:ovomorph",
+      "note": "Archetype identity only; no canonical model, art, balance or 1:1 visual certification"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CODEX",
+      "legacyId": "codex_ovomorphe",
+      "sharedId": "xeno:ovomorph",
+      "note": "Codex subject identity only; local writing and progress untouched"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CASTES",
+      "legacyId": "facehugger",
+      "sharedId": "xeno:facehugger",
+      "note": "Archetype identity only; no canonical model, art, balance or 1:1 visual certification"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CODEX",
+      "legacyId": "codex_facehugger",
+      "sharedId": "xeno:facehugger",
+      "note": "Codex subject identity only; local writing and progress untouched"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CASTES",
+      "legacyId": "chestburster",
+      "sharedId": "xeno:chestburster",
+      "note": "Archetype identity only; no canonical model, art, balance or 1:1 visual certification"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CODEX",
+      "legacyId": "codex_chestburster",
+      "sharedId": "xeno:chestburster",
+      "note": "Codex subject identity only; local writing and progress untouched"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CASTES",
+      "legacyId": "drone",
+      "sharedId": "xeno:adult-1979",
+      "note": "Archetype identity only; no canonical model, art, balance or 1:1 visual certification"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CODEX",
+      "legacyId": "codex_drone",
+      "sharedId": "xeno:adult-1979",
+      "note": "Codex subject identity only; local writing and progress untouched"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CASTES",
+      "legacyId": "warrior",
+      "sharedId": "xeno:warrior-1986",
+      "note": "Archetype identity only; no canonical model, art, balance or 1:1 visual certification"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CODEX",
+      "legacyId": "codex_warrior",
+      "sharedId": "xeno:warrior-1986",
+      "note": "Codex subject identity only; local writing and progress untouched"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CASTES",
+      "legacyId": "queen",
+      "sharedId": "xeno:queen-1986",
+      "note": "Archetype identity only; no canonical model, art, balance or 1:1 visual certification"
+    },
+    {
+      "repository": "darknigthmare/eager-curie",
+      "collection": "HIVE_CONTENT_CODEX",
+      "legacyId": "codex_queen",
+      "sharedId": "xeno:queen-1986",
+      "note": "Codex subject identity only; local writing and progress untouched"
+    }
+  ],
+  "sourcePins": [
+    {
+      "repository": "darknigthmare/eager-curie",
+      "path": "src/content.js",
+      "commit": "dd3d417b103a56a2c9f3b6510040106df6693926"
+    }
+  ],
+  "consumer": "darknigthmare/eager-curie",
+  "sourceContent": {
+    "commit": "dd3d417b103a56a2c9f3b6510040106df6693926",
+    "blobSha": "21a4b3a88b8183ef54b3370b4c994265030ffc09",
+    "version": "1.1.0"
+  },
+  "projectIntake": {
+    "castes": [
+      {
+        "id": "ovomorphe",
+        "name": "Ovomorphe",
+        "role": "Incubateur sensible et piège biologique",
+        "sourceLoreStatus": "FILM_CORE",
+        "sharedId": "xeno:ovomorph",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "facehugger",
+        "name": "Facehugger",
+        "role": "Parasite mobile chargé de l'implantation",
+        "sourceLoreStatus": "FILM_CORE",
+        "sharedId": "xeno:facehugger",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "chestburster",
+        "name": "Chestburster",
+        "role": "Juvénile de fuite et de croissance",
+        "sourceLoreStatus": "FILM_CORE",
+        "sharedId": "xeno:chestburster",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "drone",
+        "name": "Drone",
+        "role": "Prédateur furtif et ravisseur d'hôtes",
+        "sourceLoreStatus": "FILM_CORE",
+        "sharedId": "xeno:adult-1979",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "runner",
+        "name": "Runner",
+        "role": "Chasseur quadrupède de poursuite",
+        "sourceLoreStatus": "FILM_CORE",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "warrior",
+        "name": "Warrior",
+        "role": "Soldat de ruche et briseur de ligne",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
+        "sharedId": "xeno:warrior-1986",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "worker",
+        "name": "Worker",
+        "role": "Constructeur, logisticien et soigneur de la ruche",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "spitter",
+        "name": "Spitter",
+        "role": "Appui corrosif et contrôle de zone",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "praetorian",
+        "name": "Praetorian",
+        "role": "Garde royal et relais de commandement",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "queen",
+        "name": "Reine",
+        "role": "Cœur reproducteur et commandement stratégique",
+        "sourceLoreStatus": "FILM_CORE",
+        "sharedId": "xeno:queen-1986",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "royal_facehugger",
+        "name": "Superfacehugger Royal",
+        "role": "Parasite spécialisé transportant la lignée royale",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "prowler",
+        "name": "Prowler",
+        "role": "Prédateur d'embuscade et de plafond ultra-rapide",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "burster",
+        "name": "Burster",
+        "role": "Bombe d'acide vivante et percée kamikaze",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "crusher",
+        "name": "Crusher",
+        "role": "Mastodonte quadrupède et bélier anti-blindage",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "palatine",
+        "name": "Palatine (Garde Royal Suprême)",
+        "role": "Protecteur ultime de la Reine et commandant de ruche",
+        "sourceLoreStatus": "EXPANDED_COMPATIBLE",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "offspring",
+        "name": "Offspring (Hybride Z-01)",
+        "role": "Hybride expérimental Z-01, hors cycle naturel de la ruche",
+        "sourceLoreStatus": "INSPIRED_ORIGINAL",
+        "sharedId": null,
+        "researchOnly": true,
+        "canonExact": false
+      }
+    ],
+    "enemies": [
+      {
+        "id": "maintenance_technician",
+        "name": "Technicien de maintenance",
+        "faction": "Personnel MNEMOSYNE",
+        "hostEligibility": "viable",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "xenobiologist",
+        "name": "Xénobiologiste IRISE",
+        "faction": "Consortium IRISE",
+        "hostEligibility": "viable",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "security_agent",
+        "name": "Agent de sûreté",
+        "faction": "Sûreté MNEMOSYNE",
+        "hostEligibility": "viable",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "orbital_rifleman",
+        "name": "Fusilier orbital",
+        "faction": "Détachement KAPPA",
+        "hostEligibility": "viable",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "thermal_operator",
+        "name": "Opérateur thermique",
+        "faction": "Détachement KAPPA",
+        "hostEligibility": "viable",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "gyro_gunner",
+        "name": "Artilleur gyrostabilisé",
+        "faction": "Détachement KAPPA",
+        "hostEligibility": "viable",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "capture_commando",
+        "name": "Commando de récupération",
+        "faction": "Consortium IRISE",
+        "hostEligibility": "protected",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "argos_synthetic",
+        "name": "Synthétique ARGOS",
+        "faction": "Consortium IRISE",
+        "hostEligibility": "none",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "sentry_turret",
+        "name": "Tourelle SENTINELLE",
+        "faction": "Défense automatisée",
+        "hostEligibility": "none",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "security_drone",
+        "name": "Drone de sûreté LUCIOLE",
+        "faction": "Défense automatisée",
+        "hostEligibility": "none",
+        "researchOnly": true,
+        "canonExact": false
+      }
+    ],
+    "bosses": [
+      {
+        "id": "ASTER_RHO",
+        "name": "Surveillante Aster Rho",
+        "title": "Cheffe du confinement biologique",
+        "actId": "ACT_2",
+        "hostEligibility": "protected_then_viable",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "BRIAREOS_7",
+        "name": "BRIAREOS-7",
+        "title": "Synthétique de siège",
+        "actId": "ACT_5",
+        "hostEligibility": "none",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "MANTIS_4",
+        "name": "MANTIS-4",
+        "title": "Exosquelette industriel de quarantaine",
+        "actId": "ACT_5",
+        "hostEligibility": "operator_inside",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "PALIMPSESTE",
+        "name": "PALIMPSESTE",
+        "title": "Intelligence de gestion de MNEMOSYNE",
+        "actId": "ACT_5",
+        "hostEligibility": "none",
+        "researchOnly": true,
+        "canonExact": false
+      }
+    ],
+    "factions": [
+      {
+        "id": "ha-faction:1",
+        "name": "Consortium IRISE",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-faction:2",
+        "name": "Défense automatisée",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-faction:3",
+        "name": "Détachement KAPPA",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-faction:4",
+        "name": "Personnel MNEMOSYNE",
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-faction:5",
+        "name": "Sûreté MNEMOSYNE",
+        "researchOnly": true,
+        "canonExact": false
+      }
+    ],
+    "equipment": [
+      {
+        "id": "ha-equipment:001",
+        "name": "Balise de pistage",
+        "usedBy": [
+          "security_drone"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:002",
+        "name": "Balise lumineuse",
+        "usedBy": [
+          "security_agent"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:003",
+        "name": "Canon gyrostabilisé VIGIE",
+        "usedBy": [
+          "gyro_gunner"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:004",
+        "name": "Capteur optique",
+        "usedBy": [
+          "sentry_turret"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:005",
+        "name": "Carabine cinétique R-9",
+        "usedBy": [
+          "security_agent"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:006",
+        "name": "Clé à choc",
+        "usedBy": [
+          "maintenance_technician"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:007",
+        "name": "Détecteur inertiel",
+        "usedBy": [
+          "orbital_rifleman"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:008",
+        "name": "Filet électrostatique",
+        "usedBy": [
+          "capture_commando"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:009",
+        "name": "Fusil automatique K-12",
+        "usedBy": [
+          "orbital_rifleman"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:010",
+        "name": "Injecteur sédatif",
+        "usedBy": [
+          "xenobiologist"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:011",
+        "name": "Interface de maintenance",
+        "usedBy": [
+          "argos_synthetic"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:012",
+        "name": "Lampe de travail",
+        "usedBy": [
+          "maintenance_technician"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:013",
+        "name": "Lance thermique T-4",
+        "usedBy": [
+          "thermal_operator"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:014",
+        "name": "Magasin limité",
+        "usedBy": [
+          "sentry_turret"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:015",
+        "name": "Masque étanche",
+        "usedBy": [
+          "capture_commando"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:016",
+        "name": "Perche de contention",
+        "usedBy": [
+          "capture_commando"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:017",
+        "name": "Pinces industrielles",
+        "usedBy": [
+          "argos_synthetic"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:018",
+        "name": "Projecteur UV",
+        "usedBy": [
+          "security_drone"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:019",
+        "name": "Réservoir dorsal",
+        "usedBy": [
+          "thermal_operator"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:020",
+        "name": "Scanner biologique",
+        "usedBy": [
+          "xenobiologist"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      },
+      {
+        "id": "ha-equipment:021",
+        "name": "Visière de suivi",
+        "usedBy": [
+          "gyro_gunner"
+        ],
+        "researchOnly": true,
+        "canonExact": false
+      }
+    ]
+  }
+}

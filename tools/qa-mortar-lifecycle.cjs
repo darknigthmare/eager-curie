@@ -81,6 +81,15 @@ try{
       note:'Destroyed-launcher continuation alone is not a defect; pause/new-stage impact is.'};
     save();console.log(JSON.stringify(report,null,2));
   }else{
+    check('Heavy mortar deployment stays inactive before the adult phase',()=>{
+      for(const stage of [1,2,3]){
+        const f=fixture();f.game.currentStageIndex=stage;
+        f.advance(8);
+        assert.equal(f.launchCalls(),0,'unexpected fire in phase '+stage);
+        assert.equal(f.hits.length,0);assert.equal(f.mortar.pendingShot,undefined);
+        assert.equal(f.mortar.shootCooldown,0,'hidden weapon cooldown advanced');
+      }
+    });
     check('Launch commits .65 simulated seconds, a fixed aim and no immediate hit or wall timer',()=>{
       const f=fixture(),shot=f.launch();assert(shot);assert.equal(shot.remaining,.65);
       assert.equal(shot.targetX,10);assert.equal(shot.targetZ,0);assert.equal(f.hits.length,0);assert.equal(f.timers.length,0);

@@ -7,6 +7,7 @@ from any working directory. No assets or network responses are substituted.
 
 import argparse
 import json
+import re
 import shutil
 
 from playwright.sync_api import sync_playwright
@@ -55,16 +56,34 @@ def run(url, chromium):
         save, settings = values["save"], values["settings"]
         assert save["stage"] == 3, "Fractional saved acts must become valid integers"
         assert save["difficulty"] == "survivor", "Unknown difficulty must fall back"
-        assert save["adultCaste"] == "drone", "Unknown adult caste must fall back"
-        assert save["unlockedCodex"] == ["drone"], "Codex data must filter invalid entries"
+        # Storage preserves well-formed symbolic IDs for the expanded caste
+        # catalog. Game configuration, not string sanitization, checks whether
+        # that ID is a real supported caste before applying it to an actor.
+        assert save["adultCaste"] == "garbage", "Well-formed stored caste IDs must not be silently rewritten"
+        normalized = page.evaluate("""() => ({
+            malformed: HiveSystems.save.normalize({adultCaste: '../drone<script>'}).adultCaste,
+            known: HiveSystems.save.normalize({adultCaste: 'runner'}).adultCaste,
+            codex: HiveSystems.save.normalize({unlockedCodex: [null, 'drone', {}, 'drone']}).unlockedCodex
+        })""")
+        assert normalized == {"malformed": "drone", "known": "runner", "codex": ["drone"]}, "Pure normalization must reject malformed IDs and invalid/duplicate Codex entries without losing a known caste"
+        # Real StageEgg bootstrap configures the future Drone via setAdultCaste,
+        # which legitimately unlocks the extended-caste record after read().
+        # This exact live set was independently observed in the native
+        # persistence-bootstrap diagnostic; do not accept arbitrary additions.
+        live_codex = save["unlockedCodex"]
+        assert all(isinstance(entry, str) and re.fullmatch(r"[a-z0-9_]{2,99}", entry) for entry in live_codex), "Live Codex IDs remain valid symbolic IDs"
+        assert len(live_codex) == len(set(live_codex)), "Real bootstrap must not duplicate the seeded discovery"
+        assert set(live_codex) == {"drone", "codex_castes_etendues"}, "Seeded discovery plus exactly the proven bootstrap unlock must survive"
         assert save["campaignCharacters"]["asterRho"]["maskAttachments"] == 2
         assert settings["volume"] == 100 and settings["brightness"] == 70
         assert settings["scanlines"] is False and values["audio"] == "true"
         page.click("#btn-continue-campaign")
         page.wait_for_function("""() => gameInstance.currentStageIndex === 3 &&
-            gameInstance.campaignConfig.difficulty === 'survivor'""")
+            gameInstance.campaignConfig.difficulty === 'survivor' &&
+            gameInstance.campaignConfig.adultCaste === 'drone'""")
+        assert page.evaluate("gameInstance.campaignConfig.adultCaste") == "drone", "Unknown stored caste must never become an active campaign caste"
         assert not errors, errors
-        results.append("Malformed save/settings normalize; act III resumes; saved mute applies")
+        results.append("Pure malformed-data normalization and exact real-bootstrap Codex unlocks pass; unsupported caste rejected by campaign configuration; act III resumes; saved mute applies")
         context.close()
 
         context, page, errors = new_page("""
@@ -78,12 +97,13 @@ def run(url, chromium):
             const save = HiveSystems.save;
             save.startNew('story', false);
             save.unlock(['drone']);
-            save.checkpoint(4, {adultCaste: 'runner', hostProfile: 'dog'});
+            save.checkpoint(4, {adultCaste: 'runner', hostProfile: 'labhound'});
             save.unlock(['runner']);
             return save.read();
         }""")
         assert save["stage"] == 4 and save["difficulty"] == "story"
         assert save["expandedLore"] is False and save["adultCaste"] == "runner"
+        assert save["hostProfile"] == "labhound", "Session checkpoint retains the canonical quadruped host profile"
         assert "drone" in save["unlockedCodex"] and "runner" in save["unlockedCodex"]
         assert page.locator("#toast-message").is_visible(), "Session-only storage needs a warning"
         assert not errors, errors

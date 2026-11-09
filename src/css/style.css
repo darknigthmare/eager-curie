@@ -562,6 +562,13 @@ button {
   letter-spacing: 2px;
 }
 
+/* The panel lets the scene receive empty-space input. Every actual control,
+   including the reversible gestation view, must opt back into pointer input. */
+.thoracic-controls .act-btn {
+  pointer-events: auto;
+  min-height: 44px;
+}
+
 .thoracic-controls strong {
   color: #fff1f2;
   font-family: var(--font-title);
@@ -590,7 +597,7 @@ button {
   transform: none;
 }
 
-#btn-thoracic-erupt:focus-visible {
+.thoracic-controls .act-btn:focus-visible {
   outline: 3px solid #fff1f2;
   outline-offset: 3px;
 }
@@ -1816,4 +1823,290 @@ select, input[type='range'] { touch-action: manipulation; }
   .system-panel { margin-block: auto; }
   .front-meta { margin-top: 10px; }
   .codex-panel { min-height: 280px; }
+}
+
+/* Compact play HUD: leave the world visible; the full control panel is an
+   explicit drawer, not a permanent overlay. Breakpoint mirrors CampaignUI. */
+#hud-compact-status,
+#hud-quick-actions { display: none; }
+
+#app-container.locomotion-busy #btn-drone-ceiling { display: block !important; }
+#app-container.ceiling-hanging #btn-drone-ceiling,
+#app-container.ceiling-hanging #btn-claw-swipe,
+#app-container.ceiling-hanging #btn-tail-impale,
+#app-container.ceiling-hanging #btn-ceiling-drop-eviscerate { display: block !important; }
+#app-container:not(.ceiling-hanging) #btn-ceiling-drop-eviscerate { display: none !important; }
+#action-buttons-container .act-btn[data-locomotion-locked='true'] {
+  opacity: .45;
+  cursor: wait;
+}
+
+#biological-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: end center;
+  padding: 12dvh 24px;
+  background: #020305;
+  color: #d8e4ef;
+  text-align: center;
+  pointer-events: none;
+  /* Opacity belongs to simulation time, including pause/reduced motion. */
+  transition: none;
+}
+
+#biological-transition span {
+  max-width: 40em;
+  font-size: 13px;
+  line-height: 1.6;
+  letter-spacing: 1px;
+}
+
+#app-container.is-internal-view #hud-compact-status,
+#app-container.is-internal-view #hud-quick-actions { display: none; }
+
+@media (max-width: 680px), (max-width: 1050px) and (max-height: 480px) {
+  #app-container.compact-hud {
+    --compact-action-space: 0px;
+    --rts-reserved-space: 76px;
+  }
+  #app-container.compact-hud.has-quick-actions { --compact-action-space: 68px; }
+  #app-container.compact-hud.is-rts { --compact-action-space: 76px; }
+
+  #app-container.compact-hud #hud-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    min-height: 0;
+    height: auto;
+    padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
+  }
+  #app-container.compact-hud .hud-left {
+    min-width: 0;
+    width: 100%;
+    gap: 8px;
+    align-items: center;
+  }
+  #app-container.compact-hud .brand-title { font-size: 12px; letter-spacing: .6px; }
+  #app-container.compact-hud .stage-badge {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    padding: 3px 6px;
+    font-size: 9px;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #app-container.compact-hud .hud-right {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    gap: 4px;
+    justify-content: space-between;
+  }
+  #app-container.compact-hud .alert-box { min-width: 0; flex: 1; }
+  #app-container.compact-hud .alert-label { display: none; }
+  #app-container.compact-hud .alert-level {
+    display: block;
+    max-width: 110px;
+    overflow: hidden;
+    padding: 5px;
+    font-size: 9px;
+    letter-spacing: 0;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  #app-container.compact-hud .utility-controls { order: 0; gap: 3px; }
+  #app-container.compact-hud .utility-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 6px;
+    font-size: 10px;
+  }
+  #app-container.compact-hud .mobile-hud-toggle {
+    display: inline-flex;
+    min-width: 72px;
+    min-height: 44px;
+    padding: 6px;
+    font-size: 11px;
+  }
+  #app-container.compact-hud .hud-center { display: none; }
+  #app-container.compact-hud.hud-drawer-open .hud-center {
+    position: fixed;
+    top: calc(var(--hud-header-height) + 8px);
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    z-index: 35;
+    display: flex;
+    width: auto;
+    height: 44px;
+    flex-basis: auto;
+    background: #08121b;
+    border-radius: 5px;
+  }
+  #app-container.compact-hud .vision-selector { width: 100%; gap: 6px; }
+  #app-container.compact-hud .vis-btn { flex: 1; min-height: 44px; font-size: 11px; padding: 6px; }
+
+  #app-container.compact-hud #hud-compact-status {
+    position: absolute;
+    top: calc(var(--hud-header-height) + 7px);
+    left: 8px;
+    z-index: 21;
+    display: block;
+    width: 52%;
+    overflow: hidden;
+    color: #b7ff9f;
+    font-size: 10px;
+    line-height: 18px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  body.compact-hud #hud-gyro-compass {
+    top: calc(var(--hud-header-height) + 7px) !important;
+    left: auto !important;
+    right: 8px;
+    max-width: 44%;
+    overflow: hidden;
+    transform: none !important;
+    padding: 2px 5px !important;
+    font-size: 9px !important;
+    letter-spacing: .2px !important;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  #app-container.compact-hud #mission-tracker {
+    top: calc(var(--hud-header-height) + 32px);
+    left: 8px;
+    right: 8px;
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    max-height: 78px;
+    gap: 5px 8px;
+    padding: 7px 9px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  #app-container.compact-hud #mission-act { font-size: 9px; grid-column: auto; }
+  #app-container.compact-hud #mission-tracker strong { font-size: 10px; }
+  #app-container.compact-hud #mission-tracker p { font-size: 10px; line-height: 1.3; }
+  #app-container.compact-hud #mission-progress { display: block; font-size: 10px; }
+
+  #app-container.compact-hud #hud-sidebar {
+    top: calc(var(--hud-header-height) + 60px);
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: auto;
+    width: auto;
+    max-height: min(68dvh, calc(100dvh - var(--hud-header-height) - 76px - env(safe-area-inset-bottom)));
+    padding: 0 3px 8px 0;
+    gap: 8px;
+    scrollbar-gutter: stable;
+    background: #070f17;
+    border: 1px solid #3b5967;
+    border-radius: 7px;
+    scroll-padding-block: 8px;
+  }
+  #app-container.compact-hud #hud-sidebar.mobile-collapsed {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+  }
+  #app-container.compact-hud #hud-sidebar .panel-section { padding: 10px; box-shadow: none; }
+  #app-container.compact-hud #hud-sidebar > .panel-section:first-child { position: static; }
+  #app-container.compact-hud .act-btn,
+  #app-container.compact-hud .action-tab-btn,
+  #app-container.compact-hud .hud-tab-btn,
+  #app-container.compact-hud .tracker-toggle-btn { min-height: 44px; }
+  #app-container.compact-hud .act-btn {
+    font-size: 12px;
+    /* Visibility is inherited from the drawer. It must become focusable in
+       the opening click, not after the button's generic "all" transition. */
+    transition-property: background-color, border-color, color, opacity, transform;
+  }
+  #app-container.compact-hud.hud-drawer-open #mission-tracker,
+  #app-container.compact-hud.hud-drawer-open #hud-compact-status,
+  #app-container.compact-hud.hud-drawer-open .tracker-device,
+  #app-container.compact-hud.hud-drawer-open .narrative-banner,
+  #app-container.compact-hud.hud-drawer-open #hud-quick-actions { display: none; }
+  body.compact-hud:has(#app-container.hud-drawer-open) #hud-gyro-compass { display: none; }
+
+  #app-container.compact-hud .tracker-device {
+    left: max(8px, env(safe-area-inset-left));
+    bottom: calc(var(--compact-action-space) + 8px + env(safe-area-inset-bottom));
+    width: min(280px, calc(100vw - 16px)) !important;
+    padding: 5px 7px;
+    z-index: 23;
+  }
+  #app-container.compact-hud .tracker-device.collapsed { transform: none; opacity: .95; }
+  #app-container.compact-hud .tracker-device.collapsed .tracker-header,
+  #app-container.compact-hud .tracker-device.collapsed .tracker-screen-container { display: none; }
+  #app-container.compact-hud .tracker-screen-container { width: 112px; height: 112px; }
+  #app-container.compact-hud .tracker-footer { display: grid; grid-template-columns: 30px 30px 1fr 1fr 44px; gap: 3px; }
+  #app-container.compact-hud .tracker-val { font-size: 11px; }
+  #app-container.compact-hud .tracker-toggle-btn { padding: 4px; min-width: 44px; font-size: 9px; }
+  #app-container.compact-hud .narrative-banner,
+  #app-container.compact-hud.is-rts .narrative-banner {
+    bottom: calc(var(--compact-action-space) + 72px + env(safe-area-inset-bottom));
+    padding: 7px 9px;
+    max-height: 88px;
+    overflow-y: auto;
+    z-index: 24;
+  }
+  #app-container.compact-hud .narrative-banner p { font-size: 11px; line-height: 1.35; }
+  #app-container.compact-hud #hud-quick-actions {
+    position: absolute;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    z-index: 28;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  #app-container.compact-hud .quick-action-btn {
+    min-height: 56px;
+    height: 56px;
+    max-height: 56px;
+    min-width: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    padding: 7px;
+    border: 1px solid #3c7654;
+    border-radius: 5px;
+    background: rgba(4, 17, 13, .94);
+    color: #c5ffb2;
+    font-size: 10px;
+    line-height: 1.3;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  #app-container.compact-hud .quick-action-btn:focus-visible { outline: 3px solid #b7ff9f; outline-offset: 2px; }
+  #app-container.compact-hud.is-rts #hud-quick-actions,
+  #app-container.compact-hud.game-paused #hud-quick-actions,
+  #app-container.compact-hud.is-internal-view #hud-quick-actions,
+  #app-container.compact-hud.is-internal-view #hud-compact-status { display: none; }
+  #app-container.compact-hud #rts-control-bar { min-height: 60px; width: calc(100vw - 16px); }
+  #app-container.compact-hud .toast,
+  #app-container.compact-hud.is-rts .toast { bottom: calc(var(--compact-action-space) + 74px + env(safe-area-inset-bottom)); font-size: 11px; padding: 9px; }
+}
+
+@media (min-width: 681px) and (max-width: 1050px) and (max-height: 480px) {
+  #app-container.compact-hud #hud-header { grid-template-columns: minmax(180px, 1fr) auto; gap: 12px; }
+  #app-container.compact-hud .hud-left { width: auto; }
+  #app-container.compact-hud .hud-right { width: auto; }
+  #app-container.compact-hud .hud-drawer-open .hud-center,
+  #app-container.compact-hud.hud-drawer-open .hud-center { left: auto; width: min(380px, calc(100vw - 16px)); }
+  #app-container.compact-hud #hud-sidebar { left: auto; width: min(380px, calc(100vw - 16px)); max-height: calc(100dvh - var(--hud-header-height) - 68px); }
+  #app-container.compact-hud #mission-tracker { right: auto; width: min(340px, 42vw); }
+  #app-container.compact-hud #hud-quick-actions { left: 296px; }
+  #app-container.compact-hud .tracker-device { bottom: calc(8px + env(safe-area-inset-bottom)); }
+  #app-container.compact-hud .narrative-banner { width: 270px; right: auto; bottom: calc(72px + env(safe-area-inset-bottom)); }
+  #app-container.compact-hud .toast { max-width: min(450px, 55vw); left: auto; right: 8px; transform: none; }
+  #app-container.compact-hud.is-rts #rts-control-bar { left: auto; right: 8px; transform: none; width: calc(100vw - 304px); }
 }

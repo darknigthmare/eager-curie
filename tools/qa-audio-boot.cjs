@@ -86,6 +86,8 @@ function reaches(sourceNode, destination, visited = new Set()) {
   return [...sourceNode.outputs].some(node => reaches(node, destination, visited));
 }
 const methods = [
+  ['playBrineEvaporatorSteamHiss', 58, 1.2, 1],
+  ['playGeothermalWellheadPressureRelief', 58, 1.4, 1],
   ['playCameraServoPan', 14, .18, 1], ['playCameraAlertBeep', 22, .15, 2],
   ['playTurretSwivel', 18, .16, 1], ['playTurretLock', 20, .14, 2],
   ['playTerminalKeyboardClick', 10, .035, 1], ['playHighVoltageHum', 16, .45, 2],
@@ -97,11 +99,12 @@ function check(name, run) {
   try { const detail = run(); results.push({name, passed: true, detail}); console.log('PASS ' + name); }
   catch (error) { results.push({name, passed: false, error: error.stack || String(error)}); console.error('FAIL ' + name + ': ' + error.message); }
 }
-check('The nine formerly detached methods are actual AudioManager methods', () => {
+check('The repaired sound methods are actual AudioManager methods with real routing', () => {
   const {audio} = fixture(false, false);
   for (const [name] of methods) assert.equal(typeof audio[name], 'function', name);
-  const moved = source.slice(source.indexOf('    playCameraServoPan('), end);
-  assert(!moved.includes('_calcSpatialPan') && !moved.includes('this.sfxGain'), 'No phantom spatial or bus API');
+  const moved = source.slice(source.indexOf('    playBrineEvaporatorSteamHiss('), end);
+  assert(!moved.includes('_calcSpatialPan') && !moved.includes('this.sfxGain') &&
+    !moved.includes('this.audioCtx') && !moved.includes('this._createPanner'), 'No phantom audio context, spatial or bus API');
   return {methods: methods.map(row => row[0])};
 });
 for (const stereo of [true, false]) for (const [method, radius, duration, sourceCount] of methods) {
@@ -140,6 +143,31 @@ check('Non-spatial calls route through the existing master bus too', () => {
   const {audio} = fixture(false);
   for (const [method] of methods) audio[method]();
   assert(audio.ctx.sources.every(node => reaches(node, audio.masterGain)));
+});
+check('Explosion ducking cannot make the zero-volume master audible', () => {
+  const {audio} = fixture();
+  audio.setVolume(0);
+  audio.triggerExplosionDucking();
+  assert.equal(audio.masterGain.gain.value, 0);
+});
+check('Explosion ducking never amplifies a low-volume master', () => {
+  const {audio} = fixture(), ramps = [], parameter = audio.masterGain.gain;
+  audio.setVolume(.01);
+  const original = parameter.exponentialRampToValueAtTime;
+  parameter.exponentialRampToValueAtTime = function(value, time) {
+    ramps.push(value); return original.call(this, value, time);
+  };
+  audio.triggerExplosionDucking();
+  assert(ramps.length > 0);
+  assert(ramps.every(value => value <= .01 && value > 0));
+});
+for (const action of ['volume', 'mute']) check('Changing '+action+' cancels old scheduled master restores', () => {
+  const {audio} = fixture(), parameter = audio.masterGain.gain, cancellations = [];
+  audio.triggerExplosionDucking();
+  parameter.cancelScheduledValues = time => { cancellations.push(time); return parameter; };
+  if (action === 'volume') audio.setVolume(.2); else audio.toggleMuted();
+  assert.equal(cancellations.length, 1);
+  assert.equal(cancellations[0], audio.ctx.currentTime);
 });
 check('The entire production game script parses before boot', () => {
   new vm.Script(source, {filename: 'src/game.js'});

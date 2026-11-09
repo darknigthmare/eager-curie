@@ -9,6 +9,21 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 HEADERS = json.loads((ROOT / 'vercel.json').read_text())['headers'][0]['headers']
+PUBLIC_REFERENCE_PATHS = frozenset({
+    '/data/alien-base.snapshot.v1.json',
+    '/data/alien-base.snapshot.v2.json',
+    '/data/alien-base.media.v2.json',
+})
+
+
+def is_public_game_path(path):
+    """Expose the game namespaces and only the reviewed reference exports."""
+    parts = Path(path.lstrip('/')).parts
+    return path in ('/', '/index.html') or path in PUBLIC_REFERENCE_PATHS or (
+        bool(parts) and parts[0] in ('assets', 'src')
+        and not any(part.startswith('.') for part in parts)
+        and Path(path).suffix.lower() in ('.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.woff2', '.txt', '.glb', '.gltf', '.bin', '.hdr', '.webp')
+    )
 
 
 class GameHandler(SimpleHTTPRequestHandler):
@@ -20,14 +35,17 @@ class GameHandler(SimpleHTTPRequestHandler):
 
     def send_head(self):
         path = unquote(urlsplit(self.path).path)
-        parts = Path(path.lstrip('/')).parts
-        target = (ROOT / path.lstrip('/')).resolve()
-        allowed = path in ('/', '/index.html') or (
-            bool(parts) and parts[0] in ('assets', 'src')
-            and not any(part.startswith('.') for part in parts)
-            and target.suffix.lower() in ('.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.woff2', '.txt', '.glb', '.gltf', '.bin', '.hdr', '.webp')
-        )
-        if not allowed or not target.is_relative_to(ROOT):
+        if not is_public_game_path(path):
+            self.send_error(404)
+            return None
+        try:
+            target = (ROOT / path.lstrip('/')).resolve()
+            canonical_path = '/' if target == ROOT else '/' + target.relative_to(ROOT).as_posix()
+        except (OSError, ValueError):
+            self.send_error(404)
+            return None
+        # A public-name symlink must not expose a private directory or tool.
+        if not is_public_game_path(canonical_path):
             self.send_error(404)
             return None
         return super().send_head()

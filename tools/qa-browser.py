@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Browser regression checks. Requires Python Playwright and system Chromium.
 
-Serve this repository with Python's http.server, then run this script.
+Serve this repository with tools/serve.py, then run this script.
 Stage 2–5 checks initialize public game APIs; they do not claim full playthroughs.
 No network request interception or replacement is used.
 """
@@ -53,6 +53,9 @@ def main():
         page.wait_for_function('() => !!(window.gameInstance && window.HiveSystems?.ui?.game)', timeout=120000)
 
     def start(page):
+        # This smoke path has one reproducible authored origin. The dedicated
+        # cycle suite covers the four origin/host journeys independently.
+        page.select_option('#origin-select', 'starship')
         page.click('#btn-new-campaign')
         page.click('#btn-start-act-one')
         page.wait_for_function('() => gameInstance.campaignActive && !gameInstance.isSystemPaused')
@@ -114,11 +117,10 @@ def main():
                 # determining whether this gameplay assertion passes.
                 navigation = page.evaluate('''() => {
                     const g=gameInstance, stage=g.currentStage, host=g.humans[0];
-                    g.setSystemPaused(true);
+                    if(g.isSystemPaused) throw Error('Host navigation must obey the real unpaused simulation state');
                     let frames=0;
                     while(!stage.hostArrived && frames<1800){host.update(1/60);stage.update(1/60);frames++}
                     const arrived=stage.hostArrived;
-                    g.setSystemPaused(false);
                     return {arrived,frames,x:host.x,z:host.z};
                 }''')
                 require(navigation['arrived'], f'Actual host AI reaches egg within 30 simulated seconds: {navigation}')
@@ -234,33 +236,69 @@ def main():
 
             def endings():
                 completed = []
+                preparations = []
                 for index in range(3):
                     if index:
                         page.reload(wait_until='domcontentloaded')
                         page.wait_for_function('() => !!window.HiveSystems?.ui?.game', timeout=120000)
                         start(page)
-                    page.evaluate('''() => {
+                    prepared = page.evaluate('''() => {
                         gameInstance.startCampaign(5);
                         const s=gameInstance.currentStage;
                         s.relayCount=3;
                         s.relayMeshes.forEach(r=>r.userData.isolated=true);
-                        gameInstance.humans.forEach(h=>h.isIncapacitated=true);
+                        const neutralize=host=>{
+                            if(typeof host.incapacitate!=='function') throw Error('Actual incapacitation API missing for '+host.name);
+                            host.incapacitate();
+                        };
+                        gameInstance.humans.forEach(neutralize);
+                        const clearBeforeReinforcements=s.canCompleteConquest();
+                        // Isolated relays trigger the real final response on
+                        // the next tick. Materialize it before preparing the
+                        // ending fixture, rather than bypassing its guard.
+                        s.checkRtsReinforcements(0);
+                        const mantis=s.mantisBoss;
+                        const jansen=gameInstance.humans.find(h=>h.id===207&&h.type==='powerloader');
+                        const activeReinforcements=gameInstance.humans.filter(h=>!h.isCocooned&&!h.isIncapacitated);
+                        const blockedWithReinforcements=!s.canCompleteConquest();
+                        const realReinforcements=!!mantis?.mesh&&gameInstance.humans.includes(mantis)&&!!jansen?.mesh;
+                        gameInstance.humans.forEach(neutralize);
                         s.updateStats();
+                        return {clearBeforeReinforcements,realReinforcements,blockedWithReinforcements,
+                            activeReinforcements:activeReinforcements.map(h=>({id:h.id,type:h.type,name:h.name})),
+                            finalGuard:s.canCompleteConquest()};
                     }''')
+                    require(prepared['clearBeforeReinforcements'] and prepared['realReinforcements'] and
+                            len(prepared['activeReinforcements']) == 2 and prepared['blockedWithReinforcements'],
+                            f'Real Mantis/Jansen reinforcements prevent conquest while active: {prepared}')
+                    require(prepared['finalGuard'], 'Conquest becomes available only after actual incapacitation APIs neutralize every threat')
+                    preparations.append(prepared)
                     page.click('#btn-final-conquest')
                     choices = page.locator('#ending-choices button')
                     require(choices.count() == 3, 'Three distinct endings offered')
+                    expected = page.evaluate('''(index) => {
+                        const raw=HIVE_CONTENT.endings;
+                        const ending=(Array.isArray(raw)?raw:Object.values(raw))[index];
+                        return {id:ending.id,title:ending.title,tone:ending.tone||'',epilogue:ending.epilogue};
+                    }''', index)
                     title = choices.nth(index).locator('strong').inner_text()
+                    require(title == expected['title'], 'Displayed choice matches its exact content title')
                     choices.nth(index).click()
                     require(page.locator('#stage-modal').is_visible(), 'Ending epilogue displayed')
                     require(not page.evaluate('gameInstance.isRunning'), 'Completed simulation stops')
-                    require(page.locator('#modal-title').inner_text() == title, 'Selected epilogue matches choice')
+                    full_title = title + (f" [{expected['tone']}]" if expected['tone'] else '')
+                    require(page.locator('#modal-title').inner_text() == full_title, 'Selected epilogue matches the exact choice title and tone')
+                    epilogue = page.locator('#modal-description').text_content()
+                    require(expected['epilogue'] and expected['epilogue'] in epilogue and 'BILAN TACTIQUE DE CAMPAGNE' in epilogue,
+                            'The selected content epilogue and actual campaign synthesis are displayed')
                     saved = page.evaluate('HiveSystems.save.read()')
-                    require(not saved['campaignStarted'] and len(saved['completedEndings']) == index + 1,
-                            'Ending discovery accumulates and campaign marked complete')
+                    require(not saved['campaignStarted'] and len(saved['completedEndings']) == index + 1 and expected['id'] in saved['completedEndings'],
+                            'Exact selected ending ID accumulates and campaign is marked complete')
                     require(page.locator('#game-canvas').evaluate('(e)=>e.inert'), 'Completed game input isolated')
+                    prepared['ending'] = expected
                     completed.append(title)
-                return dict(choices=completed, prerequisites='Act five, three isolated relays and incapacitated threats seeded via API; actual choice and epilogue UI exercised')
+                return dict(choices=completed, preparations=preparations,
+                            prerequisites='Act five and three isolated relays prepared via API; real reinforcements and conquest guard asserted; actual incapacitate() methods prepare threat-free ending state; actual choice and epilogue UI exercised, not a played boss fight')
             check('All three ending choices and persisted discoveries', endings)
 
             def textures():
@@ -318,17 +356,46 @@ def main():
             boot(mobile)
             require(mobile.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Menu has no horizontal overflow')
             start(mobile)
-            for stage in (1, 4, 5):
-                mobile.evaluate('(s)=>gameInstance.startCampaign(s)', stage)
-                mobile.wait_for_timeout(400)
-                require(mobile.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'Act {stage}: no horizontal overflow')
-                toggle = mobile.locator('#btn-toggle-hud')
-                require(toggle.is_visible(), 'Mobile HUD control visible')
-                toggle.click()
-                expanded = toggle.get_attribute('aria-expanded') == 'true'
-                require(mobile.locator('#hud-sidebar').evaluate('(e)=>e.inert') == (not expanded), 'Hidden mobile HUD removed from interaction')
-            mobile.screenshot(path=str(output/'mobile-rts.png'))
-            return '390×844 menu and acts 1/4/5; touch HUD toggle and no page overflow'
+            records = []
+            for width, height in ((390, 844), (844, 390)):
+                mobile.set_viewport_size({'width': width, 'height': height})
+                mobile.wait_for_function('() => HiveSystems.ui.compactHudActive === true')
+                for stage in (1, 4, 5):
+                    mobile.evaluate('(s)=>gameInstance.startCampaign(s)', stage)
+                    mobile.wait_for_function('''() => {
+                        const app=document.querySelector('#app-container'), toggle=document.querySelector('#btn-toggle-hud');
+                        return toggle.getAttribute('aria-expanded')==='false' &&
+                            !app.classList.contains('hud-drawer-open') && document.querySelector('#hud-sidebar').inert;
+                    }''')
+                    require(mobile.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'{width}×{height}, act {stage}: no horizontal overflow')
+                    toggle = mobile.locator('#btn-toggle-hud')
+                    require(toggle.is_visible(), 'Mobile HUD control visible')
+                    bounds = toggle.bounding_box()
+                    require(bounds and bounds['width'] >= 44 and bounds['height'] >= 44, 'Drawer trigger is at least 44×44 CSS pixels')
+                    if stage != 5:
+                        aliases = mobile.locator('#hud-quick-actions .quick-action-btn:visible')
+                        require(aliases.count() > 0, 'Closed drawer retains actual contextual action aliases')
+                        for alias in aliases.all():
+                            bounds = alias.bounding_box()
+                            require(bounds and bounds['width'] >= 44 and bounds['height'] >= 44, 'Quick actions remain touch sized')
+                    toggle.click()
+                    require(toggle.get_attribute('aria-expanded') == 'true', 'Touch control opens drawer')
+                    require(mobile.locator('#hud-sidebar').evaluate('(e)=>!e.inert'), 'Open drawer exposes its controls')
+                    require(mobile.evaluate('document.querySelector("#action-buttons-container").contains(document.activeElement)'), 'Opening focuses a real action control')
+                    mobile.keyboard.press('Escape')
+                    require(toggle.get_attribute('aria-expanded') == 'false', 'Escape closes drawer')
+                    require(mobile.locator('#hud-sidebar').evaluate('(e)=>e.inert'), 'Closed drawer is removed from interaction')
+                    require(mobile.evaluate('document.activeElement.id === "btn-toggle-hud" && !gameInstance.isSystemPaused'), 'Drawer Escape restores focus without pausing')
+                    # Stage initialization is a supported public API, not a
+                    # simulated campaign evolution. It must also close an open
+                    # drawer without leaving stale visual hiding classes.
+                    toggle.click()
+                    mobile.evaluate('(s)=>gameInstance.startCampaign(s)', stage)
+                    mobile.wait_for_function('''() => document.querySelector('#btn-toggle-hud').getAttribute('aria-expanded')==='false' &&
+                        !document.querySelector('#app-container').classList.contains('hud-drawer-open') && document.querySelector('#hud-sidebar').inert''')
+                    records.append(dict(width=width, height=height, stage=stage))
+                mobile.screenshot(path=str(output/f'mobile-rts-{width}x{height}.png'))
+            return dict(viewports=records, scope='Touch target geometry, actual drawer focus/Escape and API stage-reset coherence; not a full touch campaign')
         check('Mobile touch layout and HUD isolation', mobile_layout)
         check('No uncaught JavaScript errors', lambda: require(not errors, repr(errors)))
         check('No failed local runtime requests', lambda: require(not bad_assets, repr(bad_assets)))

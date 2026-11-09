@@ -174,9 +174,11 @@ def main():
                                  ('playTurretSwivel', 18), ('playTurretLock', 20),
                                  ('playTerminalKeyboardClick', 10), ('playHighVoltageHum', 16),
                                  ('playHydraulicServo', 15), ('playAutomatonFootstep', 16),
-                                 ('playSyntheticFluidLeak', 14)]
-                report['audio'] = {'scope': '30 native OfflineAudioContext renders: mortar and nine restored AudioManager methods, active/muted/zero-volume each. Real shared connect routing and void API; PCM diagnostics, not listening QA. Mortar pause is separately tested as no newly scheduled SFX, not as an absent AudioManager.pause API.',
-                                   'expectedCases': 30, 'results': []}
+                                 ('playSyntheticFluidLeak', 14),
+                                 ('playBrineEvaporatorSteamHiss', 58),
+                                 ('playGeothermalWellheadPressureRelief', 58)]
+                report['audio'] = {'scope': 'Native OfflineAudioContext renders: mortar and eleven repaired AudioManager methods, active/muted/zero-volume each. Real shared connect routing and void API; PCM diagnostics, not listening QA. Mortar pause is separately tested as no newly scheduled SFX, not as an absent AudioManager.pause API.',
+                                   'expectedCases': len(audio_methods) * 3, 'results': []}
                 for method, radius in audio_methods:
                     for mode in ['active', 'muted', 'zero-volume']:
                         report['audio']['currentCase'] = {'method': method, 'mode': mode}

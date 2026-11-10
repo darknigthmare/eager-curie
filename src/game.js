@@ -8506,6 +8506,60 @@
       osc.start(now);
       osc.stop(now + 0.45);
     }
+
+    // Mission Wave 7 : Carillon de Mutation Biomorphique Inter-Actes 1:1
+    playXenoBiomorphicChime() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      [523.25, 783.99, 1046.5].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = idx === 1 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.05, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(freq, now + 0.9);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.18 / (idx + 1), now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.0005, now + 1.2);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 1.2);
+      });
+    }
+
+    // Mission Wave 7 : Craquement Cristallin de Givre Cryogénique & Azote Liquide
+    playCryoFrostCrackle(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const bufferSize = Math.floor(ctx.sampleRate * 0.4);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * (Math.random() > 0.88 ? 1.0 : 0.15);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'highpass';
+      bpf.frequency.setValueAtTime(3200, now);
+      bpf.frequency.exponentialRampToValueAtTime(5800, now + 0.35);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.24, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      noise.connect(bpf);
+      bpf.connect(gain);
+      this.connect(gain, x, z, 40);
+      noise.start(now);
+      noise.stop(now + 0.4);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -9168,6 +9222,32 @@
         const modeTag = isZeroG ? 'ZERO-G' : (this.focusedMode ? 'FOCAL' : (nearReactor ? 'PARASITE' : sensoryProfileLabel));
         this.statusEl.textContent = contactCount > 0 ? (closestDistance < 6 ? `CRITIQUE [${modeTag}]` : `TRACKING [${modeTag}]`) : `STANDBY [${modeTag}]`;
         this.statusEl.style.color = closestDistance < 6 ? '#ef4444' : (isZeroG ? '#a855f7' : (nearReactor && !this.focusedMode ? '#f59e0b' : '#39ff14'));
+      }
+
+      // Mission Wave 7 : Scanlines CRT Cathodiques & Vignetage Diégétique Phosphore M314
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+      for (let sy = 0; sy < h; sy += 3) {
+        ctx.fillRect(0, sy, w, 1);
+      }
+      const crtCathodeVignette = ctx.createRadialGradient(cx, cy, radius * 0.72, cx, cy, radius + 4);
+      crtCathodeVignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      crtCathodeVignette.addColorStop(1, 'rgba(2, 6, 23, 0.42)');
+      ctx.fillStyle = crtCathodeVignette;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Mission Wave 7 : Balayage Doppler sonore à chaque révolution complète de l'aiguille radar
+      if (!this.focusedMode) {
+        const prevAngle = this.lastSweepAngle || 0;
+        if (prevAngle > 5.4 && this.sweepAngle < 1.0) {
+          if (contactCount > 0) {
+            audioManager.playMotionTrackerSweep?.();
+          }
+        }
+        this.lastSweepAngle = this.sweepAngle;
       }
 
       // Mission Wave 3 : Modulation Doppler Audio M314 selon la cible la plus proche
@@ -14725,7 +14805,11 @@
       pod.isBroken = true;
       audioManager.playGlassShatter(pod.x, pod.z);
       audioManager.playCryoVent(pod.x, pod.z);
+      audioManager.playCryoFrostCrackle?.(pod.x, pod.z);
       rendererEngine.addScreenShake?.(0.32, 0.2);
+      rendererEngine.addFloorFluidDecal?.(pod.x, pod.z, 2.8, 0xbae6fd, 28);
+      window.HiveSystems?.vfx?.cryoFrostFlash?.(pod.x, pod.z, 3.8);
+      window.HiveSystems?.vfx?.cryoVaporPlume?.(pod.x, 1.2, pod.z, 12);
       window.HiveSystems?.vfx?.spawnSteamCloud?.(pod.x, 1.2, pod.z, 4.5);
       window.HiveSystems?.vfx?.burst?.(pod.x, pod.z, 0x38bdf8, 22, 0.16, 1.8);
       window.HiveSystems?.vfx?.floatingText?.(pod.x, 3.2, pod.z, 'GEL CRYOGÉNIQUE (-180°C)', '#38bdf8', true);
@@ -14739,7 +14823,8 @@
         const dist = Math.hypot(ent.x - pod.x, ent.z - pod.z);
         if (dist <= 4.2) {
           ent.takeDamage?.(14);
-          if (ent.staggerTimer !== undefined) ent.staggerTimer = 1.2;
+          if (ent.staggerTimer !== undefined) ent.staggerTimer = 1.6;
+          if (ent.speedMultiplier !== undefined) ent.speedMultiplier = 0.5;
           window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.5, ent.z, '-14 HYPOTHERMIE', '#38bdf8', false);
         }
       });
@@ -16677,6 +16762,8 @@
       vent.timer = 9.0;
       audioManager.playSteamBurstRupture?.(vent.x, vent.z);
       rendererEngine.addScreenShake?.(0.24, 0.18);
+      rendererEngine.addFloorFluidDecal?.(vent.x, vent.z, 2.5, 0x94a3b8, 22);
+      window.HiveSystems?.vfx?.spawnSteamCloud?.(vent.x, 1.2, vent.z, 6.0);
       window.HiveSystems?.vfx?.burst?.(vent.x, vent.z, 0xf1f5f9, 30, 0.3, 2.5);
       showToast('CONDUITE DE VAPEUR SURCHAUFFÉE ÉVENTRÉE : Geyser à 300°C libéré ! Les humains sont aveuglés et brûlés !');
       appendSensorLog(`[VAPEUR] Rupture de conduite haute pression. Température critique 300°C.`, 'alert');
@@ -16704,6 +16791,11 @@
               } else {
                 ent.takeDamage?.(35 * safeDelta);
                 ent.stress = 100;
+                ent.isBlinded = true;
+                ent.blindTimer = Math.max(ent.blindTimer || 0, 3.5);
+                if (Math.random() < 0.08) {
+                  audioManager.playHumanPanicScream?.(ent.x, ent.z);
+                }
                 if (Math.random() < 0.1) {
                   window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.6, ent.z, '-35 BRÛLURE DE VAPEUR !', '#f97316', true);
                 }
@@ -37917,7 +38009,113 @@
       window.HiveSystems?.vfx?.transformation();
       const act = window.HIVE_CONTENT?.narrative?.acts?.[nextStage - 1];
       if (act?.summary) window.HiveSystems?.narrative(`ACTE ${nextStage}`, act.summary, 6500);
-      this.loadStage(nextStage);
+
+      // Mission Wave 7 : Séquence de Transition Biomorphique Diégétique 1:1
+      this.showEvolutionTransitionModal(nextStage, act);
+    }
+
+    showEvolutionTransitionModal(nextStage, act) {
+      const modal = document.getElementById('stage-modal');
+      const continueButton = document.getElementById('modal-btn-continue');
+      if (!modal || !continueButton) {
+        this.loadStage(nextStage);
+        return;
+      }
+
+      const stageInfo = {
+        2: {
+          num: 'ACTE II // PROTOCOLE D’INFILTRATION',
+          title: 'MUTATION CONFIRMÉE : FACEHUGGER',
+          desc: act?.summary || 'L’organisme parasitaire arachnoïde émerge de l’ovomorphe pour localiser et féconder un hôte viable.',
+          morphology: 'Appendices arachnoïdes véloces, queue constrictrice préhensile et ovipositeur sous pression.',
+          host: 'Matrice de ponte LV-426 sélectionnée. Détection cardiaque active.',
+          abilities: 'Bond balistique [Espace], camouflage dans les conduits [C], détection thermique [I].'
+        },
+        3: {
+          num: 'ACTE III // GESTATION ET ÉRUPTION',
+          title: 'MUTATION CONFIRMÉE : CHESTBURSTER',
+          desc: act?.summary || 'L’embryon assimile le génome de l’hôte avant de perforer la cage thoracique.',
+          morphology: 'Thorax ophidien effilé, mâchoires broyeuses renforcées, peau d’albâtre translucide pré-chitine.',
+          host: this.hostProfile ? `Hôte assimilé : ${this.hostProfile}` : 'Hôte biologique colonisé. Biomasse absorbée.',
+          abilities: 'Éruption thoracique [F], festin de biomasse [E], repli tactique sous les grilles [C].'
+        },
+        4: {
+          num: 'ACTE IV // PREDATEUR APEX ET EXPANSION',
+          title: 'MUTATION CONFIRMÉE : XÉNOMORPHE ADULTE',
+          desc: act?.summary || 'La mue terminale libère le chasseur biomécanique parfait au sein du complexe.',
+          morphology: 'Carapace chitineuse noire ultra-dense, dôme crânien poli, vertèbres caudales barbelées.',
+          host: `Spécimen XX121 — Adaptation caste ${playerCreature.adultCaste || 'drone'}.`,
+          abilities: 'Double mâchoire pharyngienne [F], empalement caudal [R], capture d’hôtes vivants.'
+        },
+        5: {
+          num: 'ACTE V // HIVE MIND ET DOMINION ROYAL',
+          title: 'ASCENSION ROYALE : MATRIARCHE',
+          desc: act?.summary || 'La Reine régit la ruche, pond les ovomorphes et dirige l’essaim par télépathie synaptique.',
+          morphology: 'Crête crânienne royale monumentale, ovipositeur de biomasse, plexus neuro-synaptique.',
+          host: 'Lignée génétique matriarcale pure avec matrice de pontes illimitée.',
+          abilities: 'Ordres tactiques RTS [Q,W,E,R,T], résine chitineuse bionique, pontes d’ovomorphes.'
+        }
+      }[nextStage] || {
+        num: `ACTE ${nextStage} // DIRECTIVE 937`,
+        title: 'TRANSFORMATION BIOLOGIQUE CONFIRMÉE',
+        desc: act?.summary || 'L’organisme s’adapte aux impératifs de la Ruche.',
+        morphology: 'Évolution biomécanique continue.',
+        host: 'Spécimen Weyland-Yutani XX121.',
+        abilities: 'Capacités avancées débloquées.'
+      };
+
+      const stageNumEl = document.getElementById('modal-stage-num');
+      const titleEl = document.getElementById('modal-title');
+      const descEl = document.getElementById('modal-description');
+      const morphEl = document.getElementById('modal-morphology-desc');
+      const hostEl = document.getElementById('modal-host-desc');
+      const abilEl = document.getElementById('modal-abilities-desc');
+
+      if (stageNumEl) stageNumEl.textContent = stageInfo.num;
+      if (titleEl) titleEl.textContent = stageInfo.title;
+      if (descEl) descEl.textContent = stageInfo.desc;
+      if (morphEl) morphEl.textContent = stageInfo.morphology;
+      if (hostEl) hostEl.textContent = stageInfo.host;
+      if (abilEl) abilEl.textContent = stageInfo.abilities;
+
+      continueButton.innerHTML = `<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><polyline points="7,5 13,10 7,15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>POURSUIVRE L'ASCENSION ➔</span>`;
+
+      audioManager.playXenoBiomorphicChime?.();
+
+      for (const regionId of ['game-canvas', 'hud-header', 'hud-sidebar', 'rts-control-bar']) {
+        const region = document.getElementById(regionId);
+        if (!region) continue;
+        region.inert = true;
+        region.setAttribute('aria-hidden', 'true');
+      }
+      modal.setAttribute('aria-hidden', 'false');
+      modal.classList.remove('hidden');
+
+      const resumeAndLoad = () => {
+        continueButton.onclick = null;
+        modal.onkeydown = null;
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+        for (const regionId of ['game-canvas', 'hud-header', 'hud-sidebar', 'rts-control-bar']) {
+          const region = document.getElementById(regionId);
+          if (!region) continue;
+          region.inert = false;
+          region.removeAttribute('aria-hidden');
+        }
+        this.loadStage(nextStage);
+      };
+
+      continueButton.onclick = resumeAndLoad;
+      modal.onkeydown = (event) => {
+        if (event.key === 'Enter' || event.key === ' ' || event.key === 'Escape') {
+          event.preventDefault();
+          resumeAndLoad();
+        } else if (event.key === 'Tab') {
+          event.preventDefault();
+          continueButton.focus({ preventScroll: true });
+        }
+      };
+      continueButton.focus();
     }
 
     // -----------------------------------------------------------
@@ -38138,7 +38336,7 @@
       document.getElementById('modal-stage-num').textContent = 'CYCLE TERMINÉ';
       document.getElementById('modal-title').textContent = title;
       document.getElementById('modal-description').textContent = description;
-      continueButton.textContent = 'RECOMMENCER LE CYCLE ↻';
+      continueButton.innerHTML = `<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><polyline points="7,5 13,10 7,15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>RECOMMENCER LE CYCLE ↻</span>`;
       continueButton.onclick = () => window.location.reload();
       for (const regionId of ['game-canvas', 'hud-header', 'hud-sidebar', 'rts-control-bar']) {
         const region = document.getElementById(regionId);

@@ -842,9 +842,46 @@
     <!-- Phase Transition Modal Banner -->
     <div id="stage-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title" aria-describedby="modal-description">
       <div class="modal-card">
+        <div class="modal-directive-banner">
+          <span class="directive-code">DIRECTIVE 937 // WEYLAND-YUTANI BIO-SCAN</span>
+          <span class="directive-badge">SÉQUENCE CONFIRMÉE</span>
+        </div>
         <div class="modal-header" id="modal-stage-num">TRANSFORMATION BIOLOGIQUE</div>
         <h2 id="modal-title">ÉVOLUTION EN COURS</h2>
         <p id="modal-description">La créature mute et adapte sa physiologie aux besoins de la colonie...</p>
+
+        <!-- Dynamic Mutation Telemetry Grid -->
+        <div id="modal-mutation-telemetry" class="mutation-telemetry-grid">
+          <div class="telemetry-block">
+            <div class="telemetry-block-header">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <path d="M4 16 L16 4 M7 3 C9 5 11 5 13 3 M7 17 C9 15 11 15 13 17" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+              <span>MORPHOLOGIE MUTANTE</span>
+            </div>
+            <div class="telemetry-block-content" id="modal-morphology-desc">Exosquelette renforcé et élongation crânienne</div>
+          </div>
+          <div class="telemetry-block">
+            <div class="telemetry-block-header">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <circle cx="10" cy="8" r="4" stroke-width="1.6"/>
+                <path d="M4 18 C4 14 7 12 10 12 C13 12 16 14 16 18" stroke-width="1.6"/>
+              </svg>
+              <span>GÉNOTYPE INTÉGRÉ</span>
+            </div>
+            <div class="telemetry-block-content" id="modal-host-desc">Souche hôte LV-426 / Acheron</div>
+          </div>
+          <div class="telemetry-block">
+            <div class="telemetry-block-header">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <polygon points="10,2 17,6 17,14 10,18 3,14 3,6" stroke-width="1.6"/>
+                <polyline points="10,7 10,10 12,12" stroke-width="1.6"/>
+              </svg>
+              <span>BIO-CAPACITÉ DÉVERROUILLÉE</span>
+            </div>
+            <div class="telemetry-block-content" id="modal-abilities-desc">Pistage phéromonal et glandes d'acide sous pression</div>
+          </div>
+        </div>
 
         <!-- Conserved for the earlier modular prototype; hidden in the active game flow. -->
         <div id="embryo-choices" class="choices-container hidden" role="group" aria-label="Adaptation embryonnaire">

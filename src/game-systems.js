@@ -1170,6 +1170,33 @@
       });
     }
 
+    // Mission Wave 7 : Onde Expansive de Cristallisation Cryogénique
+    cryoFrostFlash(x, z, maxRadius = 3.8) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const ringGeo = new THREE.RingGeometry(0.3, 0.7, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xbae6fd,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      group.add(ring);
+      group.position.set(x, 0.04, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        cryoFrostFlash: true,
+        ringMesh: ring,
+        maxRadius,
+        age: 0,
+        lifetime: 0.85
+      });
+    }
+
     update(deltaSeconds) {
       for (let index = this.effects.length - 1; index >= 0; index--) {
         const effect = this.effects[index];
@@ -1211,6 +1238,9 @@
         } else if (effect.synapticRipple) {
           effect.group.scale.setScalar(0.2 + progress * (effect.maxRadius * 1.8));
           if (effect.ringMesh?.material) effect.ringMesh.material.opacity = Math.max(0, 0.85 * (1 - progress));
+        } else if (effect.cryoFrostFlash) {
+          effect.group.scale.setScalar(0.25 + progress * (effect.maxRadius * 1.6));
+          if (effect.ringMesh?.material) effect.ringMesh.material.opacity = Math.max(0, 0.9 * (1 - progress));
         } else if (effect.barrelSmoke) {
           effect.group.children.forEach((p) => {
             p.position.y += p.userData.vy * deltaSeconds;

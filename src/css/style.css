@@ -1061,7 +1061,7 @@ button {
   border: 2px solid #39ff14;
   border-radius: 12px;
   padding: 32px;
-  max-width: 500px;
+  max-width: 520px;
   width: 100%;
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
@@ -1075,10 +1075,116 @@ button {
   max-width: min(760px, calc(100vw - 32px));
 }
 
-.modal-header { font-size: 12px; color: #39ff14; margin-bottom: 8px; }
+.modal-directive-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(2, 6, 23, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 5px 12px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.directive-code {
+  font-family: monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.directive-badge {
+  background: rgba(57, 255, 20, 0.15);
+  border: 1px solid #39ff14;
+  color: #39ff14;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+}
+
+.modal-header { font-size: 12px; color: #39ff14; margin-bottom: 8px; letter-spacing: 1.5px; }
 .modal-card h2 { font-family: var(--font-title); font-size: 22px; color: #f8fafc; margin-bottom: 12px; }
-.modal-card p { font-size: 13px; color: #94a3b8; margin-bottom: 24px; line-height: 1.6; }
-.modal-btn { padding: 12px 24px; background: rgba(57,255,20,0.2); border: 1px solid #39ff14; color: #39ff14; border-radius: 6px; font-family: var(--font-hud); font-size: 14px; cursor: pointer; }
+.modal-card p { font-size: 13px; color: #94a3b8; margin-bottom: 18px; line-height: 1.6; }
+
+.mutation-telemetry-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0 24px 0;
+  text-align: left;
+}
+
+.telemetry-block {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-left: 3px solid #38bdf8;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.telemetry-block:nth-child(2) {
+  border-left-color: #a855f7;
+}
+
+.telemetry-block:nth-child(3) {
+  border-left-color: #39ff14;
+}
+
+.telemetry-block-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-hud);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+
+.telemetry-block-header .setting-sq-icon {
+  width: 14px;
+  height: 14px;
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.telemetry-block:nth-child(2) .telemetry-block-header .setting-sq-icon {
+  color: #a855f7;
+}
+
+.telemetry-block:nth-child(3) .telemetry-block-header .setting-sq-icon {
+  color: #39ff14;
+}
+
+.telemetry-block-content {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.modal-btn {
+  padding: 12px 24px;
+  background: rgba(57, 255, 20, 0.2);
+  border: 1px solid #39ff14;
+  color: #39ff14;
+  border-radius: 6px;
+  font-family: var(--font-hud);
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.modal-btn:hover {
+  background: rgba(57, 255, 20, 0.35);
+  box-shadow: 0 0 16px rgba(57, 255, 20, 0.5);
+}
 
 /* -------------------------------------------------------------
    FRONT SCREENS

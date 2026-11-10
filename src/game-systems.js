@@ -1143,6 +1143,33 @@
       });
     }
 
+    // Mission Wave 6 : Onde d'Impulsion Synaptique Télépathique de la Ruche
+    hiveSynapticRipple(x, z, color = 0x39ff14, maxRadius = 14) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const ringGeo = new THREE.RingGeometry(0.25, 0.65, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      group.add(ring);
+      group.position.set(x, 0.03, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        synapticRipple: true,
+        ringMesh: ring,
+        maxRadius,
+        age: 0,
+        lifetime: 0.75
+      });
+    }
+
     update(deltaSeconds) {
       for (let index = this.effects.length - 1; index >= 0; index--) {
         const effect = this.effects[index];
@@ -1180,6 +1207,9 @@
           });
         } else if (effect.groundShockwave) {
           effect.group.scale.setScalar(0.2 + progress * (effect.maxRadius * 2.4));
+          if (effect.ringMesh?.material) effect.ringMesh.material.opacity = Math.max(0, 0.85 * (1 - progress));
+        } else if (effect.synapticRipple) {
+          effect.group.scale.setScalar(0.2 + progress * (effect.maxRadius * 1.8));
           if (effect.ringMesh?.material) effect.ringMesh.material.opacity = Math.max(0, 0.85 * (1 - progress));
         } else if (effect.barrelSmoke) {
           effect.group.children.forEach((p) => {

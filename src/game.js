@@ -8479,6 +8479,33 @@
       osc.start(now);
       osc.stop(now + 0.22);
     }
+
+    // Mission Wave 6 : Impulsion Télépathique / Synaptique de la Ruche RTS
+    playHiveMindSynapticPulse(command = 'HUNT') {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const baseFreq = command === 'RUSH' ? 380 : (command === 'CAPTURE' ? 220 : 160);
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(baseFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 2.2, now + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.7, now + 0.45);
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(baseFreq * 1.5, now);
+      bpf.Q.setValueAtTime(6.0, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.2, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc.connect(bpf);
+      bpf.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.45);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -10110,6 +10137,9 @@
       this.activeCommand = cmd;
       this.possessionMode = false;
       this.updateUI();
+      audioManager.playHiveMindSynapticPulse?.(cmd);
+      const rippleColor = cmd === 'RUSH' ? 0xef4444 : (cmd === 'CAPTURE' ? 0xa855f7 : (cmd === 'DEFEND' ? 0x38bdf8 : 0x39ff14));
+      window.HiveSystems?.vfx?.hiveSynapticRipple?.(playerCreature.x, playerCreature.z, rippleColor, 14);
       if (cmd === 'RUSH') {
         audioManager.playXenoHiss();
         audioManager.playHeartbeat(1.4);
@@ -28542,6 +28572,7 @@
       window.HiveSystems?.vfx?.persistentCorrosiveFumes?.(this.x, this.z, 6.0);
       window.HiveSystems?.vfx?.ballisticRicochetSparks?.(this.x, 1.6, this.z);
       stationMap.addAcidCorrosion?.(this.x, this.z, 1.8, 12.0);
+      rendererEngine.addFloorFluidDecal?.(this.x, this.z, this.embryoMutation === 'acid' ? 1.6 : 1.1, 0x84cc16, 14);
 
       // Chantier 99 : Projection de globules d'acide flottants en apesanteur (Alien: Romulus)
       if (stationMap?.isZeroGActive?.(this.x, this.z)) {
@@ -33073,11 +33104,14 @@
       this.step = 'HUNT_FAUNA';
       rendererEngine.snapCameraTarget(playerCreature.x, playerCreature.z);
       rendererEngine.addScreenShake?.(0.65, 0.45);
+      rendererEngine.addHitstop?.(0.18);
       audioManager.playBoneCrunch();
       audioManager.playChestburstScreech();
       audioManager.playWetImpact?.(playerCreature.x, playerCreature.z);
       window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0xef334f, 34, 0.16, 1.2);
       window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0xef334f, 2.2);
+      window.HiveSystems?.vfx?.fleshImpact?.(playerCreature.x, playerCreature.z, 0xb91c1c, 45);
+      rendererEngine.addFloorFluidDecal?.(playerCreature.x, playerCreature.z, 2.2, 0x7f1d1d, 35);
       this.spawnRodents();
       this.investigationTimer = 14.0;
       this.investigatorSpawned = false;

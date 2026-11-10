@@ -1208,24 +1208,102 @@
           </button>
         </header>
         <div class="settings-grid">
-          <label for="setting-graphics">QUALITÉ GRAPHIQUE
+          <div class="setting-item">
+            <label for="setting-graphics" class="setting-label-header">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <rect x="2" y="3" width="16" height="12" rx="2" stroke-width="1.5"/>
+                <line x1="6" y1="18" x2="14" y2="18" stroke-width="1.5"/>
+                <line x1="10" y1="15" x2="10" y2="18" stroke-width="1.5"/>
+                <line x1="5" y1="8" x2="15" y2="8" stroke-width="1" stroke-dasharray="2,2"/>
+              </svg>
+              <span>QUALITÉ GRAPHIQUE</span>
+            </label>
             <select id="setting-graphics" aria-describedby="graphics-quality-help">
               <option value="auto">AUTOMATIQUE — selon l’appareil</option>
               <option value="mobile">ÉQUILIBRÉ — privilégier la fluidité</option>
               <option value="high">ÉLEVÉ — détails et éclairage</option>
               <option value="ultra">ULTRA — ombres et résolution maximales</option>
             </select>
-          </label>
-          <p id="graphics-quality-help" class="settings-help">Les textures détaillées restent actives dans tous les modes. Le réglage ajuste les ombres, les effets et la résolution.</p>
-          <label for="setting-camera-distance">DISTANCE DE CAMÉRA <output id="camera-distance-value">100 %</output>
+            <p id="graphics-quality-help" class="settings-help">Les textures détaillées restent actives dans tous les modes. Le réglage ajuste les ombres, les effets et la résolution.</p>
+          </div>
+
+          <div class="setting-item">
+            <label for="setting-camera-distance" class="setting-label-header">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <circle cx="10" cy="10" r="6" stroke-width="1.5"/>
+                <circle cx="10" cy="10" r="2" fill="currentColor"/>
+                <line x1="10" y1="1" x2="10" y2="3" stroke-width="1.5"/>
+                <line x1="10" y1="17" x2="10" y2="19" stroke-width="1.5"/>
+                <line x1="1" y1="10" x2="3" y2="10" stroke-width="1.5"/>
+                <line x1="17" y1="10" x2="19" y2="10" stroke-width="1.5"/>
+              </svg>
+              <span>DISTANCE DE CAMÉRA</span>
+              <output id="camera-distance-value">100 %</output>
+            </label>
             <input type="range" id="setting-camera-distance" min="50" max="135" step="5" value="100" aria-describedby="camera-distance-help">
-          </label>
-          <p id="camera-distance-help" class="settings-help">Rapprochez la caméra pour observer les détails. La molette ajuste aussi la distance pendant le jeu. La Ruche conserve sa vue d’ensemble.</p>
-          <label>VOLUME PRINCIPAL <input type="range" id="setting-volume" min="0" max="100" value="70"></label>
-          <label>LUMINOSITÉ <input type="range" id="setting-brightness" min="70" max="140" value="100"></label>
-          <label class="toggle-row"><input type="checkbox" id="setting-scanlines"><span>Effet de scan</span></label>
-          <label class="toggle-row"><input type="checkbox" id="setting-reduced-motion"><span>Réduire les mouvements</span></label>
-          <label class="toggle-row"><input type="checkbox" id="setting-high-contrast"><span>Contraste renforcé</span></label>
+            <p id="camera-distance-help" class="settings-help">Rapprochez la caméra pour observer les détails. La molette ajuste aussi la distance pendant le jeu. La Ruche conserve sa vue d’ensemble.</p>
+          </div>
+
+          <div class="setting-item">
+            <label for="setting-volume" class="setting-label-header">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <polygon points="3,7 7,7 12,3 12,17 7,13 3,13" fill="currentColor"/>
+                <path d="M15 7 C16.5 8.5 16.5 11.5 15 13" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M17 5 C19.5 7.5 19.5 12.5 17 15" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>VOLUME PRINCIPAL</span>
+            </label>
+            <input type="range" id="setting-volume" min="0" max="100" value="70">
+          </div>
+
+          <div class="setting-item">
+            <label for="setting-brightness" class="setting-label-header">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <circle cx="10" cy="10" r="4" stroke-width="1.5"/>
+                <line x1="10" y1="2" x2="10" y2="4" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="10" y1="16" x2="10" y2="18" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="2" y1="10" x2="4" y2="10" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="16" y1="10" x2="18" y2="10" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="4.3" y1="4.3" x2="5.7" y2="5.7" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="14.3" y1="14.3" x2="15.7" y2="15.7" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="4.3" y1="15.7" x2="5.7" y2="14.3" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="14.3" y1="5.7" x2="15.7" y2="4.3" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span>LUMINOSITÉ</span>
+            </label>
+            <input type="range" id="setting-brightness" min="70" max="140" value="100">
+          </div>
+
+          <div class="setting-toggles-grid">
+            <label class="toggle-row">
+              <input type="checkbox" id="setting-scanlines">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <rect x="2" y="3" width="16" height="14" rx="2" stroke-width="1.5"/>
+                <line x1="5" y1="7" x2="15" y2="7" stroke-width="1.2"/>
+                <line x1="5" y1="10" x2="15" y2="10" stroke-width="1.2"/>
+                <line x1="5" y1="13" x2="15" y2="13" stroke-width="1.2"/>
+              </svg>
+              <span>Effet de scan (CRT)</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="setting-reduced-motion">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <circle cx="10" cy="10" r="7" stroke-width="1.5"/>
+                <circle cx="10" cy="10" r="3" stroke-width="1.2"/>
+                <line x1="10" y1="1" x2="10" y2="5" stroke-width="1.5"/>
+                <line x1="10" y1="15" x2="10" y2="19" stroke-width="1.5"/>
+              </svg>
+              <span>Réduire les mouvements</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="setting-high-contrast">
+              <svg class="setting-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <circle cx="10" cy="10" r="7" stroke-width="1.5"/>
+                <path d="M10 3 A7 7 0 0 1 10 17 Z" fill="currentColor"/>
+              </svg>
+              <span>Contraste renforcé</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>

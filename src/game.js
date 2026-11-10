@@ -6443,28 +6443,164 @@
     }
 
     // -------------------------------------------------------------------------
-    // Chantier 251 : Sifflement Cryogénique Azote Liquide Nostromo (Alien 1979)
+    // Mission Wave 12 : Fissure Verrière Cryogénique sous Pression (Alien 1979 / Aliens 1986)
+    // -------------------------------------------------------------------------
+    playCryoPodGlassCrack(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // 1. Claquement sec de rupture de verre trempé renforcé (2200Hz -> 480Hz)
+      const oscCrack = ctx.createOscillator();
+      const gainCrack = ctx.createGain();
+      oscCrack.type = 'sawtooth';
+      oscCrack.frequency.setValueAtTime(2200, now);
+      oscCrack.frequency.exponentialRampToValueAtTime(480, now + 0.08);
+      gainCrack.gain.setValueAtTime(0.85, now);
+      gainCrack.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      oscCrack.connect(gainCrack);
+      this.connect(gainCrack, x, z, 75);
+      oscCrack.start(now);
+      oscCrack.stop(now + 0.09);
+
+      // 2. Éclatement cristallin & micro-fissures (bruit filtré passe-haut)
+      const bufferSize = Math.floor(ctx.sampleRate * 0.12);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.025));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const hpf = ctx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.setValueAtTime(3200, now);
+      const gainNoise = ctx.createGain();
+      gainNoise.gain.setValueAtTime(0.65, now);
+      gainNoise.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      noise.connect(hpf);
+      hpf.connect(gainNoise);
+      this.connect(gainNoise, x, z, 70);
+      noise.start(now);
+      noise.stop(now + 0.12);
+
+      // 3. Fuite sifflante de gaz cryogénique liquéfié sous 40 bars (2200Hz -> 480Hz + souffle)
+      const hissDur = 0.65;
+      const hissBufSize = Math.floor(ctx.sampleRate * hissDur);
+      const hissBuf = ctx.createBuffer(1, hissBufSize, ctx.sampleRate);
+      const hissData = hissBuf.getChannelData(0);
+      for (let i = 0; i < hissBufSize; i++) {
+        hissData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.22));
+      }
+      const hissSource = ctx.createBufferSource();
+      hissSource.buffer = hissBuf;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(2200, now);
+      bpf.frequency.exponentialRampToValueAtTime(480, now + hissDur);
+      bpf.Q.setValueAtTime(3.8, now);
+      const gainHiss = ctx.createGain();
+      gainHiss.gain.setValueAtTime(0.55, now + 0.02);
+      gainHiss.gain.exponentialRampToValueAtTime(0.001, now + hissDur);
+      hissSource.connect(bpf);
+      bpf.connect(gainHiss);
+      this.connect(gainHiss, x, z, 65);
+      hissSource.start(now + 0.02);
+      hissSource.stop(now + hissDur);
+    }
+
+    // -------------------------------------------------------------------------
+    // Mission Wave 12 : Décharge Puissante d'Azote Cryogénique & Résonance de Vanne (Alien 1979 / Aliens 1986)
     // -------------------------------------------------------------------------
     playCryoVentHiss(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const filter = this.ctx.createBiquadFilter();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(1600, now);
-      osc.frequency.exponentialRampToValueAtTime(800, now + 0.8);
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(2200, now);
-      filter.Q.setValueAtTime(3.5, now);
-      gain.gain.setValueAtTime(0.7, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
-      osc.connect(filter);
-      filter.connect(gain);
-      this.connect(gain, x, z, 70);
-      osc.start(now);
-      osc.stop(now + 0.8);
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const duration = 0.95;
+
+      // 1. Décharge puissante d'azote cryogénique : Bruit blanc modulé sous filtre passe-bande à 1800 Hz
+      const bufferSize = Math.floor(ctx.sampleRate * duration);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.35));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(1800, now);
+      bpf.frequency.exponentialRampToValueAtTime(750, now + duration);
+      bpf.Q.setValueAtTime(3.2, now);
+      const gainNoise = ctx.createGain();
+      gainNoise.gain.setValueAtTime(0.85, now);
+      gainNoise.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      noise.connect(bpf);
+      bpf.connect(gainNoise);
+      this.connect(gainNoise, x, z, 75);
+      noise.start(now);
+      noise.stop(now + duration);
+
+      // 2. Résonance basse de vanne cryogénique (120 Hz)
+      const oscValve = ctx.createOscillator();
+      const gainValve = ctx.createGain();
+      oscValve.type = 'triangle';
+      oscValve.frequency.setValueAtTime(120, now);
+      oscValve.frequency.exponentialRampToValueAtTime(54, now + 0.32);
+      gainValve.gain.setValueAtTime(0.65, now);
+      gainValve.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      oscValve.connect(gainValve);
+      this.connect(gainValve, x, z, 70);
+      oscValve.start(now);
+      oscValve.stop(now + 0.35);
+    }
+
+    // -------------------------------------------------------------------------
+    // Mission Wave 12 : Râle d'Éveil de Stase & Inspiration Convulsive (Alien 1979 / Aliens 1986)
+    // -------------------------------------------------------------------------
+    playStasisAwakeningGasp(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // 1. Inspiration convulsive et spasme de décongélation (onde triangle 420Hz -> 180Hz)
+      const oscGasp = ctx.createOscillator();
+      const gainGasp = ctx.createGain();
+      oscGasp.type = 'triangle';
+      oscGasp.frequency.setValueAtTime(420, now);
+      oscGasp.frequency.exponentialRampToValueAtTime(180, now + 0.45);
+      gainGasp.gain.setValueAtTime(0.01, now);
+      gainGasp.gain.linearRampToValueAtTime(0.55, now + 0.12);
+      gainGasp.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      oscGasp.connect(gainGasp);
+      this.connect(gainGasp, x, z, 60);
+      oscGasp.start(now);
+      oscGasp.stop(now + 0.5);
+
+      // 2. Souffle glottal étouffé sous mucus cryogénique
+      const dur = 0.55;
+      const bufSize = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * (i / bufSize));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.setValueAtTime(650, now);
+      const gainBreath = ctx.createGain();
+      gainBreath.gain.setValueAtTime(0.4, now);
+      gainBreath.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      noise.connect(lpf);
+      lpf.connect(gainBreath);
+      this.connect(gainBreath, x, z, 55);
+      noise.start(now);
+      noise.stop(now + dur);
     }
 
     // -------------------------------------------------------------------------
@@ -9794,6 +9930,32 @@
           for (const mt of (stationMap.muthurTerminals || [])) {
             ctx.fillStyle = (mt.cooldown || 0) > 0 ? '#ef4444' : '#fbbf24';
             ctx.fillRect(toMapX(mt.x) - 1.5, toMapY(mt.z) - 1.5, 3, 3);
+          }
+          // Sas de Dépressurisation d'Urgence M314 Holo-Blueprint Telemetry (Wave 11)
+          const airlock = stationMap.depressurizationAirlock;
+          if (airlock) {
+            const alX = toMapX(airlock.x);
+            const alY = toMapY(airlock.z);
+            const isDecompressing = airlock.activeTimer > 0;
+            if (isDecompressing) {
+              const pulse = Math.abs(Math.sin(Date.now() * 0.008));
+              ctx.strokeStyle = `rgba(239, 68, 68, ${0.4 + pulse * 0.5})`;
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.arc(alX, alY, 4 + pulse * 6, 0, Math.PI * 2);
+              ctx.stroke();
+
+              ctx.fillStyle = '#ef4444';
+              ctx.fillRect(alX - 2.5, alY - 2.5, 5, 5);
+              ctx.font = 'bold 6px monospace';
+              ctx.fillText('BRÈCHE SAS [VIDE]', alX - 22, alY - 7);
+            } else {
+              ctx.fillStyle = '#38bdf8';
+              ctx.fillRect(alX - 2, alY - 2, 4, 4);
+              ctx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+              ctx.font = '6px monospace';
+              ctx.fillText('SAS [Y]', alX - 10, alY - 4);
+            }
           }
           ctx.fillStyle = '#ef4444';
           ctx.beginPath();
@@ -15417,22 +15579,47 @@
       }
     }
 
-    // Chantier 15 : Dépressurisation et bris du caisson d'hypersommeil cryogénique
+    // Chantier 15 : Dépressurisation et bris du caisson d'hypersommeil cryogénique (Alien 1979 / Aliens 1986)
     shatterCryoPod(pod, instigator = null) {
       if (!pod || pod.isBroken) return false;
       pod.isBroken = true;
-      audioManager.playGlassShatter(pod.x, pod.z);
-      audioManager.playCryoVent(pod.x, pod.z);
+
+      // 1. Audio procédural 1:1 de bris et réveil cryogénique
+      audioManager.playCryoPodGlassCrack?.(pod.x, pod.z);
+      audioManager.playCryoVentHiss?.(pod.x, pod.z);
+      audioManager.playStasisAwakeningGasp?.(pod.x, pod.z);
+      audioManager.playGlassShatter?.(pod.x, pod.z);
       audioManager.playCryoFrostCrackle?.(pod.x, pod.z);
-      rendererEngine.addScreenShake?.(0.32, 0.2);
-      rendererEngine.addFloorFluidDecal?.(pod.x, pod.z, 2.8, 0xbae6fd, 28);
+
+      // 2. Feedback VFX : dispersion d'éclats de verre, fumée d'azote blanc-bleuté et flaque cryogénique
+      rendererEngine.addScreenShake?.(0.36, 0.22);
+      rendererEngine.addFloorFluidDecal?.(pod.x, pod.z, 3.2, 0x93c5fd, 35);
+      window.HiveSystems?.vfx?.cryoVaporPlume?.(pod.x, 1.2, pod.z, 16);
       window.HiveSystems?.vfx?.cryoFrostFlash?.(pod.x, pod.z, 3.8);
-      window.HiveSystems?.vfx?.cryoVaporPlume?.(pod.x, 1.2, pod.z, 12);
       window.HiveSystems?.vfx?.spawnSteamCloud?.(pod.x, 1.2, pod.z, 4.5);
-      window.HiveSystems?.vfx?.burst?.(pod.x, pod.z, 0x38bdf8, 22, 0.16, 1.8);
-      window.HiveSystems?.vfx?.floatingText?.(pod.x, 3.2, pod.z, 'GEL CRYOGÉNIQUE (-180°C)', '#38bdf8', true);
+      window.HiveSystems?.vfx?.burst?.(pod.x, pod.z, 0xe0f2fe, 32, 0.18, 2.0);
+      window.HiveSystems?.vfx?.burst?.(pod.x, pod.z, 0x38bdf8, 26, 0.16, 1.8);
+      window.HiveSystems?.vfx?.floatingText?.(pod.x, 3.2, pod.z, 'CHOC CRYOGÉNIQUE (-180°C)', '#93c5fd', true);
       showToast(`CAISSON DÉPRESSURISÉ ! ${pod.name} fracturé ! Vapeurs d'azote liquide libérées.`);
       appendSensorLog(`[CRYO-STASE] Rupture d'étanchéité sur ${pod.name}. Décharge d'azote liquide sous pression.`, 'alert');
+
+      // 3. Modification géométrique 3D du mesh
+      if (pod.mesh) {
+        const lid = pod.mesh.getObjectByName?.('cryo_glass_lid');
+        if (lid) {
+          lid.rotation.x = -0.65;
+          lid.position.y += 0.35;
+        }
+        const pLeft = pod.mesh.getObjectByName?.('cryo_piston_left');
+        if (pLeft) pLeft.rotation.x = -0.45;
+        const pRight = pod.mesh.getObjectByName?.('cryo_piston_right');
+        if (pRight) pRight.rotation.x = -0.45;
+        const led = pod.mesh.getObjectByName?.('cryo_status_led');
+        if (led && led.material) {
+          led.material.color?.setHex?.(0xef4444);
+          led.material.emissive?.setHex?.(0xdc2626);
+        }
+      }
 
       // Risque d'hypothermie pour toute entité dans un rayon de 4.2m
       const entities = [playerCreature, ...(window.gameInstance?.humans || []), ...(window.gameInstance?.currentStage?.rtsUnits || [])];
@@ -15441,23 +15628,26 @@
         const dist = Math.hypot(ent.x - pod.x, ent.z - pod.z);
         if (dist <= 4.2) {
           ent.takeDamage?.(14);
-          if (ent.staggerTimer !== undefined) ent.staggerTimer = 1.6;
+          if (ent.staggerTimer !== undefined) ent.staggerTimer = 3.5;
           if (ent.speedMultiplier !== undefined) ent.speedMultiplier = 0.5;
           window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.5, ent.z, '-14 HYPOTHERMIE', '#38bdf8', false);
         }
       });
 
-      // Libération de l'occupant en stase comme hôte viable
+      // Libération de l'occupant en stase comme hôte viable avec état d'hypothermie
       if (window.gameInstance && window.gameInstance.humans) {
         const hostId = 300 + Math.floor(Math.random() * 50);
         const host = new HumanAI(hostId, 'scientist', pod.x, pod.z + 1.2, pod.sleeper);
         host.hp = 65;
         host.maxHp = 65;
-        host.staggerTimer = 2.5;
+        host.stress = 100;
+        host.staggerTimer = 3.5;
+        host.speedMultiplier = 0.5;
+        host.isHypothermic = true;
         host.createMesh();
         window.gameInstance.humans.push(host);
-        showToast(`HÔTE VIABLE LIBÉRÉ : ${pod.sleeper} titube hors du caisson !`);
-        appendSensorLog(`[HÔTE] ${pod.sleeper} extrait de cryo-stase. Métabolisme chaud rétabli.`, 'bio');
+        showToast(`HÔTE VIABLE LIBÉRÉ : ${pod.sleeper} titube en état de choc cryogénique !`);
+        appendSensorLog(`[HÔTE] ${pod.sleeper} extrait de cryo-stase. Hypothermie sévère et métabolisme léthargique.`, 'bio');
       }
       return true;
     }
@@ -15733,6 +15923,7 @@
       this.updateTripwireTraps(safeDelta);
       this.updateCeilingCocoons(safeDelta);
       this.updateDepressurizationAirlock(safeDelta);
+      this.updateCryoAmbientSensor(safeDelta);
       this.updateDeconShower(safeDelta);
       this.updateBisectedAndroid(safeDelta);
       this.updateHalonSystem(safeDelta);
@@ -15743,6 +15934,7 @@
       this.updateFalseEchoes(safeDelta);
       this.updateEMPGrenades(safeDelta);
       this.updateCryoMistZones(safeDelta);
+      this.updateAmbientTemperatureSensor(safeDelta);
       this.updateNapalmBarrels(safeDelta);
       this.updateHiveCreep(safeDelta);
       this.updateSwarmers(safeDelta);
@@ -16771,13 +16963,43 @@
 
       showToast("DÉPRESSURISATION D'URGENCE DU SAS [Y] : Rupture du joint atmosphérique ! Décompression brutale vers le vide spatial !");
       appendSensorLog("[SAS ATMO-BREACH] Rupture du joint extérieur sous différentiel de pression. Nuage de condensation et dépression critique.", "alert");
+
+      const decompressEl = document.getElementById('decompression-alert');
+      if (decompressEl) {
+        decompressEl.classList.remove('hidden');
+        const valEl = document.getElementById('decompress-pressure-val');
+        if (valEl) valEl.textContent = '101.3 kPa';
+        const barEl = document.getElementById('decompress-pressure-bar');
+        if (barEl) barEl.style.width = '100%';
+      }
     }
 
     updateDepressurizationAirlock(safeDelta) {
-      if (!this.depressurizationAirlock || this.depressurizationAirlock.activeTimer <= 0) return;
+      if (!this.depressurizationAirlock) return;
       const airlock = this.depressurizationAirlock;
+      const decompressEl = document.getElementById('decompression-alert');
+      if (airlock.activeTimer <= 0) {
+        if (decompressEl && !decompressEl.classList.contains('hidden')) {
+          decompressEl.classList.add('hidden');
+        }
+        return;
+      }
       airlock.activeTimer -= safeDelta;
       airlock.sirenTimer -= safeDelta;
+
+      const currentKpa = Math.max(0, (airlock.activeTimer / 10.0) * 101.3);
+      const pct = Math.max(0, Math.min(100, (currentKpa / 101.3) * 100));
+
+      if (decompressEl) {
+        if (decompressEl.classList.contains('hidden')) {
+          decompressEl.classList.remove('hidden');
+        }
+        const valEl = document.getElementById('decompress-pressure-val');
+        if (valEl) valEl.textContent = `${currentKpa.toFixed(1)} kPa`;
+        const barEl = document.getElementById('decompress-pressure-bar');
+        if (barEl) barEl.style.width = `${pct}%`;
+      }
+
       if (airlock.sirenTimer <= 0) {
         airlock.sirenTimer = 1.8;
         audioManager.playDecompressionSiren?.(airlock.x, airlock.z);
@@ -16788,6 +17010,11 @@
         window.HiveSystems?.vfx?.burst?.(airlock.x, 1.0, airlock.z, 0xbae6fd, 18, 0.2, 1.8);
         window.HiveSystems?.vfx?.airlockVortex?.(airlock.x - 16, airlock.z - 12, airlock.x, airlock.z, 26);
         window.HiveSystems?.vfx?.airlockVortex?.(airlock.x - 10, airlock.z + 8, airlock.x, airlock.z, 22);
+      }
+
+      if (airlock.activeTimer <= 0) {
+        if (decompressEl) decompressEl.classList.add('hidden');
+        return;
       }
 
       // Forces vectorielles de succion physiques vers le sas
@@ -16903,6 +17130,72 @@
           }
         }
       });
+    }
+
+    // Mission Wave 12 : Capteur Cryogénique Ambiant Sevastopol / Nostromo (Alien 1979 / Aliens 1986)
+    updateCryoAmbientSensor(safeDelta) {
+      const tempValEl = document.getElementById('cryo-ambient-temp');
+      const tempBarEl = document.getElementById('cryo-temp-bar-fill');
+      const sensorEl = document.getElementById('cryo-ambient-sensor');
+      if (!tempValEl || !window.playerCreature) return;
+
+      const px = window.playerCreature.x;
+      const pz = window.playerCreature.z;
+      let targetTemp = 18.5;
+
+      if (this.depressurizationAirlock && this.depressurizationAirlock.activeTimer > 0) {
+        const d = Math.hypot(this.depressurizationAirlock.x - px, this.depressurizationAirlock.z - pz);
+        if (d <= 32.0) {
+          const drop = (1.0 - d / 32.0) * 288.5;
+          targetTemp = Math.min(targetTemp, 18.5 - drop);
+        }
+      }
+
+      for (const pod of (this.cryoPods || [])) {
+        if (pod.isBroken) {
+          const d = Math.hypot(pod.x - px, pod.z - pz);
+          if (d <= 14.0) {
+            const drop = (1.0 - d / 14.0) * 198.5;
+            targetTemp = Math.min(targetTemp, 18.5 - drop);
+          }
+        }
+      }
+
+      for (const ffg of (this.freonFogGenerators || [])) {
+        if (ffg.isActive) {
+          const d = Math.hypot(ffg.x - px, ffg.z - pz);
+          if (d <= 15.0) {
+            const drop = (1.0 - d / 15.0) * 178.5;
+            targetTemp = Math.min(targetTemp, 18.5 - drop);
+          }
+        }
+      }
+
+      for (const nt of (this.nitrogenTanks || [])) {
+        if (nt.isRuptured) {
+          const d = Math.hypot(nt.x - px, nt.z - pz);
+          if (d <= 14.0) {
+            const drop = (1.0 - d / 14.0) * 214.5;
+            targetTemp = Math.min(targetTemp, 18.5 - drop);
+          }
+        }
+      }
+
+      this.currentAmbientTemp = (this.currentAmbientTemp !== undefined)
+        ? (this.currentAmbientTemp + (targetTemp - this.currentAmbientTemp) * Math.min(1.0, safeDelta * 4.0))
+        : targetTemp;
+
+      const t = this.currentAmbientTemp;
+      const sign = t > 0 ? '+' : '';
+      tempValEl.textContent = `${sign}${t.toFixed(1)}°C`;
+
+      const pct = Math.max(0, Math.min(100, ((t + 200) / 240) * 100));
+      if (tempBarEl) tempBarEl.style.width = `${pct}%`;
+
+      if (sensorEl) {
+        sensorEl.classList.toggle('subzero', t < 0);
+        sensorEl.classList.toggle('deep-freeze', t < -80);
+      }
     }
 
     // Chantier 43 : Sas Décontaminant avec Douches Chimiques (Alien 3 / Isolation)
@@ -17748,6 +18041,61 @@
         const dist = Math.hypot(playerCreature.x - mist.x, playerCreature.z - mist.z);
         if (dist <= 7.0) {
           playerCreature.isInMist = true;
+        }
+      }
+    }
+
+    // Mission Wave 12 : Télémétrie Diégétique du Capteur Thermique Cryogénique Ambiant (Alien 1979 / Aliens 1986)
+    updateAmbientTemperatureSensor(safeDelta) {
+      const tempElement = document.getElementById('cryo-ambient-temp');
+      const barFill = document.getElementById('cryo-temp-bar-fill');
+      const sensorBox = document.getElementById('cryo-ambient-sensor');
+      if (!tempElement || !window.playerCreature) return;
+
+      const px = window.playerCreature.x;
+      const pz = window.playerCreature.z;
+      let temp = 18.5; // Température standard de coursive Nostromo / Sevastopol
+
+      // Proximité de caissons cryogéniques (Chantier 15 & Chantier 112)
+      const nearBrokenPod = (this.cryoPods || []).some((p) => p.isBroken && Math.hypot(p.x - px, p.z - pz) <= 7.0) ||
+                            (this.cryoStasisPods || []).some((p) => p.isShattered && Math.hypot(p.x - px, p.z - pz) <= 7.0);
+      const nearActivePod = (this.cryoPods || []).some((p) => !p.isBroken && Math.hypot(p.x - px, p.z - pz) <= 4.0) ||
+                            (this.cryoStasisPods || []).some((p) => !p.isShattered && Math.hypot(p.x - px, p.z - pz) <= 4.0);
+
+      // Proximité d'autres sources cryogéniques
+      const nearCryoGas = (this.cryoExpansionTanks || []).some((ct) => !ct.isVented && Math.hypot(ct.x - px, ct.z - pz) <= 6.0) ||
+                          (this.subZeroCryoGelCanisters || []).some((cg) => cg.isDischarged && Math.hypot(cg.x - px, cg.z - pz) <= 5.5);
+
+      if (nearBrokenPod) {
+        temp = -180.0;
+      } else if (nearCryoGas) {
+        temp = -92.0;
+      } else if (nearActivePod) {
+        temp = -12.4;
+      }
+
+      const sign = temp > 0 ? '+' : '';
+      tempElement.textContent = `${sign}${temp.toFixed(1)}°C`;
+
+      if (temp <= -80.0) {
+        sensorBox?.classList.add('deep-freeze');
+        sensorBox?.classList.remove('subzero');
+        if (barFill) {
+          barFill.style.width = '10%';
+          barFill.style.background = '#0284c7';
+        }
+      } else if (temp < 0) {
+        sensorBox?.classList.add('subzero');
+        sensorBox?.classList.remove('deep-freeze');
+        if (barFill) {
+          barFill.style.width = '35%';
+          barFill.style.background = 'linear-gradient(90deg, #0284c7, #38bdf8)';
+        }
+      } else {
+        sensorBox?.classList.remove('subzero', 'deep-freeze');
+        if (barFill) {
+          barFill.style.width = '75%';
+          barFill.style.background = 'linear-gradient(90deg, #38bdf8, #22c55e)';
         }
       }
     }
@@ -20217,6 +20565,7 @@
       window.HiveSystems?.vfx?.floatingText?.(consoleProp.x, 2.8, consoleProp.z, `BIOSCAN MUTHUR : ${aliveCount} VIVANTS / ${viableCount} HÔTES`, '#06b6d4', true);
       showToast(`BIO-SCAN MUTHUR 6000 : Télémétrie acquise ! ${aliveCount} signaux vitaux détectés, dont ${viableCount} hôtes viables (+40 Réserve de chasse) !`);
       appendSensorLog(`[MUTHUR 6000] Bioscan télémétrique : ${aliveCount} sujets actifs, ${cocoonedCount} en cocon de ruche, ${deadCount} pertes confirmées.`, 'bio');
+      window.HiveSystems?.ui?.showBioScanDiagnostic?.(humans);
       return true;
     }
 

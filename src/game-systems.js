@@ -1456,6 +1456,7 @@
       this.settingsManager.init(game);
       this.bindFrontEnd();
       this.bindUtilityControls();
+      this.bindBioScan();
       this.bindCodex();
       this.bindPauseAndSettings();
       this.refreshContinueButton();
@@ -1657,6 +1658,11 @@
         }
 
         if (key === 'c') {
+          if (activeSystemLayer?.id === 'muthur-bioscan-modal') {
+            event.preventDefault();
+            this.closeBioScan();
+            return;
+          }
           if (activeSystemLayer && activeSystemLayer.id !== 'codex-overlay') {
             event.preventDefault();
             return;
@@ -1667,9 +1673,11 @@
           else this.closeCodex();
         }
         if (event.key === 'Escape') {
+          const bioscan = document.getElementById('muthur-bioscan-modal');
           const settings = document.getElementById('settings-overlay');
           const codex = document.getElementById('codex-overlay');
-          if (!settings?.classList.contains('hidden')) this.closeSettings();
+          if (!bioscan?.classList.contains('hidden')) this.closeBioScan();
+          else if (!settings?.classList.contains('hidden')) this.closeSettings();
           else if (!codex?.classList.contains('hidden')) this.closeCodex();
           else if (activeSystemLayer?.id === 'pause-overlay') this.closePause();
           else if (!activeSystemLayer && this.campaignActive) this.openPause();
@@ -1921,6 +1929,114 @@
       }
     }
 
+    bindBioScan() {
+      document.getElementById('btn-close-bioscan')?.addEventListener('click', () => this.closeBioScan());
+    }
+
+    closeBioScan() {
+      const modal = document.getElementById('muthur-bioscan-modal');
+      if (modal) {
+        this.hideLayer(modal, true);
+      }
+    }
+
+    showBioScanDiagnostic(humans = []) {
+      const modal = document.getElementById('muthur-bioscan-modal');
+      const container = document.getElementById('bioscan-crew-list');
+      if (!modal || !container) return;
+
+      const crewData = (humans && humans.length > 0) ? humans : [
+        { name: 'Arthur Dallas', role: 'Capitaine · USCSS Nostromo', bpm: 84, status: 'living', viability: 'HÔTE VIABLE (88%)' },
+        { name: 'Ellen Ripley', role: 'Officier en second · USCSS Nostromo', bpm: 72, status: 'living', viability: 'HÔTE VIABLE (95%)' },
+        { name: 'Joan Lambert', role: 'Navigateur · USCSS Nostromo', bpm: 126, status: 'living', viability: 'HÔTE VIABLE (91%)' },
+        { name: 'Dennis Parker', role: 'Ingénieur en chef · USCSS Nostromo', bpm: 92, status: 'living', viability: 'HÔTE VIABLE (85%)' },
+        { name: 'Thomas Kane', role: 'Officier exécutif · Incubé Chestburster', bpm: 168, status: 'incubated', viability: 'HÔTE ENGAGÉ (100%)' },
+        { name: 'Samuel Brett', role: 'Technicien cale · Éliminé coursive', bpm: 0, status: 'deceased', viability: 'INUTILISABLE' },
+        { name: 'Ash', role: 'Officier scientifique · Synthétique Hyperdyne', bpm: 0, status: 'deceased', viability: 'ORGANISME SYNTHÉTIQUE' }
+      ];
+
+      let livingCount = 0;
+      let incubatedCount = 0;
+      let deceasedCount = 0;
+
+      container.innerHTML = '';
+      crewData.forEach((member, idx) => {
+        let status = 'living';
+        let statusLabel = 'VIVANT';
+        let bpm = 75;
+        let viability = 'HÔTE VIABLE (85%)';
+
+        if (member.isCocooned || member.isIncapacitated || (member.hp !== undefined && member.hp <= 0)) {
+          status = 'deceased';
+          statusLabel = member.isCocooned ? 'ENGAGÉ COCON' : 'SIGNAL ZÉRO';
+          bpm = 0;
+          viability = member.isCocooned ? 'BIOMASSE MATRICE' : 'INUTILISABLE';
+          deceasedCount++;
+        } else if (member.isInfected || member.infectionState === 'INCUBATING' || member.hostEligibility === 'impregnated' || member.status === 'incubated') {
+          status = 'incubated';
+          statusLabel = 'GESTATION PARASITAIRE';
+          bpm = member.bpm || Math.floor(145 + Math.random() * 30);
+          viability = 'HÔTE ENGAGÉ (100%)';
+          incubatedCount++;
+        } else if (member.status === 'deceased') {
+          status = 'deceased';
+          statusLabel = 'SIGNAL ZÉRO';
+          bpm = 0;
+          viability = member.viability || 'INUTILISABLE';
+          deceasedCount++;
+        } else {
+          status = 'living';
+          statusLabel = 'BIO-STABLE';
+          bpm = member.bpm || Math.floor(68 + (member.stress || 0) * 0.5);
+          viability = member.viability || 'HÔTE VIABLE (90%)';
+          livingCount++;
+        }
+
+        const name = member.name || (member.type ? member.type.replace(/_/g, ' ').toUpperCase() : `SUJET #${idx + 1}`);
+        const role = member.role || (member.isSynthetic?.() ? 'SYNTHÉTIQUE SEEGSON' : 'ÉQUIPAGE DE BORD');
+
+        let iconSvg = '';
+        if (status === 'living') {
+          iconSvg = '<svg class="bio-sq-icon living" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="M3 12h4l2-6 4 12 3-8 2 4h6" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        } else if (status === 'incubated') {
+          iconSvg = '<svg class="bio-sq-icon incubated" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="8" stroke="#a855f7" stroke-width="2"/><path d="M12 7c-2 2-2 4 0 6s2 4 0 6" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="2.5" fill="#a855f7"/></svg>';
+        } else {
+          iconSvg = '<svg class="bio-sq-icon deceased" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="M9 3h6v3H9zM7 6h10v6c0 3-2 5-5 5s-5-2-5-5V6z" stroke="#ef4444" stroke-width="1.8" fill="none"/><circle cx="10" cy="10" r="1.5" fill="#ef4444"/><circle cx="14" cy="10" r="1.5" fill="#ef4444"/><path d="M10 17l-3 4M14 17l3 4" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/></svg>';
+        }
+
+        const card = document.createElement('div');
+        card.className = `bioscan-crew-card ${status}`;
+        card.setAttribute('role', 'listitem');
+        card.innerHTML = `
+          <div class="crew-card-header">
+            <span class="bio-sq-icon ${status}">${iconSvg}</span>
+            <div class="crew-id-info">
+              <span class="crew-name">${name}</span>
+              <span class="crew-role">${role}</span>
+            </div>
+            <span class="crew-status-badge ${status}">${statusLabel}</span>
+          </div>
+          <div class="crew-vital-row">
+            <span>RYTHME CARDIAQUE : <span class="crew-vital-val">${bpm > 0 ? bpm + ' BPM' : 'INACTIF (0 BPM)'}</span></span>
+            <span class="crew-host-viability">${viability}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      const totalEl = document.getElementById('bioscan-total-count');
+      if (totalEl) totalEl.textContent = String(crewData.length);
+      const aliveEl = document.getElementById('bioscan-alive-count');
+      if (aliveEl) aliveEl.textContent = String(livingCount);
+      const incubatedEl = document.getElementById('bioscan-incubated-count');
+      if (incubatedEl) incubatedEl.textContent = String(incubatedCount);
+      const deceasedEl = document.getElementById('bioscan-deceased-count');
+      if (deceasedEl) deceasedEl.textContent = String(deceasedCount);
+
+      this.showLayer(modal, true);
+      document.getElementById('btn-close-bioscan')?.focus({ preventScroll: true });
+    }
+
     bindThoracicObserver() {
       const thoracicStatus = document.getElementById('thoracic-status');
       const pressureFill = document.getElementById('sternum-pressure-fill');
@@ -1988,6 +2104,16 @@
       speakerElement.textContent = speaker;
       lineElement.textContent = line;
       banner.classList.remove('hidden');
+
+      // Modulation diégétique de l'oscilloscope CRT vert phosphorique Wave 12
+      const oscWave = document.getElementById('oscilloscope-wave-path');
+      if (oscWave) {
+        const h1 = 5 + Math.floor(Math.random() * 8);
+        const h2 = 4 + Math.floor(Math.random() * 9);
+        const h3 = 6 + Math.floor(Math.random() * 7);
+        oscWave.setAttribute('d', `M0 12 Q10 ${12 - h1} 20 12 T40 12 T60 ${12 + h2} T80 12 T100 ${12 - h3} T120 12 T140 12`);
+      }
+
       window.clearTimeout(this.narrativeTimer);
       this.narrativeTimer = window.setTimeout(() => banner.classList.add('hidden'), duration);
       window.audioManager?.playMotherChime?.();

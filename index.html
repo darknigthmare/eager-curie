@@ -704,6 +704,24 @@
           <span class="alert-label">ALERTE STATION:</span>
           <span class="alert-level level-0" id="alert-level-text" role="status" aria-live="polite">NIVEAU 0 — IGNORANCE</span>
         </div>
+
+        <!-- Cryo Ambient Thermal Sensor (Chantier Wave 12) -->
+        <div id="cryo-ambient-sensor" class="cryo-ambient-sensor" title="Capteur Thermique Ambiant Sevastopol / Nostromo">
+          <span class="cryo-sensor-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor">
+              <path d="M10 2 v9 M8 4 h4 M7 7 h6 M10 11 a3 3 0 1 0 0 6 a3 3 0 0 0 0 -6 z" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="10" cy="14" r="1.5" fill="#38bdf8"/>
+            </svg>
+          </span>
+          <div class="cryo-sensor-data">
+            <span class="cryo-sensor-tag">TEMP AMBIANTE</span>
+            <span id="cryo-ambient-temp" class="cryo-sensor-val">+18.5°C</span>
+          </div>
+          <div class="cryo-temp-bar-track">
+            <div id="cryo-temp-bar-fill" class="cryo-temp-bar-fill" style="width: 75%;"></div>
+          </div>
+        </div>
+
         <div class="utility-controls" role="group" aria-label="Menus du jeu">
           <button type="button" id="btn-open-codex" class="utility-btn" title="Ouvrir le codex (C)">
             <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
@@ -1125,9 +1143,10 @@
         <span class="comm-rec-dot" aria-hidden="true"></span>
         <span class="comm-freq-tag">COMM-LINK // DIRECTIVE 937</span>
         <span class="comm-status-tag">CHIFFRÉ CLASSE A</span>
-        <div class="narrative-oscilloscope" aria-hidden="true">
-          <svg viewBox="0 0 120 20">
-            <path d="M0 10 Q15 0 30 10 T60 10 T90 10 T120 10" stroke="#38bdf8" stroke-width="1.5" fill="none" class="waveform-anim"/>
+        <div id="narrative-audio-oscilloscope" class="narrative-oscilloscope crt-phosphor" aria-hidden="true">
+          <svg viewBox="0 0 140 24" class="oscilloscope-svg">
+            <line x1="0" y1="12" x2="140" y2="12" stroke="rgba(34, 197, 94, 0.25)" stroke-dasharray="2 3" stroke-width="1"/>
+            <path id="oscilloscope-wave-path" d="M0 12 Q10 4 20 12 T40 12 T60 12 T80 12 T100 12 T120 12 T140 12" stroke="#22c55e" stroke-width="1.8" fill="none" class="waveform-crt-anim"/>
           </svg>
         </div>
       </div>

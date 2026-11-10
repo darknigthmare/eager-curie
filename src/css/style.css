@@ -3869,3 +3869,166 @@ select, input[type='range'] { touch-action: manipulation; }
   padding-top: 8px;
   letter-spacing: 1px;
 }
+
+/* =========================================================
+   WAVE 12 : OSCILLOSCOPE CRT PHOSPHOR & CAPTEUR CRYO AMBIANT
+   ========================================================= */
+
+.narrative-oscilloscope.crt-phosphor {
+  background: rgba(3, 18, 8, 0.88);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.25), inset 0 0 6px rgba(34, 197, 94, 0.2);
+  border-radius: 4px;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.narrative-oscilloscope.crt-phosphor::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.18) 0px,
+    rgba(0, 0, 0, 0.18) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+}
+
+.oscilloscope-svg {
+  width: 140px;
+  height: 22px;
+  display: block;
+  filter: drop-shadow(0 0 4px #22c55e);
+}
+
+.waveform-crt-anim {
+  stroke-dasharray: 140;
+  stroke-dashoffset: 0;
+  animation: crtOscilloscopePulse 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes crtOscilloscopePulse {
+  0% {
+    stroke-dashoffset: 0;
+    filter: drop-shadow(0 0 2px #22c55e);
+  }
+  50% {
+    filter: drop-shadow(0 0 7px #39ff14);
+  }
+  100% {
+    stroke-dashoffset: 28;
+    filter: drop-shadow(0 0 3px #16a34a);
+  }
+}
+
+/* Capteur Cryogénique Ambiant Sevastopol / Nostromo */
+.cryo-ambient-sensor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 4px;
+  padding: 3px 8px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.cryo-sensor-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  flex-shrink: 0;
+}
+
+.cryo-sensor-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.cryo-sensor-data {
+  display: flex;
+  flex-direction: column;
+  min-width: 60px;
+}
+
+.cryo-sensor-tag {
+  font-family: var(--font-hud);
+  font-size: 7.5px;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.cryo-sensor-val {
+  font-family: var(--font-title);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #38bdf8;
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+  transition: color 0.3s ease;
+}
+
+.cryo-temp-bar-track {
+  width: 48px;
+  height: 5px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cryo-temp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #22c55e);
+  transition: width 0.35s ease, background 0.35s ease;
+}
+
+/* Températures négatives (gel / froid extrême) */
+.cryo-ambient-sensor.subzero {
+  border-color: rgba(56, 189, 248, 0.65);
+  background: rgba(8, 47, 73, 0.65);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+}
+
+.cryo-ambient-sensor.subzero .cryo-sensor-val {
+  color: #e0f2fe;
+  text-shadow: 0 0 8px #38bdf8;
+}
+
+.cryo-ambient-sensor.subzero .cryo-temp-bar-fill {
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+}
+
+/* Froid cryogénique critique (caisson brisé / fuite d'azote < -80°C) */
+.cryo-ambient-sensor.deep-freeze {
+  border-color: #38bdf8;
+  background: rgba(14, 116, 144, 0.75);
+  animation: cryoFreezePulse 1.0s infinite alternate;
+}
+
+.cryo-ambient-sensor.deep-freeze .cryo-sensor-val {
+  color: #ffffff;
+  text-shadow: 0 0 12px #38bdf8, 0 0 20px #e0f2fe;
+}
+
+@keyframes cryoFreezePulse {
+  0% {
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.4), inset 0 0 4px rgba(56, 189, 248, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.8), inset 0 0 8px rgba(224, 242, 254, 0.5);
+  }
+}

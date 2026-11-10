@@ -7209,14 +7209,18 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         root.add(this._box(dark, { x: 0.82, y: 0.08, z: 0.52 }, { x: 0, y: 0.34, z: 0 }, 'ration_seal_strip'));
         root.add(this._box(rationLabel, { x: 0.45, y: 0.02, z: 0.28 }, { x: 0, y: 0.33, z: 0.08 }, 'weyland_yutani_food_label'));
       } else if (normalizedType === 'cryopod') {
-        // Chantier 15 : Caisson de stase cryogénique d'hypersommeil (Alien 1979 / Romulus)
+        // Chantier 15 & Wave 12 : Caisson de stase cryogénique d'hypersommeil (Alien 1979 / Romulus)
         const glassMat = this._material('visorGlass', { color: 0x38bdf8, opacity: 0.45 });
         const chassis = this._material('synthetic', { color: 0xe2e8f0, roughness: 0.22, metalness: 0.4 });
+        const cyanLed = this._material('emissiveGreen', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.8 });
         root.add(this._box(chassis, { x: 1.25, y: 0.45, z: 2.65 }, { x: 0, y: 0.22, z: 0 }, 'cryo_base', true));
         root.add(this._box(dark, { x: 1.05, y: 0.3, z: 2.45 }, { x: 0, y: 0.48, z: 0 }, 'cryo_interior'));
         root.add(this._box(glassMat, { x: 0.98, y: 0.32, z: 2.35 }, { x: 0, y: 0.72, z: 0 }, 'cryo_glass_lid'));
         root.add(this._ellipsoid(metal, { x: 0.35, y: 0.16, z: 0.95 }, { x: 0, y: 0.52, z: -0.1 }, 'sleeper_silhouette'));
         root.add(this._box(screen, { x: 0.42, y: 0.08, z: 0.25 }, { x: 0, y: 0.52, z: 1.15 }, 'cryo_vitals_screen'));
+        root.add(this._segment(metal, new T.Vector3(-0.52, 0.35, -0.6), new T.Vector3(-0.52, 0.72, -0.6), 0.04, 0.04, 'cryo_piston_left'));
+        root.add(this._segment(metal, new T.Vector3(0.52, 0.35, -0.6), new T.Vector3(0.52, 0.72, -0.6), 0.04, 0.04, 'cryo_piston_right'));
+        root.add(this._box(cyanLed, { x: 0.18, y: 0.05, z: 0.05 }, { x: 0, y: 0.52, z: 1.28 }, 'cryo_status_led'));
       } else if (normalizedType === 'blackgoo' || normalizedType === 'mutagen') {
         // Chantier 18 : Canister de fluide pathogène mutagène noir Z-01 (Prometheus / Romulus)
         const glass = this._material('visorGlass', { color: 0x1e293b, opacity: 0.65 });
@@ -8187,6 +8191,11 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         for (let side = -1; side <= 1; side += 2) {
           root.add(this._segment(dark, new T.Vector3(side * 0.72, 0.2, -1.2), new T.Vector3(side * 0.72, 0.2, 1.2), 0.065, 0.065, `cryo_freon_line_${side}`, 10));
         }
+        // Vérins hydrauliques d'élévation gauche et droite
+        root.add(this._segment(frameMat, new T.Vector3(-0.68, 0.55, -0.8), new T.Vector3(-0.68, 1.15, -0.8), 0.05, 0.05, 'cryo_piston_left'));
+        root.add(this._segment(frameMat, new T.Vector3(0.68, 0.55, -0.8), new T.Vector3(0.68, 1.15, -0.8), 0.05, 0.05, 'cryo_piston_right'));
+        // LED d'état stase
+        root.add(this._box(cyanGlow, { x: 0.22, y: 0.06, z: 0.06 }, { x: 0, y: 0.95, z: 1.38 }, 'cryo_status_led'));
       } else if (normalizedType === 'hive_pheromone_spore') {
         // Chantier 113 : Système de Pulvérisation de Phéromones de Ruche & Brume Organique Épaississante (Aliens: Genocide / Isolation)
         const sporeChitin = this._material('resin', { color: 0x451a03, roughness: 0.35, metalness: 0.3 });

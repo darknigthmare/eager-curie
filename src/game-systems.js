@@ -1027,6 +1027,122 @@
       });
     }
 
+    // Mission Wave 5 : Chute de Gouttelettes de Spores et Sève de Résine (Ruche Primaire)
+    sporeDrip(x, z, count = 6) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const dripMat = new THREE.MeshBasicMaterial({
+        color: 0xa855f7,
+        transparent: true,
+        opacity: 0.75,
+        depthWrite: false
+      });
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.16, 6), dripMat);
+        p.position.set(
+          (Math.random() - 0.5) * 3.5,
+          3.5 + Math.random() * 0.5,
+          (Math.random() - 0.5) * 3.5
+        );
+        p.userData.vy = -(2.0 + Math.random() * 1.5);
+        group.add(p);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        sporeDrip: true,
+        age: 0,
+        lifetime: 1.6
+      });
+    }
+
+    // Mission Wave 5 : Brume Bleutée Volumétrique Basse du Derelict / Space Jockey
+    derelictMist(x, z, count = 12) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const mistMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.28,
+        depthWrite: false
+      });
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.35 + Math.random() * 0.3, 8, 8), mistMat);
+        p.position.set(
+          (Math.random() - 0.5) * 6.0,
+          0.15 + Math.random() * 0.2,
+          (Math.random() - 0.5) * 6.0
+        );
+        p.userData.vx = (Math.random() - 0.5) * 0.35;
+        p.userData.vz = (Math.random() - 0.5) * 0.35;
+        group.add(p);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        derelictMist: true,
+        age: 0,
+        lifetime: 2.2
+      });
+    }
+
+    // Mission Wave 5 : Échappement de Vapeur Cryogénique Caissons MU/TH/UR Nostromo
+    cryoVaporPlume(x, y = 1.0, z, count = 8) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const vaporMat = new THREE.MeshBasicMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.42,
+        depthWrite: false
+      });
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.12 + Math.random() * 0.1, 6, 6), vaporMat);
+        p.position.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.3);
+        p.userData.vy = 0.55 + Math.random() * 0.65;
+        p.userData.vx = (Math.random() - 0.5) * 0.25;
+        p.userData.vz = (Math.random() - 0.5) * 0.25;
+        group.add(p);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        cryoVapor: true,
+        age: 0,
+        lifetime: 1.4
+      });
+    }
+
+    // Mission Wave 5 : Étincelles de Boîtier Électrique Sinistré Hadley's Hope
+    electricalJunctionSpark(x, y = 1.6, z, count = 8) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      for (let i = 0; i < count; i++) {
+        const isArc = Math.random() < 0.35;
+        const p = this.getParticle(isArc ? 0.05 : 0.08, isArc ? 0x38bdf8 : 0xf59e0b);
+        p.position.set(0, 0, 0);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.8 + Math.random() * 2.8;
+        p.userData.velocity = new THREE.Vector3(
+          Math.cos(angle) * speed,
+          -0.8 + Math.random() * 1.8,
+          Math.sin(angle) * speed
+        );
+        group.add(p);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        burst: true,
+        age: 0,
+        lifetime: 0.45
+      });
+    }
+
     update(deltaSeconds) {
       for (let index = this.effects.length - 1; index >= 0; index--) {
         const effect = this.effects[index];
@@ -1072,6 +1188,26 @@
             p.position.z += p.userData.vz * deltaSeconds;
             p.scale.addScalar(deltaSeconds * 0.45);
             if (p.material) p.material.opacity = Math.max(0, 0.45 * (1 - progress));
+          });
+        } else if (effect.sporeDrip) {
+          effect.group.children.forEach((p) => {
+            p.position.y += p.userData.vy * deltaSeconds;
+            if (p.material) p.material.opacity = Math.max(0, 0.75 * (1 - progress));
+          });
+        } else if (effect.derelictMist) {
+          effect.group.children.forEach((p) => {
+            p.position.x += p.userData.vx * deltaSeconds;
+            p.position.z += p.userData.vz * deltaSeconds;
+            p.scale.addScalar(deltaSeconds * 0.25);
+            if (p.material) p.material.opacity = Math.max(0, 0.28 * (1 - progress));
+          });
+        } else if (effect.cryoVapor) {
+          effect.group.children.forEach((p) => {
+            p.position.y += p.userData.vy * deltaSeconds;
+            p.position.x += p.userData.vx * deltaSeconds;
+            p.position.z += p.userData.vz * deltaSeconds;
+            p.scale.addScalar(deltaSeconds * 0.35);
+            if (p.material) p.material.opacity = Math.max(0, 0.42 * (1 - progress));
           });
         } else if (effect.steamCloud) {
           effect.group.children.forEach((p) => {

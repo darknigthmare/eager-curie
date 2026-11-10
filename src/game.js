@@ -8385,6 +8385,100 @@
         osc.stop(now + idx * 0.08 + 0.45);
       });
     }
+
+    // Mission Wave 5 : Signal de Détresse Acoustique Derelict / Space Jockey LV-426
+    playDerelictAcousticDistress() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const dur = 2.4;
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(36, now);
+      osc.frequency.exponentialRampToValueAtTime(72, now + dur * 0.5);
+      osc.frequency.exponentialRampToValueAtTime(32, now + dur);
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(180, now);
+      bpf.Q.setValueAtTime(4.5, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.22, now + 0.6);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(bpf);
+      bpf.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + dur);
+    }
+
+    // Mission Wave 5 : Résonance et Pulsation Organique de la Ruche de Résine
+    playBioResinHum() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const dur = 1.8;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(64, now);
+      osc.frequency.linearRampToValueAtTime(78, now + 0.9);
+      osc.frequency.linearRampToValueAtTime(58, now + dur);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + dur);
+    }
+
+    // Mission Wave 5 : Bourdonnement de Tube Fluorescent et Décharges Hadley's Hope
+    playIndustrialFluorescentBuzz(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const dur = 1.2;
+      const panNode = this.computePanner(x, z);
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(100, now);
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.setValueAtTime(320, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(lpf);
+      lpf.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain || this.masterGain); }
+      else { gain.connect(this.sfxGain || this.masterGain); }
+      osc.start(now);
+      osc.stop(now + dur);
+    }
+
+    // Mission Wave 5 : Télémétrie Médicale Nostromo — Ping Cardiaque Cryogénique
+    playMedBayMonitorBeep(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const panNode = this.computePanner(x, z);
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1760, now);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain);
+      if (panNode) { gain.connect(panNode); panNode.connect(this.sfxGain || this.masterGain); }
+      else { gain.connect(this.sfxGain || this.masterGain); }
+      osc.start(now);
+      osc.stop(now + 0.22);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -9516,6 +9610,36 @@
       }, 500);
     }
 
+    // Mission Wave 5 : Décal de Fluide Persistant au Sol (Sang Humain Viscéral & Lait Bionique Synthétique)
+    addFloorFluidDecal(x, z, radius = 1.2, color = 0x7f1d1d, duration = 15) {
+      if (typeof THREE === 'undefined' || !this.scene) return;
+      const puddleGeo = new THREE.CircleGeometry(radius, 16);
+      const isMilk = color === 0xf8fafc || color === 0xffffff;
+      const puddleMat = new THREE.MeshBasicMaterial({
+        color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: isMilk ? 0.85 : 0.78,
+        depthWrite: false
+      });
+      const puddleMesh = new THREE.Mesh(puddleGeo, puddleMat);
+      puddleMesh.rotation.x = -Math.PI / 2;
+      puddleMesh.position.set(x, 0.021, z);
+      this.scene.add(puddleMesh);
+      const startTime = performance.now();
+      const fadeInterval = setInterval(() => {
+        const elapsed = (performance.now() - startTime) / 1000;
+        if (elapsed >= duration) {
+          clearInterval(fadeInterval);
+          puddleGeo.dispose();
+          puddleMat.dispose();
+          if (puddleMesh.parent) puddleMesh.parent.remove(puddleMesh);
+        } else {
+          puddleMat.opacity = Math.max(0, (isMilk ? 0.85 : 0.78) * (1 - elapsed / duration));
+        }
+      }, 500);
+    }
+
     // Audit QA #114 : Impulsion de Secousse Directionnelle Alignée sur l'Onde de Choc
     addDirectionalScreenShake(dx, dz, intensity = 0.25, duration = 0.3) {
       if (this.reduceMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || window.HiveSystems?.settings?.reducedMotion) return;
@@ -9650,6 +9774,78 @@
           if (origin.hemisphereGroundColor) this.lights.hemisphere.groundColor.setHex(origin.hemisphereGroundColor);
         }
       }
+
+      // Mission Wave 5 : Décoration Procédurale & Props d'Immersion selon les 4 Origines
+      if (this.originPropsGroup) {
+        this.removeObject(this.originPropsGroup);
+        this.originPropsGroup = null;
+      }
+      if (typeof THREE !== 'undefined' && this.scene && origin.eggPos) {
+        const propsGroup = new THREE.Group();
+        propsGroup.name = 'origin_biomechanic_props';
+
+        if (origin.id === 'juggernaut') {
+          // Arches fossilisées de cage thoracique biomécanique Giger (Space Jockey LV-426)
+          const boneMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            roughness: 0.85,
+            metalness: 0.25
+          });
+          for (let i = -3; i <= 3; i++) {
+            const archGeo = new THREE.TorusGeometry(3.6, 0.22, 8, 16, Math.PI);
+            const arch = new THREE.Mesh(archGeo, boneMat);
+            arch.position.set(origin.eggPos.x, 0, origin.eggPos.z + i * 2.8);
+            arch.rotation.z = Math.PI;
+            propsGroup.add(arch);
+          }
+          window.HiveSystems?.vfx?.derelictMist?.(origin.eggPos.x, origin.eggPos.z, 16);
+          audioManager.playDerelictAcousticDistress?.();
+        } else if (origin.id === 'hive') {
+          // Piliers stalactitiques de résine chitineuse (Ruche Primaire Acheron)
+          const resinMat = new THREE.MeshStandardMaterial({
+            color: 0x2e1065,
+            roughness: 0.45,
+            metalness: 0.65
+          });
+          for (let i = 0; i < 6; i++) {
+            const colGeo = new THREE.CylinderGeometry(0.18, 0.45, 4.2, 8);
+            const col = new THREE.Mesh(colGeo, resinMat);
+            const angle = (i / 6) * Math.PI * 2;
+            col.position.set(
+              origin.eggPos.x + Math.cos(angle) * 4.2,
+              2.1,
+              origin.eggPos.z + Math.sin(angle) * 4.2
+            );
+            propsGroup.add(col);
+          }
+          window.HiveSystems?.vfx?.sporeDrip?.(origin.eggPos.x, origin.eggPos.z, 10);
+          audioManager.playBioResinHum?.();
+        } else if (origin.id === 'colony') {
+          // Boîtier de jonction électrique sinistré et gaines industrielles (Hadley's Hope)
+          const boxMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
+          const boxGeo = new THREE.BoxGeometry(0.7, 1.2, 0.4);
+          const box = new THREE.Mesh(boxGeo, boxMat);
+          box.position.set(origin.eggPos.x + 1.2, 1.4, origin.eggPos.z - 1.2);
+          propsGroup.add(box);
+          window.HiveSystems?.vfx?.electricalJunctionSpark?.(origin.eggPos.x + 1.2, 1.6, origin.eggPos.z - 1.2, 14);
+          audioManager.playIndustrialFluorescentBuzz?.(origin.eggPos.x, origin.eggPos.z);
+        } else if (origin.id === 'starship') {
+          // Caissons cryogéniques et moniteurs stase Nostromo
+          const podMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, transparent: true, opacity: 0.75, roughness: 0.2 });
+          for (let i = -1; i <= 1; i += 2) {
+            const podGeo = new THREE.CylinderGeometry(0.55, 0.55, 2.2, 12);
+            const pod = new THREE.Mesh(podGeo, podMat);
+            pod.position.set(origin.eggPos.x + i * 2.8, 1.1, origin.eggPos.z);
+            propsGroup.add(pod);
+          }
+          window.HiveSystems?.vfx?.cryoVaporPlume?.(origin.eggPos.x, 1.0, origin.eggPos.z, 12);
+          audioManager.playMedBayMonitorBeep?.(origin.eggPos.x, origin.eggPos.z);
+        }
+
+        this.scene.add(propsGroup);
+        this.originPropsGroup = propsGroup;
+      }
+
       if (origin.bgVfx && window.HiveSystems?.vfx?.burst) {
         const burstColor = origin.id === 'juggernaut' ? 0x38bdf8 : (origin.id === 'hive' ? 0xa855f7 : (origin.id === 'colony' ? 0xf59e0b : 0x0284c7));
         window.HiveSystems.vfx.burst(origin.eggPos.x, origin.eggPos.z, burstColor, 14, 0.1, 1.8);
@@ -29455,6 +29651,7 @@
       if (isSynth) {
         this.stress = 0;
         window.HiveSystems?.vfx?.syntheticBleed?.(this.x, 0.4, this.z, 28);
+        rendererEngine.addFloorFluidDecal?.(this.x, this.z, 1.4, 0xf8fafc, 20);
         if (this.mesh) {
           this.mesh.rotation.z = Math.PI / 2;
           this.mesh.position.y = 0.22;
@@ -29494,6 +29691,7 @@
         }
         return;
       }
+      rendererEngine.addFloorFluidDecal?.(this.x, this.z, 1.5, 0x7f1d1d, 20);
       if (this.mesh) {
         this.mesh.rotation.z = Math.PI / 2;
         this.mesh.position.y = 0.3;
@@ -35901,6 +36099,7 @@
       const isVulnerable = (target.staggerTimer > 0) || ((target.stress || 0) >= 70) || (target.hp <= profile.jawDamage * 1.5);
       if (isVulnerable && target.bossId !== 'MANTIS_4') {
         // Exécution fatale instantanée avec perforation crânienne 1:1
+        rendererEngine.addHitstop?.(0.14);
         target.takeDamage(target.hp + 50, playerCreature);
         window.HiveSystems?.vfx?.fleshImpact?.(target.x, target.z, 0xb91c1c, 32);
         window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xb91c1c, 24, 0.16, 1.8);
@@ -35956,7 +36155,21 @@
         playerCreature.mesh.rotation.y = Math.atan2(target.x - playerCreature.x, target.z - playerCreature.z);
       }
       playerCreature.triggerAttack('tail');
+      const willDie = target.hp <= profile.tailDamage;
       target.takeDamage(profile.tailDamage, playerCreature);
+      if (willDie && target.bossId !== 'MANTIS_4') {
+        rendererEngine.addHitstop?.(0.12);
+        if (target.mesh) {
+          target.mesh.position.y = 1.35;
+          setTimeout(() => {
+            if (target.mesh && target.isIncapacitated) target.mesh.position.y = 0.3;
+          }, 320);
+        }
+        window.HiveSystems?.vfx?.burst?.(target.x, target.z, target.isSynthetic?.() ? 0xf8fafc : 0xb91c1c, 28, 0.18, 2.0);
+        window.HiveSystems?.vfx?.floatingText?.(target.x, 3.4, target.z, 'EMPALEMENT CAUDAL (FATAL 1:1)', '#ef4444', true);
+        showToast(`EMPALEMENT CAUDAL 1:1 ! La lame caudale a transpercé et soulevé ${target.name} !`);
+        appendSensorLog(`[EMPALEMENT 1:1] ${target.name} empalé par la queue barbelée et soulevé au-dessus du sol.`, 'bio');
+      }
       stationMap.feedGarbageChute?.(target);
       audioManager.playTailWhip?.(target.x, target.z);
       audioManager.playBoneCrunch();
@@ -37824,10 +38037,34 @@
       this.isSystemPaused = !!paused;
       if (!this.isSystemPaused) {
         this.renderResumeAt = performance.now() + (rendererEngine.isSoftwareRenderer ? 3000 : 750);
+      } else {
+        this.updatePauseTelemetry();
       }
       document.getElementById('app-container')?.classList.toggle('game-paused', this.isSystemPaused);
       inputManager.reset();
       this.lastTimestamp = null;
+    }
+
+    // Mission Wave 5 : Télémétrie Diégétique Temps Réel du Panneau de Pause Weyland-Yutani
+    updatePauseTelemetry() {
+      const casteEl = document.getElementById('pause-telemetry-caste');
+      if (casteEl) {
+        casteEl.textContent = `XX121-${(playerCreature.caste || 'DRONE').toUpperCase()}`;
+      }
+      const originEl = document.getElementById('pause-telemetry-origin');
+      if (originEl) {
+        originEl.textContent = (this.activeOrigin?.name || 'USCSS NOSTROMO').toUpperCase();
+      }
+      const biomassEl = document.getElementById('pause-telemetry-biomass');
+      if (biomassEl) {
+        biomassEl.textContent = `${Math.round(playerCreature.health)}/${playerCreature.maxHealth} PV | ${playerCreature.biomass || 0} BIO`;
+      }
+      const hostsEl = document.getElementById('pause-telemetry-hosts');
+      if (hostsEl) {
+        const cocoonCount = (this.humans || []).filter((h) => h.isCocooned).length;
+        const neutCount = (this.humans || []).filter((h) => h.isIncapacitated && !h.isCocooned).length;
+        hostsEl.textContent = `${cocoonCount} COCON(S) | ${neutCount} NEUT.`;
+      }
     }
 
     setMasterVolume(value) {

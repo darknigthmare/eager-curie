@@ -1197,6 +1197,41 @@
       });
     }
 
+    // Mission Wave 8 : Éjection Diégétique d'Étuis en Laiton M41A & Armes USCM
+    ejectBulletCasing(x, y = 1.25, z, facingAngle = 0) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const casingGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.05, 6);
+      const casingMat = new THREE.MeshStandardMaterial({
+        color: 0xd97706,
+        roughness: 0.35,
+        metalness: 0.85
+      });
+      const casingMesh = new THREE.Mesh(casingGeo, casingMat);
+      const ejectAngle = facingAngle + Math.PI / 2 + (Math.random() - 0.5) * 0.45;
+      const speed = 1.6 + Math.random() * 1.2;
+      const vx = Math.cos(ejectAngle) * speed;
+      const vz = Math.sin(ejectAngle) * speed;
+      const vy = 1.2 + Math.random() * 0.8;
+
+      casingMesh.position.set(x, y, z);
+      casingMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this.scene.add(casingMesh);
+
+      this.effects.push({
+        group: casingMesh,
+        bulletCasing: true,
+        vx,
+        vy,
+        vz,
+        rotSpeedX: (Math.random() - 0.5) * 22,
+        rotSpeedZ: (Math.random() - 0.5) * 22,
+        hasPinged: false,
+        groundY: 0.02,
+        age: 0,
+        lifetime: 3.5
+      });
+    }
+
     update(deltaSeconds) {
       for (let index = this.effects.length - 1; index >= 0; index--) {
         const effect = this.effects[index];
@@ -1241,6 +1276,23 @@
         } else if (effect.cryoFrostFlash) {
           effect.group.scale.setScalar(0.25 + progress * (effect.maxRadius * 1.6));
           if (effect.ringMesh?.material) effect.ringMesh.material.opacity = Math.max(0, 0.9 * (1 - progress));
+        } else if (effect.bulletCasing) {
+          effect.group.position.x += effect.vx * deltaSeconds;
+          effect.group.position.z += effect.vz * deltaSeconds;
+          if (effect.group.position.y > effect.groundY) {
+            effect.vy -= 9.8 * deltaSeconds;
+            effect.group.position.y += effect.vy * deltaSeconds;
+            effect.group.rotation.x += effect.rotSpeedX * deltaSeconds;
+            effect.group.rotation.z += effect.rotSpeedZ * deltaSeconds;
+          } else {
+            effect.group.position.y = effect.groundY;
+            effect.vx *= 0.25;
+            effect.vz *= 0.25;
+            if (!effect.hasPinged) {
+              effect.hasPinged = true;
+              audioManager.playBrassCasingPing?.(effect.group.position.x, effect.group.position.z);
+            }
+          }
         } else if (effect.barrelSmoke) {
           effect.group.children.forEach((p) => {
             p.position.y += p.userData.vy * deltaSeconds;

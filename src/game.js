@@ -8560,6 +8560,127 @@
       noise.start(now);
       noise.stop(now + 0.4);
     }
+
+    // Mission Wave 8 : Tintement Métallique d'Éjection de Douille Laiton 10mm M41A
+    playBrassCasingPing(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      [4200, 5600].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq + (Math.random() - 0.5) * 120, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.7, now + 0.06);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.12 / (idx + 1), now + 0.003);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
+
+        osc.connect(gain);
+        this.connect(gain, x, z, 30);
+        osc.start(now);
+        osc.stop(now + 0.07);
+      });
+    }
+
+    // Mission Wave 8 : Hurlement d'Agonie Viscérale et Chute Fréquentielle de Trépas Xénomorphe
+    playXenoDeathScreech() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const bpf = ctx.createBiquadFilter();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1350, now);
+      osc.frequency.exponentialRampToValueAtTime(210, now + 0.75);
+
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(850, now);
+      bpf.frequency.exponentialRampToValueAtTime(320, now + 0.75);
+      bpf.Q.setValueAtTime(4.5, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.42, now + 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.78);
+
+      osc.connect(bpf);
+      bpf.connect(gain);
+      gain.connect(this.masterGain);
+
+      osc.start(now);
+      osc.stop(now + 0.8);
+    }
+
+    // Mission Wave 8 : Dernier Battement Cardiaque et Ligne Plate Télémétrique EKG
+    playSpecimenFlatlineHeartbeat() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const pulseOsc = ctx.createOscillator();
+      const pulseGain = ctx.createGain();
+      pulseOsc.type = 'sine';
+      pulseOsc.frequency.setValueAtTime(58, now);
+      pulseOsc.frequency.exponentialRampToValueAtTime(36, now + 0.22);
+
+      pulseGain.gain.setValueAtTime(0.001, now);
+      pulseGain.gain.linearRampToValueAtTime(0.35, now + 0.04);
+      pulseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+      pulseOsc.connect(pulseGain);
+      pulseGain.connect(this.masterGain);
+      pulseOsc.start(now);
+      pulseOsc.stop(now + 0.25);
+
+      const flatOsc = ctx.createOscillator();
+      const flatGain = ctx.createGain();
+      flatOsc.type = 'sine';
+      flatOsc.frequency.setValueAtTime(1000, now + 0.35);
+
+      flatGain.gain.setValueAtTime(0.001, now);
+      flatGain.gain.setValueAtTime(0.001, now + 0.35);
+      flatGain.gain.linearRampToValueAtTime(0.22, now + 0.38);
+      flatGain.gain.exponentialRampToValueAtTime(0.0005, now + 1.8);
+
+      flatOsc.connect(flatGain);
+      flatGain.connect(this.masterGain);
+      flatOsc.start(now + 0.35);
+      flatOsc.stop(now + 1.8);
+    }
+
+    // Mission Wave 8 : Fanfare Triomphale de Conquête et Résonance Télépathique de Ruche
+    playHiveVictoryFanfare() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const chord = [42, 293.66, 369.99, 440, 587.33, 1174.66];
+      chord.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = idx === 0 ? 'sine' : (idx > 3 ? 'triangle' : 'sawtooth');
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.02, now + 0.2);
+        osc.frequency.exponentialRampToValueAtTime(freq, now + 1.8);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.18 / (idx + 1), now + 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.0005, now + 2.2);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 2.2);
+      });
+    }
   }
 
   const audioManager = new AudioManager();
@@ -30774,6 +30895,7 @@
                 this.f44aaLockTimer = 0.25;
                 audioManager.playM41APulseBurst?.(this.x, this.z);
                 rendererEngine.addScreenShake?.(0.18, 0.1);
+                window.HiveSystems?.vfx?.ejectBulletCasing?.(this.x, 1.25, this.z, this.mesh ? this.mesh.rotation.y : 0);
                 window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.65, this.z, 0x38bdf8, 0.3);
                 window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0x38bdf8, 14, 0.12, 1.2);
                 window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'VERROUILLAGE GYRO F44AA (+80%) !', '#38bdf8', true);
@@ -30900,6 +31022,7 @@
             this.shootCooldown = 0.85;
             audioManager.playSmartgunBurst?.(this.x, this.z);
             if (Math.random() < 0.45) audioManager.playSmartgunServo?.(this.x, this.z);
+            window.HiveSystems?.vfx?.ejectBulletCasing?.(this.x, 1.25, this.z, this.mesh ? this.mesh.rotation.y : 0);
             window.HiveSystems?.vfx?.muzzleFlash(this.x, 2.75, this.z, 0xf59e0b, 0.24);
             const projectileVfx = window.HiveSystems?.vfx;
             if (projectileVfx?.projectile) {
@@ -30929,6 +31052,7 @@
               this.shootCooldown = 0.95;
               audioManager.playM41APulseBurst?.(this.x, this.z);
               rendererEngine.addScreenShake?.(0.16, 0.09);
+              window.HiveSystems?.vfx?.ejectBulletCasing?.(this.x, 1.25, this.z, this.mesh ? this.mesh.rotation.y : 0);
               window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.75, this.z, 0xf59e0b, 0.32);
               window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'RAFALE LOURDE XM99 !', '#f59e0b', false);
               applyWeaponDamage(1.55);
@@ -31649,11 +31773,38 @@
         });
       }
 
-      if (isQueen && window.gameInstance) {
-        window.gameInstance.showEndModal(
-          'LIGNÉE ROYALE ÉTEINTE',
-          'La dernière Reine a été détruite avant la sécurisation de MNEMOSYNE.'
-        );
+      // Mission Wave 8 : Trépas Viscéral 1:1, Hitstop, Hurlement & Éruption d'Acide
+      rendererEngine.addHitstop?.(0.24);
+      rendererEngine.addScreenShake?.(0.42, 0.35);
+      rendererEngine.addFloorFluidDecal?.(this.x, this.z, isQueen ? 4.8 : 3.0, 0x84cc16, 45);
+      window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x84cc16, isQueen ? 45 : 28, 0.22, 2.2);
+      audioManager.playXenoDeathScreech?.();
+
+      if (window.gameInstance) {
+        if (isQueen) {
+          window.gameInstance.showEndModal(
+            'LIGNÉE ROYALE ÉTEINTE',
+            'La dernière Reine a été détruite avant la sécurisation de MNEMOSYNE.'
+          );
+        } else {
+          const stageIndex = window.gameInstance.currentStageIndex;
+          const defeatTitles = {
+            1: 'SPÉCIMEN OVOMORPHE DÉTRUIT',
+            2: 'SPÉCIMEN PARASITAIRE ÉRADIQUÉ',
+            3: 'REJET DE GESTATION // SUJET PERDU',
+            4: 'PRÉDATEUR ADULTE NEUTRALISÉ'
+          };
+          const defeatDescs = {
+            1: 'L\'ovomorphe a été détruit par les flammes avant éclosion.',
+            2: 'Le Facehugger a succombé aux tirs défensifs avant d\'avoir pu féconder un hôte viable.',
+            3: 'Le Chestburster a été abattu par les forces de confinement avant sa métamorphose adulte.',
+            4: 'Le xénomorphe a succombé aux tirs nourris des USCM. La station reste sous contrôle humain.'
+          };
+          window.gameInstance.showEndModal(
+            defeatTitles[stageIndex] || 'SPÉCIMEN NEUTRALISÉ',
+            defeatDescs[stageIndex] || 'L\'organisme biomécanique a succombé aux forces défensives humaines.'
+          );
+        }
       }
       this.destroy();
     }
@@ -38330,12 +38481,50 @@
       this.humans = [];
     }
 
-    showEndModal(title, description) {
+    showEndModal(title, description, isVictory = false) {
       const modal = document.getElementById('stage-modal');
       const continueButton = document.getElementById('modal-btn-continue');
-      document.getElementById('modal-stage-num').textContent = 'CYCLE TERMINÉ';
-      document.getElementById('modal-title').textContent = title;
-      document.getElementById('modal-description').textContent = description;
+      if (!modal || !continueButton) return;
+
+      const isWin = isVictory || title.includes('VICTOIRE') || title.includes('DOMINION') || title.includes('EXODE') || title.includes('GRAINE');
+
+      const directiveCode = modal.querySelector('.directive-code');
+      const directiveBadge = modal.querySelector('.directive-badge');
+      const stageNumEl = document.getElementById('modal-stage-num');
+      const titleEl = document.getElementById('modal-title');
+      const descEl = document.getElementById('modal-description');
+      const morphEl = document.getElementById('modal-morphology-desc');
+      const hostEl = document.getElementById('modal-host-desc');
+      const abilEl = document.getElementById('modal-abilities-desc');
+
+      if (directiveCode) {
+        directiveCode.textContent = isWin ? 'DIRECTIVE 937 // STATUT : SUCCÈS MAJEUR' : 'DIRECTIVE 937 // STATUT : SPÉCIMEN PERDU';
+      }
+      if (directiveBadge) {
+        directiveBadge.textContent = isWin ? 'ÉCOSYSTÈME ASSIMILÉ' : 'ÉCHEC CRITIQUE';
+        directiveBadge.style.color = isWin ? '#39ff14' : '#ef4444';
+        directiveBadge.style.borderColor = isWin ? '#39ff14' : '#ef4444';
+      }
+
+      if (stageNumEl) stageNumEl.textContent = isWin ? 'ASCENSION ROYALE // FIN DE CAMPAGNE' : 'CYCLE INTERROMPU // TRÉPAS';
+      if (titleEl) titleEl.textContent = title;
+      if (descEl) descEl.textContent = description;
+
+      const activeCaste = (playerCreature?.adultCaste || playerCreature?.caste || 'drone').toUpperCase();
+      const activeMutation = (playerCreature?.embryoMutation || 'carapace').toUpperCase();
+
+      if (isWin) {
+        if (morphEl) morphEl.textContent = `Matriarche Apex Suprême [${activeCaste}] — Mutation : ${activeMutation}`;
+        if (hostEl) hostEl.textContent = 'Bio-colonisation intégrale : Tous les secteurs de MNEMOSYNE sont assimilés.';
+        if (abilEl) abilEl.textContent = 'Conscience synaptique globale de Ruche établie sur le réseau.';
+        audioManager.playHiveVictoryFanfare?.();
+      } else {
+        if (morphEl) morphEl.textContent = `Spécimen XX121 [${activeCaste}] — Enveloppe corporelle anéantie.`;
+        if (hostEl) hostEl.textContent = 'Riposte létale humaine : Déploiement de forces USCM / Défenses de secteur.';
+        if (abilEl) abilEl.textContent = 'Signal synaptique rompu. Relancez l\'incubation pour adapter la tactique.';
+        audioManager.playSpecimenFlatlineHeartbeat?.();
+      }
+
       continueButton.innerHTML = `<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><polyline points="7,5 13,10 7,15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>RECOMMENCER LE CYCLE ↻</span>`;
       continueButton.onclick = () => window.location.reload();
       for (const regionId of ['game-canvas', 'hud-header', 'hud-sidebar', 'rts-control-bar']) {

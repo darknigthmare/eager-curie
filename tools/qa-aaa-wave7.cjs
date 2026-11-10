@@ -68,7 +68,7 @@ console.log('PASS: index.html éléments de télémétrie de mutation vérifiés
 // 7. Méthode showEvolutionTransitionModal et advanceStage
 assert(gameJs.includes('showEvolutionTransitionModal(nextStage, act)'), 'advanceStage doit appeler showEvolutionTransitionModal');
 assert(gameJs.includes('audioManager.playXenoBiomorphicChime?.()'), 'showEvolutionTransitionModal doit jouer le carillon biomorphique');
-assert(gameJs.includes('showEndModal(title, description)'), 'src/game.js doit contenir showEndModal');
+assert(gameJs.includes('showEndModal(title, description'), 'src/game.js doit contenir showEndModal');
 console.log('PASS: advanceStage et showEvolutionTransitionModal avec carillon vérifiés');
 
 // 8. Préservation absolue des icônes carrées vectorielles

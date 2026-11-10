@@ -3264,6 +3264,25 @@ button {
   opacity: 0.75;
 }
 
+.tracker-device.expanded-blueprint {
+  border-color: #0284c7;
+  background: rgba(4, 11, 20, 0.96);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.85), 0 0 24px rgba(56, 189, 248, 0.22), inset 0 0 16px rgba(56, 189, 248, 0.12);
+}
+
+.tracker-device.expanded-blueprint .tracker-screen-container {
+  width: 320px;
+  height: 320px;
+  border-radius: 6px;
+  border-color: #38bdf8;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9), 0 0 12px rgba(56, 189, 248, 0.3);
+  background: radial-gradient(circle, #021226 30%, #010814 90%);
+}
+
+.tracker-device.expanded-blueprint .tracker-crt-lines {
+  border-radius: 6px;
+}
+
 .tracker-bezel {
   display: flex;
   flex-direction: column;

@@ -8787,6 +8787,143 @@
       noise.start(now);
       noise.stop(now + 0.18);
     }
+
+    // Mission Wave 10 : Bouillonnement Pathogène Visqueux du Mutagène Noir Z-01 (Prometheus / Romulus)
+    playBlackGooBubble(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      [0, 0.08, 0.19].forEach((delay, idx) => {
+        const t = now + delay;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const bpf = ctx.createBiquadFilter();
+
+        osc.type = 'sine';
+        const startFreq = 85 + idx * 35;
+        const peakFreq = 260 + idx * 55;
+        osc.frequency.setValueAtTime(startFreq, t);
+        osc.frequency.exponentialRampToValueAtTime(peakFreq, t + 0.04);
+        osc.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+
+        bpf.type = 'bandpass';
+        bpf.frequency.setValueAtTime(peakFreq, t);
+        bpf.Q.setValueAtTime(4.5, t);
+
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.linearRampToValueAtTime(0.22 - idx * 0.04, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+        osc.connect(bpf);
+        bpf.connect(gain);
+        this.connect(gain, x, z, 45);
+        osc.start(t);
+        osc.stop(t + 0.13);
+      });
+    }
+
+    // Mission Wave 10 : Fracas d'Éclatement Optique, Crunch Mécanique et Décharge Capacitive Caméra Seegson (Alien: Isolation)
+    playCameraDestroyCrunch(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // 1. Fracas de lentille optique & verre trempé brisé (bruit filtré passe-haut)
+      const noiseDur = 0.22;
+      const bufferSize = Math.floor(ctx.sampleRate * noiseDur);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.05));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(2600, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + noiseDur);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 65);
+      noise.start(now);
+      noise.stop(now + noiseDur);
+
+      // 2. Crunch mécanique et broyage de servomoteur (sawtooth 380Hz -> 65Hz)
+      const osc = ctx.createOscillator();
+      const oscGain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(380, now);
+      osc.frequency.exponentialRampToValueAtTime(65, now + 0.18);
+
+      oscGain.gain.setValueAtTime(0.35, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+      osc.connect(oscGain);
+      this.connect(oscGain, x, z, 60);
+      osc.start(now);
+      osc.stop(now + 0.18);
+
+      // 3. Décharge capacitive haute tension en rampe exponentielle (1850Hz -> 55Hz)
+      const zapOsc = ctx.createOscillator();
+      const zapGain = ctx.createGain();
+      const zapFilter = ctx.createBiquadFilter();
+      zapOsc.type = 'square';
+      zapOsc.frequency.setValueAtTime(1850, now);
+      zapOsc.frequency.exponentialRampToValueAtTime(55, now + 0.25);
+      zapFilter.type = 'bandpass';
+      zapFilter.frequency.setValueAtTime(1150, now);
+      zapFilter.Q.setValueAtTime(3.8, now);
+      zapGain.gain.setValueAtTime(0.28, now);
+      zapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      zapOsc.connect(zapFilter);
+      zapFilter.connect(zapGain);
+      this.connect(zapGain, x, z, 55);
+      zapOsc.start(now);
+      zapOsc.stop(now + 0.25);
+    }
+
+    // Mission Wave 10 : Clic Mécanique Rétro Tactile à Deux Impulsions Console MUTHUR / Seegson (1420Hz -> 880Hz)
+    playTerminalKeystroke(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // Impulsion 1 : Enfoncement de la touche (1420Hz)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(1420, now);
+      osc1.frequency.exponentialRampToValueAtTime(1180, now + 0.022);
+      gain1.gain.setValueAtTime(0.22, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
+      osc1.connect(gain1);
+      this.connect(gain1, x, z, 30);
+      osc1.start(now);
+      osc1.stop(now + 0.022);
+
+      // Impulsion 2 : Butée mécanique et rebond du ressort (880Hz)
+      const tRelease = now + 0.034;
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'square';
+      osc2.frequency.setValueAtTime(880, tRelease);
+      osc2.frequency.exponentialRampToValueAtTime(640, tRelease + 0.028);
+      gain2.gain.setValueAtTime(0.18, tRelease);
+      gain2.gain.exponentialRampToValueAtTime(0.001, tRelease + 0.028);
+      osc2.connect(gain2);
+      this.connect(gain2, x, z, 30);
+      osc2.start(tRelease);
+      osc2.stop(tRelease + 0.028);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -9404,6 +9541,30 @@
             for (const p of (stationMap[key] || [])) {
               ctx.fillRect(toMapX(p.x) - 1.5, toMapY(p.z) - 1.5, 3, 3);
             }
+          }
+          // Télémétrie diégétique des caméras (vert = active, rouge sombre = détruite)
+          for (const cam of (stationMap.securityCameras || [])) {
+            ctx.fillStyle = cam.isDestroyed ? 'rgba(239, 68, 68, 0.45)' : 'rgba(34, 197, 94, 0.9)';
+            ctx.fillRect(toMapX(cam.x) - 1.5, toMapY(cam.z) - 1.5, 3, 3);
+          }
+          // Canisters Mutagène Noir Z-01
+          for (const goo of (stationMap.blackGooCanisters || [])) {
+            if (!goo.isBroken) {
+              ctx.fillStyle = '#a855f7';
+              ctx.fillRect(toMapX(goo.x) - 1.5, toMapY(goo.z) - 1.5, 3, 3);
+            }
+          }
+          // Barils de Napalm USCM
+          for (const b of (stationMap.napalmBarrels || [])) {
+            if (!b.isDetonated) {
+              ctx.fillStyle = '#f97316';
+              ctx.fillRect(toMapX(b.x) - 1.5, toMapY(b.z) - 1.5, 3, 3);
+            }
+          }
+          // Consoles M.U.T.H.U.R. 6000
+          for (const mt of (stationMap.muthurTerminals || [])) {
+            ctx.fillStyle = (mt.cooldown || 0) > 0 ? '#ef4444' : '#fbbf24';
+            ctx.fillRect(toMapX(mt.x) - 1.5, toMapY(mt.z) - 1.5, 3, 3);
           }
           ctx.fillStyle = '#ef4444';
           ctx.beginPath();
@@ -15075,9 +15236,16 @@
     shatterBlackGoo(canister, instigator = null) {
       if (!canister || canister.isBroken) return false;
       canister.isBroken = true;
+      if (canister.mesh) {
+        canister.mesh.rotation.z = 1.35;
+        canister.mesh.position.y = -0.15;
+      }
       audioManager.playGlassShatter(canister.x, canister.z);
+      audioManager.playBlackGooBubble?.(canister.x, canister.z);
       rendererEngine.addScreenShake?.(0.3, 0.18);
+      rendererEngine.addFloorFluidDecal?.(canister.x, canister.z, 2.8, 0x0f051d, 35);
       window.HiveSystems?.vfx?.burst?.(canister.x, canister.z, 0x020617, 34, 0.2, 2.5);
+      window.HiveSystems?.vfx?.burst?.(canister.x, canister.z, 0x581c87, 18, 0.15, 1.8);
       window.HiveSystems?.vfx?.floatingText?.(canister.x, 3.2, canister.z, 'MUTAGÈNE NOIR Z-01 (+25 BIOMASSE)', '#a855f7', true);
       showToast('MUTAGÈNE Z-01 LIBÉRÉ : Nanoparticules pathogènes noires absorbées par la ruche (+25 Biomasse) !');
       appendSensorLog('[PATHOGÈNE Z-01] Fiole de mutagène noir brisée. Hybridation génétique et poussée de biomasse.', 'bio');
@@ -16133,6 +16301,101 @@
       });
     }
 
+    // Mission Wave 10 : Sabotage Diégétique de Caméras de Surveillance (Alien: Isolation / Romulus)
+    destroySecurityCamera(cam, instigator = null, method = 'impact') {
+      if (!cam || cam.isDestroyed) return false;
+      cam.isDestroyed = true;
+      cam.state = 'destroyed';
+      cam.alertTimer = 0;
+
+      // Affaissement physique motorisé de la tête et extinction du cône
+      const head = cam.swivelHead || cam.mesh?.getObjectByName('camera_swivel_head');
+      if (head) {
+        head.rotation.x = 0.85;
+        head.rotation.z = (Math.random() - 0.5) * 0.45;
+      }
+      const fovCone = cam.fovCone || cam.mesh?.getObjectByName('camera_fov_cone');
+      if (fovCone) {
+        fovCone.visible = false;
+      }
+      const sensor = cam.sensorMesh || cam.mesh?.getObjectByName('camera_starlight_sensor');
+      if (sensor?.material) {
+        sensor.material.color?.setHex(0x18181b);
+        sensor.material.emissive?.setHex(0x000000);
+      }
+
+      // Audio, decals de projection et VFX selon le vecteur de destruction
+      if (method === 'acid') {
+        audioManager.playAcidSizzle?.(cam.x, cam.z);
+        audioManager.playGlassShatter?.(cam.x, cam.z);
+        audioManager.playCameraDestroyCrunch?.(cam.x, cam.z);
+        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0x84cc16, 26, 0.22, 2.2);
+        rendererEngine.addFloorFluidDecal?.(cam.x, cam.z, 2.2, 0x84cc16, 30);
+        window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'CAMÉRA DISSOUTE PAR L’ACIDE', '#84cc16', true);
+        appendSensorLog(`[SABOTAGE ACIDE] ${cam.name} liquéfiée par le jet d'acide moléculaire.`, 'combat');
+      } else if (method === 'hack') {
+        audioManager.playHighFrequencyElectricArc?.(cam.x, cam.z);
+        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0x38bdf8, 16, 0.15, 1.4);
+        window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'COURT-CIRCUIT CYBERNÉTIQUE', '#38bdf8', true);
+        appendSensorLog(`[HACK SYSTÈME] ${cam.name} neutralisée via dérivation Seegson.`, 'stealth');
+      } else {
+        // Impact mêlée, queue barbelée ou souffle de détonation
+        audioManager.playCameraDestroyCrunch?.(cam.x, cam.z);
+        audioManager.playGlassShatter?.(cam.x, cam.z);
+        audioManager.playHighFrequencyElectricArc?.(cam.x, cam.z);
+        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0xf59e0b, 28, 0.25, 2.0);
+        window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'CAMÉRA DÉTRUITE (ANGLE MORT CRÉÉ)', '#ef4444', true);
+        appendSensorLog(`[SABOTAGE TACTIQUE] ${cam.name} pulvérisée. Réseau Seegson amputé d'un capteur.`, 'combat');
+      }
+
+      rendererEngine.addScreenShake?.(0.25, 0.16);
+      showToast(`SABOTAGE : ${cam.name} neutralisée !`);
+      return true;
+    }
+
+    // Mission Wave 10 : Déclenchement de destruction environnementale systémique
+    triggerEnvironmentalDestruction(originX, originZ, range = 4.0, method = 'melee') {
+      let hitAny = false;
+      // 1. Caméras de sécurité
+      (this.securityCameras || []).forEach((cam) => {
+        if (!cam.isDestroyed && Math.hypot(cam.x - originX, cam.z - originZ) <= range) {
+          this.destroySecurityCamera(cam, window.playerCreature, method);
+          hitAny = true;
+        }
+      });
+      // 2. Caissons cryogéniques
+      const closePod = (this.cryoPods || []).find((p) => !p.isBroken && Math.hypot(p.x - originX, p.z - originZ) <= range);
+      if (closePod) {
+        this.shatterCryoPod(closePod, window.playerCreature);
+        hitAny = true;
+      }
+      // 3. Canisters de Black Goo Z-01
+      const closeGoo = (this.blackGooCanisters || []).find((g) => !g.isBroken && Math.hypot(g.x - originX, g.z - originZ) <= range);
+      if (closeGoo) {
+        this.shatterBlackGoo(closeGoo, window.playerCreature);
+        hitAny = true;
+      }
+      // 4. Barils de Napalm USCM
+      const closeNapalm = (this.napalmBarrels || []).find((b) => !b.isDetonated && Math.hypot(b.x - originX, b.z - originZ) <= range);
+      if (closeNapalm) {
+        this.detonateNapalmBarrel(closeNapalm, window.playerCreature);
+        hitAny = true;
+      }
+      // 5. Portes hydrauliques scellées
+      const closeDoor = (this.sealedHydraulicDoors || []).find((d) => !d.isPried && Math.hypot(d.x - originX, d.z - originZ) <= range);
+      if (closeDoor) {
+        this.pryHydraulicDoor(closeDoor, window.playerCreature);
+        hitAny = true;
+      }
+      // 6. Vents de vapeur
+      const closeVent = (this.steamVents || []).find((v) => !v.isRuptured && Math.hypot(v.x - originX, v.z - originZ) <= range);
+      if (closeVent) {
+        this.ruptureSteamVent(closeVent, window.playerCreature);
+        hitAny = true;
+      }
+      return hitAny;
+    }
+
     // Chantier 35 : Pièges au Sol à Harpons Pneumatiques & Filet Électrifié (Alien 3 / Isolation)
     updateTripwireTraps(safeDelta) {
       if (!this.tripwireTraps) return;
@@ -16198,14 +16461,14 @@
     hackSeegsonTerminal(term) {
       if (!term || term.isHacked) return;
       term.isHacked = true;
+      audioManager.playTerminalKeystroke?.(term.x, term.z);
       audioManager.playTunerHackBeep?.(term.x, term.z);
       window.HiveSystems?.vfx?.burst?.(term.x, term.z, 0xf59e0b, 16, 0.1, 1.2);
       window.HiveSystems?.vfx?.floatingText?.(term.x, 2.5, term.z, 'TERMINAL SEEGSON PIRATÉ !', '#f59e0b', true);
 
-      // Désactive toutes les caméras de sécurité pendant 45 secondes
+      // Désactive proprement toutes les caméras de sécurité
       this.securityCameras.forEach((c) => {
-        c.isDestroyed = true;
-        if (c.mesh) rendererEngine.removeObject(c.mesh);
+        this.destroySecurityCamera(c, null, 'hack');
       });
       showToast('HACK DECODEUR RÉUSSI : Réseau de caméras Seegson neutralisé sur tout le secteur !');
       appendSensorLog(`[HACK] Protocoles de sécurité Seegson bypassés. Caméras hors service.`, 'alert');
@@ -17137,10 +17400,18 @@
 
       audioManager.playNapalmBarrelExplosion?.(barrel.x, barrel.z);
       rendererEngine.addScreenShake?.(0.48, 0.32);
+      rendererEngine.addFloorFluidDecal?.(barrel.x, barrel.z, 3.6, 0x1c1917, 32);
       window.HiveSystems?.vfx?.burst?.(barrel.x, barrel.z, 0xea580c, 45, 0.45, 3.2);
       window.HiveSystems?.vfx?.ring?.(barrel.x, barrel.z, 0xf97316, 7.5);
       showToast('DÉTONATION NAPALM USCM ! Barrière de feu persistante de 15s !');
       appendSensorLog(`[NAPALM] Détonation d'un baril de carburant. Incendie de zone à 800°C.`, 'alert');
+
+      // Neutralisation des caméras de sécurité dans l'onde de choc
+      (this.securityCameras || []).forEach((cam) => {
+        if (!cam.isDestroyed && Math.hypot(cam.x - barrel.x, cam.z - barrel.z) <= 6.5) {
+          this.destroySecurityCamera(cam, triggerEntity || playerCreature, 'explosion');
+        }
+      });
 
       // Dégâts initiaux massifs dans le rayon de déflagration (6.5m)
       const entities = [playerCreature, ...(window.gameInstance?.humans || [])];
@@ -17924,8 +18195,11 @@
         return false;
       }
       terminal.cooldown = 15.0;
+      audioManager.playTerminalKeystroke?.(terminal.x, terminal.z);
       audioManager.playMuthurBootKeyboard?.(terminal.x, terminal.z);
       rendererEngine.addScreenShake?.(0.2, 0.15);
+      window.HiveSystems?.vfx?.burst?.(terminal.x, 1.8, terminal.z, 0x22c55e, 22, 0.2, 1.6);
+      window.HiveSystems?.vfx?.floatingText?.(terminal.x, 2.5, terminal.z, 'OVERRIDE M.U.T.H.U.R. 6000 !', '#22c55e', true);
       showToast(`M.U.T.H.U.R. 6000 ACCÉDÉE : Faux ordre d'évacuation diffusé ! Équipes KAPPA désorientées !`);
       appendSensorLog(`[M.U.T.H.U.R. 6000] Override manuel IA centrale. Fausse brèche coque déclarée. Conduits ventilés.`, 'alert');
       const humans = window.gameInstance?.humans || [];
@@ -17945,6 +18219,18 @@
       for (const mt of this.muthurTerminals) {
         if (mt.cooldown > 0) {
           mt.cooldown -= safeDelta;
+        }
+        if (mt.mesh) {
+          const isCooling = mt.cooldown > 0;
+          mt.blinkTimer = (mt.blinkTimer || 0) + safeDelta * (isCooling ? 8.0 : 2.5);
+          const intensity = isCooling ? 0.6 + Math.sin(mt.blinkTimer) * 0.45 : 1.2 + Math.sin(mt.blinkTimer) * 0.18;
+          for (let s = 0; s < 4; s++) {
+            const screen = mt.mesh.getObjectByName(`muthur_screen_glow_${s}`);
+            if (screen?.material?.emissive) {
+              screen.material.emissiveIntensity = intensity;
+              screen.material.emissive.setHex(isCooling ? 0xf59e0b : 0x22c55e);
+            }
+          }
         }
       }
     }
@@ -26533,7 +26819,7 @@
         audioManager.playSyntheticGlitchedVoice?.(s.x, s.z);
         window.HiveSystems?.vfx?.burst?.(s.x, s.z, 0x38bdf8, 20, 0.15, 1.4);
         showToast(`MÉMOIRE SYNTHÉTIQUE EXTRAITE : Codes d'accès Weyland-Yutani de ${s.name} décryptés ! Caméras désactivées !`);
-        stationMap.securityCameras?.forEach((c) => { c.isDestroyed = true; if (c.mesh) rendererEngine.removeObject(c.mesh); });
+        stationMap.securityCameras?.forEach((c) => { stationMap.destroySecurityCamera(c, this, 'hack'); });
         return true;
       }
       showToast("Aucun terminal Seegson ou synthétique neutralisé à portée (3.8m) pour le piratage [K].");
@@ -26560,7 +26846,7 @@
           victim.takeDamage?.(150, this);
           victim.isCocooned = true;
           victim.isIncapacitated = true;
-          if (victim.mesh) victim.mesh.position.y = -0.5;
+          if (victim.mesh) victim.mesh.position.y = -0.3;
           window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.2, victim.z, 'HAPPÉ PAR LES CHEVILLES (SOUS-PLANCHER 1:1) !', '#ef4444', true);
           showToast("ÉVENTRATION DE PLANCHER RÉUSSIE : Cible entraînée sous les caillebotis métalliques !");
           this.isSubfloorProwling = false;
@@ -27033,11 +27319,7 @@
         // Chantier 33 : Destruction des caméras par le jet d'acide
         stationMap.securityCameras?.forEach((cam) => {
           if (!cam.isDestroyed && Math.hypot(cam.x - targetPos.x, cam.z - targetPos.z) <= 4.2) {
-            cam.isDestroyed = true;
-            audioManager.playGlassShatter?.(cam.x, cam.z);
-            window.HiveSystems?.vfx?.burst?.(cam.x, cam.z, 0xef4444, 20, 0.15, 1.4);
-            window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'CAMÉRA DISSOUTE', '#ef4444', true);
-            if (cam.mesh) rendererEngine.removeObject(cam.mesh);
+            stationMap.destroySecurityCamera(cam, this, 'acid');
           }
         });
 
@@ -36415,20 +36697,12 @@
       if (!this.canUseAbility('claw', 380)) return;
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 6.5) {
-        const closeDoor = (stationMap.sealedHydraulicDoors || []).find((d) => !d.isPried && Math.hypot(d.x - playerCreature.x, d.z - playerCreature.z) <= 3.8);
-        if (closeDoor) {
-          stationMap.pryHydraulicDoor(closeDoor, playerCreature);
+        const envHit = stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 3.8, 'melee');
+        if (envHit) {
           playerCreature.triggerAttack('melee');
+          audioManager.playBoneCrunch?.();
           this.updateCooldownBadges();
-      this.updateRoyalButton();
-          return;
-        }
-        const closeVent = (stationMap.steamVents || []).find((v) => !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 3.8);
-        if (closeVent) {
-          stationMap.ruptureSteamVent(closeVent, playerCreature);
-          playerCreature.triggerAttack('melee');
-          this.updateCooldownBadges();
-      this.updateRoyalButton();
+          this.updateRoyalButton();
           return;
         }
         this.executeInnerJaw();
@@ -36458,16 +36732,7 @@
       window.HiveSystems?.vfx?.burst(target.x, target.z, 0xef4444, 12, 0.08, 1.2);
       this.log(`[GRIFFES] Lacération sur ${target.name} — ${Math.max(0, target.hp)} PV.`);
 
-      const closePod = (stationMap.cryoPods || []).find((p) => !p.isBroken && Math.hypot(p.x - playerCreature.x, p.z - playerCreature.z) <= 3.8);
-      if (closePod) stationMap.shatterCryoPod(closePod, playerCreature);
-      const closeGoo = (stationMap.blackGooCanisters || []).find((g) => !g.isBroken && Math.hypot(g.x - playerCreature.x, g.z - playerCreature.z) <= 3.8);
-      if (closeGoo) stationMap.shatterBlackGoo(closeGoo, playerCreature);
-      const closeDoor = (stationMap.sealedHydraulicDoors || []).find((d) => !d.isPried && Math.hypot(d.x - playerCreature.x, d.z - playerCreature.z) <= 3.8);
-      if (closeDoor) stationMap.pryHydraulicDoor(closeDoor, playerCreature);
-      const closeVent = (stationMap.steamVents || []).find((v) => !v.isRuptured && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 3.8);
-      if (closeVent) stationMap.ruptureSteamVent(closeVent, playerCreature);
-      const closeNapalm = (stationMap.napalmBarrels || []).find((b) => !b.isDetonated && Math.hypot(b.x - playerCreature.x, b.z - playerCreature.z) <= 3.8);
-      if (closeNapalm) stationMap.detonateNapalmBarrel(closeNapalm, playerCreature);
+      stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 3.8, 'melee');
 
       this.updateCooldownBadges();
       this.updateRoyalButton();
@@ -36552,6 +36817,17 @@
       const profile = playerCreature.getAdultProfile();
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 10.5) {
+        if (!this.canUseAbility('tail', 650)) return;
+        const envHit = stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 5.5, 'tail');
+        if (envHit) {
+          playerCreature.triggerAttack('tail');
+          audioManager.playTailWhip?.(playerCreature.x, playerCreature.z);
+          audioManager.playBoneCrunch?.();
+          showToast('EMPALEMENT CAUDAL : Éléments environnementaux sabotés !');
+          this.updateCooldownBadges();
+          this.updateRoyalButton();
+          return;
+        }
         showToast(target ? `Cible hors de portée (${Math.round(distance)}m).` : 'Aucune cible vivante.');
         this.log('[QUEUE] Cible hors de portée.');
         return;
@@ -36606,6 +36882,9 @@
       );
       window.HiveSystems?.vfx?.burst(target.x, target.z, 0xa855f7, 18, 0.12, 1.4);
       this.log(`[FRAPPE DE QUEUE] ${target.name} empalé — ${Math.max(0, target.hp)} PV.`);
+
+      stationMap.triggerEnvironmentalDestruction?.(target.x, target.z, 4.5, 'tail');
+
       this.updateCooldownBadges();
       this.updateRoyalButton();
     }

@@ -8681,6 +8681,112 @@
         osc.stop(now + 2.2);
       });
     }
+
+    // Mission Wave 9 : Égouttement Sanguin Viscéral depuis les Combles du Plafond
+    playCeilingBloodDrip(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      [680, 950].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        osc.frequency.exponentialRampToValueAtTime(320, now + idx * 0.08 + 0.05);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.08);
+        gain.gain.linearRampToValueAtTime(0.18, now + idx * 0.08 + 0.006);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.06);
+
+        osc.connect(gain);
+        this.connect(gain, x, z, 35);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.07);
+      });
+    }
+
+    // Mission Wave 9 : Éjection Brutale de Grille Métallique d'Aération
+    playVentGrateKick(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      [180, 360, 720].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = idx === 0 ? 'triangle' : 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + 0.22);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.35 / (idx + 1), now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        osc.connect(gain);
+        this.connect(gain, x, z, 45);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      });
+    }
+
+    // Mission Wave 9 : Grésillement & Commutateur de Lampe Torche sous Tension
+    playFlashlightFlicker(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(840, now);
+      osc.frequency.setValueAtTime(120, now + 0.02);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+
+      osc.connect(gain);
+      this.connect(gain, x, z, 25);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    }
+
+    // Mission Wave 9 : Souffle de Terreur Humaine à la Détection du Xénomorphe
+    playHumanSpotXenoGasp(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const bufferSize = Math.floor(ctx.sampleRate * 0.18);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * (i / bufferSize);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(950, now);
+      bpf.Q.setValueAtTime(3.5, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.28, now + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+      noise.connect(bpf);
+      bpf.connect(gain);
+      this.connect(gain, x, z, 35);
+      noise.start(now);
+      noise.stop(now + 0.18);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -23769,9 +23875,22 @@
     if (!logBox) return;
     const line = document.createElement('div');
     line.className = `log-line ${type}`;
-    line.textContent = message;
+
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'log-timestamp';
+    timeSpan.textContent = `[${timeStr}]`;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'log-text';
+    textSpan.textContent = message;
+
+    line.appendChild(timeSpan);
+    line.appendChild(textSpan);
     logBox.appendChild(line);
-    while (logBox.children.length > 40) logBox.firstElementChild.remove();
+    while (logBox.children.length > 50) logBox.firstElementChild.remove();
     logBox.scrollTop = logBox.scrollHeight;
   }
 
@@ -26246,9 +26365,13 @@
       audioManager.playInnerJawSnap?.(victim.x, victim.z);
       audioManager.playWetImpact?.(victim.x, victim.z);
       audioManager.playCocoonWeave?.(victim.x, victim.z);
+      audioManager.playCeilingBloodDrip?.(victim.x, victim.z);
+      rendererEngine.addHitstop?.(0.16);
       rendererEngine.addScreenShake?.(0.35, 0.2);
+      rendererEngine.addFloorFluidDecal?.(victim.x, victim.z, 2.4, 0x7f1d1d, 35);
       window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0xef4444, 25, 0.16, 1.8);
       window.HiveSystems?.vfx?.beam?.(this.x, 4.2, this.z, victim.x, 0.8, victim.z, 0x0c121e);
+      window.HiveSystems?.vfx?.sporeDrip?.(victim.x, 3.8, victim.z, 8);
 
       victim.takeDamage?.(140, this);
       victim.isCocooned = true;
@@ -28931,6 +29054,7 @@
         });
       }
       audioManager.playVentExit?.();
+      audioManager.playVentGrateKick?.(this.x, this.z);
       rendererEngine.addScreenShake?.(0.35, 0.22);
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x94a3b8, 16, 0.14, 1.4);
       appendSensorLog(`[CONDUIT] Émergence brutale via ${vent.name} !`, 'alert');
@@ -28942,7 +29066,9 @@
       if (nearbyHumans.length > 0) {
         audioManager.playXenoRoar?.();
         nearbyHumans.forEach((human) => {
-          human.staggerTimer = 0.85; // Étourdissement de terreur
+          human.staggerTimer = 1.4; // Étourdissement de terreur
+          human.stress = 100;
+          audioManager.playHumanPanicScream?.(human.x, human.z);
           const ambushDmg = this.form === 'drone' ? 75 : 30;
           human.takeDamage(ambushDmg, this);
           window.HiveSystems?.vfx?.floatingText?.(human.x, 2.5, human.z, `-${ambushDmg} EMBUSCADE CONDUIT !`, '#ef4444', true);
@@ -30314,6 +30440,20 @@
       const inDarkness = (rendererEngine?.powerSabotagedTimer || 0) > 0;
       this.ensureFlashlight(inDarkness && isCombatant);
 
+      // Mission Wave 9 : Grésillement de Lampe Torche sous Stress et Réaction de Contact Visuel
+      if (this.flashlight && this.flashlight.intensity > 0) {
+        if ((this.stress || 0) > 60) {
+          if (Math.random() < 0.08) {
+            this.flashlight.intensity = 0.5 + Math.random() * 1.5;
+            audioManager.playFlashlightFlicker?.(this.x, this.z);
+          } else {
+            this.flashlight.intensity = 3.8;
+          }
+        } else {
+          this.flashlight.intensity = 3.8;
+        }
+      }
+
       let targetInVisualField = true;
       if (inDarkness) {
         // Dans le noir complet, l'humain ne peut voir le prédateur que s'il est très proche (≤ 3.2m)
@@ -30326,6 +30466,10 @@
           const inFlashlightCone = diffAngle <= Math.PI / 4 && distToPlayer <= 14;
           if (!inFlashlightCone) {
             targetInVisualField = false;
+          } else if (combatTarget === playerCreature && !this.spottedXenoAlerted) {
+            this.spottedXenoAlerted = true;
+            audioManager.playHumanSpotXenoGasp?.(this.x, this.z);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.9, this.z, '! CONTACT VISUEL !', '#f59e0b', true);
           }
         }
       }

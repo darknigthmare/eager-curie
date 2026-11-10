@@ -16343,55 +16343,92 @@
         audioManager.playCameraDestroyCrunch?.(cam.x, cam.z);
         audioManager.playGlassShatter?.(cam.x, cam.z);
         audioManager.playHighFrequencyElectricArc?.(cam.x, cam.z);
-        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0xf59e0b, 28, 0.25, 2.0);
-        window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'CAMÉRA DÉTRUITE (ANGLE MORT CRÉÉ)', '#ef4444', true);
-        appendSensorLog(`[SABOTAGE TACTIQUE] ${cam.name} pulvérisée. Réseau Seegson amputé d'un capteur.`, 'combat');
+        // Étincelles bleutées et dorées (Alien: Isolation / Romulus)
+        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0xfbbf24, 26, 0.25, 2.2);
+        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0x38bdf8, 22, 0.22, 1.9);
+        window.HiveSystems?.vfx?.ring?.(cam.x, 3.8, cam.z, 0x38bdf8, 2.8);
+        window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'CAMÉRA PULVÉRISÉE [ANGLE MORT CRÉÉ]', '#38bdf8', true);
+        appendSensorLog(`[SABOTAGE OPTIQUE] ${cam.name} pulvérisée. Flux vidéo Seegson neutralisé. Angle mort créé.`, 'stealth');
       }
 
-      rendererEngine.addScreenShake?.(0.25, 0.16);
-      showToast(`SABOTAGE : ${cam.name} neutralisée !`);
+      rendererEngine.addScreenShake?.(0.38, 0.25);
+      showToast(`CAMÉRA PULVÉRISÉE : ${cam.name} détruite ! Zone sécurisée.`);
       return true;
     }
 
     // Mission Wave 10 : Déclenchement de destruction environnementale systémique
-    triggerEnvironmentalDestruction(originX, originZ, range = 4.0, method = 'melee') {
+    triggerEnvironmentalDestruction(originX, originZ, range = 5.5, method = 'melee') {
       let hitAny = false;
+      let targetX = null;
+      let targetZ = null;
       // 1. Caméras de sécurité
       (this.securityCameras || []).forEach((cam) => {
         if (!cam.isDestroyed && Math.hypot(cam.x - originX, cam.z - originZ) <= range) {
           this.destroySecurityCamera(cam, window.playerCreature, method);
+          targetX = cam.x;
+          targetZ = cam.z;
           hitAny = true;
         }
       });
-      // 2. Caissons cryogéniques
+      // 2. Postes de surveillance thermique
+      (this.thermalSurveillancePosts || []).forEach((post) => {
+        if (!post.isDestroyed && Math.hypot(post.x - originX, post.z - originZ) <= range) {
+          this.destroyThermalSurveillancePost(post, 60);
+          targetX = post.x;
+          targetZ = post.z;
+          hitAny = true;
+        }
+      });
+      // 3. Caissons cryogéniques
       const closePod = (this.cryoPods || []).find((p) => !p.isBroken && Math.hypot(p.x - originX, p.z - originZ) <= range);
       if (closePod) {
         this.shatterCryoPod(closePod, window.playerCreature);
+        targetX = closePod.x;
+        targetZ = closePod.z;
         hitAny = true;
       }
-      // 3. Canisters de Black Goo Z-01
+      // 4. Canisters de Black Goo Z-01
       const closeGoo = (this.blackGooCanisters || []).find((g) => !g.isBroken && Math.hypot(g.x - originX, g.z - originZ) <= range);
       if (closeGoo) {
         this.shatterBlackGoo(closeGoo, window.playerCreature);
+        targetX = closeGoo.x;
+        targetZ = closeGoo.z;
         hitAny = true;
       }
-      // 4. Barils de Napalm USCM
+      // 5. Barils de Napalm USCM
       const closeNapalm = (this.napalmBarrels || []).find((b) => !b.isDetonated && Math.hypot(b.x - originX, b.z - originZ) <= range);
       if (closeNapalm) {
         this.detonateNapalmBarrel(closeNapalm, window.playerCreature);
+        targetX = closeNapalm.x;
+        targetZ = closeNapalm.z;
         hitAny = true;
       }
-      // 5. Portes hydrauliques scellées
+      // 6. Portes hydrauliques scellées
       const closeDoor = (this.sealedHydraulicDoors || []).find((d) => !d.isPried && Math.hypot(d.x - originX, d.z - originZ) <= range);
       if (closeDoor) {
         this.pryHydraulicDoor(closeDoor, window.playerCreature);
+        targetX = closeDoor.x;
+        targetZ = closeDoor.z;
         hitAny = true;
       }
-      // 6. Vents de vapeur
+      // 7. Vents de vapeur
       const closeVent = (this.steamVents || []).find((v) => !v.isRuptured && Math.hypot(v.x - originX, v.z - originZ) <= range);
       if (closeVent) {
         this.ruptureSteamVent(closeVent, window.playerCreature);
+        targetX = closeVent.x;
+        targetZ = closeVent.z;
         hitAny = true;
+      }
+      // 8. Réservoirs d'azote liquide LN2
+      const closeNitrogen = (this.nitrogenTanks || []).find((nt) => !nt.isRuptured && Math.hypot(nt.x - originX, nt.z - originZ) <= range);
+      if (closeNitrogen) {
+        this.shatterNitrogenTank(closeNitrogen, window.playerCreature);
+        targetX = closeNitrogen.x;
+        targetZ = closeNitrogen.z;
+        hitAny = true;
+      }
+      if (hitAny && targetX !== null && targetZ !== null && window.playerCreature?.mesh) {
+        window.playerCreature.mesh.rotation.y = Math.atan2(targetX - originX, targetZ - originZ);
       }
       return hitAny;
     }
@@ -18197,11 +18234,13 @@
       terminal.cooldown = 15.0;
       audioManager.playTerminalKeystroke?.(terminal.x, terminal.z);
       audioManager.playMuthurBootKeyboard?.(terminal.x, terminal.z);
-      rendererEngine.addScreenShake?.(0.2, 0.15);
-      window.HiveSystems?.vfx?.burst?.(terminal.x, 1.8, terminal.z, 0x22c55e, 22, 0.2, 1.6);
-      window.HiveSystems?.vfx?.floatingText?.(terminal.x, 2.5, terminal.z, 'OVERRIDE M.U.T.H.U.R. 6000 !', '#22c55e', true);
+      rendererEngine.addScreenShake?.(0.32, 0.22);
+      // Flash vert CRT volumétrique (ondes phosphorescentes P31 et particules cathodiques)
+      window.HiveSystems?.vfx?.ring?.(terminal.x, 1.8, terminal.z, 0x39ff14, 9.0);
+      window.HiveSystems?.vfx?.burst?.(terminal.x, 1.8, terminal.z, 0x39ff14, 38, 0.25, 2.8);
+      window.HiveSystems?.vfx?.floatingText?.(terminal.x, 3.4, terminal.z, 'OVERRIDE M.U.T.H.U.R. ACCEPTÉ [DIRECTIVE 937]', '#39ff14', true);
       showToast(`M.U.T.H.U.R. 6000 ACCÉDÉE : Faux ordre d'évacuation diffusé ! Équipes KAPPA désorientées !`);
-      appendSensorLog(`[M.U.T.H.U.R. 6000] Override manuel IA centrale. Fausse brèche coque déclarée. Conduits ventilés.`, 'alert');
+      appendSensorLog(`[M.U.T.H.U.R. 6000] Override manuel IA centrale accepté [DIRECTIVE 937]. Fausse brèche coque déclarée. Conduits ventilés.`, 'alert');
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {
         if (!h.isIncapacitated && !h.isCocooned) {
@@ -36551,6 +36590,19 @@
           if (target) playerCreature.executeCrabClawPincerCrush(target);
           else showToast('Aucune cible à portée de broyage aux pinces (5.5m).');
         } else {
+          // Mission Wave 10 : Ciblage des caméras et props avec la frappe [2] même hors de portée d'un humain
+          const { human: target, distance } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated);
+          if (!target || distance > 5.5) {
+            const envHit = stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 5.5, 'claw');
+            if (envHit) {
+              playerCreature.triggerAttack('melee');
+              audioManager.playBoneCrunch?.();
+              showToast('FRAPPE DE GRIFFES [2] : Cible environnementale ou caméra neutralisée !');
+              this.updateCooldownBadges();
+              this.updateRoyalButton();
+              return;
+            }
+          }
           this.executeInnerJaw();
         }
       }
@@ -36568,6 +36620,21 @@
         } else if (playerCreature.adultCaste === 'alpha') {
           playerCreature.executeAlphaPsychicCommand();
         } else {
+          // Mission Wave 10 : Ciblage des caméras et props avec la queue [3] même hors de portée d'un humain
+          if (!target) {
+            const envHit = stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 6.5, 'tail');
+            if (envHit) {
+              if (this.canUseAbility('tail', 650)) {
+                playerCreature.triggerAttack('tail');
+                audioManager.playTailWhip?.(playerCreature.x, playerCreature.z);
+                audioManager.playBoneCrunch?.();
+                showToast('ATTAQUE CAUDALE [3] : Élément environnemental ou caméra détruite !');
+                this.updateCooldownBadges();
+                this.updateRoyalButton();
+              }
+              return;
+            }
+          }
           this.executeTailImpale();
         }
       }
@@ -36697,10 +36764,11 @@
       if (!this.canUseAbility('claw', 380)) return;
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 6.5) {
-        const envHit = stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 3.8, 'melee');
+        const envHit = stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 5.5, 'claw');
         if (envHit) {
           playerCreature.triggerAttack('melee');
           audioManager.playBoneCrunch?.();
+          showToast('FRAPPE DE GRIFFES : Caméra ou élément saboté !');
           this.updateCooldownBadges();
           this.updateRoyalButton();
           return;
@@ -36732,7 +36800,7 @@
       window.HiveSystems?.vfx?.burst(target.x, target.z, 0xef4444, 12, 0.08, 1.2);
       this.log(`[GRIFFES] Lacération sur ${target.name} — ${Math.max(0, target.hp)} PV.`);
 
-      stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 3.8, 'melee');
+      stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 5.5, 'claw');
 
       this.updateCooldownBadges();
       this.updateRoyalButton();
@@ -36742,8 +36810,17 @@
       const profile = playerCreature.getAdultProfile();
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 8.5) {
-        showToast(target ? `Cible trop éloignée (${Math.round(distance)}m) — Approchez-vous [1: Embuscade].` : 'Aucune cible vivante en vue.');
-        this.log('[MÂCHOIRE] Cible hors de portée.');
+        const envHit = stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 5.5, 'melee');
+        if (envHit) {
+          playerCreature.triggerAttack('melee');
+          audioManager.playBoneCrunch?.();
+          showToast('FRAPPE EN MÊLÉE [2] : Caméra ou installation détruite !');
+          this.updateCooldownBadges();
+          this.updateRoyalButton();
+          return;
+        }
+        showToast(target ? `Cible trop éloignée (${Math.round(distance)}m) — Approchez-vous [1: Embuscade].` : 'Aucune cible vivante ou caméra à portée.');
+        this.log('[MÂCHOIRE/GRIFFES] Cible hors de portée.');
         return;
       }
       if (!stationMap.hasLineOfSight(playerCreature.x, playerCreature.z, target.x, target.z)) {
@@ -36818,17 +36895,17 @@
       const { human: target, distance } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated);
       if (!target || distance > 10.5) {
         if (!this.canUseAbility('tail', 650)) return;
-        const envHit = stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 5.5, 'tail');
+        const envHit = stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 6.5, 'tail');
         if (envHit) {
           playerCreature.triggerAttack('tail');
           audioManager.playTailWhip?.(playerCreature.x, playerCreature.z);
           audioManager.playBoneCrunch?.();
-          showToast('EMPALEMENT CAUDAL : Éléments environnementaux sabotés !');
+          showToast('EMPALEMENT CAUDAL [3] : Éléments environnementaux sabotés !');
           this.updateCooldownBadges();
           this.updateRoyalButton();
           return;
         }
-        showToast(target ? `Cible hors de portée (${Math.round(distance)}m).` : 'Aucune cible vivante.');
+        showToast(target ? `Cible hors de portée (${Math.round(distance)}m).` : 'Aucune cible vivante ou caméra à portée.');
         this.log('[QUEUE] Cible hors de portée.');
         return;
       }

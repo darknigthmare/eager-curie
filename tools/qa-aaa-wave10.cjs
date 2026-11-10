@@ -46,9 +46,9 @@ assert(gameJs.includes('destroySecurityCamera(c, null, \'hack\')'), 'Appel destr
 console.log('PASS: M.U.T.H.U.R. 6000 et terminaux Seegson validés avec écrans CRT réactifs et bips mécaniques');
 
 // 6. Système unifié de destruction environnementale systémique
-assert(gameJs.includes('triggerEnvironmentalDestruction(originX, originZ, range = 4.0, method = \'melee\')'), 'triggerEnvironmentalDestruction manquant dans StationMap');
-assert(gameJs.includes('stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 3.8, \'melee\')'), 'Déclenchement environnemental manquant dans executeClawSwipe');
-assert(gameJs.includes('stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 5.5, \'tail\')'), 'Déclenchement environnemental manquant dans executeTailImpale');
+assert(gameJs.includes('triggerEnvironmentalDestruction(originX, originZ, range = 5.5, method = \'melee\')'), 'triggerEnvironmentalDestruction manquant dans StationMap');
+assert(gameJs.includes('stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 5.5, \'claw\')'), 'Déclenchement environnemental manquant dans executeClawSwipe');
+assert(gameJs.includes('stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 6.5, \'tail\')'), 'Déclenchement environnemental manquant dans executeTailImpale');
 assert(gameJs.includes('stationMap.destroySecurityCamera(cam, this, \'acid\')'), 'Destruction de caméra par jet d\'acide manquante dans executeAcidSpit');
 console.log('PASS: Système unifié triggerEnvironmentalDestruction validé pour griffes, queue et crachat d\'acide');
 

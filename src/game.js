@@ -1898,30 +1898,172 @@
       osc.stop(now + 0.9);
     }
 
-    // Chantier 42 : Souffle d'aspiration du vide spatial (Vacuum Whoosh)
+    // Mission Wave 11 : Souffle d'aspiration violent du vide spatial & chute spectrale vers le silence assourdi (Alien 1979 / Romulus)
     playVacuumWhoosh(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
-      const now = this.ctx.currentTime;
-      const bufferSize = this.ctx.sampleRate * 0.8;
-      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const duration = 1.35;
+      const bufferSize = Math.floor(ctx.sampleRate * duration);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.4));
+        const env = Math.exp(-i / (ctx.sampleRate * 0.45));
+        data[i] = (Math.random() * 2 - 1) * env;
       }
-      const noise = this.ctx.createBufferSource();
+      const noise = ctx.createBufferSource();
       noise.buffer = buffer;
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(800, now);
-      filter.frequency.exponentialRampToValueAtTime(150, now + 0.8);
-      const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.75, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
-      noise.connect(filter);
-      filter.connect(gain);
-      this.connect(gain, x, z, 85);
+
+      // 1. Sifflement violent d'air aspiré sous pression (venturi whistle 3400Hz -> 750Hz -> 80Hz)
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(3400, now);
+      bpf.frequency.exponentialRampToValueAtTime(750, now + 0.35);
+      bpf.frequency.exponentialRampToValueAtTime(80, now + duration);
+      bpf.Q.setValueAtTime(4.2, now);
+      bpf.Q.linearRampToValueAtTime(1.2, now + 0.6);
+
+      // 2. Chute spectrale passe-bas vers le silence assourdi du vide spatial (2600Hz -> 55Hz)
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.setValueAtTime(2600, now);
+      lpf.frequency.exponentialRampToValueAtTime(55, now + 0.95);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.9, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      noise.connect(bpf);
+      bpf.connect(lpf);
+      lpf.connect(gain);
+      this.connect(gain, x, z, 90);
       noise.start(now);
+      noise.stop(now + duration);
+    }
+
+    // Mission Wave 11 : Cliquetis métallique sourd d'ancrage magnétique sur plancher d'acier (Alien: Isolation / Aliens)
+    playMagneticBootClank(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // 1. Impulsion électromagnétique de verrouillage solénoïde (clic métallique aigu 2100Hz -> 1250Hz)
+      const oscLatch = ctx.createOscillator();
+      const gainLatch = ctx.createGain();
+      oscLatch.type = 'triangle';
+      oscLatch.frequency.setValueAtTime(2100, now);
+      oscLatch.frequency.exponentialRampToValueAtTime(1250, now + 0.022);
+      gainLatch.gain.setValueAtTime(0.42, now);
+      gainLatch.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+      oscLatch.connect(gainLatch);
+      this.connect(gainLatch, x, z, 35);
+      oscLatch.start(now);
+      oscLatch.stop(now + 0.025);
+
+      // 2. Impact lourd de semelle d'acier sur caillebotis (sub-bass thud 95Hz -> 40Hz)
+      const oscThud = ctx.createOscillator();
+      const gainThud = ctx.createGain();
+      oscThud.type = 'sine';
+      oscThud.frequency.setValueAtTime(95, now + 0.005);
+      oscThud.frequency.exponentialRampToValueAtTime(40, now + 0.09);
+      gainThud.gain.setValueAtTime(0.7, now + 0.005);
+      gainThud.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      oscThud.connect(gainThud);
+      this.connect(gainThud, x, z, 40);
+      oscThud.start(now + 0.005);
+      oscThud.stop(now + 0.1);
+
+      // 3. Résonance métallique du plancher (bruit filtré passe-bande acier 840Hz)
+      const bufferSize = Math.floor(ctx.sampleRate * 0.12);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.028));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(840, now);
+      bpf.Q.setValueAtTime(6.5, now);
+      const gainNoise = ctx.createGain();
+      gainNoise.gain.setValueAtTime(0.55, now);
+      gainNoise.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      noise.connect(bpf);
+      bpf.connect(gainNoise);
+      this.connect(gainNoise, x, z, 38);
+      noise.start(now);
+      noise.stop(now + 0.12);
+    }
+
+    // Mission Wave 11 : Explosion sourde de rupture de joint atmosphérique sous différentiel de pression (Alien: Romulus / Nostromo)
+    playAirlockOuterSealRupture(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // 1. Détonation sourde et onde de choc barométrique (sub-bass boom 65Hz -> 26Hz)
+      const oscBoom = ctx.createOscillator();
+      const gainBoom = ctx.createGain();
+      oscBoom.type = 'sine';
+      oscBoom.frequency.setValueAtTime(65, now);
+      oscBoom.frequency.exponentialRampToValueAtTime(26, now + 0.55);
+      gainBoom.gain.setValueAtTime(1.0, now);
+      gainBoom.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+      oscBoom.connect(gainBoom);
+      this.connect(gainBoom, x, z, 120);
+      oscBoom.start(now);
+      oscBoom.stop(now + 0.65);
+
+      // 2. Fracas mécanique de cisaillement des verrous et déchirure du joint élastomère (1950Hz -> 240Hz)
+      const crackDur = 0.18;
+      const crackBufSize = Math.floor(ctx.sampleRate * crackDur);
+      const crackBuf = ctx.createBuffer(1, crackBufSize, ctx.sampleRate);
+      const crackData = crackBuf.getChannelData(0);
+      for (let i = 0; i < crackBufSize; i++) {
+        crackData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.035));
+      }
+      const crackSource = ctx.createBufferSource();
+      crackSource.buffer = crackBuf;
+      const crackFilter = ctx.createBiquadFilter();
+      crackFilter.type = 'bandpass';
+      crackFilter.frequency.setValueAtTime(1950, now);
+      crackFilter.frequency.exponentialRampToValueAtTime(240, now + crackDur);
+      crackFilter.Q.setValueAtTime(3.5, now);
+      const crackGain = ctx.createGain();
+      crackGain.gain.setValueAtTime(0.85, now);
+      crackGain.gain.exponentialRampToValueAtTime(0.001, now + crackDur);
+      crackSource.connect(crackFilter);
+      crackFilter.connect(crackGain);
+      this.connect(crackGain, x, z, 110);
+      crackSource.start(now);
+      crackSource.stop(now + crackDur);
+
+      // 3. Souffle d'échappement initial du gaz atmosphérique haute pression (1400Hz -> 120Hz)
+      const gasDur = 0.85;
+      const gasBufSize = Math.floor(ctx.sampleRate * gasDur);
+      const gasBuf = ctx.createBuffer(1, gasBufSize, ctx.sampleRate);
+      const gasData = gasBuf.getChannelData(0);
+      for (let i = 0; i < gasBufSize; i++) {
+        gasData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.28));
+      }
+      const gasSource = ctx.createBufferSource();
+      gasSource.buffer = gasBuf;
+      const gasFilter = ctx.createBiquadFilter();
+      gasFilter.type = 'lowpass';
+      gasFilter.frequency.setValueAtTime(1400, now);
+      gasFilter.frequency.exponentialRampToValueAtTime(120, now + gasDur);
+      const gasGain = ctx.createGain();
+      gasGain.gain.setValueAtTime(0.75, now);
+      gasGain.gain.exponentialRampToValueAtTime(0.001, now + gasDur);
+      gasSource.connect(gasFilter);
+      gasFilter.connect(gasGain);
+      this.connect(gasGain, x, z, 100);
+      gasSource.start(now);
+      gasSource.stop(now + gasDur);
     }
 
     // Chantier 43 : Jet de vapeur chimique de décontamination (Alien 3 / Isolation)
@@ -8924,6 +9066,93 @@
       osc2.start(tRelease);
       osc2.stop(tRelease + 0.028);
     }
+
+    // Mission Wave 11 : Ancrage Magnétique Lourd sur Tôle d'Acier (Alien 1979 / Romulus)
+    playMagneticBootClank(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // Résonance métallique basse de sol en acier (140Hz -> 58Hz)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(58, now + 0.14);
+
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+      osc.connect(gain);
+      this.connect(gain, x, z, 50);
+      osc.start(now);
+      osc.stop(now + 0.15);
+
+      // Clic d'impact magnétique haute fréquence (3200Hz)
+      const click = ctx.createOscillator();
+      const clickGain = ctx.createGain();
+      click.type = 'square';
+      click.frequency.setValueAtTime(3200, now);
+      click.frequency.exponentialRampToValueAtTime(950, now + 0.025);
+
+      clickGain.gain.setValueAtTime(0.25, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
+
+      click.connect(clickGain);
+      this.connect(clickGain, x, z, 45);
+      click.start(now);
+      click.stop(now + 0.03);
+    }
+
+    // Mission Wave 11 : Rupture Explosive du Joint d'Étanchéité Sous Vide (Alien 1979 / Romulus)
+    playAirlockOuterSealRupture(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // 1. Détonation sourde de surpression
+      const boom = ctx.createOscillator();
+      const boomGain = ctx.createGain();
+      boom.type = 'sine';
+      boom.frequency.setValueAtTime(95, now);
+      boom.frequency.exponentialRampToValueAtTime(32, now + 0.35);
+
+      boomGain.gain.setValueAtTime(0.7, now);
+      boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+      boom.connect(boomGain);
+      this.connect(boomGain, x, z, 80);
+      boom.start(now);
+      boom.stop(now + 0.38);
+
+      // 2. Échappement gazeux violent à haute vitesse
+      const bufferSize = Math.floor(ctx.sampleRate * 0.45);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.12));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(1800, now);
+      bpf.frequency.exponentialRampToValueAtTime(320, now + 0.42);
+      bpf.Q.setValueAtTime(2.8, now);
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.55, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+      noise.connect(bpf);
+      bpf.connect(noiseGain);
+      this.connect(noiseGain, x, z, 75);
+      noise.start(now);
+      noise.stop(now + 0.45);
+    }
   }
 
   const audioManager = new AudioManager();
@@ -11086,7 +11315,8 @@
         { id: 'door_cryo', name: 'Porte étanche Cryo-Stase', x: -18, z: -25, width: 5.6, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
         { id: 'door_armory', name: 'Blindage Armurerie KAPPA', x: 18, z: -25, width: 5.6, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
         { id: 'door_reactor', name: 'Écluse Réacteur', x: -18, z: 25, width: 5.6, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
-        { id: 'door_nursery', name: 'Porte Hangar Sud-Est', x: 18, z: 25, width: 5.6, height: 8, depth: 1.6, isWelded: false, weldHp: 100 }
+        { id: 'door_nursery', name: 'Porte Hangar Sud-Est', x: 18, z: 25, width: 5.6, height: 8, depth: 1.6, isWelded: false, weldHp: 100 },
+        { id: 'door_airlock_est', name: 'Cloison Étanche Sas EVA (Deck Est)', x: 56, z: 0, width: 2.0, height: 8, depth: 6.4, isWelded: false, weldHp: 100 }
       ];
       this.blastDoors.forEach((door) => {
         const doorMat = new THREE.MeshStandardMaterial({
@@ -16511,18 +16741,36 @@
       appendSensorLog(`[HACK] Protocoles de sécurité Seegson bypassés. Caméras hors service.`, 'alert');
     }
 
-    // Chantier 42 : Dépressurisation d'Urgence du Sas (Alien 1979 / Romulus)
+    // Mission Wave 11 : Dépressurisation d'Urgence du Sas & Rupture de Joint Atmosphérique (Alien 1979 / Romulus)
     triggerDepressurizationAirlock() {
       if (!this.depressurizationAirlock) return;
-      this.depressurizationAirlock.isOpen = true;
-      this.depressurizationAirlock.activeTimer = 10.0;
-      this.depressurizationAirlock.sirenTimer = 0;
-      audioManager.playDecompressionSiren?.(this.depressurizationAirlock.x, this.depressurizationAirlock.z);
-      audioManager.playVacuumWhoosh?.(this.depressurizationAirlock.x, this.depressurizationAirlock.z);
-      rendererEngine.addScreenShake?.(0.38, 0.3);
-      window.HiveSystems?.vfx?.burst?.(this.depressurizationAirlock.x, this.depressurizationAirlock.z, 0x0284c7, 35, 0.3, 2.5);
-      showToast("DÉPRESSURISATION D'URGENCE DU SAS [Y] : Décompression brutale vers le vide spatial !");
-      appendSensorLog("[SAS DECOMPRESSION] Aspiration sous vide en cours. Ancrez-vous aux caillebotis !", "alert");
+      const airlock = this.depressurizationAirlock;
+      airlock.isOpen = true;
+      airlock.activeTimer = 10.0;
+      airlock.sirenTimer = 0;
+
+      // 1. Audio procédural diégétique : Rupture du joint extérieur atmosphérique & sifflement violent vers le vide
+      audioManager.playAirlockOuterSealRupture?.(airlock.x, airlock.z);
+      audioManager.playVacuumWhoosh?.(airlock.x, airlock.z);
+      audioManager.playDecompressionSiren?.(airlock.x, airlock.z);
+
+      // 2. Secousse d'écran concussive sous différentiel de pression
+      rendererEngine.addScreenShake?.(0.65, 0.45);
+
+      // 3. Nuage de condensation sous décompression brutale (expansion adiabatique instantanée)
+      window.HiveSystems?.vfx?.ring?.(airlock.x, airlock.z, 0xf8fafc, 16.0);
+      window.HiveSystems?.vfx?.ring?.(airlock.x, airlock.z, 0xbae6fd, 24.0);
+      window.HiveSystems?.vfx?.burst?.(airlock.x, 1.8, airlock.z, 0xffffff, 48, 0.45, 3.2);
+      window.HiveSystems?.vfx?.burst?.(airlock.x, 1.2, airlock.z, 0xe0f2fe, 36, 0.35, 2.6);
+      window.HiveSystems?.vfx?.burst?.(airlock.x - 6, 1.4, airlock.z - 4, 0xf1f5f9, 28, 0.3, 2.2);
+
+      // 4. Traînées blanches d'air et vortex vers l'extérieur du sas
+      window.HiveSystems?.vfx?.airlockVortex?.(airlock.x - 18, airlock.z - 14, airlock.x, airlock.z, 30);
+      window.HiveSystems?.vfx?.airlockVortex?.(airlock.x - 12, airlock.z + 8, airlock.x, airlock.z, 26);
+      window.HiveSystems?.vfx?.floatingText?.(airlock.x, 3.6, airlock.z, 'DÉCOMPRESSION EXPLOSIVE DU SAS !', '#38bdf8', true);
+
+      showToast("DÉPRESSURISATION D'URGENCE DU SAS [Y] : Rupture du joint atmosphérique ! Décompression brutale vers le vide spatial !");
+      appendSensorLog("[SAS ATMO-BREACH] Rupture du joint extérieur sous différentiel de pression. Nuage de condensation et dépression critique.", "alert");
     }
 
     updateDepressurizationAirlock(safeDelta) {
@@ -16534,12 +16782,15 @@
         airlock.sirenTimer = 1.8;
         audioManager.playDecompressionSiren?.(airlock.x, airlock.z);
         audioManager.playVacuumWhoosh?.(airlock.x, airlock.z);
-        rendererEngine.addScreenShake?.(0.18, 0.12);
-        window.HiveSystems?.vfx?.burst?.(airlock.x, airlock.z, 0x38bdf8, 18, 0.15, 1.8);
-        window.HiveSystems?.vfx?.airlockVortex?.(airlock.x - 14, airlock.z - 12, airlock.x, airlock.z, 20);
+        rendererEngine.addScreenShake?.(0.24, 0.16);
+        // Traînées blanches d'air et condensation continue vers l'extérieur du sas
+        window.HiveSystems?.vfx?.burst?.(airlock.x, 1.5, airlock.z, 0xffffff, 22, 0.28, 2.2);
+        window.HiveSystems?.vfx?.burst?.(airlock.x, 1.0, airlock.z, 0xbae6fd, 18, 0.2, 1.8);
+        window.HiveSystems?.vfx?.airlockVortex?.(airlock.x - 16, airlock.z - 12, airlock.x, airlock.z, 26);
+        window.HiveSystems?.vfx?.airlockVortex?.(airlock.x - 10, airlock.z + 8, airlock.x, airlock.z, 22);
       }
 
-      // Aspiration physique de toutes les entités dans le secteur Sud-Est vers le sas
+      // Forces vectorielles de succion physiques vers le sas
       const sectorEntities = [playerCreature, ...(window.gameInstance?.humans || [])];
       sectorEntities.forEach((ent) => {
         if (!ent || ent.isIncapacitated || ent.isCocooned || ent.isEscaped) return;
@@ -16547,31 +16798,107 @@
           const dist = Math.hypot(airlock.x - ent.x, airlock.z - ent.z);
           const dirX = (airlock.x - ent.x) / (dist || 1);
           const dirZ = (airlock.z - ent.z) / (dist || 1);
+          const suctionMag = Math.min(22.0, Math.max(7.5, (32.0 - dist) * 1.15));
 
           if (ent === playerCreature) {
             // Chantier 119 : Ancrage des griffes au caillebotis (résistance à la décompression du vide)
             const isAnchored = playerCreature.isClawAnchored || playerCreature.isCeilingProwling || playerCreature.isProwling || playerCreature.isWallMimic;
             if (!isAnchored) {
-              playerCreature.x += dirX * 6.5 * safeDelta;
-              playerCreature.z += dirZ * 6.5 * safeDelta;
-              if (dist <= 3.0) {
+              playerCreature.x += dirX * 7.5 * safeDelta;
+              playerCreature.z += dirZ * 7.5 * safeDelta;
+              if (dist <= 3.2) {
                 playerCreature.takeDamage?.(25 * safeDelta);
                 window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.8, playerCreature.z, 'ASPIRATION DU VIDE (-25) !', '#0284c7', true);
               }
             } else {
               if (Math.random() < 0.25) {
-                window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0xf59e0b, 5, 0.08, 0.6);
+                audioManager.playMagneticBootClank?.(playerCreature.x, playerCreature.z);
+                window.HiveSystems?.vfx?.burst?.(playerCreature.x, 0.1, playerCreature.z, 0xf59e0b, 5, 0.08, 0.6);
               }
             }
           } else {
-            // Humains aspirés vers le sas
-            ent.x += dirX * 13.5 * safeDelta;
-            ent.z += dirZ * 13.5 * safeDelta;
-            ent.stress = 100;
-            if (dist <= 2.2) {
-              ent.takeDamage?.(120);
-              window.HiveSystems?.vfx?.burst?.(ent.x, ent.z, 0xef4444, 25, 0.2, 1.8);
-              window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.5, ent.z, 'ÉJECTÉ DANS L\'ESPACE (VIDE 1:1) !', '#38bdf8', true);
+            // Humains et Synthétiques
+            const isSynth = ent.isSynthetic || (typeof ent.type === 'string' && (ent.type.includes('synth') || ent.type.includes('android') || ent.type.includes('joe')));
+
+            if (isSynth) {
+              // Synthétiques Seegson & Weyland : verrouillage magnétique des bottes sur plancher d'acier
+              if (!ent.isMagBootLocked) {
+                ent.isMagBootLocked = true;
+                audioManager.playMagneticBootClank?.(ent.x, ent.z);
+                window.HiveSystems?.vfx?.burst?.(ent.x, 0.1, ent.z, 0x38bdf8, 14, 0.1, 0.9);
+                window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.4, ent.z, 'VERROUILLAGE BOTTES MAGNÉTIQUES', '#38bdf8', true);
+              }
+              // Résistance mécanique aux forces de succion
+              ent.x += dirX * (suctionMag * 0.12) * safeDelta;
+              ent.z += dirZ * (suctionMag * 0.12) * safeDelta;
+            } else {
+              // Humains biologiques : forces de succion violentes et gestes de panique pour s'agripper aux rambardes
+              ent.stress = 100;
+              ent.panicTimer = Math.max(ent.panicTimer || 0, 4.0);
+
+              if (ent.clingTimer === undefined) {
+                ent.clingTimer = 3.2 + Math.random() * 1.5;
+              }
+
+              if (ent.clingTimer > 0) {
+                // Tentative désespérée de s'agripper aux rambardes et structures murales
+                ent.clingTimer -= safeDelta;
+                ent.x += dirX * (suctionMag * 0.22) * safeDelta;
+                ent.z += dirZ * (suctionMag * 0.22) * safeDelta;
+
+                // Gestuelle d'agrippement et de panique
+                if (ent.mesh) {
+                  ent.mesh.rotation.y = Math.atan2(-dirX, -dirZ);
+                  ent.mesh.rotation.z = Math.sin(Date.now() * 0.015) * 0.35;
+                  ent.mesh.position.y = 0.18 + Math.abs(Math.sin(Date.now() * 0.012)) * 0.2;
+                }
+
+                // Traînées de buée et d'air blanc filant le long du corps
+                if (Math.random() < 0.25) {
+                  window.HiveSystems?.vfx?.burst?.(ent.x, 1.3, ent.z, 0xffffff, 4, 0.12, 0.8);
+                }
+
+                if (!ent.hasCriedAirlock) {
+                  ent.hasCriedAirlock = true;
+                  const cries = [
+                    'ACCROCHEZ-VOUS À LA RAMBARDE !',
+                    'JE PERDS PRISE ! LE SAS EST OUVERT !',
+                    'DÉPRESSURISATION ! TENEZ BON !'
+                  ];
+                  const cry = cries[Math.floor(Math.random() * cries.length)];
+                  window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.6, ent.z, cry, '#f59e0b', true);
+                  audioManager.playRadioCommsStatic?.(0.8);
+                }
+              } else {
+                // Perte de prise ! Aspiration brutale et culbute vers le vide
+                ent.x += dirX * suctionMag * safeDelta;
+                ent.z += dirZ * suctionMag * safeDelta;
+                if (ent.mesh) {
+                  ent.mesh.rotation.x += 9.0 * safeDelta;
+                  ent.mesh.rotation.z += 6.0 * safeDelta;
+                }
+                if (Math.random() < 0.15) {
+                  window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.8, ent.z, 'PRISE LÂCHÉE ! ASPIRÉ !', '#ef4444', true);
+                }
+
+                // Éjection définitive à travers le sas ouvert vers le vide spatial
+                if (dist <= 2.4) {
+                  ent.hp = 0;
+                  ent.isIncapacitated = true;
+                  ent.isEjectedSpace = true;
+                  ent.isEjectedToSpace = true;
+                  ent.isEscaped = true;
+                  audioManager.playVacuumWhoosh?.(ent.x, ent.z);
+                  window.HiveSystems?.vfx?.burst?.(ent.x, 1.4, ent.z, 0xef4444, 28, 0.22, 2.0);
+                  window.HiveSystems?.vfx?.burst?.(ent.x, 1.4, ent.z, 0x38bdf8, 22, 0.18, 1.6);
+                  window.HiveSystems?.vfx?.floatingText?.(ent.x, 2.8, ent.z, 'ÉJECTÉ DANS L\'ESPACE (VIDE 1:1) !', '#38bdf8', true);
+                  appendSensorLog(`[ÉJECTION ORBITALE] ${ent.name} aspiré hors du sas par le vide spatial.`, 'alert');
+                  if (ent.mesh) {
+                    ent.mesh.position.y = -6.0;
+                    ent.mesh.visible = false;
+                  }
+                }
+              }
             }
           }
         }
@@ -19871,20 +20198,25 @@
     consultMuthurBioScan(consoleProp) {
       if (!consoleProp || consoleProp.isConsulted) return false;
       consoleProp.isConsulted = true;
+      audioManager.playTerminalKeystroke?.(consoleProp.x, consoleProp.z);
       audioManager.playMuthurBioScanHeartbeat?.(consoleProp.x, consoleProp.z);
       rendererEngine.addScreenShake?.(0.2, 0.15);
-      window.HiveSystems?.vfx?.ring?.(consoleProp.x, consoleProp.z, 0x22c55e, 14.0);
+      window.HiveSystems?.vfx?.ring?.(consoleProp.x, consoleProp.z, 0x06b6d4, 14.0);
+      window.HiveSystems?.vfx?.burst?.(consoleProp.x, 1.8, consoleProp.z, 0x06b6d4, 24, 0.2, 1.8);
 
       const humans = window.gameInstance?.humans || [];
       const aliveCount = humans.filter((h) => !h.isIncapacitated && !h.isCocooned).length;
+      const cocoonedCount = humans.filter((h) => h.isCocooned).length;
+      const deadCount = humans.filter((h) => h.isIncapacitated).length;
       const viableCount = humans.filter((h) => h.hostEligibility === 'viable' && !h.usedAsHost).length;
 
       // Bonus de biomasse par décryptage des biosignaux MUTHUR
       if (window.gameInstance?.currentStage?.huntReserve !== undefined) {
         window.gameInstance.currentStage.huntReserve = Math.min(100, window.gameInstance.currentStage.huntReserve + 40);
       }
+      window.HiveSystems?.vfx?.floatingText?.(consoleProp.x, 2.8, consoleProp.z, `BIOSCAN MUTHUR : ${aliveCount} VIVANTS / ${viableCount} HÔTES`, '#06b6d4', true);
       showToast(`BIO-SCAN MUTHUR 6000 : Télémétrie acquise ! ${aliveCount} signaux vitaux détectés, dont ${viableCount} hôtes viables (+40 Réserve de chasse) !`);
-      appendSensorLog(`[MUTHUR 6000] Bioscan télémétrique synchronisé. Cartographie des fréquences cardiaques achevée.`, 'bio');
+      appendSensorLog(`[MUTHUR 6000] Bioscan télémétrique : ${aliveCount} sujets actifs, ${cocoonedCount} en cocon de ruche, ${deadCount} pertes confirmées.`, 'bio');
       return true;
     }
 
@@ -26571,6 +26903,7 @@
       this.isCeilingProwling = false;
       this.draggedHost = null;
       this.isClawAnchored = false;
+      this.isAirlockBraced = false;
       this.isPhotophobicBlinded = false;
       this.transgenicSurgeTimer = 0;
       this.isCryoThermalCloaked = false;
@@ -26588,18 +26921,23 @@
       showToast('SURTENSION TRANSGÉNIQUE ACTIVE : Chute de stress, +40 PV et vitesse décuplée pendant 14s !');
     }
 
-    // Chantier 119 : Ancrage des Griffes Chitiniques au Pont Métallique (Alien: Isolation / Aliens)
+    // Chantier 119 & Wave 11 : Ancrage des Griffes Chitiniques au Pont Métallique / Sas (101 kPa)
     toggleClawDeckAnchor(forceState = null) {
       this.isClawAnchored = forceState !== null ? !!forceState : !this.isClawAnchored;
+      this.isAirlockBraced = this.isClawAnchored;
       if (this.isClawAnchored) {
         audioManager.playMetalClawSparks?.(this.x, this.z) || audioManager.playMetalImpact?.(this.x, this.z);
         window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf59e0b, 16, 0.12, 1.0);
-        window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'GRIFFES ANCRÉES AU PONT (RÉSISTE AU VIDE)', '#f59e0b', true);
-        showToast("ANCRAGE DE GRIFFES [Pont Métallique] : Immunité totale à l'aspiration et au souffle de décompression !");
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'GRIFFES ANCRÉES (101 kPa)', '#f59e0b', true);
+        showToast("ANCRAGE BIOMÉCANIQUE [Pont Métallique] : Immunité totale au différentiel de pression de 101 kPa !");
       } else {
         window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'DÉVERROUILLAGE DES GRIFFES', '#94a3b8', false);
       }
       return this.isClawAnchored;
+    }
+
+    braceAgainstAirlock(forceState = null) {
+      return this.toggleClawDeckAnchor(forceState);
     }
 
     toggleCeilingProwl() {
@@ -34298,6 +34636,10 @@
         : `<strong>Prédateur ${adultLabel} :</strong><br><br>• ${profile.huntAction} consomme ${profile.huntCost} points de chasse.<br>• [Q] Escalade plafond / [E] Kidnapping vertical ou Éventration sternale.<br>• [C] Conduits d'aération.<br>• [Z] Posture basse / Camouflage mural de résine.<br>• [X] Crachat acide balistique / Détonation thermique Boiler.<br>• [R] Étreinte broyeuse Newborn / Charge sismique Raven.<br>• [T] Empalement ou Décapitation nette au dard de queue.<br>• [ESPACE] Griffes ou Pièges (Sas Décon, Grue Seegson, Réacteur, MUTHUR).`;
       const activeCaste = playerCreature.adultCaste || playerCreature.caste || 'drone';
       const actionsContainer = document.getElementById('action-buttons-container');
+      const iconPredation = '<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><path d="M4 16 L10 4 L16 16 M6 13 L14 13" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="9" r="1.5" fill="currentColor"/></svg>';
+      const iconStealth = '<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><path d="M2 10 C5 5 15 5 18 10 C15 15 5 15 2 10 Z" stroke-width="1.6"/><circle cx="10" cy="10" r="3" stroke-width="1.4"/></svg>';
+      const iconEnvironment = '<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="10" cy="10" r="4" stroke-width="1.6"/><path d="M10 2 L10 5 M10 15 L10 18 M2 10 L5 10 M15 10 L18 10" stroke-width="1.6"/></svg>';
+      const iconAll = '<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><rect x="3" y="3" width="6" height="6" stroke-width="1.5"/><rect x="11" y="3" width="6" height="6" stroke-width="1.5"/><rect x="3" y="11" width="6" height="6" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" stroke-width="1.5"/></svg>';
       actionsContainer.innerHTML = `
         <div class="caste-selector-box" style="margin-bottom: 8px; padding: 6px; background: rgba(15,23,42,0.85); border: 1px solid #38bdf8; border-radius: 4px;">
           <label for="select-adult-caste" style="font-size: 10px; color: #38bdf8; display: block; margin-bottom: 4px; letter-spacing: 1px;">MORPHOLOGIE XÉNOMORPHE (QA AUDIT #1) :</label>
@@ -34375,10 +34717,10 @@
           }
         </style>
         <div class="hud-action-tabs" style="display: flex; gap: 4px; margin-bottom: 8px;">
-          <button type="button" class="hud-tab-btn" data-tab="all" style="flex: 1; font-size: 10px; padding: 4px; background: #1e293b; border: 1px solid #38bdf8; color: #e2e8f0; cursor: pointer; border-radius: 3px;">[TOUT]</button>
-          <button type="button" class="hud-tab-btn" data-tab="predation" style="flex: 1; font-size: 10px; padding: 4px; background: #020617; border: 1px solid #334155; color: #ef4444; cursor: pointer; border-radius: 3px;">[PRÉDATION]</button>
-          <button type="button" class="hud-tab-btn" data-tab="environment" style="flex: 1; font-size: 10px; padding: 4px; background: #020617; border: 1px solid #334155; color: #06b6d4; cursor: pointer; border-radius: 3px;">[ENVIRONNEMENT]</button>
-          <button type="button" class="hud-tab-btn" data-tab="stealth" style="flex: 1; font-size: 10px; padding: 4px; background: #020617; border: 1px solid #334155; color: #22c55e; cursor: pointer; border-radius: 3px;">[TACTIQUE & STEALTH]</button>
+          <button type="button" class="hud-tab-btn" data-tab="all" style="flex: 1; font-size: 10px; padding: 4px; background: #1e293b; border: 1px solid #38bdf8; color: #e2e8f0; cursor: pointer; border-radius: 3px;">${iconAll} [TOUT]</button>
+          <button type="button" class="hud-tab-btn" data-tab="predation" style="flex: 1; font-size: 10px; padding: 4px; background: #020617; border: 1px solid #334155; color: #ef4444; cursor: pointer; border-radius: 3px;">${iconPredation} [PRÉDATION]</button>
+          <button type="button" class="hud-tab-btn" data-tab="environment" style="flex: 1; font-size: 10px; padding: 4px; background: #020617; border: 1px solid #334155; color: #06b6d4; cursor: pointer; border-radius: 3px;">${iconEnvironment} [ENVIRONNEMENT]</button>
+          <button type="button" class="hud-tab-btn" data-tab="stealth" style="flex: 1; font-size: 10px; padding: 4px; background: #020617; border: 1px solid #334155; color: #22c55e; cursor: pointer; border-radius: 3px;">${iconStealth} [TACTIQUE & STEALTH]</button>
         </div>
         <button type="button" id="btn-drone-ambush" class="act-btn" data-tab-cat="predation"><span class="key-badge">1/E</span>${profile.huntAction}</button>
         <button type="button" id="btn-inner-jaw" class="act-btn" data-tab-cat="predation"><span class="key-badge">2/R</span>${actionLabels.jaw}</button>
@@ -34468,6 +34810,20 @@
         <button type="button" id="btn-trigger-halon" class="act-btn" data-tab-cat="environment" style="border-color: #ef4444; background: rgba(239,68,68,0.22);"><span class="key-badge">K</span>PURGE EXTINCTEUR GAZ HALON 1301</button>
         <button type="button" id="btn-found-queen-hive" class="act-btn" data-tab-cat="stealth" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
       `;
+
+      // Injection dynamique des icônes vectorielles .btn-sq-icon sur chaque bouton d'action selon sa catégorie
+      actionsContainer.querySelectorAll('.act-btn').forEach((btn) => {
+        if (!btn.querySelector('.btn-sq-icon')) {
+          const cat = btn.getAttribute('data-tab-cat');
+          const iconHtml = cat === 'predation' ? iconPredation : (cat === 'stealth' ? iconStealth : iconEnvironment);
+          const badge = btn.querySelector('.key-badge');
+          if (badge) {
+            badge.insertAdjacentHTML('afterend', ` ${iconHtml} `);
+          } else {
+            btn.insertAdjacentHTML('afterbegin', `${iconHtml} `);
+          }
+        }
+      });
 
       const selectCaste = document.getElementById('select-adult-caste');
       if (selectCaste) {
@@ -36260,12 +36616,15 @@
     executeAirlockPurge() {
       if (!this.canUseAbility('purge', 9000)) return;
       stationMap.triggerDepressurizationAirlock?.();
+      audioManager.playAirlockOuterSealRupture?.(playerCreature.x, playerCreature.z);
+      audioManager.playVacuumWhoosh?.(playerCreature.x, playerCreature.z);
       audioManager.playDepressurizationRoar?.(playerCreature.x, playerCreature.z);
-      rendererEngine.addScreenShake?.(0.48, 0.4);
+      rendererEngine.addScreenShake?.(0.65, 0.45);
       showToast('DÉPRESSURISATION D\'URGENCE DU SAS [Y] : Onde de souffle explosive sous vide !');
       appendSensorLog('[SAS] Décompression explosive du sas de coursive. Éjection et onde de choc.', 'alert');
-      window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0x06b6d4, 18);
-      window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0x38bdf8, 36, 0.35, 3.2);
+      window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0xf8fafc, 18);
+      window.HiveSystems?.vfx?.burst?.(playerCreature.x, 1.6, playerCreature.z, 0xffffff, 42, 0.45, 3.2);
+      window.HiveSystems?.vfx?.burst?.(playerCreature.x, 1.2, playerCreature.z, 0x38bdf8, 36, 0.35, 2.6);
 
       const humans = window.gameInstance?.humans || [];
       humans.forEach((h) => {

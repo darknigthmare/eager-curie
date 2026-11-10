@@ -1089,6 +1089,35 @@
       </button>
     </div>
 
+    <!-- Decompression & Cabin Pressure Emergency HUD -->
+    <div id="decompression-alert" class="decompression-alert hidden" role="alert" aria-live="assertive">
+      <div class="decompress-stripe-header">
+        <span class="decompress-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor">
+            <path d="M12 2 L22 20 L2 20 Z" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/>
+            <line x1="12" y1="8" x2="12" y2="13" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="17" r="1.2" fill="#f59e0b"/>
+          </svg>
+        </span>
+        <span class="decompress-tag">ALERTE DÉCOMPRESSION // SAS DE SECOURS</span>
+        <span class="decompress-status">BRÈCHE COQUE</span>
+      </div>
+      <div class="decompress-body">
+        <div class="decompress-data-col">
+          <div class="decompress-pressure-row">
+            <span class="decompress-label">PRESSION CABINE :</span>
+            <span id="decompress-pressure-val" class="decompress-val">101.3 kPa</span>
+          </div>
+          <div class="decompress-bar-track">
+            <div id="decompress-pressure-bar" class="decompress-bar-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+        <div class="decompress-gauge-badge">
+          <span class="decompress-subtext">VIDE SPATIAL IMMINENT</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Story transmissions do not steal focus and disappear automatically. -->
     <div id="narrative-banner" class="narrative-banner hidden" role="status" aria-live="polite">
       <div class="narrative-crt-scanline" aria-hidden="true"></div>
@@ -1342,6 +1371,55 @@
             </label>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         M.U.T.H.U.R. 6000 BIOSCAN & DIAGNOSTIC D'ÉQUIPAGE MODAL
+    ========================================================== -->
+    <div id="muthur-bioscan-modal" class="system-overlay hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="bioscan-title">
+      <div class="system-panel bioscan-panel">
+        <header class="system-panel-header">
+          <div>
+            <span class="front-kicker">WEYLAND-YUTANI // DIRECTIVE 937</span>
+            <h2 id="bioscan-title">DIAGNOSTIC BIOSIGNAL ÉQUIPAGE</h2>
+          </div>
+          <button type="button" id="btn-close-bioscan" class="close-system-btn">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <line x1="5" y1="5" x2="15" y2="15" stroke-width="1.8" stroke-linecap="round"/>
+              <line x1="15" y1="5" x2="5" y2="15" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span>FERMER [C]</span>
+          </button>
+        </header>
+
+        <div class="bioscan-summary-bar">
+          <div class="bioscan-stat-pill">
+            <span class="stat-pill-label">ÉQUIPAGE DÉTECTÉ</span>
+            <span id="bioscan-total-count" class="stat-pill-val">7</span>
+          </div>
+          <div class="bioscan-stat-pill living">
+            <span class="stat-pill-label">VIVANTS</span>
+            <span id="bioscan-alive-count" class="stat-pill-val">5</span>
+          </div>
+          <div class="bioscan-stat-pill incubated">
+            <span class="stat-pill-label">INCUBÉS</span>
+            <span id="bioscan-incubated-count" class="stat-pill-val">1</span>
+          </div>
+          <div class="bioscan-stat-pill deceased">
+            <span class="stat-pill-label">DÉCÉDÉS / COCONS</span>
+            <span id="bioscan-deceased-count" class="stat-pill-val">1</span>
+          </div>
+        </div>
+
+        <div id="bioscan-crew-list" class="bioscan-crew-grid" role="list">
+          <!-- Injecté dynamiquement par CampaignUI.prototype.showBioScanDiagnostic -->
+        </div>
+
+        <footer class="bioscan-footer">
+          <span class="bioscan-footer-id">TERMINAL M.U.T.H.U.R. 6000 // INTERFACE RETRO-CRT 2026</span>
+          <span class="bioscan-footer-tag">TOUTES DONNÉES TRANSMISES À WY-HQ ARCHIVES</span>
+        </footer>
       </div>
     </div>
 

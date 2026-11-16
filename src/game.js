@@ -5952,6 +5952,91 @@
       osc.stop(now + 0.38);
     }
 
+    // -------------------------------------------------------------------------
+    // Mission Wave 14 : Boot Chime Diégétique Terminal Apollo OS (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    playApolloBootChime() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // 1. Degauss bobine CRT basse fréquence (55Hz -> 110Hz)
+      const subOsc = ctx.createOscillator();
+      const subGain = ctx.createGain();
+      subOsc.type = 'sine';
+      subOsc.frequency.setValueAtTime(55, now);
+      subOsc.frequency.exponentialRampToValueAtTime(110, now + 0.35);
+      subGain.gain.setValueAtTime(0.3, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      subOsc.connect(subGain);
+      subGain.connect(this.masterGain);
+      subOsc.start(now);
+      subOsc.stop(now + 0.4);
+
+      // 2. Chime Apollo bitonal aigu (880Hz -> 1760Hz)
+      const chimeOsc = ctx.createOscillator();
+      const chimeGain = ctx.createGain();
+      chimeOsc.type = 'sine';
+      chimeOsc.frequency.setValueAtTime(880, now + 0.15);
+      chimeOsc.frequency.setValueAtTime(1760, now + 0.28);
+      chimeGain.gain.setValueAtTime(0.001, now);
+      chimeGain.gain.setValueAtTime(0.25, now + 0.15);
+      chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+      chimeOsc.connect(chimeGain);
+      chimeGain.connect(this.masterGain);
+      chimeOsc.start(now + 0.15);
+      chimeOsc.stop(now + 0.7);
+    }
+
+    // -------------------------------------------------------------------------
+    // Mission Wave 14 : Crépitement Cathodique Transformateur THT & Tube CRT
+    // -------------------------------------------------------------------------
+    playCrtDefragBuzz() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(60, now);
+      osc.frequency.linearRampToValueAtTime(120, now + 0.2);
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(850, now);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(bpf);
+      bpf.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    }
+
+    // -------------------------------------------------------------------------
+    // Mission Wave 14 : Bip Cursor / Clic Rétro Survol Boutons Menu Diégétique
+    // -------------------------------------------------------------------------
+    playMenuHoverBeep() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(2100, now);
+      osc.frequency.exponentialRampToValueAtTime(1600, now + 0.018);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.018);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.018);
+    }
+
     // Chantier 225 : Broyage Écrasant Pinces Chélipèdes Killer Crab Alien (Kenner 1992)
     playCrabPincerCrush(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;

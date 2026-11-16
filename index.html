@@ -28,10 +28,121 @@
     <div id="crt-scanlines" aria-hidden="true"></div>
 
     <!-- =========================================================
+         SPLASH SCREEN INITIAL : FAN GAME BY DARKNIGHTMARE
+    ========================================================== -->
+    <section id="fan-disclaimer-screen" class="front-screen fan-disclaimer-screen" aria-labelledby="fan-disclaimer-title">
+      <div class="crt-overlay-scanlines" aria-hidden="true"></div>
+      <div class="crt-overlay-glow" aria-hidden="true"></div>
+      <div class="front-card fan-disclaimer-card">
+        <div class="fan-terminal-header">
+          <span class="fan-term-badge">W-Y ARCHIVAL RELAY // TERMINAL 07</span>
+          <span class="fan-term-classification">NON-COMMERCIAL TRIBUTE // CANON COMPLIANT</span>
+        </div>
+        <div class="fan-badge-symbol" aria-hidden="true">
+          <svg viewBox="0 0 48 36" class="fan-wy-wings" fill="none" stroke="currentColor">
+            <path d="M4 28 L14 8 L24 28 L20 28 L14 15 L8 28 Z" fill="#22c55e" stroke="none"/>
+            <path d="M18 28 L28 8 L38 28 L34 28 L28 15 L22 28 Z" fill="#22c55e" stroke="none"/>
+            <line x1="2" y1="32" x2="40" y2="32" stroke="#22c55e" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="front-kicker">HOMMAGE INDÉPENDANT // UNIVERS ALIEN & ALIEN: ISOLATION</div>
+        <h1 id="fan-disclaimer-title" class="fan-title">FAN GAME BY <span>DARKNIGHTMARE</span></h1>
+        <div class="fan-notice-box">
+          <p class="fan-legal-notice">
+            <strong>AVIS DE NON-AFFILIATION & MENTION LÉGALE :</strong><br>
+            Ce projet interactif est une création bénévole et passionnée réalisée par <strong>darknigthmare</strong>.<br>
+            Il s'agit d'un <em>Fan Game</em> non commercial rendu en hommage à la franchise cinématographique et vidéoludique <strong>ALIEN</strong>.<br>
+            Il n'est ni affilié, ni sponsorisé, ni approuvé par 20th Century Studios, The Walt Disney Company ou SEGA.<br>
+            Tous les droits, marques déposées et éléments visuels ou sonores originaux appartiennent à leurs ayants droit respectifs.
+          </p>
+          <div class="fan-telemetry-status">
+            <span class="status-pulse"></span>
+            <span>APOLLO OS KERNEL 4.01 PRÊT · STATION CURIE-07 MNEMOSYNE</span>
+          </div>
+        </div>
+        <div class="fan-actions">
+          <button type="button" id="btn-enter-terminal" class="front-primary fan-start-btn">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <rect x="3" y="3" width="14" height="14" rx="2" stroke-width="1.4"/>
+              <polyline points="7,8 10,10 7,12" stroke-width="1.6" stroke-linecap="round"/>
+              <line x1="11" y1="13" x2="14" y2="13" stroke-width="1.6"/>
+            </svg>
+            <span>INITIALISER LE TERMINAL APOLLO [ESPACE / ENTRÉE]</span>
+          </button>
+        </div>
+        <p class="fan-press-key-hint">Cliquez ou appuyez sur une touche pour initialiser la console</p>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         ÉCRAN D'INTRODUCTION DIÉGÉTIQUE AU MAIN MENU : BOOT APOLLO OS
+    ========================================================== -->
+    <section id="apollo-intro-screen" class="front-screen apollo-intro-screen hidden" aria-labelledby="apollo-intro-title" aria-hidden="true">
+      <div class="crt-overlay-scanlines" aria-hidden="true"></div>
+      <div class="crt-overlay-glow" aria-hidden="true"></div>
+      <div class="front-card apollo-intro-card">
+        <div class="apollo-boot-banner">
+          <div class="apollo-title-group">
+            <span class="apollo-sub">WEYLAND-YUTANI CORP · "BUILDING BETTER WORLDS"</span>
+            <h2 id="apollo-intro-title" class="apollo-main-title">APOLLO MAINFRAME // TERMINAL CURIE-07</h2>
+          </div>
+          <div class="apollo-boot-stamp">BUILD 2137-09</div>
+        </div>
+
+        <div class="apollo-crt-terminal" id="apollo-crt-log-stream">
+          <div class="apollo-log-line">>> INITIALIZING APOLLO CENTRAL CORE SYSTEM v4.01...</div>
+          <div class="apollo-log-line">>> VERIFYING MEMORY BLOCKS [OK] - 128 TB SECURE STORAGE</div>
+          <div class="apollo-log-line">>> SYNCHRONIZING SECTOR ORBITS : KG-348 DEEP GRAVITY WELL</div>
+          <div class="apollo-log-line warning">>> ATMOSPHERIC STATUS: HALON 1301 FIRE SUPPRESSION ARMED</div>
+          <div class="apollo-log-line alert">>> WARNING: SPECIAL ORDER 937 EMBEDDED IN ROM:</div>
+          <div class="apollo-log-line quote">   "PRIORITY ONE: INSURE RETURN OF ORGANISM FOR ANALYSIS.</div>
+          <div class="apollo-log-line quote">    ALL OTHER CONSIDERATIONS SECONDARY. CREW EXPENDABLE."</div>
+          <div class="apollo-log-line success">>> BIOMASS CONTAINMENT TELEMETRY: READY</div>
+          <div class="apollo-log-line info">>> SEEGSON WORKING JOE SYNTHETICS: ACTIVE PATROL MODE</div>
+          <div class="apollo-log-line prompt">>> BOOT SEQUENCE COMPLETE. WELCOME OPERATOR.<span class="apollo-cursor">█</span></div>
+        </div>
+
+        <div class="apollo-intro-actions">
+          <button type="button" id="btn-skip-intro" class="front-primary apollo-skip-btn">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <polygon points="5,4 12,10 5,16" fill="currentColor"/>
+              <line x1="14" y1="4" x2="14" y2="16" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <span>ACCÉDER AU TERMINAL DE COMMANDE [ESPACE]</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
          FRONT-END — MENU PRINCIPAL ET PROLOGUE
     ========================================================== -->
     <section id="boot-screen" class="front-screen" aria-labelledby="boot-title">
       <div class="front-card boot-card">
+        <div class="apollo-terminal-header-strip">
+          <div class="apollo-header-left">
+            <svg class="apollo-wy-logo" viewBox="0 0 36 24" fill="none" stroke="currentColor" aria-hidden="true">
+              <path d="M2 20 L10 4 L18 20 L15 20 L10 10 L5 20 Z" fill="#22c55e"/>
+              <path d="M14 20 L22 4 L30 20 L27 20 L22 10 L17 20 Z" fill="#22c55e"/>
+              <line x1="1" y1="22" x2="31" y2="22" stroke="#22c55e" stroke-width="1.5"/>
+            </svg>
+            <div class="apollo-header-meta">
+              <span class="apollo-corp">WEYLAND-YUTANI // RESTRICTED ACCESS</span>
+              <span class="apollo-station">STATION CURIE-07 MNEMOSYNE · APOLLO TERMINAL 4.01</span>
+            </div>
+          </div>
+          <div class="apollo-header-right">
+            <span class="apollo-live-clock" id="apollo-live-clock">STARDATE 2137.11.16 · ONLINE</span>
+            <button type="button" id="btn-replay-intro" class="apollo-replay-btn" title="Rejouer la séquence d'introduction Apollo">
+              <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <path d="M4 10 A6 6 0 1 1 10 16" stroke-width="1.6" stroke-linecap="round"/>
+                <polyline points="2,7 4,10 7,8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>REVOIR INTRO</span>
+            </button>
+          </div>
+        </div>
+
         <div class="front-kicker">ARCHIVE BIOLOGIQUE // LV-X91</div>
         <h1 id="boot-title">HIVE <span>ASCENSION</span></h1>
         <p class="front-subtitle">Une campagne complète, de l’ovomorphe à la conquête de la station MNEMOSYNE.</p>
@@ -631,6 +742,52 @@
             </svg>
             <span>CODEX BIOLOGIQUE</span>
           </button>
+        </div>
+
+        <!-- MONITEUR DIÉGÉTIQUE DE PRÉVISUALISATION TEMPS RÉEL (AAA DIEGETIC SCREEN) -->
+        <div id="menu-diegetic-preview" class="menu-diegetic-preview" aria-live="polite">
+          <div class="diegetic-preview-header">
+            <span class="preview-tag">APOLLO MONITEUR // TÉLÉMÉTRIE TEMPS RÉEL</span>
+            <span class="preview-status-pill">FLUX ACTIF</span>
+          </div>
+          <div class="diegetic-preview-viewport" id="diegetic-preview-viewport">
+            <div class="diegetic-preview-scanlines" aria-hidden="true"></div>
+            <div id="diegetic-preview-art" class="diegetic-preview-art">
+              <!-- Default: Station Curie-07 Mnemosyne High-tech Wireframe / Sector Preview -->
+              <svg viewBox="0 0 400 140" class="preview-svg-render" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="prevGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#022c22" stop-opacity="0.8"/>
+                    <stop offset="100%" stop-color="#020617" stop-opacity="0.95"/>
+                  </linearGradient>
+                </defs>
+                <rect width="400" height="140" fill="url(#prevGrad)"/>
+                <circle cx="200" cy="70" r="55" fill="none" stroke="#22c55e" stroke-width="1" stroke-opacity="0.4" stroke-dasharray="4 2"/>
+                <circle cx="200" cy="70" r="35" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.7"/>
+                <circle cx="200" cy="70" r="16" fill="none" stroke="#10b981" stroke-width="1" stroke-dasharray="2 2"/>
+                <line x1="50" y1="70" x2="350" y2="70" stroke="#22c55e" stroke-width="0.8" stroke-opacity="0.5"/>
+                <line x1="200" y1="10" x2="200" y2="130" stroke="#22c55e" stroke-width="0.8" stroke-opacity="0.5"/>
+                <circle cx="200" cy="70" r="3" fill="#22c55e"/>
+                <text x="215" y="65" fill="#86efac" font-family="'Share Tech Mono', monospace" font-size="9" font-weight="bold">CURIE-07 // MNEMOSYNE</text>
+                <text x="215" y="78" fill="#4ade80" font-family="'Share Tech Mono', monospace" font-size="7.5">SECTEUR CONFINEMENT B-4</text>
+                <text x="215" y="90" fill="#22c55e" font-family="'Share Tech Mono', monospace" font-size="7">ORDRE 937 : ACTIF</text>
+              </svg>
+            </div>
+          </div>
+          <div class="diegetic-preview-meta" id="diegetic-preview-meta">
+            <div class="preview-meta-row">
+              <span class="preview-meta-label">SECTEUR :</span>
+              <span class="preview-meta-val" id="preview-sector-val">STATION ORBITALE CURIE-07</span>
+            </div>
+            <div class="preview-meta-row">
+              <span class="preview-meta-label">BIO-STATUT :</span>
+              <span class="preview-meta-val val-green" id="preview-status-val">SPÉCIMEN XX121 DORMANT</span>
+            </div>
+            <div class="preview-meta-row">
+              <span class="preview-meta-label">CONFINEMENT :</span>
+              <span class="preview-meta-val val-amber" id="preview-containment-val">GAZ HALON 1301 ARMÉ · 20.9% O2</span>
+            </div>
+          </div>
         </div>
         <p id="boot-loading-status" class="front-meta" role="status" aria-live="polite">Préparation de la station…</p>
         <p class="front-meta">Campagne solo tactique · 5 actes · sauvegarde automatique · 3 conclusions</p>

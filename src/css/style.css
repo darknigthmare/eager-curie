@@ -4165,3 +4165,518 @@ select, input[type='range'] { touch-action: manipulation; }
     box-shadow: 0 0 12px rgba(239, 68, 68, 0.6), inset 0 0 6px rgba(239, 68, 68, 0.4);
   }
 }
+
+/* =========================================================
+   WAVE 14 : MENU PRINCIPAL AAA DIÉGÉTIQUE & SPLASH INTRO CRT
+   ========================================================= */
+
+/* 1. ÉCRAN SPLASH : FAN GAME BY DARKNIGHTMARE */
+.fan-disclaimer-screen {
+  z-index: 260 !important;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(34, 197, 94, 0.08), transparent 60%),
+    radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.05), transparent 40%),
+    #020603 !important;
+  backdrop-filter: blur(20px);
+}
+
+.fan-disclaimer-card {
+  width: min(840px, 94vw);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-top: 3px solid #22c55e;
+  border-radius: 8px;
+  background: linear-gradient(160deg, rgba(6, 18, 11, 0.98), rgba(2, 8, 4, 0.99));
+  box-shadow: 0 35px 100px rgba(0, 0, 0, 0.85), 0 0 45px rgba(34, 197, 94, 0.12), inset 0 0 30px rgba(34, 197, 94, 0.04);
+  padding: clamp(24px, 4vw, 44px);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.fan-terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: #86efac;
+  border-bottom: 1px solid rgba(34, 197, 94, 0.25);
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+.fan-term-badge {
+  color: #4ade80;
+}
+
+.fan-term-classification {
+  color: #a7f3d0;
+  opacity: 0.8;
+}
+
+.fan-badge-symbol {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.fan-wy-wings {
+  width: 54px;
+  height: 40px;
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.6));
+}
+
+.fan-title {
+  font-family: var(--font-title);
+  font-size: clamp(24px, 4.2vw, 38px);
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #f0fdf4;
+  text-shadow: 0 0 16px rgba(34, 197, 94, 0.5);
+  margin: 10px 0 20px 0;
+  text-transform: uppercase;
+}
+
+.fan-title span {
+  color: #22c55e;
+  text-shadow: 0 0 20px #22c55e, 0 0 40px rgba(34, 197, 94, 0.8);
+}
+
+.fan-notice-box {
+  background: rgba(2, 14, 7, 0.75);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.fan-legal-notice {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #cbd5e1;
+  margin: 0 0 12px 0;
+}
+
+.fan-legal-notice strong {
+  color: #86efac;
+}
+
+.fan-legal-notice em {
+  color: #4ade80;
+  font-style: normal;
+  font-weight: bold;
+}
+
+.fan-telemetry-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: #4ade80;
+  border-top: 1px solid rgba(34, 197, 94, 0.15);
+  padding-top: 10px;
+}
+
+.status-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 10px #22c55e;
+  animation: apolloStatusBlink 1.4s infinite ease-in-out;
+}
+
+.fan-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.fan-start-btn {
+  font-size: 13px !important;
+  letter-spacing: 1.5px !important;
+  padding: 14px 28px !important;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.15)) !important;
+  border: 1px solid #22c55e !important;
+  color: #f0fdf4 !important;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.35) !important;
+  transition: all 0.25s ease !important;
+  cursor: pointer;
+}
+
+.fan-start-btn:hover {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: #020603 !important;
+  box-shadow: 0 0 35px rgba(34, 197, 94, 0.8) !important;
+  transform: translateY(-2px);
+}
+
+.fan-press-key-hint {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #64748b;
+  margin-top: 16px;
+  text-transform: uppercase;
+}
+
+/* 2. ÉCRAN D'INTRODUCTION AU MAIN MENU : BOOT APOLLO OS */
+.apollo-intro-screen {
+  z-index: 250 !important;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 0.85), transparent 70%),
+    #020408 !important;
+  backdrop-filter: blur(18px);
+}
+
+.apollo-intro-card {
+  width: min(840px, 94vw);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-top: 3px solid #38bdf8;
+  border-radius: 8px;
+  background: linear-gradient(160deg, rgba(8, 18, 30, 0.98), rgba(2, 6, 14, 0.99));
+  box-shadow: 0 35px 100px rgba(0, 0, 0, 0.9), 0 0 50px rgba(56, 189, 248, 0.15);
+  padding: clamp(24px, 4vw, 40px);
+}
+
+.apollo-boot-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+
+.apollo-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.apollo-sub {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+
+.apollo-main-title {
+  font-family: var(--font-title);
+  font-size: clamp(18px, 3.2vw, 26px);
+  font-weight: 700;
+  color: #f0f9ff;
+  letter-spacing: 1px;
+  margin: 4px 0 0 0;
+}
+
+.apollo-boot-stamp {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  padding: 3px 8px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 3px;
+  color: #7dd3fc;
+  letter-spacing: 1px;
+}
+
+.apollo-crt-terminal {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+  font-size: clamp(11px, 1.8vw, 13px);
+  line-height: 1.7;
+  color: #22c55e;
+  background: rgba(2, 8, 4, 0.85);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 5px;
+  padding: 18px 22px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+.apollo-log-line {
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.apollo-log-line.warning {
+  color: #f59e0b;
+  text-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+}
+
+.apollo-log-line.alert {
+  color: #ef4444;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+}
+
+.apollo-log-line.quote {
+  color: #fca5a5;
+  font-style: italic;
+  padding-left: 14px;
+}
+
+.apollo-log-line.success {
+  color: #4ade80;
+}
+
+.apollo-log-line.info {
+  color: #38bdf8;
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
+}
+
+.apollo-log-line.prompt {
+  color: #f0fdf4;
+  font-weight: bold;
+}
+
+.apollo-cursor {
+  display: inline-block;
+  margin-left: 4px;
+  color: #22c55e;
+  animation: apolloBlinkCursor 0.7s infinite step-start;
+}
+
+.apollo-intro-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+
+.apollo-skip-btn {
+  font-size: 12px !important;
+  letter-spacing: 1px !important;
+  padding: 10px 22px !important;
+  cursor: pointer;
+}
+
+/* 3. EN-TÊTE DIÉGÉTIQUE APOLLO OS SUR LE MAIN MENU */
+.apollo-terminal-header-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(34, 197, 94, 0.25);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  background: rgba(6, 18, 11, 0.5);
+  border-radius: 4px;
+  padding: 10px 14px;
+}
+
+.apollo-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.apollo-wy-logo {
+  width: 32px;
+  height: 22px;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.5));
+}
+
+.apollo-header-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.apollo-corp {
+  font-family: var(--font-hud);
+  font-size: 8.5px;
+  letter-spacing: 1.2px;
+  color: #22c55e;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.apollo-station {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+}
+
+.apollo-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.apollo-live-clock {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: #4ade80;
+  text-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.apollo-replay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-hud);
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.apollo-replay-btn:hover {
+  background: rgba(34, 197, 94, 0.25);
+  color: #ffffff;
+  border-color: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+.apollo-replay-btn .btn-sq-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* 4. MONITEUR DIÉGÉTIQUE DE PRÉVISUALISATION TEMPS RÉEL */
+.menu-diegetic-preview {
+  margin-top: 24px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 6px;
+  background: rgba(4, 12, 8, 0.85);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(34, 197, 94, 0.05);
+  padding: 14px 16px;
+  backdrop-filter: blur(8px);
+}
+
+.diegetic-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(34, 197, 94, 0.2);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.preview-tag {
+  font-family: var(--font-hud);
+  font-size: 9.5px;
+  letter-spacing: 1px;
+  color: #86efac;
+  text-transform: uppercase;
+}
+
+.preview-status-pill {
+  font-family: var(--font-hud);
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+
+.diegetic-preview-viewport {
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  background: #020603;
+  margin-bottom: 12px;
+}
+
+.diegetic-preview-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.25) 0px,
+    rgba(0, 0, 0, 0.25) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 2;
+}
+
+.diegetic-preview-art {
+  width: 100%;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-svg-render {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.diegetic-preview-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 16px;
+  border-top: 1px solid rgba(34, 197, 94, 0.15);
+  padding-top: 10px;
+}
+
+.preview-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-hud);
+  font-size: 9.5px;
+}
+
+.preview-meta-label {
+  color: #94a3b8;
+  letter-spacing: 0.6px;
+}
+
+.preview-meta-val {
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #f1f5f9;
+}
+
+.preview-meta-val.val-green {
+  color: #4ade80;
+  text-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+}
+
+.preview-meta-val.val-amber {
+  color: #fbbf24;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+}
+
+.preview-meta-val.val-red {
+  color: #f87171;
+  text-shadow: 0 0 6px rgba(248, 113, 113, 0.5);
+}
+
+.preview-meta-val.val-cyan {
+  color: #38bdf8;
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+}
+
+/* ANIMATIONS WAVE 14 */
+@keyframes apolloStatusBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+@keyframes apolloBlinkCursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}

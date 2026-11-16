@@ -1477,6 +1477,7 @@
       const expandedLore = document.getElementById('expanded-lore-toggle');
 
       this.bindCardSelectors();
+      this.initDiegeticMainMenu();
 
       document.getElementById('btn-new-campaign')?.addEventListener('click', () => {
         const originVal = originSelect?.value || 'random';
@@ -1507,6 +1508,143 @@
       document.getElementById('btn-open-codex-menu')?.addEventListener('click', () => {
         this.openCodex(true);
       });
+    }
+
+    initDiegeticMainMenu() {
+      const fanScreen = document.getElementById('fan-disclaimer-screen');
+      const apolloIntro = document.getElementById('apollo-intro-screen');
+      const boot = document.getElementById('boot-screen');
+      const enterBtn = document.getElementById('btn-enter-terminal');
+      const skipBtn = document.getElementById('btn-skip-intro');
+      const replayBtn = document.getElementById('btn-replay-intro');
+
+      let bootTimer = null;
+
+      const enterApollo = () => {
+        if (!fanScreen || fanScreen.classList.contains('hidden')) return;
+        window.audioManager?.playApolloBootChime?.();
+        this.hideLayer(fanScreen, false);
+        this.showLayer(apolloIntro, false);
+        skipBtn?.focus({ preventScroll: true });
+
+        // Démarrage de la séquence d'initialisation télémétrique Apollo
+        const logLines = apolloIntro?.querySelectorAll('.apollo-log-line');
+        if (logLines && logLines.length > 0) {
+          logLines.forEach((line, idx) => {
+            line.style.opacity = '0';
+            line.style.transform = 'translateX(-6px)';
+            line.style.transition = 'all 0.18s ease';
+            setTimeout(() => {
+              line.style.opacity = '1';
+              line.style.transform = 'translateX(0)';
+              if (idx % 2 === 0) window.audioManager?.playTerminalKeystroke?.();
+            }, idx * 260);
+          });
+        }
+
+        // Transition automatique vers le menu principal après la séquence
+        bootTimer = setTimeout(() => {
+          proceedToMainMenu();
+        }, 3400);
+      };
+
+      const proceedToMainMenu = () => {
+        if (bootTimer) clearTimeout(bootTimer);
+        window.audioManager?.playTerminalKeystroke?.();
+        this.hideLayer(apolloIntro, false);
+        this.showLayer(boot, false);
+        document.getElementById('btn-new-campaign')?.focus({ preventScroll: true });
+      };
+
+      enterBtn?.addEventListener('click', enterApollo);
+      skipBtn?.addEventListener('click', proceedToMainMenu);
+      replayBtn?.addEventListener('click', () => {
+        window.audioManager?.playApolloBootChime?.();
+        this.hideLayer(boot, false);
+        this.showLayer(apolloIntro, false);
+        const logLines = apolloIntro?.querySelectorAll('.apollo-log-line');
+        if (logLines) {
+          logLines.forEach((line, idx) => {
+            line.style.opacity = '0';
+            setTimeout(() => {
+              line.style.opacity = '1';
+              if (idx % 2 === 0) window.audioManager?.playTerminalKeystroke?.();
+            }, idx * 240);
+          });
+        }
+        bootTimer = setTimeout(() => proceedToMainMenu(), 3200);
+      });
+
+      // Touches clavier diégétiques : Espace ou Entrée pour avancer
+      window.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          if (fanScreen && !fanScreen.classList.contains('hidden')) {
+            e.preventDefault();
+            enterApollo();
+          } else if (apolloIntro && !apolloIntro.classList.contains('hidden')) {
+            e.preventDefault();
+            proceedToMainMenu();
+          }
+        }
+      });
+
+      // Prévisualisation interactive sur le moniteur diégétique temps réel
+      this.bindDiegeticPreview();
+    }
+
+    bindDiegeticPreview() {
+      const artContainer = document.getElementById('diegetic-preview-art');
+      const sectorVal = document.getElementById('preview-sector-val');
+      const statusVal = document.getElementById('preview-status-val');
+      const containVal = document.getElementById('preview-containment-val');
+      if (!artContainer) return;
+
+      const previews = {
+        newCampaign: {
+          svg: '<svg viewBox="0 0 400 140" class="preview-svg-render"><defs><linearGradient id="pncGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#022c22"/><stop offset="100%" stop-color="#020617"/></linearGradient></defs><rect width="400" height="140" fill="url(#pncGrad)"/><circle cx="200" cy="70" r="50" fill="none" stroke="#22c55e" stroke-width="1.2" stroke-dasharray="3 2"/><circle cx="200" cy="70" r="30" fill="rgba(34,197,94,0.15)" stroke="#4ade80" stroke-width="1.5"/><circle cx="200" cy="70" r="4" fill="#86efac"/><path d="M160 70 L240 70 M200 30 L200 110" stroke="#22c55e" stroke-width="0.8" stroke-opacity="0.6"/><text x="215" y="65" fill="#86efac" font-family="\'Share Tech Mono\', monospace" font-size="9" font-weight="bold">ACTE I : L\'ÉVEIL</text><text x="215" y="78" fill="#4ade80" font-family="\'Share Tech Mono\', monospace" font-size="7.5">INCUBATION CONFINÉE</text><text x="215" y="90" fill="#22c55e" font-family="\'Share Tech Mono\', monospace" font-size="7">MENACE : ACTIVE</text></svg>',
+          sector: "STATION ORBITALE CURIE-07",
+          status: "SPÉCIMEN XX121 DORMANT",
+          containment: "GAZ HALON 1301 ARMÉ · 20.9% O2"
+        },
+        continueCampaign: {
+          svg: '<svg viewBox="0 0 400 140" class="preview-svg-render"><defs><linearGradient id="pccGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#020617"/></linearGradient></defs><rect width="400" height="140" fill="url(#pccGrad)"/><rect x="60" y="25" width="280" height="90" rx="6" fill="#0f172a" stroke="#818cf8" stroke-width="1.2"/><text x="80" y="50" fill="#a5b4fc" font-family="\'Share Tech Mono\', monospace" font-size="9" font-weight="bold">REPRISE CAMPAGNE // ORPHEUS RELAY</text><text x="80" y="70" fill="#c7d2fe" font-family="\'Share Tech Mono\', monospace" font-size="8">SAUVEGARDE TACTIQUE RESTAURABLE</text><path d="M80 88 L320 88" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 2"/><circle cx="290" cy="55" r="14" fill="rgba(99,102,241,0.2)" stroke="#818cf8" stroke-width="1.5"/><polygon points="286,49 296,55 286,61" fill="#a5b4fc"/></svg>',
+          sector: "ARCHIVES ORPHEUS AUTOMATIQUES",
+          status: "CYCLE RESTAURABLE",
+          containment: "DERNIER CHECKPOINT SÉCURISÉ"
+        },
+        codex: {
+          svg: '<svg viewBox="0 0 400 140" class="preview-svg-render"><defs><linearGradient id="pcxGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#042f2e"/><stop offset="100%" stop-color="#020617"/></linearGradient></defs><rect width="400" height="140" fill="url(#pcxGrad)"/><path d="M120 70 C120 40 160 30 200 30 C240 30 280 40 280 70 C280 95 240 110 200 110 C160 110 120 95 120 70 Z" fill="rgba(20,184,166,0.15)" stroke="#14b8a6" stroke-width="1.4"/><path d="M150 50 L170 80 M180 45 L200 75 M210 45 L230 75" stroke="#2dd4bf" stroke-width="1" stroke-dasharray="2 2"/><text x="140" y="125" fill="#5eead4" font-family="\'Share Tech Mono\', monospace" font-size="8.5" font-weight="bold">XX121 // XÉNOMORPHE ARCHIVAL DATA</text></svg>',
+          sector: "ARCHIVES BIO-MÉDICALES W-Y",
+          status: "DIRECTIVE SPÉCIALE 937 ACTIVE",
+          containment: "CLASSIFICATION CONFIDENTIELLE"
+        }
+      };
+
+      const setPreview = (key) => {
+        const data = previews[key];
+        if (!data) return;
+        artContainer.innerHTML = data.svg;
+        if (sectorVal) sectorVal.textContent = data.sector;
+        if (statusVal) statusVal.textContent = data.status;
+        if (containVal) containVal.textContent = data.containment;
+      };
+
+      const bindHover = (id, key) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('mouseenter', () => {
+          window.audioManager?.playMenuHoverBeep?.();
+          setPreview(key);
+        });
+        el.addEventListener('focus', () => {
+          window.audioManager?.playMenuHoverBeep?.();
+          setPreview(key);
+        });
+      };
+
+      bindHover('btn-new-campaign', 'newCampaign');
+      bindHover('btn-continue-campaign', 'continueCampaign');
+      bindHover('btn-open-codex-menu', 'codex');
     }
 
     bindCardSelectors() {

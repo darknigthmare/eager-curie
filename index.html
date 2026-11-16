@@ -722,6 +722,24 @@
           </div>
         </div>
 
+        <!-- Moniteur d'Atmosphère O2 / Halon 1301 (Chantier Wave 13) -->
+        <div id="atmo-composition-sensor" class="atmo-composition-sensor halon-o2-monitor" title="Moniteur de Composition Atmosphérique O2 / Gaz Halon 1301">
+          <span class="atmo-sensor-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor">
+              <circle cx="10" cy="10" r="7.5" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="3 1.5"/>
+              <circle cx="10" cy="10" r="3.5" stroke="#22c55e" stroke-width="1.2"/>
+              <path d="M6 10 h8 M10 6 v8" stroke="#22c55e" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <div class="atmo-sensor-data" id="halon-o2-monitor">
+            <span class="atmo-sensor-tag">ATMOSPHÈRE O2</span>
+            <span id="atmo-o2-val" class="atmo-sensor-val">O2: 20.9% NORMAL</span>
+          </div>
+          <div class="atmo-o2-bar-track">
+            <div id="atmo-o2-bar-fill" class="atmo-o2-bar-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+
         <div class="utility-controls" role="group" aria-label="Menus du jeu">
           <button type="button" id="btn-open-codex" class="utility-btn" title="Ouvrir le codex (C)">
             <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">

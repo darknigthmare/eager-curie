@@ -4032,3 +4032,136 @@ select, input[type='range'] { touch-action: manipulation; }
     box-shadow: 0 0 18px rgba(56, 189, 248, 0.8), inset 0 0 8px rgba(224, 242, 254, 0.5);
   }
 }
+
+/* =========================================================
+   WAVE 13 : MONITEUR D'ATMOSPHÈRE O2 / HALON 1301 & ASPHYXIE
+   ========================================================= */
+
+.atmo-composition-sensor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 4px;
+  padding: 3px 8px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(4px);
+}
+
+.atmo-sensor-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.atmo-sensor-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.atmo-sensor-data {
+  display: flex;
+  flex-direction: column;
+  min-width: 95px;
+}
+
+.atmo-sensor-tag {
+  font-family: var(--font-hud);
+  font-size: 7.5px;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.atmo-sensor-val {
+  font-family: var(--font-title);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #22c55e;
+  text-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+  transition: color 0.3s ease;
+  white-space: nowrap;
+}
+
+.atmo-o2-bar-track {
+  width: 48px;
+  height: 5px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.atmo-o2-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #22c55e);
+  transition: width 0.35s ease, background 0.35s ease;
+}
+
+/* État Hypoxie modérée */
+.atmo-composition-sensor.hypoxia {
+  border-color: rgba(245, 158, 11, 0.6);
+  background: rgba(45, 26, 6, 0.7);
+}
+
+.atmo-composition-sensor.hypoxia .atmo-sensor-icon {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.atmo-composition-sensor.hypoxia .atmo-sensor-val {
+  color: #f59e0b;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
+.atmo-composition-sensor.hypoxia .atmo-o2-bar-fill {
+  background: linear-gradient(90deg, #d97706, #f59e0b);
+}
+
+/* État Asphyxie critique / Purge Halon 1301 stroboscopique ambre/blanc */
+.atmo-composition-sensor.asphyxia,
+.atmo-composition-sensor.halon-purge {
+  border-color: #f59e0b;
+  animation: halonO2Strobe 0.8s infinite alternate;
+}
+
+.atmo-composition-sensor.asphyxia .atmo-sensor-icon,
+.atmo-composition-sensor.halon-purge .atmo-sensor-icon {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.atmo-composition-sensor.asphyxia .atmo-sensor-val,
+.atmo-composition-sensor.halon-purge .atmo-sensor-val {
+  color: #fef08a;
+  text-shadow: 0 0 8px #f59e0b, 0 0 16px #ffffff;
+}
+
+.atmo-composition-sensor.asphyxia .atmo-o2-bar-fill,
+.atmo-composition-sensor.halon-purge .atmo-o2-bar-fill {
+  background: linear-gradient(90deg, #ef4444, #f59e0b);
+}
+
+@keyframes halonO2Strobe {
+  0% {
+    background: rgba(45, 26, 6, 0.85);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4), inset 0 0 4px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    background: rgba(80, 50, 10, 0.95);
+    box-shadow: 0 0 18px rgba(254, 240, 138, 0.7), inset 0 0 8px rgba(255, 255, 255, 0.4);
+  }
+  100% {
+    background: rgba(69, 10, 10, 0.88);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.6), inset 0 0 6px rgba(239, 68, 68, 0.4);
+  }
+}

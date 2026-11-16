@@ -8594,6 +8594,8 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         root.add(this._box(halonBox, { x: 0.9, y: 1.2, z: 0.4 }, { x: 0, y: 1.6, z: 0 }, 'halon_generator_chassis', true));
         // Voyant de charge verte
         root.add(this._cylinder(greenLed, 0.06, 0.06, 0.04, { x: 0.25, y: 1.9, z: 0.22 }, { x: Math.PI / 2, y: 0, z: 0 }, 'halon_led'));
+        // Manomètre de pression barométrique
+        root.add(this._cylinder(halonBox, 0.07, 0.07, 0.03, { x: -0.28, y: 1.9, z: 0.22 }, { x: Math.PI / 2, y: 0, z: 0 }, 'halon_manometer'));
         // 3 Buses de diffusion orientées vers le bas
         for (let nz = -1; nz <= 1; nz++) {
           root.add(this._cylinder(halonBox, 0.08, 0.05, 0.25, { x: nz * 0.25, y: 0.9, z: 0.1 }, { x: 0, y: 0, z: 0 }, `halon_nozzle_${nz}`));
@@ -9016,6 +9018,7 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         root.add(this._cylinder(dark, 0.08, 0.08, 0.7, { x: 0, y: 1.65, z: 0 }, { x: 0, y: 0, z: Math.PI / 2 }, 'halon_manifold'));
         root.add(this._cone(chromeNozzle, 0.18, 0.35, { x: 0, y: 1.85, z: 0.15 }, { x: Math.PI / 4, y: 0, z: 0 }, 'halon_discharge_horn'));
         root.add(this._box(hazard, { x: 0.35, y: 0.2, z: 0.04 }, { x: 0, y: 1.25, z: 0.22 }, 'halon_hazard_sign'));
+        root.add(this._cylinder(halonRed, 0.08, 0.08, 0.04, { x: 0, y: 1.5, z: 0.22 }, { x: Math.PI / 2, y: 0, z: 0 }, 'halon_manometer'));
       } else if (normalizedType === 'm20_claymore_mine' || normalizedType === 'claymore_mine') {
         // Chantier 226 : Munitions de Défense Périmétrique USCM M20 Claymore Directional Mine (Aliens 1986 / Dark Descent)
         const oliveCasing = this._material('industrial', { color: 0x3f6212, roughness: 0.65, metalness: 0.25 });

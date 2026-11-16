@@ -5878,6 +5878,80 @@
       noise.stop(now + 0.45);
     }
 
+    // -------------------------------------------------------------------------
+    // Mission Wave 13 : Toux et Spasmes d'Hypoxie Humaine sous Halon 1301 (Alien: Isolation)
+    // -------------------------------------------------------------------------
+    playHumanChokingGasp(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // 1. Quinte de toux saccadée (onde triangle 180 Hz -> 260 Hz)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(260, now + 0.12);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.28);
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now);
+      osc.stop(now + 0.32);
+
+      // 2. Souffle court de suffocation (bruit filtré passe-bande)
+      const dur = 0.35;
+      const bufSize = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * (i / bufSize));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(850, now);
+      bpf.Q.setValueAtTime(2.2, now);
+      const gainNoise = ctx.createGain();
+      gainNoise.gain.setValueAtTime(0.35, now);
+      gainNoise.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      noise.connect(bpf);
+      bpf.connect(gainNoise);
+      this.connect(gainNoise, x, z, 60);
+      noise.start(now);
+      noise.stop(now + dur);
+    }
+
+    // -------------------------------------------------------------------------
+    // Mission Wave 13 : Alarme Bitonale d'Évacuation Gaz Inerte Halon 1301 (Alien 1979)
+    // -------------------------------------------------------------------------
+    playHalonKlaxonWarning(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      // Alarme bitonale 880 Hz puis 660 Hz
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.setValueAtTime(660, now + 0.18);
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(2400, now);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      osc.connect(filter);
+      filter.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.38);
+    }
+
     // Chantier 225 : Broyage Écrasant Pinces Chélipèdes Killer Crab Alien (Kenner 1992)
     playCrabPincerCrush(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
@@ -15923,7 +15997,8 @@
       this.updateTripwireTraps(safeDelta);
       this.updateCeilingCocoons(safeDelta);
       this.updateDepressurizationAirlock(safeDelta);
-      this.updateCryoAmbientSensor(safeDelta);
+      this.updateAmbientTemperatureSensor(safeDelta);
+      this.updateAtmoCompositionSensor(safeDelta);
       this.updateDeconShower(safeDelta);
       this.updateBisectedAndroid(safeDelta);
       this.updateHalonSystem(safeDelta);
@@ -16801,14 +16876,23 @@
           hitAny = true;
         }
       });
-      // 3. Caissons cryogéniques
-      const closePod = (this.cryoPods || []).find((p) => !p.isBroken && Math.hypot(p.x - originX, p.z - originZ) <= range);
-      if (closePod) {
-        this.shatterCryoPod(closePod, window.playerCreature);
-        targetX = closePod.x;
-        targetZ = closePod.z;
-        hitAny = true;
-      }
+      // 3. Caissons cryogéniques & stase d'hyper-sommeil
+      (this.cryoPods || []).forEach((p) => {
+        if (!p.isBroken && Math.hypot(p.x - originX, p.z - originZ) <= range) {
+          this.shatterCryoPod(p, window.playerCreature);
+          targetX = p.x;
+          targetZ = p.z;
+          hitAny = true;
+        }
+      });
+      (this.cryoStasisPods || []).forEach((p) => {
+        if (!p.isShattered && Math.hypot(p.x - originX, p.z - originZ) <= range) {
+          this.shatterCryoStasisPod(p);
+          targetX = p.x;
+          targetZ = p.z;
+          hitAny = true;
+        }
+      });
       // 4. Canisters de Black Goo Z-01
       const closeGoo = (this.blackGooCanisters || []).find((g) => !g.isBroken && Math.hypot(g.x - originX, g.z - originZ) <= range);
       if (closeGoo) {
@@ -16849,6 +16933,23 @@
         targetZ = closeNitrogen.z;
         hitAny = true;
       }
+      // 9. Générateurs et extincteurs d'asphyxie Halon 1301
+      (this.halonGasGenerators || []).forEach((hgg) => {
+        if (!hgg.isSuppressed && Math.hypot(hgg.x - originX, hgg.z - originZ) <= range) {
+          this.triggerHalonGasSuppression(hgg);
+          targetX = hgg.x;
+          targetZ = hgg.z;
+          hitAny = true;
+        }
+      });
+      (this.halonExtinguishers || []).forEach((he) => {
+        if (!he.isDischarged && Math.hypot(he.x - originX, he.z - originZ) <= range) {
+          this.triggerHalonExtinguisher(he);
+          targetX = he.x;
+          targetZ = he.z;
+          hitAny = true;
+        }
+      });
       if (hitAny && targetX !== null && targetZ !== null && window.playerCreature?.mesh) {
         window.playerCreature.mesh.rotation.y = Math.atan2(targetX - originX, targetZ - originZ);
       }
@@ -17133,7 +17234,7 @@
     }
 
     // Mission Wave 12 : Capteur Cryogénique Ambiant Sevastopol / Nostromo (Alien 1979 / Aliens 1986)
-    updateCryoAmbientSensor(safeDelta) {
+    updateAmbientTemperatureSensor(safeDelta) {
       const tempValEl = document.getElementById('cryo-ambient-temp');
       const tempBarEl = document.getElementById('cryo-temp-bar-fill');
       const sensorEl = document.getElementById('cryo-ambient-sensor');
@@ -17153,6 +17254,16 @@
 
       for (const pod of (this.cryoPods || [])) {
         if (pod.isBroken) {
+          const d = Math.hypot(pod.x - px, pod.z - pz);
+          if (d <= 14.0) {
+            const drop = (1.0 - d / 14.0) * 198.5;
+            targetTemp = Math.min(targetTemp, 18.5 - drop);
+          }
+        }
+      }
+
+      for (const pod of (this.cryoStasisPods || [])) {
+        if (pod.isShattered) {
           const d = Math.hypot(pod.x - px, pod.z - pz);
           if (d <= 14.0) {
             const drop = (1.0 - d / 14.0) * 198.5;
@@ -17196,6 +17307,90 @@
         sensorEl.classList.toggle('subzero', t < 0);
         sensorEl.classList.toggle('deep-freeze', t < -80);
       }
+    }
+
+    updateCryoAmbientSensor(safeDelta) {
+      return this.updateAmbientTemperatureSensor(safeDelta);
+    }
+
+    // Mission Wave 13 : Moniteur de Composition Atmosphérique O2 / Halon 1301 & Alerte Diégétique d'Asphyxie
+    updateAtmoCompositionSensor(safeDelta) {
+      const o2ValEl = document.getElementById('atmo-o2-val');
+      const o2BarEl = document.getElementById('atmo-o2-bar-fill');
+      const sensorEl = document.getElementById('atmo-composition-sensor');
+      if (!o2ValEl || !window.playerCreature) return;
+
+      const px = window.playerCreature.x;
+      const pz = window.playerCreature.z;
+      let targetO2 = 20.9; // Taux normal d'oxygène terrestre / cabine pressurisée
+
+      // 1. Dépressurisation du sas vers le vide spatial (0.0% O2)
+      if (this.depressurizationAirlock && this.depressurizationAirlock.activeTimer > 0) {
+        const d = Math.hypot(this.depressurizationAirlock.x - px, this.depressurizationAirlock.z - pz);
+        if (d <= 32.0) {
+          const drop = (1.0 - d / 32.0) * 20.9;
+          targetO2 = Math.min(targetO2, Math.max(0.0, 20.9 - drop));
+        }
+      }
+
+      // 2. Réseau central d'extinction d'urgence au gaz Halon 1301 (Chantier 46)
+      if (this.halonSystem && this.halonSystem.active) {
+        const d = Math.hypot(this.halonSystem.x - px, this.halonSystem.z - pz);
+        if (d <= this.halonSystem.radius) {
+          const drop = (1.0 - d / this.halonSystem.radius) * 16.4; // Chute vers 4.5% O2
+          targetO2 = Math.min(targetO2, 20.9 - drop);
+        }
+      }
+
+      // 3. Générateurs d'asphyxie et purge Halon (Chantier 158)
+      for (const gen of (this.halonGasGenerators || this.halonGenerators || [])) {
+        if (gen.isSuppressed && (gen.suppressionTimer || 0) > 0) {
+          const d = Math.hypot(gen.x - px, gen.z - pz);
+          if (d <= 14.0) {
+            const drop = (1.0 - d / 14.0) * 16.4;
+            targetO2 = Math.min(targetO2, 20.9 - drop);
+          }
+        }
+      }
+
+      // 4. Extincteurs muraux Halon 1301 percutés (Chantier 184)
+      for (const ext of (this.halonExtinguishers || [])) {
+        if (ext.isDischarged && (ext.gasTimer || 0) > 0) {
+          const d = Math.hypot(ext.x - px, ext.z - pz);
+          if (d <= 12.0) {
+            const drop = (1.0 - d / 12.0) * 16.4;
+            targetO2 = Math.min(targetO2, 20.9 - drop);
+          }
+        }
+      }
+
+      // Lissage temporel du capteur atmosphérique
+      this.currentO2Level = (this.currentO2Level !== undefined)
+        ? (this.currentO2Level + (targetO2 - this.currentO2Level) * Math.min(1.0, safeDelta * 4.0))
+        : targetO2;
+
+      const o2 = this.currentO2Level;
+      const pct = Math.max(0, Math.min(100, (o2 / 20.9) * 100));
+
+      if (o2BarEl) o2BarEl.style.width = `${pct}%`;
+
+      if (sensorEl) {
+        sensorEl.classList.toggle('hypoxia', o2 < 16.0 && o2 >= 8.0);
+        sensorEl.classList.toggle('asphyxia', o2 < 8.0);
+        sensorEl.classList.toggle('halon-purge', o2 <= 6.0);
+      }
+
+      if (o2 <= 6.0) {
+        o2ValEl.textContent = `O2: ${o2.toFixed(1)}% CRITIQUE [HALON 1301]`;
+      } else if (o2 < 16.0) {
+        o2ValEl.textContent = `O2: ${o2.toFixed(1)}% HYPOXIE [GAZ INERTE]`;
+      } else {
+        o2ValEl.textContent = `O2: ${o2.toFixed(1)}% NORMAL`;
+      }
+    }
+
+    updateAtmosphericCompositionSensor(safeDelta) {
+      return this.updateAtmoCompositionSensor(safeDelta);
     }
 
     // Chantier 43 : Sas Décontaminant avec Douches Chimiques (Alien 3 / Isolation)
@@ -17280,6 +17475,8 @@
       this.halonSystem.x = x;
       this.halonSystem.z = z;
       audioManager.playHalonHiss?.(x, z);
+      audioManager.playHalonKlaxonWarning?.(x, z);
+      rendererEngine.addFloorFluidDecal?.(x, z, 3.4, 0x94a3b8, 30);
       window.HiveSystems?.vfx?.burst?.(x, z, 0xe2e8f0, 48, 0.35, 3.8);
       showToast("ALERTE INCENDIE : PURGE GAZ HALON 1301 ACTIVÉE (Privation d'O2) !");
       appendSensorLog("[HALON 1301] Extinction incendie automatique. Asphyxie immédiate des tissus pulmonaires.", "alert");
@@ -17293,14 +17490,20 @@
         window.HiveSystems?.vfx?.burst?.(halon.x, halon.z, 0xe2e8f0, 16, 0.15, 2.2);
       }
 
+      if (window.playerCreature && Math.hypot(window.playerCreature.x - halon.x, window.playerCreature.z - halon.z) <= halon.radius) {
+        window.playerCreature.isInMist = true;
+      }
+
       // Asphyxie des humains dans le rayon du gaz Halon (Le xénomorphe anaérobie est immunisé)
       (window.gameInstance?.humans || []).forEach((h) => {
         if (h.isIncapacitated || h.isCocooned || h.isEscaped) return;
         if (['synthetic', 'android'].includes(h.type)) return;
         if (Math.hypot(h.x - halon.x, h.z - halon.z) <= halon.radius) {
           h.stress = 100;
+          h.staggerTimer = Math.max(h.staggerTimer || 0, 1.2);
           h.takeDamage?.(12 * safeDelta);
-          if (Math.random() < 0.05) {
+          if (Math.random() < 0.08) {
+            audioManager.playHumanChokingGasp?.(h.x, h.z);
             window.HiveSystems?.vfx?.floatingText?.(h.x, 2.4, h.z, '*SUFFOCATION O2 GAZ HALON*', '#94a3b8', false);
           }
         }
@@ -19257,23 +19460,55 @@
     shatterCryoStasisPod(pod) {
       if (!pod || pod.isShattered) return false;
       pod.isShattered = true;
+
+      // 1. Audio procédural 1:1 de bris et réveil cryogénique
+      audioManager.playCryoPodGlassCrack?.(pod.x, pod.z);
+      audioManager.playCryoVentHiss?.(pod.x, pod.z);
+      audioManager.playStasisAwakeningGasp?.(pod.x, pod.z);
       audioManager.playCryoStasisRupture?.(pod.x, pod.z);
+
+      // 2. Feedback VFX : dispersion d'éclats de verre, fumée d'azote blanc-bleuté et flaque cryogénique
       rendererEngine.addScreenShake?.(0.38, 0.25);
+      rendererEngine.addFloorFluidDecal?.(pod.x, pod.z, 3.2, 0x93c5fd, 35);
+      window.HiveSystems?.vfx?.cryoVaporPlume?.(pod.x, 1.2, pod.z, 16);
+      window.HiveSystems?.vfx?.burst?.(pod.x, pod.z, 0xe0f2fe, 36, 0.22, 2.2);
       window.HiveSystems?.vfx?.burst?.(pod.x, pod.z, 0x38bdf8, 38, 0.25, 2.5);
       window.HiveSystems?.vfx?.ring?.(pod.x, pod.z, 0x0284c7, 6.5);
+      window.HiveSystems?.vfx?.floatingText?.(pod.x, 3.2, pod.z, 'DÉCONGÉLATION FORCÉE (-180°C)', '#93c5fd', true);
+
+      // 3. Modification géométrique 3D du mesh
+      if (pod.mesh) {
+        pod.mesh.traverse((child) => {
+          if (child.isMesh && child.name) {
+            if (child.name.includes('glass') || child.name.includes('canopy')) {
+              child.rotation.x = -0.75;
+              child.position.y += 0.45;
+            }
+            if (child.name.includes('piston')) {
+              child.rotation.x = -0.45;
+            }
+            if (child.name.includes('led') || child.name.includes('status')) {
+              child.material?.color?.setHex(0xef4444);
+              child.material?.emissive?.setHex(0xdc2626);
+            }
+          }
+        });
+      }
 
       if (pod.hasColonist) {
         pod.hasColonist = false;
-        // Spawne un colon civil en état de choc post-hypersommeil prêt pour l'infection
+        // Spawne un colon civil en état de choc post-hypersommeil avec état d'hypothermie
         const colonist = new HumanAI(55, 'civilian', pod.x + 1.2, pod.z + 0.8, 'Colon Réveillé de Stase');
         colonist.hp = 60;
         colonist.maxHp = 60;
         colonist.stress = 100;
-        colonist.staggerTimer = 4.5;
+        colonist.staggerTimer = 3.5;
+        colonist.speedMultiplier = 0.5;
+        colonist.isHypothermic = true;
         colonist.createMesh();
         window.gameInstance?.humans.push(colonist);
         showToast('VERRIÈRE CRYOGÉNIQUE BRISÉE : Décompression d\'azote liquide et colon désorienté éjecté du caisson !');
-        appendSensorLog(`[STASE CRYOGÉNIQUE] Verrière fracturée à (${Math.round(pod.x)}, ${Math.round(pod.z)}). Hôte viable libéré.`, 'alert');
+        appendSensorLog(`[STASE CRYOGÉNIQUE] Verrière fracturée à (${Math.round(pod.x)}, ${Math.round(pod.z)}). Hôte viable libéré sous choc hypothermique.`, 'alert');
       }
       return true;
     }
@@ -20315,6 +20550,8 @@
       gen.isSuppressed = true;
       gen.suppressionTimer = 18.0;
       audioManager.playHalonGasHiss?.(gen.x, gen.z);
+      audioManager.playHalonKlaxonWarning?.(gen.x, gen.z);
+      rendererEngine.addFloorFluidDecal?.(gen.x, gen.z, 3.4, 0x94a3b8, 30);
       rendererEngine.addScreenShake?.(0.35, 0.25);
       window.HiveSystems?.vfx?.ring?.(gen.x, gen.z, 0xf8fafc, 16.0);
       window.HiveSystems?.vfx?.burst?.(gen.x, gen.z, 0xe2e8f0, 60, 0.45, 3.5);
@@ -20329,6 +20566,19 @@
         if (!hgg.isSuppressed) return;
         hgg.suppressionTimer -= safeDelta;
         if (hgg.suppressionTimer > 0) {
+          if (window.playerCreature && Math.hypot(window.playerCreature.x - hgg.x, window.playerCreature.z - hgg.z) <= 12.0) {
+            window.playerCreature.isInMist = true;
+          }
+          (window.gameInstance?.humans || []).forEach((h) => {
+            if (h.isIncapacitated || h.isCocooned || ['synthetic', 'android'].includes(h.type)) return;
+            if (Math.hypot(h.x - hgg.x, h.z - hgg.z) <= 12.0) {
+              h.stress = 100;
+              h.takeDamage?.(8 * safeDelta);
+              if (Math.random() < 0.04) {
+                audioManager.playHumanChokingGasp?.(h.x, h.z);
+              }
+            }
+          });
           if (Math.random() < 0.1) {
             window.HiveSystems?.vfx?.burst?.(hgg.x, hgg.z, 0xf8fafc, 12, 0.25, 2.2);
           }
@@ -21524,6 +21774,8 @@
       ext.isDischarged = true;
       ext.gasTimer = 14.0;
       audioManager.playHalonDischargeHiss?.(ext.x, ext.z);
+      audioManager.playHalonKlaxonWarning?.(ext.x, ext.z);
+      rendererEngine.addFloorFluidDecal?.(ext.x, ext.z, 3.4, 0x94a3b8, 30);
       rendererEngine.addScreenShake?.(0.35, 0.25);
       window.HiveSystems?.vfx?.burst?.(ext.x, ext.z, 0x94a3b8, 48, 0.45, 3.5);
       window.HiveSystems?.vfx?.ring?.(ext.x, ext.z, 0x64748b, 14.0);
@@ -21534,6 +21786,9 @@
           h.shootCooldown = Math.max(h.shootCooldown || 0, 4.5);
           h.stress = 100;
           h.staggerTimer = 2.5;
+          if (!['synthetic', 'android'].includes(h.type)) {
+            audioManager.playHumanChokingGasp?.(h.x, h.z);
+          }
           window.HiveSystems?.vfx?.floatingText?.(h.x, 2.8, h.z, 'HYPOXIE GAZ HALON 1301 !', '#94a3b8', true);
         }
       });
@@ -21547,6 +21802,19 @@
       (this.halonExtinguishers || []).forEach((h) => {
         if (h.isDischarged && h.gasTimer > 0) {
           h.gasTimer -= safeDelta;
+          if (window.playerCreature && Math.hypot(window.playerCreature.x - h.x, window.playerCreature.z - h.z) <= 10.0) {
+            window.playerCreature.isInMist = true;
+          }
+          (window.gameInstance?.humans || []).forEach((hum) => {
+            if (hum.isIncapacitated || hum.isCocooned || ['synthetic', 'android'].includes(hum.type)) return;
+            if (Math.hypot(hum.x - h.x, hum.z - h.z) <= 10.0) {
+              hum.stress = 100;
+              hum.takeDamage?.(8 * safeDelta);
+              if (Math.random() < 0.04) {
+                audioManager.playHumanChokingGasp?.(hum.x, hum.z);
+              }
+            }
+          });
         }
       });
     }
@@ -28067,6 +28335,18 @@
           }
         });
 
+        // Mission Wave 12 : Dissolution et fracturation des caissons cryogéniques par le jet d'acide
+        stationMap.cryoPods?.forEach((pod) => {
+          if (!pod.isBroken && (Math.hypot(pod.x - targetPos.x, pod.z - targetPos.z) <= (poolRadius + 2.0) || Math.hypot(pod.x - this.x, pod.z - this.z) <= 5.0)) {
+            stationMap.shatterCryoPod(pod, this);
+          }
+        });
+        stationMap.cryoStasisPods?.forEach((pod) => {
+          if (!pod.isShattered && (Math.hypot(pod.x - targetPos.x, pod.z - targetPos.z) <= (poolRadius + 2.0) || Math.hypot(pod.x - this.x, pod.z - this.z) <= 5.0)) {
+            stationMap.shatterCryoStasisPod(pod);
+          }
+        });
+
         // Chantier 23 : Destruction des tourelles UA 571-C
         stationMap.sentryTurrets?.forEach((turret) => {
           if (!turret.isDestroyed && Math.hypot(turret.x - targetPos.x, turret.z - targetPos.z) <= 3.8) {
@@ -28201,6 +28481,33 @@
         ? '[SPITTER ÉVOLUÉ] Projection parabolique de venin acide 0x84cc16. Barricades contournées.'
         : '[ACIDE VOLATILE] Glande acide activée. Éjection d\'un jet moléculaire sous pression.', 'bio');
       return true;
+    }
+
+    // Mission Wave 12 : Exécution de Griffes / Balayage Caudal et Éléments Environnementaux
+    executeClawSwipe() {
+      if (window.gameInstance?.currentStage?.executeClawSwipe) {
+        return window.gameInstance.currentStage.executeClawSwipe();
+      }
+      this.triggerAttack('melee');
+      audioManager.playBoneCrunch?.();
+      return !!stationMap?.triggerEnvironmentalDestruction?.(this.x, this.z, 5.5, 'claw');
+    }
+
+    executeTailWhip() {
+      if (window.gameInstance?.currentStage?.executeTailWhip) {
+        return window.gameInstance.currentStage.executeTailWhip();
+      }
+      if (window.gameInstance?.currentStage?.executeTailImpale) {
+        return window.gameInstance.currentStage.executeTailImpale();
+      }
+      this.triggerAttack('tail');
+      audioManager.playTailWhip?.(this.x, this.z);
+      audioManager.playBoneCrunch?.();
+      return !!stationMap?.triggerEnvironmentalDestruction?.(this.x, this.z, 6.5, 'tail');
+    }
+
+    executeTailImpale() {
+      return this.executeTailWhip();
     }
 
     // Chantier 77 : Charge Dévastatrice de Percée du Crusher (Aliens: Colonial Marines)
@@ -35691,6 +35998,8 @@
       // Chantiers 112, 113, 114, 115, 117, 118, 120 : Crachat acide balistique sur props Vague 12
       const distCryoPod = (stationMap.cryoStasisPods || []).find((cp) => !cp.isShattered && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 15);
       if (distCryoPod) stationMap.shatterCryoStasisPod(distCryoPod);
+      const distCryoPodOld = (stationMap.cryoPods || []).find((cp) => !cp.isBroken && Math.hypot(cp.x - playerCreature.x, cp.z - playerCreature.z) <= 15);
+      if (distCryoPodOld) stationMap.shatterCryoPod(distCryoPodOld, playerCreature);
       const distSpore = (stationMap.hivePheromoneSpores || []).find((sp) => !sp.isTriggered && Math.hypot(sp.x - playerCreature.x, sp.z - playerCreature.z) <= 15);
       if (distSpore) stationMap.triggerHivePheromoneSpore(distSpore);
       const distBarbed = (stationMap.barbedWireSpools || []).find((bw) => !bw.isCut && Math.hypot(bw.x - playerCreature.x, bw.z - playerCreature.z) <= 15);
@@ -37669,9 +37978,14 @@
       this.log(`[FRAPPE DE QUEUE] ${target.name} empalé — ${Math.max(0, target.hp)} PV.`);
 
       stationMap.triggerEnvironmentalDestruction?.(target.x, target.z, 4.5, 'tail');
+      stationMap.triggerEnvironmentalDestruction?.(playerCreature.x, playerCreature.z, 6.5, 'tail');
 
       this.updateCooldownBadges();
       this.updateRoyalButton();
+    }
+
+    executeTailWhip() {
+      return this.executeTailImpale();
     }
 
     executeCocoonHost() {

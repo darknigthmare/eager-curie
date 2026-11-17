@@ -1645,6 +1645,13 @@
       bindHover('btn-new-campaign', 'newCampaign');
       bindHover('btn-continue-campaign', 'continueCampaign');
       bindHover('btn-open-codex-menu', 'codex');
+
+      ['btn-start-act-one', 'btn-resume-game', 'btn-open-settings', 'btn-return-menu', 'btn-close-codex', 'btn-close-settings', 'btn-close-bioscan'].forEach((btnId) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        btn.addEventListener('mouseenter', () => window.audioManager?.playMenuHoverBeep?.());
+        btn.addEventListener('click', () => window.audioManager?.playTerminalKeystroke?.());
+      });
     }
 
     bindCardSelectors() {
@@ -2399,7 +2406,40 @@
       tag.textContent = loreLabels[String(lore).toUpperCase()] || String(lore).toUpperCase();
       const paragraph = document.createElement('p');
       paragraph.textContent = description;
-      container.append(detailThumb, status, heading, tag, paragraph);
+      container.append(detailThumb, status, heading, tag);
+
+      if (entry.author || entry.timestamp || entry.location) {
+        const tapeBar = document.createElement('div');
+        tapeBar.className = 'codex-audio-tape-bar';
+        tapeBar.innerHTML = `
+          <div class="codex-tape-meta">
+            <span>ARCHIVE AUDIO // ${String(entry.author || 'OPÉRATEUR INCONNU').toUpperCase()}</span>
+            <small>${String(entry.location || 'CURIE-07')} · ${String(entry.timestamp || 'CYCLE 01')}</small>
+          </div>
+          <button type="button" class="codex-tape-btn">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <polygon points="6,4 15,10 6,16" fill="currentColor"/>
+            </svg>
+            <span>LIRE BANDE AUDIO</span>
+          </button>
+          <div class="codex-tape-wave" aria-hidden="true"><div class="codex-tape-wave-fill"></div></div>
+        `;
+        const playBtn = tapeBar.querySelector('.codex-tape-btn');
+        playBtn?.addEventListener('click', () => {
+          window.audioManager?.playApolloBootChime?.();
+          window.audioManager?.playTerminalKeystroke?.();
+          tapeBar.classList.add('playing');
+          const label = playBtn.querySelector('span');
+          if (label) label.textContent = 'LECTURE EN COURS…';
+          setTimeout(() => {
+            tapeBar.classList.remove('playing');
+            if (label) label.textContent = 'REJOUER BANDE AUDIO';
+          }, 3600);
+        });
+        container.appendChild(tapeBar);
+      }
+
+      container.appendChild(paragraph);
       if (items.length) {
         const list = document.createElement('ul');
         items.forEach((value) => {

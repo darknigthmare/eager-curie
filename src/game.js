@@ -17115,8 +17115,10 @@
       this.securityCameras.forEach((c) => {
         this.destroySecurityCamera(c, null, 'hack');
       });
+      window.HiveSystems?.unlockCodex?.(['journal_vasquez_halon_vent', 'journal_seegson_log_ap7']);
+      window.HiveSystems?.narrative?.('SEEGSON AP-7 // ARCHIVE EXTRAITE', 'Journaux système récupérés : Anomalie Halon 1301 et verrouillage sas médical.');
       showToast('HACK DECODEUR RÉUSSI : Réseau de caméras Seegson neutralisé sur tout le secteur !');
-      appendSensorLog(`[HACK] Protocoles de sécurité Seegson bypassés. Caméras hors service.`, 'alert');
+      appendSensorLog(`[HACK] Protocoles de sécurité Seegson bypassés. Caméras hors service. Archives extraites.`, 'alert');
     }
 
     // Mission Wave 11 : Dépressurisation d'Urgence du Sas & Rupture de Joint Atmosphérique (Alien 1979 / Romulus)
@@ -19202,6 +19204,8 @@
       window.HiveSystems?.vfx?.ring?.(terminal.x, 1.8, terminal.z, 0x39ff14, 9.0);
       window.HiveSystems?.vfx?.burst?.(terminal.x, 1.8, terminal.z, 0x39ff14, 38, 0.25, 2.8);
       window.HiveSystems?.vfx?.floatingText?.(terminal.x, 3.4, terminal.z, 'OVERRIDE M.U.T.H.U.R. ACCEPTÉ [DIRECTIVE 937]', '#39ff14', true);
+      window.HiveSystems?.unlockCodex?.(['codex_order_937', 'journal_orson_transmission', 'codex_apollo_self_destruct']);
+      window.HiveSystems?.narrative?.('M.U.T.H.U.R. 6000 // DIRECTIVE 937', 'Priorité absolue : préserver le spécimen. Équipage sacrifiable. Conduits déverrouillés.');
       showToast(`M.U.T.H.U.R. 6000 ACCÉDÉE : Faux ordre d'évacuation diffusé ! Équipes KAPPA désorientées !`);
       appendSensorLog(`[M.U.T.H.U.R. 6000] Override manuel IA centrale accepté [DIRECTIVE 937]. Fausse brèche coque déclarée. Conduits ventilés.`, 'alert');
       const humans = window.gameInstance?.humans || [];

@@ -1745,6 +1745,28 @@
             "pour sceller les issues et éliminer toute interférence civile.",
           unlockedByDefault: true,
           unlock: { type: "default" }
+        },
+        {
+          id: "codex_hive_mind_resonance",
+          category: "biology",
+          title: "Réseau Synaptique & Résonance de la Reine",
+          body:
+            "Les sécrétions de bio-résine de la Ruche ne constituent pas qu'un matériau structurel : elles forment un réseau " +
+            "conducteur de vibrations acoustiques subsoniques et de phéromones volatiles. Toute intrusion dans la résine " +
+            "alerte instantanément la Matriarche et coordonne les castes guerrières à travers les conduits de Curie-07.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_apollo_self_destruct",
+          category: "archives",
+          title: "Protocole d'Autodestruction Apollo / Réacteur",
+          body:
+            "Procédure de stérilisation thermonucléaire gravée dans les noyaux d'urgence de la station Mnemosyne. " +
+            "En cas de rupture définitive du confinement de Classe 5, l'IA centrale amorce la surcharge du cœur à fusion " +
+            "pour désintégrer la station en orbite de KG-348, à moins que l'essaim ne sectionne les relais synaptiques.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
         }
       ]
     },
@@ -1897,6 +1919,32 @@
           "Directive APOLLO reçue : Maintenir les portes étanches closes. Des ouvriers civils tentent de forcer l'accès au sas médical. " +
           "Notification vocale émise : 'Vous perturbez les opérations de la station'. Recours à la force motrice appliqué. " +
           "La température de la salle cryogénique chute brutalement. Le spécimen biologique a été aperçu rampant sur les poutrelles du plafond.",
+        unlockedByDefault: true,
+        unlock: { type: "default" }
+      },
+      {
+        id: "journal_hull_breach_09",
+        title: "Brèche Acide Pont C — Gravité Zéro",
+        author: "Technicien K. Mercer",
+        location: "Pont C — Zone d'Inversion Gravitationnelle",
+        timestamp: "Cycle 01 — 22:14",
+        text:
+          "Lorsque l'escouade de sécurité a tiré sur le spécimen près des bobines Zéro-G, son sang n'est pas tombé au sol. " +
+          "Des sphères d'acide fluo-sulfurique se sont mises à dériver lentement dans la coursive. Deux d'entre elles ont " +
+          "traversé le caillebotis et rongé trois ponts successifs jusqu'au conduit de maintenance inférieur. Il s'en est servi pour fuir.",
+        unlockedByDefault: true,
+        unlock: { type: "default" }
+      },
+      {
+        id: "journal_dockyard_p5000",
+        title: "Soute Cargo — Manœuvre Caterpillar P-5000",
+        author: "Chef de Quai D. Vance",
+        location: "Baie d'Amarrage 02",
+        timestamp: "Cycle 02 — 01:38",
+        text:
+          "Les armes légères ne suffisent plus face aux castes blindées qui gardent la Reine. J'ai démarré l'exosquelette " +
+          "Caterpillar P-5000 et soudé la passerelle d'évacuation au chalumeau industriel. Si la créature approche à moins de trois mètres, " +
+          "les pinces hydrauliques peuvent encore la broyer... à condition qu'elle ne tranche pas les flexibles avec sa queue.",
         unlockedByDefault: true,
         unlock: { type: "default" }
       }

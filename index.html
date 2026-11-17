@@ -1327,6 +1327,28 @@
         </span>
         <span class="rts-cmd-label">IMPULSION SYNAPTIQUE [P]</span>
       </button>
+
+      <!-- Moniteur Tactique RTS : Purge PALIMPSESTE, Relais, Cycles & Escouade (Wave 16) -->
+      <div id="rts-tactical-monitor" class="rts-tactical-monitor">
+        <div class="rts-monitor-row">
+          <span id="rts-purge-timer" class="rts-purge-val">PURGE 04:00</span>
+          <div class="rts-relay-diodes" title="État des 3 Relais PALIMPSESTE (Rouge = Actif / Vert = Isolé)">
+            <span id="rts-relay-1" class="rts-relay-diode">R1</span>
+            <span id="rts-relay-2" class="rts-relay-diode">R2</span>
+            <span id="rts-relay-3" class="rts-relay-diode">R3</span>
+          </div>
+          <span id="rts-cycles-count" class="rts-cycles-val">CYCLES 0/3</span>
+          <button type="button" id="btn-rts-focus-queen" class="rts-focus-btn" title="Centrer la caméra sur la Reine (Touche H)">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <circle cx="10" cy="10" r="6" stroke-width="1.4"/>
+              <circle cx="10" cy="10" r="2" fill="#a855f7"/>
+              <path d="M10 2 L10 5 M10 15 L10 18 M2 10 L5 10 M15 10 L18 10" stroke-width="1.3"/>
+            </svg>
+            <span>REINE [H]</span>
+          </button>
+        </div>
+        <div id="rts-squad-chips" class="rts-squad-chips" aria-label="Escouade active de la Ruche"></div>
+      </div>
     </div>
 
     <!-- Decompression & Cabin Pressure Emergency HUD -->

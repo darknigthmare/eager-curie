@@ -6037,6 +6037,79 @@
       osc.stop(now + 0.018);
     }
 
+    // -------------------------------------------------------------------------
+    // Mission Wave 16 : Synthétiseurs Tactiques RTS de la Ruche
+    // -------------------------------------------------------------------------
+    playRtsUnitSelect() {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(920, now);
+      osc.frequency.exponentialRampToValueAtTime(1380, now + 0.055);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.07);
+    }
+
+    playRtsOrderPing(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(660, now + 0.09);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      osc.connect(gain);
+      this.connect(gain, x, z, 55);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    }
+
+    playRtsRelayIsolated(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(220, now);
+      osc1.frequency.exponentialRampToValueAtTime(68, now + 0.28);
+      gain1.gain.setValueAtTime(0.32, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.connect(gain1);
+      this.connect(gain1, x, z, 70);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, now + 0.14);
+      osc2.frequency.setValueAtTime(1320, now + 0.24);
+      gain2.gain.setValueAtTime(0.001, now);
+      gain2.gain.setValueAtTime(0.22, now + 0.14);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      osc2.connect(gain2);
+      gain2.connect(this.masterGain);
+      osc2.start(now + 0.14);
+      osc2.stop(now + 0.55);
+    }
+
     // Chantier 225 : Broyage Écrasant Pinces Chélipèdes Killer Crab Alien (Kenner 1992)
     playCrabPincerCrush(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
@@ -38599,6 +38672,9 @@
       this.mantisBoss = null;
       this.purgeRemaining = 240;
       this.lastPurgeSecond = -1;
+      this.cameraFocus = { x: 20, z: 10 };
+      this.selectedUnit = null;
+      this.selectionRingMesh = null;
     }
 
     findFreePosition(preferredX, preferredZ, seed = 0, extraOccupied = []) {
@@ -38968,8 +39044,11 @@
 
       const difficulty = window.gameInstance?.campaignConfig?.difficulty || 'survivor';
       this.purgeRemaining = difficulty === 'story' ? 330 : (difficulty === 'nightmare' ? 180 : 240);
+      this.cameraFocus = { x: this.queen.x - 10, z: this.queen.z - 8 };
+      document.getElementById('btn-rts-focus-queen')?.addEventListener('click', () => this.focusCameraOnQueen());
       this.updateHUD();
       this.updateStats();
+      this.updateRtsTacticalMonitor();
       this.log(`[RUCHE] La Reine issue de ${window.gameInstance?.royalCycleRecord?.hostName || 'l’hôte royal'} est attachée à son ovipositeur.`);
       this.log(`[LIGNÉE] Le ${foundingCaste.toUpperCase()} de l’acte IV constitue l’unique adulte initial.`);
       this.log('[MANTIS-4] Phase 1 : deux réseaux hydrauliques protègent encore le châssis.');
@@ -38984,7 +39063,7 @@
       document.getElementById('bio-title').textContent = isAttached
         ? 'RÉSEAU SYNAPTIQUE — REINE ANCRÉE À L’OVIPOSITEUR'
         : 'RÉSEAU SYNAPTIQUE — REINE DE GUERRE DÉTACHÉE (COMBAT DIRECT)';
-      document.getElementById('stage-instructions').innerHTML = '<strong>Commandement de la Ruche :</strong><br><br>• <strong>Q / W / E / R</strong> : ordres phéromonaux (Chasser, Capturer, Défendre, Infester).<br>• <strong>X</strong> : détacher / réarrimer la Reine de son ovipositeur (Aliens 1986).<br>• <strong>P</strong> : synchronisation synaptique directe (ZQSD + ESPACE pour attaquer).<br>• La Reine doit être ancrée à l’ovipositeur pour féconder les cocons.<br>• Détachée, la Reine devient un béhémoth de guerre (180 dégâts de zone).';
+      document.getElementById('stage-instructions').innerHTML = '<strong>Commandement de la Ruche :</strong><br><br>• <strong>ZQSD / Flèches</strong> : déplacer librement la caméra tactique (<strong>[H]</strong> recentrer Reine).<br>• <strong>Clic-Gauche / Clic-Droit</strong> : peindre les phéromones ou donner un ordre contextuel direct (HUNT / INFEST / RUSH).<br>• <strong>Q / W / E / R / T</strong> : modes phéromonaux (Chasser, Capturer, Défendre, Infester, Rush).<br>• <strong>X</strong> : détacher / réarrimer la Reine · <strong>P</strong> : contrôle synaptique direct (ESPACE attaquer).';
       setHudBar('vital', 'INTÉGRITÉ REINE', this.queen ? (this.queen.hp / this.queen.maxHp) * 100 : 100);
       const actionsContainer = document.getElementById('action-buttons-container');
       const oviBtnLabel = isAttached
@@ -39203,9 +39282,12 @@
       const oviButton = document.getElementById('btn-toggle-ovipositor');
       if (oviButton) {
         const isAttached = Boolean(this.queen?.attachedToOvipositor);
-        oviButton.textContent = isAttached
+        const oviText = isAttached
           ? 'DÉTACHER LA REINE DE L’OVIPOSITEUR [X]'
           : 'RÉARRIMER LA REINE À L’OVIPOSITEUR [X]';
+        const oviSpan = oviButton.querySelector('span');
+        if (oviSpan) oviSpan.textContent = oviText;
+        else oviButton.textContent = oviText;
         oviButton.style.borderColor = isAttached ? '#a855f7' : '#39ff14';
         oviButton.style.background = isAttached ? 'rgba(168,85,247,0.24)' : 'rgba(57,255,20,0.24)';
       }
@@ -39227,11 +39309,15 @@
           ? 'MANTIS NEUTRALISÉ'
           : (this.mantisBoss ? `MANTIS PHASE ${this.mantisBoss?.bossPhase || 1}` : 'EN APPROCHE ORBITALE');
         const purgeStatus = this.relayCount >= 3 ? 'PURGE INTERROMPUE' : `PURGE ${Math.ceil(this.purgeRemaining)}s`;
-        conquestButton.textContent = `ISOLER PALIMPSESTE — RELAIS ${this.relayCount}/3 · ${bossStatus} · MENACES ${activeThreats} · ${purgeStatus}`;
+        const conquestText = `ISOLER PALIMPSESTE — RELAIS ${this.relayCount}/3 · ${bossStatus} · MENACES ${activeThreats} · ${purgeStatus}`;
+        const conquestSpan = conquestButton.querySelector('span');
+        if (conquestSpan) conquestSpan.textContent = conquestText;
+        else conquestButton.textContent = conquestText;
         conquestButton.title = conquestButton.disabled
           ? 'Neutralisez les menaces et désactivez les trois relais.'
           : 'Choisir le destin final de la ruche.';
       }
+      this.updateRtsTacticalMonitor();
     }
 
     canCompleteConquest() {
@@ -39255,6 +39341,10 @@
       }
       if (key === 'x') {
         this.toggleQueenOvipositor();
+        return;
+      }
+      if (key === 'h') {
+        this.focusCameraOnQueen();
         return;
       }
       if (key === ' ' && pheromoneSystem.possessionMode && this.possessedUnit) {
@@ -39327,23 +39417,71 @@
         return;
       }
 
-      const colors = { HUNT: 0xef4444, CAPTURE: 0xa855f7, DEFEND: 0x38bdf8, INFEST: 0x39ff14, RUSH: 0xdc2626 };
       const command = pheromoneSystem.activeCommand;
+      this.placePheromoneOrder(worldPoint.x, worldPoint.z, command);
+    }
+
+    handleCanvasRightClick(screenX, screenY) {
+      const worldPoint = rendererEngine.screenToGround(screenX, screenY);
+      if (!worldPoint) return;
+      if (Math.abs(worldPoint.x) > 70 || Math.abs(worldPoint.z) > 70) return;
+
+      if (pheromoneSystem.possessionMode && this.possessedUnit) {
+        const clickedTarget = (window.gameInstance?.humans || []).find((h) => (
+          !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - worldPoint.x, h.z - worldPoint.z) <= 4.5
+        ));
+        if (clickedTarget) {
+          this.executePossessedAttack(clickedTarget);
+        } else {
+          this.possessedMoveTarget = worldPoint;
+          audioManager.playRtsOrderPing?.(worldPoint.x, worldPoint.z);
+          window.HiveSystems?.vfx?.ring?.(worldPoint.x, worldPoint.z, 0x38bdf8, 1.8);
+          showToast('Déplacement synaptique ordonné.');
+        }
+        return;
+      }
+
+      // Clic-droit contextuel RTS : Relais non isolé -> INFEST, Menace humaine -> HUNT, Sol -> RUSH
+      const nearRelay = this.relayMeshes.find((relay) => (
+        !relay.userData.isolated && Math.hypot(relay.position.x - worldPoint.x, relay.position.z - worldPoint.z) <= 11
+      ));
+      if (nearRelay) {
+        this.placePheromoneOrder(nearRelay.position.x, nearRelay.position.z, 'INFEST');
+        showToast('ORDRE CONTEXTUEL : INFESTATION DU RELAIS PALIMPSESTE !');
+        return;
+      }
+
+      const nearThreat = (window.gameInstance?.humans || []).find((h) => (
+        !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - worldPoint.x, h.z - worldPoint.z) <= 5.5
+      ));
+      if (nearThreat) {
+        this.placePheromoneOrder(nearThreat.x, nearThreat.z, 'HUNT');
+        showToast(`CIBLE PRIORITAIRE VERROUILLÉE : ${nearThreat.name || 'INTRUS'}`);
+        return;
+      }
+
+      this.placePheromoneOrder(worldPoint.x, worldPoint.z, 'RUSH');
+    }
+
+    placePheromoneOrder(x, z, command) {
+      const colors = { HUNT: 0xef4444, CAPTURE: 0xa855f7, DEFEND: 0x38bdf8, INFEST: 0x39ff14, RUSH: 0xdc2626 };
       const marker = new THREE.Mesh(
         new THREE.RingGeometry(1.6, 2.6, 24),
-        new THREE.MeshBasicMaterial({ color: colors[command], transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({ color: colors[command] || 0x39ff14, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
       );
       marker.rotation.x = -Math.PI / 2;
-      marker.position.set(worldPoint.x, 0.12, worldPoint.z);
+      marker.position.set(x, 0.12, z);
       rendererEngine.scene.add(marker);
-      pheromoneSystem.addZone({ x: worldPoint.x, z: worldPoint.z, command, radius: 18, mesh: marker });
+      pheromoneSystem.addZone({ x, z, command, radius: 18, mesh: marker });
+      audioManager.playRtsOrderPing?.(x, z);
+
       if (command === 'INFEST') {
-        resinGrid.addResinPatch(worldPoint.x, worldPoint.z, 5);
+        resinGrid.addResinPatch(x, z, 5);
         const relayTarget = this.relayMeshes
           .filter((relay) => !relay.userData.isolated)
           .map((relay) => ({
             relay,
-            distance: Math.hypot(relay.position.x - worldPoint.x, relay.position.z - worldPoint.z)
+            distance: Math.hypot(relay.position.x - x, relay.position.z - z)
           }))
           .sort((left, right) => left.distance - right.distance)[0];
         if (relayTarget && relayTarget.distance <= 11) {
@@ -39354,6 +39492,7 @@
             if (child.material.emissive) child.material.emissive.setHex(0x39ff14);
           });
           this.relayCount = this.relayMeshes.filter((candidate) => candidate.userData.isolated).length;
+          audioManager.playRtsRelayIsolated?.(relay.position.x, relay.position.z);
           window.HiveSystems?.vfx?.ring(relay.position.x, relay.position.z, 0x39ff14, 5);
           window.HiveSystems?.updateObjective(5, this.relayCount, this.relayCount < 3
             ? `Désactiver encore ${3 - this.relayCount} relais de PALIMPSESTE.`
@@ -39365,15 +39504,99 @@
           }
         }
       }
-      this.log(`[PHÉROMONE ${command}] Marque posée en X:${worldPoint.x.toFixed(1)} Z:${worldPoint.z.toFixed(1)}.`);
+      this.log(`[PHÉROMONE ${command}] Marque posée en X:${x.toFixed(1)} Z:${z.toFixed(1)}.`);
       this.updateStats();
+    }
+
+    focusCameraOnQueen() {
+      if (!this.queen) return;
+      this.cameraFocus = { x: this.queen.x, z: this.queen.z };
+      this.selectRtsUnit(this.queen);
+      audioManager.playRtsUnitSelect?.();
+      showToast('Caméra centrée sur la Reine de la Ruche.');
+    }
+
+    selectRtsUnit(unit) {
+      if (!unit || unit.isDestroyed) return;
+      this.selectedUnit = unit;
+      if (!this.selectionRingMesh) {
+        this.selectionRingMesh = new THREE.Mesh(
+          new THREE.RingGeometry(1.1, 1.45, 28),
+          new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+        );
+        this.selectionRingMesh.rotation.x = -Math.PI / 2;
+        rendererEngine.scene.add(this.selectionRingMesh);
+      }
+      this.selectionRingMesh.position.set(unit.x, 0.14, unit.z);
+      this.selectionRingMesh.visible = true;
+    }
+
+    selectRtsCaste(caste) {
+      const unit = this.rtsUnits.find((u) => !u.isDestroyed && u.caste === caste);
+      if (!unit) return;
+      this.cameraFocus = { x: unit.x, z: unit.z };
+      this.selectRtsUnit(unit);
+      audioManager.playRtsUnitSelect?.();
+      showToast(`Escouade focalisée : ${caste.toUpperCase()}`);
+    }
+
+    updateRtsTacticalMonitor() {
+      const timerEl = document.getElementById('rts-purge-timer');
+      const cyclesEl = document.getElementById('rts-cycles-count');
+      const chipsEl = document.getElementById('rts-squad-chips');
+
+      if (timerEl) {
+        if (this.relayCount >= 3) {
+          timerEl.textContent = 'PURGE STOPPÉE';
+          timerEl.className = 'rts-purge-val safe';
+        } else {
+          const secs = Math.max(0, Math.ceil(this.purgeRemaining));
+          const m = String(Math.floor(secs / 60)).padStart(2, '0');
+          const s = String(secs % 60).padStart(2, '0');
+          timerEl.textContent = `PURGE ${m}:${s}`;
+          timerEl.className = `rts-purge-val${secs <= 60 ? ' critical' : ''}`;
+        }
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const diode = document.getElementById(`rts-relay-${i + 1}`);
+        if (diode) {
+          const isolated = Boolean(this.relayMeshes[i]?.userData?.isolated);
+          diode.classList.toggle('isolated', isolated);
+        }
+      }
+
+      if (cyclesEl) {
+        const activeCycles = this.incubationCycles.filter((c) => c.isActive).length;
+        cyclesEl.textContent = `CYCLES ${activeCycles}/3`;
+      }
+
+      if (chipsEl) {
+        const counts = {};
+        for (const u of this.rtsUnits) {
+          if (u.isDestroyed) continue;
+          counts[u.caste] = (counts[u.caste] || 0) + 1;
+        }
+        const entries = Object.entries(counts);
+        if (chipsEl.dataset.signature !== JSON.stringify(entries)) {
+          chipsEl.dataset.signature = JSON.stringify(entries);
+          chipsEl.replaceChildren();
+          entries.forEach(([caste, count]) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'rts-squad-chip';
+            chip.title = `Centrer caméra sur ${caste.toUpperCase()}`;
+            chip.textContent = `${caste.toUpperCase()} ×${count}`;
+            chip.addEventListener('click', () => this.selectRtsCaste(caste));
+            chipsEl.appendChild(chip);
+          });
+        }
+      }
     }
 
     getCameraTarget() {
       if (pheromoneSystem.possessionMode && this.possessedUnit) return this.possessedUnit;
-      // Centre tactique décalé : il garde la Reine, les trois relais et les
-      // couloirs d'approche hors des panneaux HUD.
-      return { x: 20, z: 10 };
+      return this.cameraFocus || { x: 20, z: 10 };
     }
 
     completeConquest() {
@@ -39416,6 +39639,9 @@
       this.rtsUnits = [];
       if (this.ovipositorMesh) rendererEngine.removeObject(this.ovipositorMesh);
       this.ovipositorMesh = null;
+      if (this.selectionRingMesh) rendererEngine.removeObject(this.selectionRingMesh);
+      this.selectionRingMesh = null;
+      this.selectedUnit = null;
       this.relayMeshes.forEach((relay) => rendererEngine.removeObject(relay));
       this.relayMeshes = [];
       document.getElementById('rts-control-bar')?.classList.add('hidden');
@@ -39473,6 +39699,21 @@
           this.possessedUnit.moveTowards(this.possessedMoveTarget.x, this.possessedMoveTarget.z, deltaSeconds);
         } else {
           this.possessedUnit.moveDirect(dx, dy, deltaSeconds, remainingDistance);
+        }
+      } else {
+        // Panning libre de la caméra tactique RTS (ZQSD / Flèches)
+        const { dx, dy } = inputManager.getMovementVector();
+        if (dx !== 0 || dy !== 0) {
+          this.cameraFocus.x = Math.max(-64, Math.min(64, this.cameraFocus.x + dx * 45 * deltaSeconds));
+          this.cameraFocus.z = Math.max(-64, Math.min(64, this.cameraFocus.z + dy * 45 * deltaSeconds));
+        }
+      }
+      if (this.selectionRingMesh) {
+        if (this.selectedUnit && !this.selectedUnit.isDestroyed) {
+          this.selectionRingMesh.position.set(this.selectedUnit.x, 0.14, this.selectedUnit.z);
+          this.selectionRingMesh.visible = true;
+        } else {
+          this.selectionRingMesh.visible = false;
         }
       }
       for (const unit of this.rtsUnits) {
@@ -39630,8 +39871,15 @@
         scene: rendererEngine.scene,
         removeObject: (object) => rendererEngine.removeObject(object)
       });
+      canvas?.addEventListener('contextmenu', (e) => {
+        if (this.currentStageIndex === 5) e.preventDefault();
+      });
       inputManager.on('keydown', (key) => this.handleKeyDown(key));
       inputManager.on('mousedown', ({ button, x, y }) => {
+        if (button === 2 && this.currentStageIndex === 5 && this.currentStage?.handleCanvasRightClick) {
+          this.currentStage.handleCanvasRightClick(x, y);
+          return;
+        }
         if (button !== 0) return;
         if (this.currentStageIndex === 5 && this.currentStage && this.currentStage.handleCanvasClick) {
           this.currentStage.handleCanvasClick(x, y);

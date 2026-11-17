@@ -4808,3 +4808,124 @@ select, input[type='range'] { touch-action: manipulation; }
   0% { transform: translateX(-60%); }
   100% { transform: translateX(60%); }
 }
+
+/* =========================================================
+   WAVE 16 : MONITEUR TACTIQUE RTS & ESCOUADE DIÉGÉTIQUE
+   ========================================================= */
+
+.rts-tactical-monitor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(4, 14, 10, 0.92);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 5px;
+  padding: 6px 10px;
+  margin-left: 8px;
+}
+
+.rts-monitor-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rts-purge-val {
+  font-family: var(--font-title);
+  font-size: 11px;
+  font-weight: 700;
+  color: #f59e0b;
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.rts-purge-val.critical {
+  color: #ef4444;
+  text-shadow: 0 0 10px #ef4444;
+  animation: apolloStatusBlink 0.7s infinite;
+}
+
+.rts-purge-val.safe {
+  color: #4ade80;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+}
+
+.rts-relay-diodes {
+  display: flex;
+  gap: 4px;
+}
+
+.rts-relay-diode {
+  font-family: var(--font-hud);
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(239, 68, 68, 0.22);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+}
+
+.rts-relay-diode.isolated {
+  background: rgba(34, 197, 94, 0.25);
+  border-color: #22c55e;
+  color: #86efac;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.rts-cycles-val {
+  font-family: var(--font-hud);
+  font-size: 9px;
+  color: #c084fc;
+  letter-spacing: 0.6px;
+}
+
+.rts-focus-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-hud);
+  font-size: 9px;
+  padding: 3px 8px;
+  background: rgba(168, 85, 247, 0.18);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  border-radius: 3px;
+  color: #e9d5ff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rts-focus-btn:hover {
+  background: rgba(168, 85, 247, 0.4);
+  color: #ffffff;
+}
+
+.rts-focus-btn .btn-sq-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.rts-squad-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rts-squad-chip {
+  font-family: var(--font-hud);
+  font-size: 8.5px;
+  padding: 2px 6px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 3px;
+  color: #7dd3fc;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rts-squad-chip:hover {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: #38bdf8;
+  color: #ffffff;
+}

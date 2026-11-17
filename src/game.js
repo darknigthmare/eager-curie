@@ -344,11 +344,30 @@
       const gain = this.ctx.createGain();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(100, now);
-      osc.frequency.linearRampToValueAtTime(380, now + 0.4);
+      osc.frequency.linearRampToValueAtTime(380, now + 0.55);
       gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.65);
       osc.connect(gain); this.connect(gain);
-      osc.start(now); osc.stop(now + 0.45);
+      osc.start(now); osc.stop(now + 0.65);
+
+      // Crissement organique humide + sifflement de dépressurisation des 4 pétales (Alien 1979)
+      const dur = 0.85;
+      const bufSize = Math.floor(this.ctx.sampleRate * dur);
+      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buf;
+      const bpf = this.ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(950, now);
+      bpf.frequency.exponentialRampToValueAtTime(2200, now + dur);
+      bpf.Q.value = 3.2;
+      const ng = this.ctx.createGain();
+      ng.gain.setValueAtTime(0.28, now);
+      ng.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      noise.connect(bpf); bpf.connect(ng); this.connect(ng);
+      noise.start(now); noise.stop(now + dur);
     }
 
     playHatch() {
@@ -6110,6 +6129,83 @@
       osc2.stop(now + 0.55);
     }
 
+    // -------------------------------------------------------------------------
+    // Mission Wave 17 : Synthétiseurs 1:1 Phases 1 à 5 (Laser LV-426, Reptation, Ovipositeur, Cri Royal)
+    // -------------------------------------------------------------------------
+    playLaserFieldDisturbance(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1600, now);
+      osc.frequency.exponentialRampToValueAtTime(240, now + 0.25);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.connect(gain);
+      this.connect(gain, x, z, 60);
+      osc.start(now);
+      osc.stop(now + 0.28);
+    }
+
+    playSpiderSkitter(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      for (let i = 0; i < 3; i++) {
+        const t = now + i * 0.032;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1400 + i * 250, t);
+        osc.frequency.exponentialRampToValueAtTime(600, t + 0.02);
+        gain.gain.setValueAtTime(0.09, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.024);
+        osc.connect(gain);
+        this.connect(gain, x, z, 35);
+        osc.start(t);
+        osc.stop(t + 0.025);
+      }
+    }
+
+    playOvipositorLay(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(85, now);
+      osc.frequency.linearRampToValueAtTime(145, now + 0.2);
+      osc.frequency.exponentialRampToValueAtTime(55, now + 0.55);
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.58);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now);
+      osc.stop(now + 0.58);
+    }
+
+    playRoyalCry(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      this.playQueenRoar?.(x, z);
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(1240, now + 0.25);
+      osc.frequency.exponentialRampToValueAtTime(340, now + 0.9);
+      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+      osc.connect(gain);
+      this.connect(gain, x, z, 95);
+      osc.start(now);
+      osc.stop(now + 0.95);
+    }
+
     // Chantier 225 : Broyage Écrasant Pinces Chélipèdes Killer Crab Alien (Kenner 1992)
     playCrabPincerCrush(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
@@ -9987,6 +10083,38 @@
         }
       }
 
+      // Mission Wave 17 : Marqueurs tactiques Phase 5 RTS (Relais PALIMPSESTE & Reine sur M314)
+      if (window.gameInstance?.currentStageIndex === 5 && window.gameInstance.currentStage) {
+        const rtsStage = window.gameInstance.currentStage;
+        (rtsStage.relayMeshes || []).forEach((relay, idx) => {
+          const rDist = Math.hypot(relay.position.x - player.x, relay.position.z - player.z);
+          const worldAngle = Math.atan2(relay.position.x - player.x, relay.position.z - player.z);
+          const relAngle = worldAngle - playerFacing;
+          const clampedDist = Math.min(1.0, rDist / maxRange) * (radius - 6);
+          const rx = cx + Math.sin(relAngle) * clampedDist;
+          const ry = cy - Math.cos(relAngle) * clampedDist;
+          const isolated = Boolean(relay.userData?.isolated);
+          ctx.fillStyle = isolated ? '#39ff14' : '#ef4444';
+          ctx.fillRect(rx - 3, ry - 3, 6, 6);
+          ctx.font = '700 8px monospace';
+          ctx.fillText(`R${idx + 1}`, rx + 5, ry + 3);
+        });
+        if (rtsStage.queen && !rtsStage.queen.isDestroyed) {
+          const qDist = Math.hypot(rtsStage.queen.x - player.x, rtsStage.queen.z - player.z);
+          const worldAngle = Math.atan2(rtsStage.queen.x - player.x, rtsStage.queen.z - player.z);
+          const relAngle = worldAngle - playerFacing;
+          const clampedDist = Math.min(1.0, qDist / maxRange) * (radius - 6);
+          const qx = cx + Math.sin(relAngle) * clampedDist;
+          const qy = cy - Math.cos(relAngle) * clampedDist;
+          ctx.fillStyle = '#a855f7';
+          ctx.beginPath();
+          ctx.arc(qx, qy, 4.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.font = '700 8px monospace';
+          ctx.fillText(rtsStage.queen.attachedToOvipositor ? 'OVI' : 'QUEEN', qx + 6, qy + 3);
+        }
+      }
+
       // Audit QA #66 : Traçage 3D Holographique des Conduits Verticaux & Splitters
       const allVents = [...(stationMap.vents || []), ...(stationMap.sevastopolDuctSplitters || [])];
       for (const v of allVents) {
@@ -10692,6 +10820,17 @@
       this.cameraFovPunch = Math.min(12, (this.cameraFovPunch || 0) + punchAmount);
     }
 
+    triggerScreenFlash(colorHex = '#ef4444', duration = 0.25) {
+      if (this.reduceMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || window.HiveSystems?.settings?.reducedMotion) return;
+      const overlay = document.getElementById('vision-overlay');
+      if (!overlay) return;
+      overlay.style.boxShadow = `inset 0 0 110px ${colorHex}, inset 0 0 40px ${colorHex}`;
+      clearTimeout(this._flashTimer);
+      this._flashTimer = setTimeout(() => {
+        if (overlay) overlay.style.boxShadow = '';
+      }, Math.max(80, duration * 1000));
+    }
+
     addScreenShake(intensity = 0.22, duration = 0.3) {
       // Audit QA #24 : Respect strict des réglages d'accessibilité prefers-reduced-motion
       if (this.reduceMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches || window.HiveSystems?.settings?.reducedMotion) return;
@@ -11224,12 +11363,12 @@
       this.updateUI();
     }
     setCommand(cmd) {
-      if (!['HUNT', 'CAPTURE', 'DEFEND', 'INFEST', 'RUSH'].includes(cmd)) return;
+      if (!['HUNT', 'CAPTURE', 'DEFEND', 'INFEST', 'RUSH', 'ROYAL_GUARD'].includes(cmd)) return;
       this.activeCommand = cmd;
       this.possessionMode = false;
       this.updateUI();
       audioManager.playHiveMindSynapticPulse?.(cmd);
-      const rippleColor = cmd === 'RUSH' ? 0xef4444 : (cmd === 'CAPTURE' ? 0xa855f7 : (cmd === 'DEFEND' ? 0x38bdf8 : 0x39ff14));
+      const rippleColor = cmd === 'RUSH' ? 0xef4444 : ((cmd === 'CAPTURE' || cmd === 'ROYAL_GUARD') ? 0xa855f7 : (cmd === 'DEFEND' ? 0x38bdf8 : 0x39ff14));
       window.HiveSystems?.vfx?.hiveSynapticRipple?.(playerCreature.x, playerCreature.z, rippleColor, 14);
       if (cmd === 'RUSH') {
         audioManager.playXenoHiss();
@@ -25375,10 +25514,23 @@
     model.scale.copy(basePose.scale);
     rig.resetPose?.();
 
-    // 1. CYCLE DE FOULEE SYNCHRONISE (Bipede vs Quadrupede Rapide)
+    // 1. CYCLE DE FOULEE SYNCHRONISE (Arachnide 8 Pattes vs Quadrupede vs Bipede)
     const joints = rig.joints || {};
-    const isQuadruped = (joints.legs && joints.legs.length >= 4) || model.name?.includes('runner') || model.name?.includes('crusher');
-    if (isQuadruped && joints.legs) {
+    const isArachnid = model.name?.includes('facehugger') || (joints.legs && joints.legs.length >= 8);
+    const isQuadruped = !isArachnid && ((joints.legs && joints.legs.length >= 4) || model.name?.includes('runner') || model.name?.includes('crusher'));
+    if (isArachnid && joints.legs) {
+      const arachPhase = phase * 3.1;
+      joints.legs.forEach((leg, idx) => {
+        const side = idx < 4 ? -1 : 1;
+        const row = idx % 4;
+        const wave = arachPhase + row * 0.85 + (side > 0 ? Math.PI : 0);
+        leg.rotation.x += Math.sin(wave) * 0.45 * movement;
+        leg.rotation.z += Math.cos(wave) * 0.25 * movement * side;
+        const knee = model.getObjectByName(`crawler_knee_${idx}`);
+        if (knee) knee.rotation.z += Math.sin(wave + 0.5) * 0.35 * movement * side;
+      });
+      model.position.y += Math.abs(Math.sin(arachPhase * 2)) * 0.025 * movement;
+    } else if (isQuadruped && joints.legs) {
       const quadPhase = phase * 2.2;
       joints.legs.forEach((leg, idx) => {
         const pairPhase = (idx === 0 || idx === 3) ? quadPhase : (quadPhase + Math.PI);
@@ -28095,6 +28247,67 @@
           window.HiveSystems?.vfx?.burst?.(u.x, u.z, 0xd946ef, 12, 0.15, 1.2);
         }
       });
+
+      // Effroi sur les humains proches (stagger 1.6s + stress +45%)
+      (window.gameInstance?.humans || []).forEach((h) => {
+        if (h.isIncapacitated || h.isCocooned || h.isSynthetic?.()) return;
+        if (Math.hypot(h.x - this.x, h.z - this.z) <= 16.0) {
+          h.stress = Math.min(100, (h.stress || 0) + 45);
+          h.staggerTimer = Math.max(h.staggerTimer || 0, 1.6);
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.7, h.z, 'EFFROI ROYAL !', '#f472b6', false);
+        }
+      });
+      return true;
+    }
+
+    // Wave 17 : Siphon Métabolique Z-01 de l'Offspring (Alien: Romulus)
+    executeOffspringZ01Siphon(target = null) {
+      const humans = window.gameInstance?.humans || [];
+      const victim = target || humans.find((h) => (
+        !h.isCocooned && !h.isIncapacitated && !h.isSynthetic?.() && Math.hypot(h.x - this.x, h.z - this.z) <= 6.5
+      ));
+      if (!victim) {
+        showToast('Aucune proie organique à portée pour le Siphon Métabolique Z-01 (6.5m).');
+        return false;
+      }
+      this.triggerAttack('melee');
+      audioManager.playBoneCrunch?.();
+      audioManager.playBlackGooBubble?.(victim.x, victim.z);
+      rendererEngine.addScreenShake?.(0.35, 0.25);
+      victim.takeDamage(85, this);
+      victim.staggerTimer = 2.0;
+      this.health = Math.min(this.maxHealth, this.health + 45);
+      if (window.gameInstance?.currentStage?.huntReserve !== undefined) {
+        window.gameInstance.currentStage.huntReserve = Math.min(100, window.gameInstance.currentStage.huntReserve + 25);
+      }
+      window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0x0f051d, 24, 0.18, 2.0);
+      window.HiveSystems?.vfx?.floatingText?.(this.x, 3.0, this.z, '+45 PV SIPHON Z-01', '#c084fc', true);
+      showToast(`SIPHON MÉTABOLIQUE Z-01 : Vitalité absorbée sur ${victim.name} (+45 PV) !`);
+      return true;
+    }
+
+    // Wave 17 : Embuscade Furtive du Prowler (Aliens: Fireteam Elite)
+    executeProwlerAmbush(target = null) {
+      const humans = window.gameInstance?.humans || [];
+      const victim = target || humans.find((h) => (
+        !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 14.0
+      ));
+      if (!victim) {
+        showToast('Aucune cible à portée de bond furtif du Prowler (14m).');
+        return false;
+      }
+      audioManager.playLeapAttack?.();
+      this.x = victim.x - 1.2;
+      this.z = victim.z - 1.2;
+      this.mesh?.position.set(this.x, 0, this.z);
+      this.triggerAttack('melee');
+      audioManager.playWetImpact?.(victim.x, victim.z);
+      victim.takeDamage(95, this);
+      victim.staggerTimer = 2.2;
+      victim.stress = Math.min(100, (victim.stress || 0) + 60);
+      window.HiveSystems?.vfx?.burst?.(victim.x, victim.z, 0xa855f7, 22, 0.16, 1.8);
+      window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.9, victim.z, '-95 EMBUSCADE PROWLER', '#c084fc', true);
+      showToast(`EMBUSCADE PROWLER : ${victim.name} lacéré par surprise !`);
       return true;
     }
 
@@ -33446,7 +33659,8 @@
       const scentBonus = (window.pheromoneSystem?.getScentBonus?.(this.x, this.z)) || 1.0;
       const suppressionPenalty = (this.suppressionTimer > 0) ? 0.65 : 1.0;
       if (this.suppressionTimer > 0) this.suppressionTimer -= deltaSeconds;
-      const movementStep = Math.min(this.speed * Math.max(0, speedMultiplier) * resinBonus * scentBonus * suppressionPenalty * frameScale, maxDistance);
+      const royalFuryBonus = (this.royalFuryTimer || 0) > 0 ? 1.35 : 1.0;
+      const movementStep = Math.min(this.speed * Math.max(0, speedMultiplier) * resinBonus * scentBonus * royalFuryBonus * suppressionPenalty * frameScale, maxDistance);
       const nextX = this.x + dx * movementStep;
       const nextZ = this.z + dy * movementStep;
       let moved = false;
@@ -33519,6 +33733,7 @@
       if (!this.mesh || this.isDestroyed) return;
       this.attackCooldown -= deltaSeconds;
       this.supportCooldown -= deltaSeconds;
+      this.royalFuryTimer = Math.max(0, (this.royalFuryTimer || 0) - deltaSeconds);
       this.attackAnimation = Math.max(0, this.attackAnimation - Math.max(0, deltaSeconds) * 3);
       this.movementBlend = Math.max(0, this.movementBlend - Math.max(0, deltaSeconds) * 4.5);
 
@@ -33644,16 +33859,17 @@
             !human.isCocooned &&
             human.hostEligibility !== 'none'
           )) || activeZone;
-        } else if (activeZone.command === 'DEFEND') {
+        } else if (activeZone.command === 'DEFEND' || activeZone.command === 'ROYAL_GUARD') {
           target = nearestInZone((human) => !human.isCocooned && !human.isIncapacitated) || activeZone;
         }
 
         const dist = Math.hypot(target.x - this.x, target.z - this.z);
         const isRush = activeZone.command === 'RUSH';
-        const isAttackOrder = activeZone.command === 'HUNT' || activeZone.command === 'DEFEND' || isRush;
+        const isRoyalGuard = activeZone.command === 'ROYAL_GUARD';
+        const isAttackOrder = activeZone.command === 'HUNT' || activeZone.command === 'DEFEND' || isRush || isRoyalGuard;
         const stopRadius = target.human && isAttackOrder
           ? this.attackRange
-          : (activeZone.command === 'DEFEND' ? 4 : (activeZone.command === 'CAPTURE' ? 1.5 : 2));
+          : (isRoyalGuard ? 5.5 : (activeZone.command === 'DEFEND' ? 4 : (activeZone.command === 'CAPTURE' ? 1.5 : 2)));
         if (dist > stopRadius) {
           // Chantier 109 : Bond Prédateur du Prowler (Aliens: Fireteam Elite) à moyenne portée
           this.leapCooldown = Math.max(0, (this.leapCooldown || 0) - deltaSeconds);
@@ -33675,7 +33891,7 @@
             window.HiveSystems?.vfx?.burst(target.human.x, target.human.z, 0xef4444, 16, 0.14, 1.3);
             window.HiveSystems?.vfx?.floatingText?.(target.human.x, 2.7, target.human.z, `-${leapDmg} BOND PRÉDATEUR PROWLER !`, '#ef4444', true);
           } else {
-            const speedMultiplier = isRush ? 1.45 : (activeZone.command === 'HUNT' ? 1.15 : (activeZone.command === 'DEFEND' ? 0.75 : 1));
+            const speedMultiplier = isRush ? 1.45 : (isRoyalGuard ? 1.30 : (activeZone.command === 'HUNT' ? 1.15 : (activeZone.command === 'DEFEND' ? 0.75 : 1)));
             this.moveDirect(
               (target.x - this.x) / dist,
               (target.z - this.z) / dist,
@@ -33692,7 +33908,8 @@
               const baseCooldown = (this.caste === 'swarmers' || this.caste === 'swarmer') ? 0.45 : (this.caste === 'runner' ? 0.62 : (this.caste === 'spitter' ? 1.45 : 0.86));
               this.attackCooldown = isRush ? baseCooldown * 0.68 : baseCooldown;
               this.attackAnimation = 1;
-              const bonusDmg = isRush ? Math.round(this.damage * 1.35) : this.damage;
+              const furyMult = (this.royalFuryTimer || 0) > 0 ? 1.30 : 1.0;
+              const bonusDmg = Math.round((isRush ? this.damage * 1.35 : this.damage) * furyMult);
               const color = this.caste === 'spitter' ? 0xa3e635 : (isRush ? 0xdc2626 : 0x39ff14);
               if (this.caste === 'spitter') {
                 const applyAcidHit = () => {
@@ -34243,6 +34460,22 @@
       if (window.gameInstance) window.gameInstance.hostProfile = null;
       playerCreature.setForm('egg');
       alarmSystem.setLevel(0);
+      this.derelictLaserPlane = null;
+      if (origin.id === 'juggernaut' && typeof THREE !== 'undefined' && rendererEngine.scene) {
+        const planeGeo = new THREE.PlaneGeometry(14, 14);
+        const planeMat = new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          transparent: true,
+          opacity: 0.22,
+          blending: THREE.AdditiveBlending,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+        this.derelictLaserPlane = new THREE.Mesh(planeGeo, planeMat);
+        this.derelictLaserPlane.rotation.x = -Math.PI / 2;
+        this.derelictLaserPlane.position.set(playerCreature.x, 1.15, playerCreature.z);
+        rendererEngine.scene.add(this.derelictLaserPlane);
+      }
       this.updateHUD();
       this.log(`[OVOMORPHE] La coquille perçoit chaleur et vibrations : ${origin.locationName}.`);
       window.HiveSystems?.setMission(1, 0, 'Calibrer les sens biologiques sur trois sources.');
@@ -34257,8 +34490,13 @@
       setHudBar('sec', 'LECTURE SENSORIELLE', (this.senseCalibrations / 3) * 100);
       const inst = document.getElementById('stage-instructions');
       const actionsContainer = document.getElementById('action-buttons-container');
+      const origin = this.activeOrigin || window.gameInstance?.activeOrigin;
+      const targetType = origin?.hostType || 'scientist';
+      const host = window.gameInstance?.humans?.find((h) => (h.type === targetType || h.id === 1) && !h.isIncapacitated);
+      const distStr = host ? `${Math.hypot(host.x - playerCreature.x, host.z - playerCreature.z).toFixed(1)}m` : '--.-m';
+      const tempStr = host ? `${(host.getTemperature?.() || 37.0).toFixed(1)}°C` : '37.0°C';
       if (this.step === 'CLOSED') {
-        inst.innerHTML = '<strong>Incubateur scellé :</strong><br><br>• Analysez trois signatures.<br>• Émettez ensuite un stimulus de proximité.<br>• N’ouvrez qu’une fois l’hôte à portée.';
+        inst.innerHTML = `<strong>Incubateur scellé :</strong><br><em>THERMOSENSOR : ${distStr} — ${tempStr}</em><br><br>• Analysez trois signatures.<br>• Émettez ensuite un stimulus de proximité.<br>• N’ouvrez qu’une fois l’hôte à portée.`;
         actionsContainer.innerHTML = `
           <button type="button" id="btn-calibrate-senses" class="act-btn" ${this.senseCalibrations >= 3 ? 'disabled' : ''}>1. CALIBRER LES SENS — ${this.senseCalibrations}/3</button>
           <button type="button" id="btn-lure" class="act-btn" ${this.senseCalibrations < 3 || this.luredScientist ? 'disabled' : ''}>2. ÉMETTRE UN STIMULUS DE PROXIMITÉ</button>
@@ -34292,6 +34530,12 @@
           this.step = 'OPENED';
           playerCreature.openEgg();
           const origin = this.activeOrigin || window.gameInstance?.activeOrigin || STARTING_CAMPAIGN_ORIGINS.starship;
+          if (this.derelictLaserPlane) {
+            audioManager.playLaserFieldDisturbance?.(playerCreature.x, playerCreature.z);
+            rendererEngine.removeObject(this.derelictLaserPlane);
+            this.derelictLaserPlane = null;
+            appendSensorLog('[CHAMP LASER] Rupture du faisceau de confinement Space Jockey.', 'bio');
+          }
           const ringColor = origin.id === 'juggernaut' ? 0x38bdf8 : (origin.id === 'hive' ? 0xa855f7 : 0xf59e0b);
           window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, ringColor, 2.5);
           window.HiveSystems?.updateObjective(1, 2, 'Libérer le Facehugger lorsque l’hôte est à portée.');
@@ -34305,6 +34549,10 @@
         document.getElementById('btn-expel-facehugger').onclick = () => {
           if (this.isCompleted) return;
           this.isCompleted = true;
+          if (this.derelictLaserPlane) {
+            rendererEngine.removeObject(this.derelictLaserPlane);
+            this.derelictLaserPlane = null;
+          }
           window.HiveSystems?.updateObjective(1, 3);
           if (window.gameInstance) window.gameInstance.advanceStage(this);
           audioManager.playHatch();
@@ -34314,13 +34562,34 @@
       enrichActionButtonsWithSquareIcons(actionsContainer);
     }
     log(msg) { appendSensorLog(msg, 'bio'); }
+    getCameraOverride() {
+      const fovTarget = this.step === 'OPENED' ? 34 : 38;
+      return {
+        position: { x: playerCreature.x + 2.6, y: 2.35, z: playerCreature.z + 3.8 },
+        target: { x: playerCreature.x, y: 0.72, z: playerCreature.z },
+        fov: fovTarget
+      };
+    }
+    destroy() {
+      if (this.derelictLaserPlane) {
+        rendererEngine.removeObject(this.derelictLaserPlane);
+        this.derelictLaserPlane = null;
+      }
+    }
     update() {
+      if (this.derelictLaserPlane && Math.random() < 0.04) {
+        window.HiveSystems?.vfx?.derelictMist?.(playerCreature.x, playerCreature.z);
+      }
       if (!this.luredScientist || this.hostArrived || this.step !== 'CLOSED') return;
       const origin = this.activeOrigin || window.gameInstance?.activeOrigin;
       const targetType = origin?.hostType || 'scientist';
       const host = window.gameInstance?.humans.find((human) => (human.type === targetType || human.id === 1) && !human.isIncapacitated);
       if (!host) return;
       const distance = Math.hypot(host.x - playerCreature.x, host.z - playerCreature.z);
+      if (distance <= 7.0 && playerCreature.mesh?.userData?.setOpenProgress) {
+        // Frémissement pré-éclosion de l'ovomorphe à l'approche thermique
+        playerCreature.mesh.userData.setOpenProgress(0.14);
+      }
       if (
         distance <= 4.2 &&
         stationMap.hasLineOfSight(host.x, host.z, playerCreature.x, playerCreature.z, 0.12)
@@ -34348,6 +34617,7 @@
       this.implantProgress = 0;
       this.lastImplantPercent = -1;
       this.isRoyal = false;
+      this.royalImplantCount = 0;
     }
     init() {
       playerCreature.setForm('facehugger');
@@ -34595,6 +34865,8 @@
         this.isAttacking = playerCreature.attachToFace(closestHost);
         this.implantProgress = this.isAttacking ? 15 : 0;
         audioManager.playFacehuggerGrip?.(closestHost.x, closestHost.z);
+        rendererEngine.triggerCameraFovPunch?.(6.5);
+        rendererEngine.triggerScreenFlash?.('#d97706', 0.2);
         window.HiveSystems?.vfx?.burst(closestHost.x, closestHost.z, 0xd97706, 16, 0.11, 2.4);
         const origin = window.gameInstance?.activeOrigin;
         if (origin && closestHost.id === 1 && origin.leapLog) {
@@ -34621,6 +34893,23 @@
       this.targetHost.usedAsHost = true;
       this.targetHost.isRestrained = false;
       window.gameInstance?.syncCampaignCharacter?.(this.targetHost, { alive: true });
+
+      // Double-implantation canonique du Facehugger Royal (Alien 3)
+      if (this.isRoyal && this.royalImplantCount < 1) {
+        this.royalImplantCount++;
+        playerCreature.detachFromHost({ releaseHost: true, hide: false });
+        playerCreature.hp = Math.max(40, Math.floor(playerCreature.maxHp * 0.5));
+        this.isAttacking = false;
+        this.implantProgress = 0;
+        this.targetHost = null;
+        audioManager.playAcidSizzle();
+        showToast('EMBRYON ROYAL INOCULÉ (1/2) — Le Facehugger Royal survit pour un 2e hôte !');
+        appendSensorLog('[DOUBLE IMPLANTATION ALIEN 3] Premier embryon implanté. Le Facehugger Royal cherche un second hôte.', 'bio');
+        window.HiveSystems?.updateObjective(2, 1, 'Facehugger Royal (1/2) : implanter un second hôte pour la lignée.');
+        this.updateHUD();
+        return;
+      }
+
       playerCreature.detachFromHost({ releaseHost: true, hide: true });
 
       // Canon 1:1 Lore — Le Facehugger se détache, meurt et son cadavre desséché reste au sol (Alien 1979 / Medlab)
@@ -34942,6 +35231,8 @@
       audioManager.playSternumBoneCreak?.();
       audioManager.playSternumPressure?.();
       rendererEngine.addScreenShake?.(0.45, 0.35);
+      rendererEngine.triggerScreenFlash?.('#ef4444', 0.22);
+      rendererEngine.triggerCameraFovPunch?.(6.0);
       this.updateHUD();
     }
 
@@ -34969,11 +35260,18 @@
       rendererEngine.snapCameraTarget(playerCreature.x, playerCreature.z);
       rendererEngine.addScreenShake?.(0.65, 0.45);
       rendererEngine.addHitstop?.(0.18);
+      rendererEngine.triggerScreenFlash?.('#b91c1c', 0.32);
+      rendererEngine.triggerCameraFovPunch?.(8.5);
       audioManager.playBoneCrunch();
       audioManager.playChestburstScreech();
       audioManager.playWetImpact?.(playerCreature.x, playerCreature.z);
       window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0xef334f, 34, 0.16, 1.2);
       window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0xef334f, 2.2);
+      const nearVent = stationMap.findClosestVent(playerCreature.x, playerCreature.z);
+      if (nearVent) {
+        window.HiveSystems?.vfx?.ring?.(nearVent.x, nearVent.z, 0x38bdf8, 2.6);
+        appendSensorLog(`[ÉVASION] Conduit de fuite le plus proche à ${nearVent.distance.toFixed(1)}m ([C]).`, 'stealth');
+      }
       window.HiveSystems?.vfx?.fleshImpact?.(playerCreature.x, playerCreature.z, 0xb91c1c, 45);
       rendererEngine.addFloorFluidDecal?.(playerCreature.x, playerCreature.z, 2.2, 0x7f1d1d, 35);
       this.spawnRodents();
@@ -35147,15 +35445,21 @@
     emergeAdultForm() {
       if (this.isCompleted) return;
       this.isCompleted = true;
+      if (this.chrysalisRingMesh) {
+        rendererEngine.removeObject(this.chrysalisRingMesh);
+        this.chrysalisRingMesh = null;
+      }
       window.HiveSystems?.updateObjective(3, 3);
       audioManager.playBoneCrunch();
       audioManager.playXenoRoar();
       audioManager.playChestburstScreech();
       window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0x39ff14, 28, 0.16, 1.8);
-      window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0x9d4edd, 24, 0.12, 1.2);
+      window.HiveSystems?.vfx?.burst(playerCreature.x, playerCreature.z, 0x4c1d95, 24, 0.12, 1.2);
       window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0x39ff14, 3.8);
       window.HiveSystems?.vfx?.transformation();
       rendererEngine.addScreenShake?.(0.35);
+      rendererEngine.triggerScreenFlash?.('#39ff14', 0.25);
+      rendererEngine.triggerCameraFovPunch?.(7.0);
 
       if (window.HiveModelFactory?.createDiscardedExuvia) {
         const exuvia = window.HiveModelFactory.createDiscardedExuvia();
@@ -35218,6 +35522,10 @@
         if (ration.mesh) rendererEngine.removeObject(ration.mesh);
       }
       this.rations = [];
+      if (this.chrysalisRingMesh) {
+        rendererEngine.removeObject(this.chrysalisRingMesh);
+        this.chrysalisRingMesh = null;
+      }
     }
 
     spawnInvestigator() {
@@ -35279,6 +35587,14 @@
           }
         }
         this.gestationProgress = Math.min(100, this.gestationProgress + safeDelta * 12.5);
+        if (this.gestationProgress >= 60) {
+          this.earlyHeartbeatTimer = (this.earlyHeartbeatTimer || 0) - safeDelta;
+          if (this.earlyHeartbeatTimer <= 0) {
+            this.earlyHeartbeatTimer = 1.05;
+            audioManager.playInternalHeartbeat?.();
+            rendererEngine.addScreenShake?.(0.08, 0.12);
+          }
+        }
         const displayedPercent = Math.min(100, Math.floor(this.gestationProgress));
         if (displayedPercent !== this.lastDisplayedPercent) {
           this.lastDisplayedPercent = displayedPercent;
@@ -35329,6 +35645,20 @@
         if (progress >= 1) this.finishBurstSequence();
       } else if (this.step === 'CHRYSALIS' && this.chrysalisTimer < 100) {
         this.chrysalisTimer = Math.min(100, this.chrysalisTimer + safeDelta * 25);
+        if (!this.chrysalisRingMesh && typeof THREE !== 'undefined' && rendererEngine.scene) {
+          this.chrysalisRingMesh = new THREE.Mesh(
+            new THREE.RingGeometry(0.9, 1.35, 32),
+            new THREE.MeshBasicMaterial({ color: 0x4c1d95, transparent: true, opacity: 0.78, side: THREE.DoubleSide })
+          );
+          this.chrysalisRingMesh.rotation.x = -Math.PI / 2;
+          this.chrysalisRingMesh.position.set(playerCreature.x, 0.08, playerCreature.z);
+          rendererEngine.scene.add(this.chrysalisRingMesh);
+        }
+        if (this.chrysalisRingMesh) {
+          const s = 0.65 + (this.chrysalisTimer / 100) * 1.15;
+          this.chrysalisRingMesh.scale.set(s, s, 1);
+          this.chrysalisRingMesh.material.opacity = 0.45 + (this.chrysalisTimer / 100) * 0.45;
+        }
         const displayedPercent = this.chrysalisTimer >= 100 ? 100 : Math.min(99, Math.floor(this.chrysalisTimer));
         if (displayedPercent !== this.lastDisplayedPercent) {
           this.lastDisplayedPercent = displayedPercent;
@@ -35336,16 +35666,19 @@
           if (emergeButton) {
             const isMature = this.chrysalisTimer >= 100;
             const adultLabel = playerCreature.getAdultProfile().label;
-            emergeButton.textContent = isMature
+            const emergeTxt = isMature
               ? `ÉMERGER EN ${adultLabel} ADULTE [ESPACE]`
               : `MATURATION ${adultLabel}... (${displayedPercent}%)`;
+            const emergeSpan = emergeButton.querySelector('span');
+            if (emergeSpan) emergeSpan.textContent = emergeTxt;
+            else emergeButton.textContent = emergeTxt;
             emergeButton.disabled = !isMature;
             if (isMature) emergeButton.onclick = () => this.emergeAdultForm();
           }
           setHudBar('sec', 'MATURATION', this.chrysalisTimer);
           if (displayedPercent > 0 && displayedPercent % 25 === 0) {
             audioManager.playCocoonPulse?.(playerCreature.x, playerCreature.z);
-            window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0xa855f7, 2.7);
+            window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, 0x4c1d95, 2.7);
           }
         }
       }
@@ -36134,7 +36467,8 @@
 
     executeAcidSpit() {
       if (!this.canUseAbility('acidSpit', 1100)) return;
-      const { human: target } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated && Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= 15);
+      const spitRange = playerCreature.adultCaste === 'spitter' ? 22 : 15;
+      const { human: target } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated && Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= spitRange);
       playerCreature.executeAcidSpit(target);
 
       // Chantier 84, 85, 88 : Le crachat acide balistique dissout câbles d'ascenseur, cuves cryo et attaches de creuset à distance
@@ -37476,6 +37810,7 @@
 
     toggleCeilingProwl() {
       playerCreature.toggleCeilingProwl();
+      this.updateHUD();
     }
 
     executeDragOrWallCocoon() {
@@ -37721,8 +38056,12 @@
           playerCreature.executeRavenSeismicCharge();
         } else if (key === 'r' && caste === 'crusher') {
           playerCreature.executeCrusherCharge?.();
-        } else if (key === 'r' && caste === 'praetorian') {
+        } else if (key === 'r' && (caste === 'praetorian' || caste === 'palatine')) {
           playerCreature.executePraetorianRoar();
+        } else if (key === 'r' && caste === 'prowler') {
+          playerCreature.executeProwlerAmbush();
+        } else if (key === 'r' && caste === 'offspring') {
+          playerCreature.executeOffspringZ01Siphon();
         } else if (key === 'r' && caste === 'abomination') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
           if (target) playerCreature.executeAbominationSternalCrush(target);
@@ -38042,6 +38381,8 @@
       if (isVulnerable && target.bossId !== 'MANTIS_4') {
         // Exécution fatale instantanée avec perforation crânienne 1:1
         rendererEngine.addHitstop?.(0.14);
+        rendererEngine.triggerCameraFovPunch?.(7.5);
+        rendererEngine.triggerScreenFlash?.('#ef4444', 0.24);
         target.takeDamage(target.hp + 50, playerCreature);
         window.HiveSystems?.vfx?.fleshImpact?.(target.x, target.z, 0xb91c1c, 32);
         window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xb91c1c, 24, 0.16, 1.8);
@@ -38675,6 +39016,8 @@
       this.cameraFocus = { x: 20, z: 10 };
       this.selectedUnit = null;
       this.selectionRingMesh = null;
+      this.royalCryCooldown = 0;
+      this.royalCryMaxCooldown = 20;
     }
 
     findFreePosition(preferredX, preferredZ, seed = 0, extraOccupied = []) {
@@ -38725,9 +39068,14 @@
           roughness: 0.5
         })
       );
+      sac.name = 'ovipositor-sac';
       sac.scale.set(1.35, 0.8, 2.2);
       sac.position.set(0, 1.45, -4.2);
       group.add(sac);
+      const oviLight = new THREE.PointLight(0x9d4edd, 2.2, 14);
+      oviLight.name = 'ovipositor-light';
+      oviLight.position.set(0, 2.4, -4.2);
+      group.add(oviLight);
       for (let index = 0; index < 4; index++) {
         const tendon = new THREE.Mesh(
           new THREE.CylinderGeometry(0.16, 0.24, 5.2, 8),
@@ -38797,6 +39145,47 @@
         this.updateHUD();
         this.updateStats();
       }
+    }
+
+    triggerRoyalCry() {
+      if (!this.queen || this.queen.isDestroyed) return;
+      if (this.royalCryCooldown > 0) {
+        showToast(`Cri Royal en recharge (${Math.ceil(this.royalCryCooldown)}s).`);
+        return;
+      }
+      this.royalCryCooldown = this.royalCryMaxCooldown;
+      audioManager.playRoyalCry?.(this.queen.x, this.queen.z);
+      rendererEngine.addScreenShake?.(0.5, 0.35);
+      window.HiveSystems?.vfx?.hiveSynapticRipple?.(this.queen.x, this.queen.z, 0xa855f7, 18);
+      window.HiveSystems?.vfx?.ring?.(this.queen.x, this.queen.z, 0xa855f7, 8);
+
+      (window.gameInstance?.humans || []).forEach((h) => {
+        if (h.isIncapacitated || h.isCocooned || h.isSynthetic?.()) return;
+        if (Math.hypot(h.x - this.queen.x, h.z - this.queen.z) <= 18.0) {
+          h.panicTimer = 5.0;
+          h.aiState = 'FLEE';
+          h.stress = Math.min(100, (h.stress || 0) + 45);
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 2.8, h.z, 'TERREUR ROYALE !', '#a855f7', false);
+        }
+      });
+
+      this.rtsUnits.forEach((unit) => {
+        if (!unit.isDestroyed) {
+          unit.royalFuryTimer = 8.0;
+          window.HiveSystems?.vfx?.burst?.(unit.x, unit.z, 0xa855f7, 10, 0.12, 1.0);
+        }
+      });
+      showToast('CRI ROYAL DE LA REINE [C] : Essaim galvanisé (+35% Vit, +30% Dégâts) & Terreur humaine !');
+      this.log('[CRI ROYAL] Impulsion phéromonale de la Reine : essaim en frénésie.');
+      this.updateStats();
+    }
+
+    rallyRoyalGuard() {
+      const center = this.ovipositorPos || this.queen;
+      if (!center) return;
+      this.placePheromoneOrder(center.x, center.z, 'ROYAL_GUARD');
+      audioManager.playQueenRoar?.();
+      showToast('GARDE ROYALE [G] : L\'essaim converge pour défendre l\'ovipositeur !');
     }
 
     executePossessedAttack(targetEnemy = null) {
@@ -39046,6 +39435,8 @@
       this.purgeRemaining = difficulty === 'story' ? 330 : (difficulty === 'nightmare' ? 180 : 240);
       this.cameraFocus = { x: this.queen.x - 10, z: this.queen.z - 8 };
       document.getElementById('btn-rts-focus-queen')?.addEventListener('click', () => this.focusCameraOnQueen());
+      document.getElementById('btn-royal-cry')?.addEventListener('click', () => this.triggerRoyalCry());
+      document.getElementById('btn-royal-guard')?.addEventListener('click', () => this.rallyRoyalGuard());
       this.updateHUD();
       this.updateStats();
       this.updateRtsTacticalMonitor();
@@ -39246,10 +39637,12 @@
           unit.createMesh();
           this.rtsUnits.push(unit);
           this.updateStats();
+          audioManager.playXenoHiss?.(spawn.x, spawn.z);
           window.HiveSystems?.vfx?.burst(spawn.x, spawn.z, 0x39ff14, 24, 0.14, 1.5);
           this.log(`[NAISSANCE] ${caste.toUpperCase()} mature ; le cycle exposé a survécu.`);
         },
         onFail: (failedCycle) => {
+          audioManager.playXenoDeathScreech?.();
           this.log(`[ÉCHEC BIOLOGIQUE] ${caste.toUpperCase()} détruit pendant ${failedCycle.state}.`);
           this.updateStats();
         }
@@ -39257,6 +39650,8 @@
       cycle.createMesh();
       this.incubationCycles.push(cycle);
       this.updateStats();
+      audioManager.playOvipositorLay?.(this.queen.x, this.queen.z);
+      window.HiveSystems?.vfx?.burst(this.queen.x, this.queen.z, 0x9d4edd, 20, 0.14, 2.0);
       window.HiveSystems?.vfx?.ring(originX, originZ, 0xa855f7, 3.2);
     }
 
@@ -39345,6 +39740,14 @@
       }
       if (key === 'h') {
         this.focusCameraOnQueen();
+        return;
+      }
+      if (key === 'c') {
+        this.triggerRoyalCry();
+        return;
+      }
+      if (key === 'g') {
+        this.rallyRoyalGuard();
         return;
       }
       if (key === ' ' && pheromoneSystem.possessionMode && this.possessedUnit) {
@@ -39571,6 +39974,16 @@
         cyclesEl.textContent = `CYCLES ${activeCycles}/3`;
       }
 
+      const cryBtn = document.getElementById('btn-royal-cry');
+      if (cryBtn) {
+        const ready = (this.royalCryCooldown || 0) <= 0 && !this.queen?.isDestroyed;
+        cryBtn.disabled = !ready;
+        const crySpan = cryBtn.querySelector('span');
+        const cryTxt = ready ? 'CRI ROYAL [C]' : `CRI ROYAL (${Math.ceil(this.royalCryCooldown)}s)`;
+        if (crySpan) crySpan.textContent = cryTxt;
+        else cryBtn.textContent = cryTxt;
+      }
+
       if (chipsEl) {
         const counts = {};
         for (const u of this.rtsUnits) {
@@ -39742,10 +40155,23 @@
         this.updateStats();
       }
 
+      this.royalCryCooldown = Math.max(0, (this.royalCryCooldown || 0) - deltaSeconds);
+      if (this.queen?.attachedToOvipositor && this.ovipositorMesh) {
+        const sac = this.ovipositorMesh.getObjectByName('ovipositor-sac');
+        if (sac) {
+          const activeCycles = this.incubationCycles.some((c) => c.isActive);
+          const rate = activeCycles ? 5.5 : 2.2;
+          const pulse = 1 + Math.sin(performance.now() * 0.001 * rate) * 0.06;
+          sac.scale.set(1.35 * pulse, 0.8 * (2 - pulse), 2.2 * pulse);
+        }
+      }
       if (this.relayCount < 3) this.purgeRemaining = Math.max(0, this.purgeRemaining - deltaSeconds);
       const purgeSecond = Math.ceil(this.purgeRemaining);
       if (purgeSecond !== this.lastPurgeSecond) {
         this.lastPurgeSecond = purgeSecond;
+        if (this.relayCount < 3 && purgeSecond > 0 && purgeSecond <= 30 && purgeSecond % 5 === 0) {
+          audioManager.playMotionTrackerRapidBeep?.();
+        }
         this.updateStats();
       }
       if (this.purgeRemaining <= 0 && this.relayCount < 3 && !this.isCompleted) {
@@ -40438,7 +40864,10 @@
       stationMap.update?.(deltaSeconds);
       visionSystem.update?.(deltaSeconds);
       pheromoneSystem.update?.(deltaSeconds);
-      this.motionTracker?.update(deltaSeconds, playerCreature, this.humans);
+      const trackerOrigin = (this.currentStageIndex === 5 && this.currentStage)
+        ? (this.currentStage.possessedUnit || { x: this.currentStage.cameraFocus?.x || 20, z: this.currentStage.cameraFocus?.z || 10, mesh: null })
+        : playerCreature;
+      this.motionTracker?.update(deltaSeconds, trackerOrigin, this.humans);
       if (!this.isRunning) return;
 
       if (performance.now() < this.renderResumeAt) {

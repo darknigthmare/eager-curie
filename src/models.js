@@ -4096,11 +4096,19 @@
 
       egg.userData.setOpenProgress = (value) => {
         const progress = Math.max(0, Math.min(1, Number(value) || 0));
-        petalJoints.forEach((petal) => {
-          petal.rotation.x = closedPetalAngle + (openPetalAngle - closedPetalAngle) * progress;
+        petalJoints.forEach((petal, idx) => {
+          // Déphasage organique asynchrone entre les 4 pétales (Alien 1979)
+          const stagger = idx * 0.06;
+          const localProgress = Math.max(0, Math.min(1, (progress - stagger) / Math.max(0.01, 1 - stagger * 0.6)));
+          petal.rotation.x = closedPetalAngle + (openPetalAngle - closedPetalAngle) * localProgress;
         });
         apicalSeal.visible = progress < 0.08;
         innerAssembly.visible = progress > 0.08;
+        innerAssembly.traverse((child) => {
+          if (child.isMesh && child.material && !Array.isArray(child.material) && 'emissiveIntensity' in child.material) {
+            child.material.emissiveIntensity = 0.25 + progress * 1.1;
+          }
+        });
         egg.userData.openProgress = progress;
         egg.userData.open = progress >= 0.98;
       };
@@ -4339,6 +4347,7 @@
     }
 
     createRoyalFacehugger() {
+      const T = this._three();
       const hugger = this.createFacehugger();
       hugger.name = 'royal_facehugger';
       hugger.scale.setScalar(1.28);
@@ -4347,11 +4356,42 @@
         roughness: 0.35,
         metalness: 0.4
       });
+      const webbingMat = this._material('membrane', {
+        color: 0x5c2b18,
+        roughness: 0.45,
+        metalness: 0.15,
+        transparent: true,
+        opacity: 0.82
+      });
       hugger.traverse((child) => {
         if (child.isMesh && child.name.includes('body')) {
           child.material = royalArmorMat;
         }
       });
+      // Palmures chitineuses interdigitales et plaques dorsales blindées (Alien 3)
+      for (let side = -1; side <= 1; side += 2) {
+        for (let w = 0; w < 3; w++) {
+          const web = this._box(
+            webbingMat,
+            { x: 0.28, y: 0.018, z: 0.14 },
+            { x: side * 0.24, y: 0.08, z: -0.14 + w * 0.14 },
+            `webbing_membrane_${side > 0 ? 'r' : 'l'}_${w}`
+          );
+          web.rotation.y = side * (0.25 - w * 0.15);
+          hugger.add(web);
+        }
+      }
+      for (let s = 0; s < 3; s++) {
+        const spine = this._cone(
+          royalArmorMat,
+          0.035,
+          0.11,
+          { x: 0, y: 0.16, z: -0.06 + s * 0.11 },
+          { x: -0.35, y: 0, z: 0 },
+          `royal_dorsal_spine_${s}`
+        );
+        hugger.add(spine);
+      }
       return hugger;
     }
 

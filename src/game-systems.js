@@ -749,16 +749,21 @@
         group.add(b);
       }
 
-      for (let i = 0; i < 3; i++) {
-        const sGeo = new THREE.SphereGeometry(0.12, 5, 5);
+      const smokeWisps = [];
+      for (let i = 0; i < 4; i++) {
+        const sGeo = new THREE.SphereGeometry(0.14 + Math.random() * 0.06, 6, 6);
         const sMat = new THREE.MeshBasicMaterial({
-          color: 0x84cc16,
+          color: 0xa3e635,
           transparent: true,
-          opacity: 0.42,
+          opacity: 0.44,
           depthWrite: false
         });
         const s = new THREE.Mesh(sGeo, sMat);
-        s.position.set((Math.random() - 0.5) * radius * 0.8, 0.2 + Math.random() * 0.25, (Math.random() - 0.5) * radius * 0.8);
+        s.position.set((Math.random() - 0.5) * radius * 0.85, 0.12 + Math.random() * 0.35, (Math.random() - 0.5) * radius * 0.85);
+        s.userData.vy = 0.55 + Math.random() * 0.45;
+        s.userData.driftX = (Math.random() - 0.5) * 0.25;
+        s.userData.driftZ = (Math.random() - 0.5) * 0.25;
+        smokeWisps.push(s);
         group.add(s);
       }
 
@@ -772,8 +777,96 @@
         radius,
         x,
         z,
-        bubbles
+        bubbles,
+        smokeWisps
       });
+    }
+
+    // Wave 20 : Faisceau lumineux / laser / tir de tourelle UA 571-C & armes d'escouade
+    beam(x1, y1, z1, x2, y2, z2, color = 0xf59e0b, duration = 0.16) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const start = new THREE.Vector3(x1, y1, z1);
+      const end = new THREE.Vector3(x2, y2, z2);
+      const dir = end.clone().sub(start);
+      const len = dir.length();
+      if (len < 0.05) return;
+      const group = new THREE.Group();
+      const geo = new THREE.CylinderGeometry(0.032, 0.032, len, 6, 1, true);
+      const mat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.92,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(start).addScaledVector(dir, 0.5);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+      group.add(mesh);
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: duration, beamFade: true });
+    }
+
+    // Wave 20 : Traceur balistique USCM M41A / M56 Smartgun
+    tracer(x1, y1, z1, x2, y2, z2, color = 0xfde047) {
+      this.beam(x1, y1, z1, x2, y2, z2, color, 0.09);
+    }
+
+    // Wave 20 : Flaque de givre / azote liquide LN2 persistante
+    spawnFrostGroundPool(x, z, radius = 2.4, duration = 10.0) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const poolMesh = new THREE.Mesh(
+        new THREE.CircleGeometry(radius, 24),
+        new THREE.MeshBasicMaterial({
+          color: 0x7dd3fc,
+          transparent: true,
+          opacity: 0.58,
+          depthWrite: false
+        })
+      );
+      poolMesh.rotation.x = -Math.PI / 2;
+      poolMesh.position.y = 0.034;
+      group.add(poolMesh);
+      const rimMesh = new THREE.Mesh(
+        new THREE.RingGeometry(radius * 0.78, radius * 1.06, 24),
+        new THREE.MeshBasicMaterial({
+          color: 0xe0f2fe,
+          transparent: true,
+          opacity: 0.72,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        })
+      );
+      rimMesh.rotation.x = -Math.PI / 2;
+      rimMesh.position.y = 0.038;
+      group.add(rimMesh);
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: duration, frostPool: true });
+    }
+
+    // Wave 20 : Flash chromé du piston de mâchoire pharyngienne (Headbite 1:1)
+    innerJawFlash(x, y, z, yaw = 0) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const piston = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.055, 0.04, 0.95, 8),
+        new THREE.MeshBasicMaterial({
+          color: 0xe2e8f0,
+          transparent: true,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false
+        })
+      );
+      piston.rotation.x = Math.PI / 2;
+      piston.position.z = 0.45;
+      group.add(piston);
+      group.position.set(x, y, z);
+      group.rotation.y = yaw;
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: 0.22, beamFade: true });
     }
 
     // Persistance de fumees acides corrosives rongeant le metal avec bulles caustiques montantes
@@ -1329,12 +1422,23 @@
             p.scale.addScalar(deltaSeconds * 0.55);
             if (p.material) p.material.opacity = Math.max(0, 0.38 * (1 - progress));
           });
+        } else if (effect.beamFade) {
+          effect.group.children.forEach((m) => {
+            if (m.material) m.material.opacity = Math.max(0, 0.92 * (1 - progress));
+          });
+        } else if (effect.frostPool) {
+          effect.group.children.forEach((m, i) => {
+            if (m.material) m.material.opacity = Math.max(0, (i === 0 ? 0.58 : 0.72) * (1 - Math.pow(progress, 2)));
+          });
         } else if (effect.drip) {
           effect.group.children.forEach((drop) => {
             drop.position.y += drop.userData.vy * deltaSeconds;
             if (drop.position.y <= 0.04) {
               drop.position.y = 0.04;
-              drop.scale.set(1.6, 0.08, 1.6);
+              drop.scale.set(1.75, 0.08, 1.75);
+            } else {
+              const stretch = Math.min(5.2, 2.2 + (effect.startY - drop.position.y) * 1.4);
+              drop.scale.set(0.45, stretch, 0.45);
             }
             if (drop.material) drop.material.opacity = 0.82 * (1 - progress);
           });
@@ -1344,6 +1448,21 @@
               b.userData.phase += deltaSeconds * 6;
               const scaleY = 0.8 + Math.sin(b.userData.phase) * 0.5;
               b.scale.set(1, Math.max(0.2, scaleY), 1);
+            });
+          }
+          if (effect.smokeWisps) {
+            effect.smokeWisps.forEach((s) => {
+              s.position.y += (s.userData.vy || 0.65) * deltaSeconds;
+              s.position.x += (s.userData.driftX || 0) * deltaSeconds;
+              s.position.z += (s.userData.driftZ || 0) * deltaSeconds;
+              s.scale.addScalar(deltaSeconds * 0.45);
+              if (s.position.y > 1.35) {
+                s.position.y = 0.08;
+                s.position.x = (Math.random() - 0.5) * effect.radius * 0.85;
+                s.position.z = (Math.random() - 0.5) * effect.radius * 0.85;
+                s.scale.set(1, 1, 1);
+              }
+              if (s.material) s.material.opacity = Math.max(0, 0.42 * (1 - progress) * (1 - s.position.y / 1.55));
             });
           }
           if (effect.group.children[0]?.material) {

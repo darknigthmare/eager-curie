@@ -4147,6 +4147,12 @@
         'central_carpal_body',
         36
       ));
+      // Wave 20 : Sacs respiratoires latéraux pulsants (Alien 1979)
+      const sacMat = isBlackGoo
+        ? this._material('skin', { color: 0x27272a, roughness: 0.35, clearcoat: 0.3 })
+        : this._material('skin', { color: 0xd4c3a3, roughness: 0.48, clearcoat: 0.35 });
+      root.add(this._ellipsoid(sacMat, { x: 0.26, y: 0.18, z: 0.42 }, { x: -0.62, y: 0.56, z: 0.05 }, 'respiratory_sac_left', 14));
+      root.add(this._ellipsoid(sacMat, { x: 0.26, y: 0.18, z: 0.42 }, { x: 0.62, y: 0.56, z: 0.05 }, 'respiratory_sac_right', 14));
       for (let plateIndex = 0; plateIndex < 5; plateIndex++) {
         root.add(this._ellipsoid(
           joints,
@@ -12872,6 +12878,21 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
 
       swivelHead.add(this._ellipsoid(laserSensor, { x: 0.08, y: 0.08, z: 0.12 }, { x: 0, y: 0.34, z: 0.28 }, 'thermal_sensor_lens', 16));
       swivelHead.add(this._box(digitalCounter, { x: 0.18, y: 0.09, z: 0.03 }, { x: 0.25, y: 0.28, z: -0.2 }, 'digital_ammo_display'));
+
+      // Wave 20 : Cône laser/radar de balayage UA 571-C (arc d'acquisition 70° Aliens Director's Cut)
+      const coneGeo = new T.ConeGeometry(2.6, 8.5, 16, 1, true);
+      const coneMat = new T.MeshBasicMaterial({
+        color: 0x22c55e,
+        transparent: true,
+        opacity: 0.12,
+        side: T.DoubleSide,
+        depthWrite: false
+      });
+      const laserCone = new T.Mesh(coneGeo, coneMat);
+      laserCone.name = 'sentry_laser_cone';
+      laserCone.rotation.x = -Math.PI / 2;
+      laserCone.position.set(0, 0.34, 4.55);
+      swivelHead.add(laserCone);
 
       swivelHead.add(this._segment(
         ammoDrumMat,

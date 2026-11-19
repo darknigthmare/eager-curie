@@ -2689,6 +2689,7 @@
       osc.stop(now + 0.95);
     }
 
+
     // Chantier 73 : Aboiement strident cybernétique & morsure d'acier Cyber-Hound (Aliens: Dark Descent)
     playCyberHoundBark(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
@@ -3168,6 +3169,7 @@
       osc.stop(now + 0.95);
     }
 
+
     // Chantier 92 : Tir Sniper M42A Scoped Pulse Rifle USCM (Aliens 1986 / Dark Descent)
     playSniperPulseRifleShot(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
@@ -3445,6 +3447,7 @@
       osc.start(now);
       osc.stop(now + 0.95);
     }
+
 
     // Chantier 104 : Émergence dorsale et cri du Bodyburster (Alien: Covenant 2017)
     playBackbursterErupt(x = null, z = null) {
@@ -4075,6 +4078,7 @@
       osc.start(now);
       osc.stop(now + 0.95);
     }
+
 
     // Chantier 138 : Grésillement de balayage CRT et stridence électromagnétique caméra thermique (Aliens / Isolation)
     playThermalCameraScream(x = null, z = null) {
@@ -6205,6 +6209,81 @@
       osc.start(now);
       osc.stop(now + 0.95);
     }
+
+    // -------------------------------------------------------------------------
+    // Mission Wave 19 : Synthétiseurs 1:1 Acide Multi-Ponts, Néons & Splash Caustique
+    // -------------------------------------------------------------------------
+    playAcidDeckBurnThrough(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(42, now + 0.75);
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+      osc.connect(gain);
+      this.connect(gain, x, z, 75);
+      osc.start(now);
+      osc.stop(now + 0.8);
+
+      const dur = 0.9;
+      const bufSize = Math.floor(this.ctx.sampleRate * dur);
+      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 0.7);
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buf;
+      const bpf = this.ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.setValueAtTime(2600, now);
+      bpf.Q.value = 1.8;
+      const ng = this.ctx.createGain();
+      ng.gain.setValueAtTime(0.34, now);
+      ng.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      noise.connect(bpf); bpf.connect(ng); this.connect(ng, x, z, 70);
+      noise.start(now); noise.stop(now + dur);
+    }
+
+    playFluorescentBuzz(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(100, now);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      this.connect(gain, x, z, 40);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+
+    playXenomorphAcidSplashRecoil(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const dur = 0.42;
+      const bufSize = Math.floor(this.ctx.sampleRate * dur);
+      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buf;
+      const hpf = this.ctx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.setValueAtTime(1900, now);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      noise.connect(hpf); hpf.connect(gain); this.connect(gain, x, z, 55);
+      noise.start(now); noise.stop(now + dur);
+    }
+
 
     // Chantier 225 : Broyage Écrasant Pinces Chélipèdes Killer Crab Alien (Kenner 1992)
     playCrabPincerCrush(x = null, z = null) {
@@ -11155,6 +11234,17 @@
       }
       if (this.lights.bioGreen && !this.reduceMotion) {
         this.lights.bioGreen.intensity = 48 + Math.sin(Date.now() * 0.0014) * 7;
+        const nodes = typeof resinGrid !== 'undefined' ? resinGrid?.nodes : null;
+        if (nodes && nodes.length > 0 && window.playerCreature) {
+          let best = nodes[0];
+          let bestD = Infinity;
+          for (const n of nodes) {
+            const d = Math.hypot(n.x - window.playerCreature.x, n.z - window.playerCreature.z);
+            if (d < bestD) { bestD = d; best = n; }
+          }
+          this.lights.bioGreen.position.x += (best.x - this.lights.bioGreen.position.x) * 0.06;
+          this.lights.bioGreen.position.z += (best.z - this.lights.bioGreen.position.z) * 0.06;
+        }
       }
       if (this.strobeFlashTimer && this.strobeFlashTimer > 0) {
         if (this._baseAmbientIntensity === undefined && this.lights.ambient) {
@@ -11176,6 +11266,7 @@
   }
 
   const rendererEngine = new Renderer2D3D();
+  window.rendererEngine = rendererEngine;
 
   // -------------------------------------------------------------
   // 4. VISION SYSTEM
@@ -15905,6 +15996,27 @@
         if (existing.acidDepth >= 2 && !existing.isDeckBreached) {
           existing.isDeckBreached = true;
           existing.radius = Math.max(existing.radius, 2.3);
+          existing.timer = Math.max(existing.timer, 45.0);
+          if (existing.mesh) rendererEngine.removeObject(existing.mesh);
+          const breachGroup = new THREE.Group();
+          breachGroup.name = 'acid_breach_hole';
+          const holeDisc = new THREE.Mesh(
+            new THREE.CircleGeometry(existing.radius * 0.78, 22),
+            new THREE.MeshBasicMaterial({ color: 0x020305, side: THREE.DoubleSide })
+          );
+          holeDisc.rotation.x = -Math.PI / 2;
+          holeDisc.position.y = 0.04;
+          const rimRing = new THREE.Mesh(
+            new THREE.RingGeometry(existing.radius * 0.76, existing.radius, 24),
+            new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
+          );
+          rimRing.rotation.x = -Math.PI / 2;
+          rimRing.position.y = 0.045;
+          breachGroup.add(holeDisc, rimRing);
+          breachGroup.position.set(existing.x, 0, existing.z);
+          rendererEngine.propsGroup.add(breachGroup);
+          existing.mesh = breachGroup;
+          audioManager.playAcidDeckBurnThrough?.(existing.x, existing.z);
           audioManager.playAcidSizzle?.();
           audioManager.playMetalImpact?.(existing.x, existing.z);
           rendererEngine.addScreenShake?.(0.32, 0.22);
@@ -15945,13 +16057,35 @@
         z >= c.minZ - 2.2 && z <= c.maxZ + 2.2
       ));
       if (nearCollider) {
-        const wallX = (nearCollider.minX + nearCollider.maxX) / 2;
-        const wallZ = (nearCollider.minZ + nearCollider.maxZ) / 2;
+        const clampedX = Math.max(nearCollider.minX, Math.min(nearCollider.maxX, x));
+        const clampedZ = Math.max(nearCollider.minZ, Math.min(nearCollider.maxZ, z));
+        const dMinX = Math.abs(x - nearCollider.minX);
+        const dMaxX = Math.abs(x - nearCollider.maxX);
+        const dMinZ = Math.abs(z - nearCollider.minZ);
+        const dMaxZ = Math.abs(z - nearCollider.maxZ);
+        const minFace = Math.min(dMinX, dMaxX, dMinZ, dMaxZ);
+        let wallX = clampedX;
+        let wallZ = clampedZ;
+        let wallRotY = 0;
+        if (minFace === dMinX) {
+          wallX = nearCollider.minX - 0.06;
+          wallRotY = Math.PI / 2;
+        } else if (minFace === dMaxX) {
+          wallX = nearCollider.maxX + 0.06;
+          wallRotY = Math.PI / 2;
+        } else if (minFace === dMinZ) {
+          wallZ = nearCollider.minZ - 0.06;
+          wallRotY = 0;
+        } else {
+          wallZ = nearCollider.maxZ + 0.06;
+          wallRotY = 0;
+        }
         const wallMesh = new THREE.Mesh(
           new THREE.PlaneGeometry(0.75, 1.8),
           new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
         );
         wallMesh.position.set(wallX, 1.2, wallZ);
+        wallMesh.rotation.y = wallRotY;
         rendererEngine.propsGroup.add(wallMesh);
         audioManager.playAcidSizzle?.();
         window.HiveSystems?.vfx?.burst?.(wallX, wallZ, 0x39ff14, 18, 0.2, 1.5);
@@ -30673,6 +30807,15 @@
         if (isSurgicalDefense && !human.isSynthetic?.()) {
           human.stress = 100;
           human.isPanicking = true;
+        } else if (!human.isSynthetic?.()) {
+          audioManager.playXenomorphAcidSplashRecoil?.(human.x, human.z);
+          human.stress = Math.min(100, (human.stress || 0) + 28);
+          const recoilAng = Math.atan2(human.z - this.z, human.x - this.x);
+          const rx = human.x + Math.cos(recoilAng) * 3.5;
+          const rz = human.z + Math.sin(recoilAng) * 3.5;
+          if (!stationMap.checkCollision(rx, rz)) {
+            human.targetPos = { x: rx, z: rz };
+          }
         }
         window.HiveSystems?.vfx?.floatingText?.(human.x, 2.4, human.z, `-${acidDamage} ACIDE`, '#39ff14', true);
         window.HiveSystems?.vfx?.burst(human.x, human.z, 0x39ff14, 12, 0.12, 1.0);
@@ -32035,6 +32178,28 @@
         }
       }
 
+      // Wave 19 : Recul réflexe des humains organiques face aux flaques et brèches d'acide moléculaire
+      this.acidRecoilCooldown = Math.max(0, (this.acidRecoilCooldown || 0) - safeDelta);
+      if (!this.isSynthetic?.() && this.type !== 'uscm_hazmat_tech' && !this.isRestrained && !this.isCocooned) {
+        const nearAcid = (stationMap.acidCorrosions || []).find((corr) => (
+          Math.hypot(corr.x - this.x, corr.z - this.z) <= (corr.radius || 1.4) + 1.4
+        ));
+        if (nearAcid) {
+          this.stress = Math.min(100, (this.stress || 0) + 22 * safeDelta);
+          const awayAng = Math.atan2(this.z - nearAcid.z, this.x - nearAcid.x);
+          const safeX = this.x + Math.cos(awayAng) * 3.5;
+          const safeZ = this.z + Math.sin(awayAng) * 3.5;
+          if (!stationMap.checkCollision(safeX, safeZ)) {
+            this.targetPos = { x: safeX, z: safeZ };
+          }
+          if (this.acidRecoilCooldown <= 0) {
+            this.acidRecoilCooldown = 4.2;
+            audioManager.playXenomorphAcidSplashRecoil?.(this.x, this.z);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.75, this.z, 'SANG ACIDE ! ÉCARTEZ-VOUS !', '#39ff14', false);
+          }
+        }
+      }
+
       if (this.staggerTimer > 0) {
         this.staggerTimer -= safeDelta;
         if (this.mesh) {
@@ -32742,10 +32907,12 @@
         hasLineOfSight &&
         this.shootCooldown <= 0
       ) {
-          const applyWeaponDamage = (multiplier = 1) => {
+          const applyWeaponDamage = (multiplier = 1, damageType = 'ballistic') => {
+            const laserBonus = (this.accuracyBoostTimer > 0) ? (this.accuracyBoost || 1.3) : 1.0;
+            const totalMult = multiplier * laserBonus;
             if (isEngagingHostileFaction && combatTarget?.takeDamage) {
-              const factionDmg = 14 * multiplier;
-              combatTarget.takeDamage(factionDmg, this);
+              const factionDmg = 14 * totalMult;
+              combatTarget.takeDamage(factionDmg, this, damageType);
               window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 2.5, combatTarget.z, `-${Math.round(factionDmg)} TIR INTER-FACTIONS`, '#f97316', false);
               return;
             }
@@ -32757,10 +32924,10 @@
                   ? 12
                   : (stageIndex === 4 ? 8 : 6));
               const targetReceiver = combatTarget?.takeDamage ? combatTarget : playerCreature;
-              targetReceiver.takeDamage(baseDamage * multiplier * window.gameInstance.getDifficultyDamageModifier());
+              targetReceiver.takeDamage(baseDamage * totalMult * window.gameInstance.getDifficultyDamageModifier(), this, damageType);
             } else if (window.gameInstance?.currentStageIndex === 5 && combatTarget?.takeDamage) {
               const baseDamage = ['powerloader', 'exosuit'].includes(this.type) ? 25 : 11;
-              combatTarget.takeDamage(baseDamage * multiplier * window.gameInstance.getDifficultyDamageModifier());
+              combatTarget.takeDamage(baseDamage * totalMult * window.gameInstance.getDifficultyDamageModifier(), this, damageType);
             }
 
             // Chantier 68 : Barils de napalm inflammables touchés par tirs perdus
@@ -32886,7 +33053,7 @@
             );
             window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 20, 0.15, 1.5);
             window.HiveSystems?.vfx?.floatingText?.(combatTarget.x, 2.9, combatTarget.z, 'CHALUMEAU DE SOUDAGE P-5000 !', '#f97316', true);
-            applyWeaponDamage(1.35);
+            applyWeaponDamage(1.35, 'fire');
           } else if (this.type === 'powerloader') {
             // Chantier 107 : Marche hydraulique lourde d'approche (le P-5000 n'a pas de fusil M41A)
             this.shootCooldown = 0.9;
@@ -32917,7 +33084,7 @@
               combatTarget.z
             );
             window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 20, 0.16, 1.8);
-            applyWeaponDamage(1.15);
+            applyWeaponDamage(1.15, 'fire');
           } else if (['marine', 'guard', 'commando'].includes(this.type) && distToPlayer <= 3.2) {
             // Chantier 14 : Fusil à pompe Ithaca 37 "Shorty" calibre 12 bout portant (Caporal Hicks, Aliens 1986)
             this.shootCooldown = 2.1;
@@ -33663,10 +33830,19 @@
       this.isDestroyed = true;
     }
 
-    takeDamage(amount) {
+    takeDamage(amount, attacker = null, damageType = 'ballistic') {
       if (this.isDestroyed) return;
       const actualDmg = Math.max(0, amount);
       this.hp = Math.max(0, this.hp - actualDmg);
+
+      // Wave 19 : Aversion thermique 1:1 des unités RTS face aux lance-flammes (hors Reine & Crusher)
+      const isFireHit = damageType === 'fire' || ['cleaner', 'incinerator', 'uscm_heavy_flamer', 'uscm_smartgun_flamer'].includes(attacker?.type);
+      if (isFireHit && !['queen', 'crusher'].includes(this.caste)) {
+        this.fireFleeTimer = Math.max(this.fireFleeTimer || 0, 2.4);
+        this.fireSource = attacker ? { x: attacker.x, z: attacker.z } : { x: this.x + 1, z: this.z };
+        audioManager.playXenoHiss?.(this.x, this.z);
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 2.7, this.z, 'AVERSION THERMIQUE !', '#f97316', false);
+      }
 
       audioManager.playAcidSizzle?.();
       const isQueen = this.caste === 'queen';
@@ -33689,6 +33865,16 @@
         const acidDmg = isQueen ? 35 : 14;
         human.takeDamage(acidDmg, this);
         human.staggerTimer = 0.45;
+        if (!human.isSynthetic?.()) {
+          audioManager.playXenomorphAcidSplashRecoil?.(human.x, human.z);
+          human.stress = Math.min(100, (human.stress || 0) + 28);
+          const recoilAng = Math.atan2(human.z - this.z, human.x - this.x);
+          const rx = human.x + Math.cos(recoilAng) * 3.5;
+          const rz = human.z + Math.sin(recoilAng) * 3.5;
+          if (!stationMap.checkCollision(rx, rz)) {
+            human.targetPos = { x: rx, z: rz };
+          }
+        }
         window.HiveSystems?.vfx?.floatingText?.(human.x, 2.4, human.z, `-${acidDmg} SANG ACIDE`, '#39ff14', true);
         window.HiveSystems?.vfx?.burst(human.x, human.z, 0x39ff14, 10, 0.1, 1.0);
       });
@@ -33839,6 +34025,17 @@
       this.royalFuryTimer = Math.max(0, (this.royalFuryTimer || 0) - deltaSeconds);
       this.attackAnimation = Math.max(0, this.attackAnimation - Math.max(0, deltaSeconds) * 3);
       this.movementBlend = Math.max(0, this.movementBlend - Math.max(0, deltaSeconds) * 4.5);
+
+      // Wave 19 : Fuite thermique 1:1 des unités RTS reculant loin des flammes
+      if ((this.fireFleeTimer || 0) > 0 && !['queen', 'crusher'].includes(this.caste)) {
+        this.fireFleeTimer = Math.max(0, this.fireFleeTimer - deltaSeconds);
+        const src = this.fireSource || { x: this.x + 1, z: this.z };
+        const distSrc = Math.hypot(this.x - src.x, this.z - src.z) || 1;
+        const fleeDx = (this.x - src.x) / distSrc;
+        const fleeDz = (this.z - src.z) / distSrc;
+        this.moveDirect(fleeDx, fleeDz, deltaSeconds, 3.0, 1.25);
+        return;
+      }
 
       // Chantier 7 & 109 : Régénération biologique passive sur la bio-résine de la ruche
       if (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.x, this.z) > 0) {

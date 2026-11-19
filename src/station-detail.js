@@ -343,9 +343,26 @@
       surfaceMapsReady = true;
       diagnostics.sharedPBRMaps = true;
     }
-    function update() {
+    function update(time = 0) {
       if (disposed) return;
       refreshSurfaceMaps();
+      // Wave 19 : Éclairage réactif des néons et diodes de station (Alarme / Blackout Alien: Isolation)
+      const alarmLevel = window.alarmSystem?.level || 0;
+      const isBlackout = (window.rendererEngine?.powerSabotagedTimer || 0) > 0;
+      if (isBlackout) {
+        coolLamp.emissiveIntensity = 0.08;
+        warmLamp.emissiveIntensity = 0.06;
+        indicator.color.setHex(Math.sin(time * 7.5) > 0 ? 0xef4444 : 0x450a0a);
+      } else if (alarmLevel >= 3) {
+        const flicker = Math.sin(time * 23.0) * Math.cos(time * 13.0);
+        coolLamp.emissiveIntensity = flicker > 0.72 ? 0.55 : 1.55;
+        warmLamp.emissiveIntensity = 1.35 + Math.sin(time * 4.2) * 0.25;
+        indicator.color.setHex(Math.sin(time * 6.0) > 0 ? 0xef4444 : 0xf59e0b);
+      } else {
+        coolLamp.emissiveIntensity = 1.8;
+        warmLamp.emissiveIntensity = 1.6;
+        indicator.color.setHex(0x8bc6b3);
+      }
       let changed = false;
       for (const wall of wallStates.keys()) {
         const visible = wall.visible !== false && (wall.material?.opacity ?? 1) >= 0.88;

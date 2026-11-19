@@ -1116,26 +1116,40 @@
         { x: side * length * 0.36, y: lift * 0.15, z: -length * 0.7 },
         { x: side * length * 0.47, y: lift, z: -length }
       ];
-      tailRoot.add(this._sweptBody(material, points,
-        [thickness * 1.45, thickness * 1.16, thickness * 0.83, thickness * 0.5, thickness * 0.24],
-        'tail_skin', 128, 24));
-      const curve = new T.CatmullRomCurve3(points.map((p) => new T.Vector3(p.x, p.y, p.z)));
-      // Vertebral scutes are relief in the tapered tail surface, not ring beads.
-      const tip = points[points.length - 1];
-      const blade = this._ellipsoid(boneMaterial,
-        { x: thickness * 1.5, y: thickness * 0.2, z: thickness * 4.4 },
-        { x: tip.x, y: tip.y, z: tip.z - thickness * 2.9 }, 'tail_blade', 24);
-      blade.rotation.y = -side * 0.35;
-      tailRoot.add(blade);
-      // Articulated osselets / vertebrae chain nodes for AAA procedural wave propagation
+      const radii = [thickness * 1.45, thickness * 1.16, thickness * 0.83, thickness * 0.5, thickness * 0.24];
+      // Wave 21 : Chaîne vertébrale parent-enfant réellement articulée (tail_vertebra_0 -> ... -> tail_blade)
       const vertebrae = [];
+      let currentParent = tailRoot;
       for (let v = 0; v < points.length; v++) {
         const vertGroup = new T.Group();
         vertGroup.name = `tail_vertebra_${v}`;
-        vertGroup.position.set(points[v].x, points[v].y, points[v].z);
-        tailRoot.add(vertGroup);
+        if (v === 0) {
+          vertGroup.position.set(0, 0, 0);
+        } else {
+          vertGroup.position.set(
+            points[v].x - points[v - 1].x,
+            points[v].y - points[v - 1].y,
+            points[v].z - points[v - 1].z
+          );
+        }
+        if (v < points.length - 1) {
+          const localEnd = new T.Vector3(
+            points[v + 1].x - points[v].x,
+            points[v + 1].y - points[v].y,
+            points[v + 1].z - points[v].z
+          );
+          vertGroup.add(this._segment(material, new T.Vector3(0, 0, 0), localEnd, radii[v], radii[v + 1], `tail_seg_${v}`, 14));
+          vertGroup.add(this._joint(boneMaterial, { x: 0, y: 0, z: 0 }, radii[v] * 1.06, `tail_scute_${v}`));
+        }
+        currentParent.add(vertGroup);
         vertebrae.push(vertGroup);
+        currentParent = vertGroup;
       }
+      const blade = this._ellipsoid(boneMaterial,
+        { x: thickness * 1.5, y: thickness * 0.2, z: thickness * 4.4 },
+        { x: 0, y: 0, z: -thickness * 2.9 }, 'tail_blade', 24);
+      blade.rotation.y = -side * 0.35;
+      currentParent.add(blade);
       tailRoot.userData.vertebrae = vertebrae;
       parent.add(tailRoot); return tailRoot;
     }
@@ -4754,6 +4768,16 @@
         );
       }
       this._addTail(root, hide, chitin, { x: 0, y: 0.58, z: -0.72 }, 3.1, 0.3, -0.38, 0.11);
+      // Wave 21 : Segments dorsaux articulés du Chestburster standard pour ondulation sinueuse en S (Alien 1979)
+      for (let cs = 0; cs < 4; cs++) {
+        root.add(this._ellipsoid(
+          chitin,
+          { x: 0.24 - cs * 0.03, y: 0.14 - cs * 0.015, z: 0.22 },
+          { x: 0, y: 0.78 - cs * 0.04, z: 0.25 - cs * 0.34 },
+          `chestburster_seg_${cs}`,
+          10
+        ));
+      }
       this._addCarapaceSpines(root, chitin, 0.94, 7, 0.65, 0.52, -1);
       // Canon 1:1 biometrics: serpentine vermiform body ~0.45m
       const scaledAssembly = new T.Group();
@@ -4766,7 +4790,7 @@
         modelType: 'chestburster',
         chrysalis: false,
         height: 0.45,
-        animationJoints: ['juvenile_arm_-1', 'juvenile_arm_1', 'articulated_jaw']
+        animationJoints: ['juvenile_arm_-1', 'juvenile_arm_1', 'articulated_jaw', 'segmented_tail']
       });
     }
 

@@ -10967,8 +10967,41 @@
       const isInVent = Boolean(window.playerCreature?.isInVent);
       const isProwl = Boolean(window.playerCreature?.isProwling);
       const isCeiling = Boolean(window.playerCreature?.isCeilingProwling);
+      // Wave 21 : Rendu 3D réel Vision Thermique (FLIR) & Vision Acoustique (Écholocation)
+      const visionMode = window.visionSystem?.currentMode || 'normal';
       if (this.scene?.fog) {
         this.scene.fog.density = isRTS ? 0.0045 : ((isInVent || isCeiling) ? 0.022 : 0.012);
+        if (this.scene.fog.color) {
+          if (visionMode === 'thermal') this.scene.fog.color.setHex(0x07142e);
+          else if (visionMode === 'acoustic') this.scene.fog.color.setHex(0x03110c);
+          else this.scene.fog.color.setHex(0x0a0f18);
+        }
+      }
+      if (this._lastVisionRenderMode !== visionMode || visionMode !== 'normal') {
+        this._lastVisionRenderMode = visionMode;
+        const allHumans = window.gameInstance?.humans || [];
+        for (const h of allHumans) {
+          if (!h?.mesh) continue;
+          const isColdSynth = h.isSynthetic?.() || h.isIncapacitated;
+          h.mesh.traverse((child) => {
+            if (!child.isMesh || !child.material || Array.isArray(child.material) || !child.material.emissive) return;
+            if (child.userData._baseEmissiveHex === undefined) {
+              child.userData._baseEmissiveHex = child.material.emissive.getHex();
+              child.userData._baseEmissiveInt = child.material.emissiveIntensity ?? 1.0;
+            }
+            if (visionMode === 'thermal') {
+              child.material.emissive.setHex(isColdSynth ? 0x06b6d4 : 0xff4500);
+              child.material.emissiveIntensity = isColdSynth ? 0.55 : 1.35;
+            } else if (visionMode === 'acoustic') {
+              const isNoisy = !h.isIncapacitated && (h.aiState === 'ATTACK' || h.aiState === 'CHASE' || (h.attackAnimation || 0) > 0.1);
+              child.material.emissive.setHex(isNoisy ? 0x22d3ee : 0x064e3b);
+              child.material.emissiveIntensity = isNoisy ? 1.25 : 0.3;
+            } else {
+              child.material.emissive.setHex(child.userData._baseEmissiveHex);
+              child.material.emissiveIntensity = child.userData._baseEmissiveInt;
+            }
+          });
+        }
       }
       if (this.renderer && this.powerSabotagedTimer <= 0) {
         this.renderer.toneMappingExposure = isRTS ? 1.22 : ((isInVent || isCeiling) ? 0.90 : 1.12);
@@ -25956,8 +25989,9 @@
       if (sacRight) sacRight.scale.set(breath, 1 / Math.sqrt(breath), breath);
     }
 
-    // 4.1 Castes juvéniles (queen_burster, beluga, spined, neomorph_bb, armored_cb, cloaked)
+    // 4.1 Castes juvéniles (chestburster standard, queen_burster, beluga, spined, neomorph_bb, armored_cb, cloaked)
     const juvenileCastes = [
+      { segs: ['chestburster_seg_'], heads: ['juvenile_head'], maxSeg: 4 },
       { segs: ['queen_burster_seg_', 'queen_burster_segment_'], heads: ['queen_burster_head'], maxSeg: 6 },
       { segs: ['beluga_seg_', 'belugamorph_segment_'], heads: ['beluga_head', 'belugamorph_head'], maxSeg: 6 },
       { segs: ['spined_seg_'], heads: ['spined_head'], maxSeg: 5 },
@@ -29723,15 +29757,16 @@
         return false;
       }
 
-      // Descente fulgurante depuis la bouche d'aération
-      if (this.isInVent) {
-        this.isInVent = false;
-        if (this.mesh) this.mesh.position.y = 0;
-      }
+      // Wave 21 : Descente verticale fulgurante animée depuis la bouche d'aération (3.6m -> 0m)
+      this.isInVent = false;
       this.isCeilingProwling = false;
       this.x = victim.x;
       this.z = victim.z;
-      if (this.mesh) this.mesh.position.set(this.x, 0, this.z);
+      this.ventDropTimer = 0.32;
+      this.ventDropDuration = 0.32;
+      this.ventDropStartY = 3.6;
+      if (this.mesh) this.mesh.position.set(this.x, 3.6, this.z);
+      rendererEngine.triggerCameraFovPunch?.(9, 0.3);
 
       audioManager.playVentSnatchSnap?.(victim.x, victim.z);
       audioManager.playWetImpact?.(victim.x, victim.z);
@@ -31272,6 +31307,36 @@
           this.detailedModel?.userData?.setOpenProgress?.(eased);
         }
         return;
+      }
+
+      // Wave 21 : Chute verticale d'embuscade depuis les conduits/plafond (y: 3.6 -> 0)
+      if ((this.ventDropTimer || 0) > 0 && this.mesh) {
+        this.ventDropTimer = Math.max(0, this.ventDropTimer - safeDelta);
+        const dropFrac = this.ventDropTimer / (this.ventDropDuration || 0.32);
+        this.mesh.position.y = (this.ventDropStartY || 3.6) * dropFrac * dropFrac;
+        if (this.ventDropTimer <= 0) {
+          this.mesh.position.y = 0;
+          audioManager.playHeavyImpact?.(this.x, this.z);
+        }
+      }
+
+      // Wave 21 : Tension cardiaque furtive en conduit / mimétisme mural à proximité d'un hostile (Alien: Isolation)
+      if ((this.isInVent || this.isWallMimic) && !this.isLeaping) {
+        this.stealthTensionTimer = (this.stealthTensionTimer || 0) - safeDelta;
+        if (this.stealthTensionTimer <= 0) {
+          const closeHostile = (window.gameInstance?.humans || []).find((h) => (
+            !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 5.5
+          ));
+          if (closeHostile) {
+            this.stealthTensionTimer = 0.85;
+            audioManager.playHeartbeatPulse?.();
+            if (this.isInVent && Math.random() < 0.45) {
+              window.HiveSystems?.vfx?.salivaDrip?.(this.x, 3.4, this.z, 1);
+            }
+          } else {
+            this.stealthTensionTimer = 0.4;
+          }
+        }
       }
 
       if (this.isLeaping && this.leapHost) {

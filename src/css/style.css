@@ -81,17 +81,19 @@ button {
 
 /* 2. Thermal Biological Vision: Cold Cyan Environment & Hot Bio Signals */
 .vision-thermal {
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 30%, rgba(3, 105, 161, 0.4) 90%);
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.14) 30%, rgba(3, 105, 161, 0.38) 90%);
   mix-blend-mode: screen;
-  filter: contrast(1.8) saturate(2.2) hue-rotate(170deg);
+  backdrop-filter: contrast(1.45) saturate(1.9) hue-rotate(175deg);
+  -webkit-backdrop-filter: contrast(1.45) saturate(1.9) hue-rotate(175deg);
   box-shadow: inset 0 0 120px rgba(2, 132, 199, 0.6);
 }
 
 /* 3. Acoustic Sonar Vision: Matrix Bio-Green Echolocation */
 .vision-acoustic {
-  background: radial-gradient(circle, rgba(34, 197, 94, 0.2) 20%, rgba(5, 46, 22, 0.55) 100%);
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.16) 20%, rgba(5, 46, 22, 0.52) 100%);
   mix-blend-mode: color-dodge;
-  filter: contrast(2.2) brightness(1.2) hue-rotate(90deg);
+  backdrop-filter: contrast(1.65) brightness(0.92) saturate(1.4);
+  -webkit-backdrop-filter: contrast(1.65) brightness(0.92) saturate(1.4);
   box-shadow: inset 0 0 140px rgba(34, 197, 94, 0.7);
 }
 

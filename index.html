@@ -937,6 +937,20 @@
           </div>
         </div>
 
+        <!-- Capteur Diégétique de Furtivité / Visibilité (Wave 18) -->
+        <div id="stealth-visibility-sensor" class="stealth-visibility-sensor hidden" title="Statut de furtivité et d'exposition biologique">
+          <span class="stealth-sensor-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor">
+              <path d="M2 10 C5 5 15 5 18 10 C15 15 5 15 2 10 Z" stroke-width="1.5"/>
+              <circle cx="10" cy="10" r="2.8" fill="currentColor"/>
+            </svg>
+          </span>
+          <div class="stealth-sensor-data">
+            <span class="stealth-sensor-tag">FURTIVITÉ</span>
+            <span id="stealth-status-val" class="stealth-sensor-val">EXPOSÉ</span>
+          </div>
+        </div>
+
         <div class="utility-controls" role="group" aria-label="Menus du jeu">
           <button type="button" id="btn-open-codex" class="utility-btn" title="Ouvrir le codex (C)">
             <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
@@ -971,6 +985,23 @@
         </button>
       </div>
     </header>
+
+    <!-- Bandeau Télémétrie Boss Diégétique MANTIS-4 & BRIAREOS-7 (Wave 18) -->
+    <section id="boss-telemetry-hud" class="boss-telemetry-hud hidden" aria-label="Télémétrie du Boss actif">
+      <div class="boss-hud-header">
+        <span id="boss-hud-name" class="boss-hud-name">MANTIS-4 // EXOSQUELETTE KAPPA</span>
+        <span id="boss-hud-phase" class="boss-hud-phase">PHASE 1</span>
+        <span id="boss-hud-hp-val" class="boss-hud-hp-val">460/460 PV</span>
+      </div>
+      <div class="boss-hud-bars">
+        <div class="boss-bar-track shield-track" title="Bouclier / Blindage Phase 1">
+          <div id="boss-hud-shield-fill" class="boss-bar-fill shield-fill" style="width: 100%;"></div>
+        </div>
+        <div class="boss-bar-track hp-track" title="Intégrité Châssis Boss">
+          <div id="boss-hud-hp-fill" class="boss-bar-fill hp-fill" style="width: 100%;"></div>
+        </div>
+      </div>
+    </section>
 
     <!-- Mission tracker: deliberately separate from the action sidebar. -->
     <section id="mission-tracker" aria-label="Objectif de mission">

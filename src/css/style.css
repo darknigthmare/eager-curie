@@ -4929,3 +4929,152 @@ select, input[type='range'] { touch-action: manipulation; }
   border-color: #38bdf8;
   color: #ffffff;
 }
+
+.rts-squad-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rts-squad-chip .btn-sq-icon {
+  width: 11px;
+  height: 11px;
+}
+
+/* =========================================================
+   WAVE 18 : CAPTEUR FURTIVITÉ & BANDEAU TÉLÉMÉTRIE BOSS
+   ========================================================= */
+
+.stealth-visibility-sensor {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 4px;
+  padding: 3px 8px;
+  transition: all 0.25s ease;
+}
+
+.stealth-visibility-sensor.hidden-stealth {
+  border-color: rgba(34, 197, 94, 0.6);
+  background: rgba(6, 28, 16, 0.88);
+  color: #4ade80;
+}
+
+.stealth-visibility-sensor.caution {
+  border-color: rgba(245, 158, 11, 0.65);
+  background: rgba(38, 22, 6, 0.88);
+  color: #fbbf24;
+}
+
+.stealth-visibility-sensor.detected {
+  border-color: #ef4444;
+  background: rgba(69, 10, 10, 0.9);
+  color: #fca5a5;
+  animation: apolloStatusBlink 0.7s infinite;
+}
+
+.stealth-sensor-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.stealth-sensor-data {
+  display: flex;
+  flex-direction: column;
+}
+
+.stealth-sensor-tag {
+  font-family: var(--font-hud);
+  font-size: 7.5px;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+}
+
+.stealth-sensor-val {
+  font-family: var(--font-title);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.boss-telemetry-hud {
+  position: fixed;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, 86vw);
+  z-index: 95;
+  background: rgba(8, 12, 20, 0.92);
+  border: 1px solid rgba(239, 68, 68, 0.55);
+  border-top: 2px solid #ef4444;
+  border-radius: 5px;
+  padding: 8px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), 0 0 20px rgba(239, 68, 68, 0.2);
+  pointer-events: none;
+}
+
+.boss-hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+
+.boss-hud-name {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.boss-hud-phase {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  color: #7dd3fc;
+  font-size: 9px;
+}
+
+.boss-hud-hp-val {
+  color: #e2e8f0;
+  font-weight: 700;
+}
+
+.boss-hud-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.boss-bar-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.boss-bar-track.shield-track {
+  height: 4px;
+}
+
+.boss-bar-fill.shield-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+  transition: width 0.2s ease;
+}
+
+.boss-bar-fill.hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b91c1c, #ef4444);
+  transition: width 0.2s ease;
+}

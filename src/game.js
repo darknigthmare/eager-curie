@@ -10712,7 +10712,7 @@
     setCameraTarget(x, z, heightOffset = 0, isRTS = false, deltaSeconds = 1 / 60) {
       if (this.beaconPivot && this.beaconSpot) {
         const isAlarmActive = (window.alarmSystem?.level || 0) >= 2;
-        this.beaconSpot.intensity = isAlarmActive ? 4.5 : 0;
+        this.beaconSpot.intensity = isAlarmActive ? 85 : 0;
         if (isAlarmActive) {
           this.beaconPivot.rotation.y += Math.max(0, deltaSeconds) * 4.2;
         }
@@ -10740,10 +10740,10 @@
         if (this.powerSabotagedTimer <= 0) {
           if (this.lights.ambient?.color) this.lights.ambient.color.setHex(0xffffff);
           audioManager.playGeneratorRestart?.();
-          if (this.lights.dirLight) this.lights.dirLight.intensity = 1.2;
-          if (this.lights.ambient) this.lights.ambient.intensity = 1.05;
-          if (this.lights.hemisphere) this.lights.hemisphere.intensity = 0.75;
-          if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.34 : 1.05;
+          if (this.lights.dirLight) this.lights.dirLight.intensity = 2.6;
+          if (this.lights.ambient) this.lights.ambient.intensity = 0.28;
+          if (this.lights.hemisphere) this.lights.hemisphere.intensity = 0.7;
+          if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.22 : 1.12;
           showToast('RÉSEAU ÉLECTRIQUE RÉTABLI : Les générateurs de secours ont redémarré.');
           appendSensorLog('[ÉLECTRICITÉ] Turbines de secours opérationnelles. Éclairage rétabli.', 'system');
         }
@@ -10758,13 +10758,15 @@
         this.camera.near = 0.1;
         this.camera.updateProjectionMatrix();
       }
-      if (this.scene?.fog) this.scene.fog.density = isRTS ? 0.0045 : 0.012;
-      if (this.renderer) this.renderer.toneMappingExposure = isRTS ? 1.22 : 1.12;
-      // La vue de commandement cadre toute la station afin que les trois relais
-      // restent réellement ciblables sans caméra libre ni mini-carte.
-      // Audit QA #84 : Lissage Cinématique Dynamique lors des Transitions de Rôdeur (Prowl / Crawl)
+      const isInVent = Boolean(window.playerCreature?.isInVent);
       const isProwl = Boolean(window.playerCreature?.isProwling);
       const isCeiling = Boolean(window.playerCreature?.isCeilingProwling);
+      if (this.scene?.fog) {
+        this.scene.fog.density = isRTS ? 0.0045 : ((isInVent || isCeiling) ? 0.022 : 0.012);
+      }
+      if (this.renderer && this.powerSabotagedTimer <= 0) {
+        this.renderer.toneMappingExposure = isRTS ? 1.22 : ((isInVent || isCeiling) ? 0.90 : 1.12);
+      }
       const prowlOffsetY = isProwl ? -5.5 : (isCeiling ? 3.5 : 0);
       const prowlOffsetZ = isProwl ? -3.0 : 0;
       const targetY = isRTS ? 120 : ((31 + heightOffset) * this.cameraDistance + prowlOffsetY);
@@ -11155,9 +11157,16 @@
         this.lights.bioGreen.intensity = 48 + Math.sin(Date.now() * 0.0014) * 7;
       }
       if (this.strobeFlashTimer && this.strobeFlashTimer > 0) {
+        if (this._baseAmbientIntensity === undefined && this.lights.ambient) {
+          this._baseAmbientIntensity = this.lights.ambient.intensity;
+        }
         this.strobeFlashTimer = Math.max(0, this.strobeFlashTimer - 1 / 60);
         if (this.lights.ambient) {
-          this.lights.ambient.intensity = Math.min(2.5, (this.lights.ambient.intensity || 0.8) + (this.strobeFlashTimer > 0 ? 0.75 : 0));
+          const base = this._baseAmbientIntensity ?? 0.28;
+          this.lights.ambient.intensity = this.strobeFlashTimer > 0 ? Math.min(2.2, base + 0.85) : base;
+        }
+        if (this.strobeFlashTimer <= 0) {
+          this._baseAmbientIntensity = undefined;
         }
       }
       this.stationDetail?.update(Date.now() / 1000);
@@ -11763,7 +11772,7 @@
       addWall(-15, -48, 2, 10, 44); // Mur Est Cryo
       // Entrée Cryo : ouverture à X = -32, Z = -25
       addProp(-50, -50, 5, 3.5, 4, 0x0284c7, 0x0369a1, 'console'); // Sas stase
-      addProp(-32, -58, 6, 2.5, 3, 0x10b981, 0x047857, 'console'); // Caissons cryogéniques
+      addProp(-24, -58, 6, 2.5, 3, 0x10b981, 0x047857, 'console'); // Caissons cryogéniques (dégagé de cryo_3)
       addProp(-60, -38, 4, 3, 4, 0x38bdf8, 0x0284c7, 'crate');
 
       // 3. SECTEUR ARMURERIE & SÉCURITÉ WEYLAND-YUTANI (Nord-Est : X 15 à 70, Z -70 à -25)
@@ -11810,8 +11819,8 @@
         addLightStrip(offset, -6, 5, false, offset % 30 === 0 ? 0xef4444 : 0x38bdf8);
       }
       for (let offset = -55; offset <= 55; offset += 22) {
-        addPipe(offset, -66, 118, false, 6.5);
-        addPipe(offset + 2.2, 66, 118, false, 7.1);
+        addPipe(offset, 0, 140, false, 6.5);
+        addPipe(offset + 2.2, 0, 140, false, 7.1);
       }
 
       addProp(-60, -58, 4, 4, 4, 0x334155, 0x000000, 'crate');
@@ -16302,11 +16311,9 @@
       this.updateEmergencyKlaxons(safeDelta);
       this.updateSelfDestructSystem(safeDelta);
       this.updateSporePods(safeDelta);
-      this.updateSteamVents(safeDelta);
       this.updateFalseEchoes(safeDelta);
       this.updateEMPGrenades(safeDelta);
       this.updateCryoMistZones(safeDelta);
-      this.updateAmbientTemperatureSensor(safeDelta);
       this.updateNapalmBarrels(safeDelta);
       this.updateHiveCreep(safeDelta);
       this.updateSwarmers(safeDelta);
@@ -17027,7 +17034,15 @@
     updateSecurityCameras(safeDelta) {
       if (!this.securityCameras) return;
       this.securityCameras.forEach((cam) => {
-        if (cam.isDestroyed || !cam.mesh) return;
+        if (!cam.mesh) return;
+        if (cam.isDestroyed) {
+          cam.sparkTimer = (cam.sparkTimer ?? (2 + Math.random() * 3)) - safeDelta;
+          if (cam.sparkTimer <= 0) {
+            cam.sparkTimer = 2.8 + Math.random() * 4.2;
+            window.HiveSystems?.vfx?.electricalJunctionSpark?.(cam.x, 3.5, cam.z, 6);
+          }
+          return;
+        }
         cam.sweep += safeDelta * 0.65;
         const localPan = Math.sin(cam.sweep) * 0.72;
         const currentAngle = (cam.wallAngle || 0) + localPan;
@@ -17123,13 +17138,13 @@
         audioManager.playAcidSizzle?.(cam.x, cam.z);
         audioManager.playGlassShatter?.(cam.x, cam.z);
         audioManager.playCameraDestroyCrunch?.(cam.x, cam.z);
-        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0x84cc16, 26, 0.22, 2.2);
+        window.HiveSystems?.vfx?.burst?.(cam.x, cam.z, 0x84cc16, 26, 0.22, 3.8);
         rendererEngine.addFloorFluidDecal?.(cam.x, cam.z, 2.2, 0x84cc16, 30);
         window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'CAMÉRA DISSOUTE PAR L’ACIDE', '#84cc16', true);
         appendSensorLog(`[SABOTAGE ACIDE] ${cam.name} liquéfiée par le jet d'acide moléculaire.`, 'combat');
       } else if (method === 'hack') {
         audioManager.playHighFrequencyElectricArc?.(cam.x, cam.z);
-        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0x38bdf8, 16, 0.15, 1.4);
+        window.HiveSystems?.vfx?.burst?.(cam.x, cam.z, 0x38bdf8, 16, 0.15, 3.8);
         window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'COURT-CIRCUIT CYBERNÉTIQUE', '#38bdf8', true);
         appendSensorLog(`[HACK SYSTÈME] ${cam.name} neutralisée via dérivation Seegson.`, 'stealth');
       } else {
@@ -17138,9 +17153,9 @@
         audioManager.playGlassShatter?.(cam.x, cam.z);
         audioManager.playHighFrequencyElectricArc?.(cam.x, cam.z);
         // Étincelles bleutées et dorées (Alien: Isolation / Romulus)
-        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0xfbbf24, 26, 0.25, 2.2);
-        window.HiveSystems?.vfx?.burst?.(cam.x, 3.8, cam.z, 0x38bdf8, 22, 0.22, 1.9);
-        window.HiveSystems?.vfx?.ring?.(cam.x, 3.8, cam.z, 0x38bdf8, 2.8);
+        window.HiveSystems?.vfx?.burst?.(cam.x, cam.z, 0xfbbf24, 26, 0.25, 3.8);
+        window.HiveSystems?.vfx?.burst?.(cam.x, cam.z, 0x38bdf8, 22, 0.22, 3.8);
+        window.HiveSystems?.vfx?.ring?.(cam.x, cam.z, 0x38bdf8, 2.8);
         window.HiveSystems?.vfx?.floatingText?.(cam.x, 3.8, cam.z, 'CAMÉRA PULVÉRISÉE [ANGLE MORT CRÉÉ]', '#38bdf8', true);
         appendSensorLog(`[SABOTAGE OPTIQUE] ${cam.name} pulvérisée. Flux vidéo Seegson neutralisé. Angle mort créé.`, 'stealth');
       }
@@ -18454,6 +18469,14 @@
 
           if (sv.timer <= 0) {
             sv.isRuptured = false;
+            sv.timer = 6 + Math.random() * 4;
+          }
+        } else {
+          // Purge de vapeur atmosphérique périodique (Alien 1979 / Nostromo)
+          sv.timer = (sv.timer ?? (5 + Math.random() * 4)) - safeDelta;
+          if (sv.timer <= 0) {
+            sv.timer = 6 + Math.random() * 4;
+            window.HiveSystems?.vfx?.spawnSteamCloud?.(sv.x, 1.4, sv.z, 2.4);
           }
         }
       }
@@ -25906,7 +25929,7 @@
     const buttons = container.querySelectorAll('button.act-btn, button');
     buttons.forEach((btn) => {
       if (btn.classList.contains('hud-tab-btn')) return;
-      if (btn.querySelector('.action-sq-icon')) return;
+      if (btn.querySelector('.action-sq-icon, .btn-sq-icon, svg')) return;
       const cat = getActionIconCategory(btn);
       const svg = ACTION_SVG_ICONS[cat] || ACTION_SVG_ICONS.generic;
       const iconSpan = document.createElement('span');
@@ -27970,6 +27993,7 @@
       victim.takeDamage?.(140, this);
       victim.isCocooned = true;
       victim.isIncapacitated = true;
+      HumanAI.notifySquadWitness?.('CEILING_KIDNAP', victim.x, victim.z, victim);
       if (victim.mesh) {
         victim.mesh.position.y = 4.0; // Hissé au plafond !
         victim.mesh.rotation.x = Math.PI;
@@ -30495,12 +30519,22 @@
         actualDmg = Math.round(actualDmg * 0.75);
       }
 
-      // Audit QA #43 : Résistance aux Munitions Incendiaires selon la Caste (Mantis & Crusher -30% feu/napalm)
-      const isFireDamage = damageType === 'fire' || damageType === 'napalm' || attacker?.type === 'incinerator' || (attacker?.weapon && attacker.weapon.includes('incinerator'));
+      // Audit QA #43 & Wave 18 : Résistance & Aversion Thermique 1:1 face au Feu / Lance-Flammes M240
+      const flamerTypes = ['incinerator', 'cleaner', 'uscm_heavy_flamer', 'uscm_smartgun_flamer', 'thermal_operator', 'weyland_heavy_incinerator_synth'];
+      const isFireDamage = damageType === 'fire' || damageType === 'napalm' || flamerTypes.includes(attacker?.type) || (attacker?.weapon && attacker.weapon.includes('incinerator'));
       if (isFireDamage && (this.adultCaste === 'mantis_drone' || this.adultCaste === 'crusher')) {
         actualDmg = Math.round(actualDmg * 0.7);
         window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0xf97316, 14, 0.1, 0.9);
         window.HiveSystems?.vfx?.floatingText?.(this.x, 3.0, this.z, 'CHITINE RÉFRACTAIRE (-30% FEU) !', '#f97316', true);
+      } else if (isFireDamage) {
+        this.fireFearTimer = Math.max(this.fireFearTimer || 0, 1.2);
+        if (this.draggedHost) {
+          this.draggedHost.isBeingDragged = false;
+          this.draggedHost = null;
+          showToast('AVERSION THERMIQUE : Le feu vous force à lâcher votre proie !');
+        }
+        audioManager.playXenoHiss?.(this.x, this.z);
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 3.0, this.z, 'AVERSION THERMIQUE !', '#f97316', false);
       }
 
       // Chantier 77 : Bouclier Céphalique Pare-Balles Renforcé du Crusher (Aliens: Colonial Marines)
@@ -31531,12 +31565,49 @@
         window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'EMBUSCADE CRITIQUE DE RÉSINE (+200%) !', '#84cc16', true);
       }
 
+      // Wave 18 : Armure directionnelle Caterpillar P-5000 (Aliens 1986 : -35% de face, +50% dos/flancs ou acide)
+      if (this.type === 'powerloader' && attacker) {
+        const isAcidHit = attacker === 'acid' || attacker?.isAcidSpit;
+        if (isAcidHit) {
+          appliedDamage *= 1.5;
+          this.shootCooldown = (this.shootCooldown || 0) + 1.0;
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 3.3, this.z, 'RUPTURE HYDRAULIQUE P-5000 (+50%)', '#84cc16', true);
+        } else if (this.mesh && typeof attacker.x === 'number') {
+          const toAttacker = Math.atan2(attacker.x - this.x, attacker.z - this.z);
+          const angleDiff = Math.abs((((toAttacker - this.mesh.rotation.y) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+          if (angleDiff < 1.05) {
+            appliedDamage *= 0.65;
+          } else {
+            appliedDamage *= 1.5;
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.3, this.z, 'FLANC PILOTE EXPOSÉ (+50%)', '#f59e0b', false);
+          }
+        }
+      }
+
+      // Wave 18 : Boss BRIAREOS-7 — Bouclier de siège Phase 1 & Surcharge Plasma Phase 2
+      if (this.bossId === 'BRIAREOS_7' && this.bossPhase === 1 && (this.bossShield || 0) > 0) {
+        this.bossShield = Math.max(0, this.bossShield - appliedDamage);
+        window.HiveSystems?.vfx?.burst(this.x, this.z, 0x38bdf8, 14, 0.12, 1.6);
+        window.HiveSystems?.vfx?.floatingText(this.x, 3.2, this.z, `BOUCLIER BRIAREOS -${Math.round(appliedDamage)}`, '#38bdf8');
+        window.gameInstance?.currentStage?.updateRtsTacticalMonitor?.();
+        if (this.bossShield > 0) return true;
+        this.bossPhase = 2;
+        this.bossShield = 0;
+        audioManager.playHighFrequencyElectricArc?.(this.x, this.z);
+        window.HiveSystems?.vfx?.burst(this.x, this.z, 0xef4444, 24, 0.18, 2.0);
+        showToast('BRIAREOS-7 PHASE 2 : Bouclier rompu — Surcharge synthétique active !');
+        appendSensorLog('[BRIAREOS-7] Bouclier de siège détruit. Châssis synthétique en surcharge.', 'alert');
+        window.gameInstance?.currentStage?.updateRtsTacticalMonitor?.();
+        return true;
+      }
+
       // MANTIS-4 reste un adversaire mécanique : conduites, blindage puis châssis exposé.
       if (this.bossId === 'MANTIS_4' && this.bossPhase === 1) {
         this.bossShield = Math.max(0, this.bossShield - appliedDamage);
         window.HiveSystems?.vfx?.burst(this.x, this.z, 0x38bdf8, 16, 0.12, 1.8);
         window.HiveSystems?.vfx?.floatingText(this.x, 3.4, this.z, `BLINDAGE -${Math.round(appliedDamage)}`, '#38bdf8');
         rendererEngine.addScreenShake?.(0.18);
+        window.gameInstance?.currentStage?.updateRtsTacticalMonitor?.();
         if (this.bossShield > 0) return true;
         this.bossPhase = 2;
         this.bossShield = 0;
@@ -32597,16 +32668,19 @@
         }
       }
 
+      this.coveringFireCooldown = Math.max(0, (this.coveringFireCooldown || 0) - safeDelta);
+      this.accuracyBoostTimer = Math.max(0, (this.accuracyBoostTimer || 0) - safeDelta);
       if (isCombatant && biologicalTargetDetectable && targetInVisualField && hasLineOfSight && distToPlayer <= 20) {
         const isUSCM = this.getFaction() === 'USCM';
-        const nearbyMarines = (window.gameInstance?.humans || []).filter((h) => (
+        const nearbyMarines = isUSCM ? (window.gameInstance?.humans || []).filter((h) => (
           h !== this && !h.isIncapacitated && !h.isCocooned &&
-          ['marine', 'smartgunner', 'commando', 'guard', 'uscm_field_commander', 'uscm_sniper'].includes(h.type) &&
+          h.getFaction?.() === 'USCM' &&
           Math.hypot(h.x - this.x, h.z - this.z) <= 10.0
-        ));
-        if (nearbyMarines.length >= 1) {
+        )) : [];
+        if (isUSCM && nearbyMarines.length >= 1) {
           const isCoveringUnit = (this.id % 2 === 0);
-          if (isCoveringUnit && this.shootCooldown <= 0.25) {
+          if (isCoveringUnit && this.shootCooldown <= 0.25 && this.coveringFireCooldown <= 0) {
+            this.coveringFireCooldown = 2.2;
             combatTarget.suppressionTimer = 1.8;
             audioManager.playPulseRifleFire?.(this.x, this.z);
             window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf59e0b, 0.28);
@@ -32786,8 +32860,15 @@
               if (combatTarget.staggerTimer !== undefined) combatTarget.staggerTimer = 1.2;
               const pushDirX = (combatTarget.x - this.x) / (distToPlayer || 1);
               const pushDirZ = (combatTarget.z - this.z) / (distToPlayer || 1);
-              combatTarget.x += pushDirX * 3.8;
-              combatTarget.z += pushDirZ * 3.8;
+              for (let step = 0.6; step <= 3.8; step += 0.6) {
+                const candX = combatTarget.x + pushDirX * 0.6;
+                const candZ = combatTarget.z + pushDirZ * 0.6;
+                if (!stationMap.checkCollision(candX, candZ)) {
+                  combatTarget.x = candX;
+                  combatTarget.z = candZ;
+                } else break;
+              }
+              combatTarget.mesh?.position?.set(combatTarget.x, combatTarget.mesh.position.y, combatTarget.z);
               applyWeaponDamage(1.8);
             }
           } else if (this.type === 'powerloader' && distToPlayer <= 6.8) {
@@ -33445,6 +33526,28 @@
         movement: dist > 0.5 ? (this.type === 'labrodent' ? 1 : 0.78) : 0.06,
         attack: this.attackAnimation,
         crouch: this.isInfected ? 0.18 : 0
+      });
+    }
+
+    // Wave 18 : Réactions d'escouade USCM face aux exécutions brutales (Headbite / Kidnapping Plafond)
+    static notifySquadWitness(eventType, originX, originZ, victim = null) {
+      const humans = window.gameInstance?.humans || [];
+      const radius = eventType === 'HEADBITE' ? 16.0 : 14.0;
+      humans.forEach((h) => {
+        if (!h || h === victim || h.isIncapacitated || h.isCocooned || h.isSynthetic?.()) return;
+        const d = Math.hypot(h.x - originX, h.z - originZ);
+        if (d > radius) return;
+        if (!stationMap.hasLineOfSight(h.x, h.z, originX, originZ, 0.2)) return;
+        if (eventType === 'HEADBITE') {
+          h.stress = Math.min(100, (h.stress || 0) + 45);
+          h.aimDisruptTimer = Math.max(h.aimDisruptTimer || 0, 1.5);
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, 'MON DIEU, SA TÊTE ! RECULEZ !', '#f87171', false);
+        } else if (eventType === 'CEILING_KIDNAP') {
+          h.stress = Math.min(100, (h.stress || 0) + 35);
+          h.aiState = 'CHASE';
+          h.targetPos = { x: originX, z: originZ };
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, 'IL L\'A HISSÉ AU PLAFOND !', '#f59e0b', false);
+        }
       });
     }
   }
@@ -35744,7 +35847,10 @@
       const casteActions = {
         drone: { jaw: 'MÂCHOIRE INTERNE', tail: 'FRAPPE DE QUEUE' },
         runner: { jaw: 'MORSURE À L’ÉLAN', tail: 'FOUET DE QUEUE' },
+        prowler: { jaw: 'EMBUSCADE FURTIVE', tail: 'LACÉRATION CAUDALE' },
         warrior: { jaw: 'BRISE-BLINDAGE', tail: 'BALAYAGE LOURD' },
+        palatine: { jaw: 'MÂCHOIRE PALATINE', tail: 'FRAPPE ROYALE' },
+        offspring: { jaw: 'SIPHON MÉTABOLIQUE Z-01', tail: 'BROYAGE HYBRIDE' },
         deacon: { jaw: 'MÂCHOIRE PRÉMAXILLAIRE', tail: 'COUP DE FOUET' },
         deacon_adult: { jaw: 'SUCCION ARCHON PRÉMAXILLAIRE', tail: 'SECTION SPINAIL AU FOUET' },
         alpha: { jaw: 'BROYAGE DE CRÂNE', tail: 'FOUET BIFIDE SUPERSONIQUE' },
@@ -35827,6 +35933,9 @@
             <option value="worker_drone" ${activeCaste === 'worker_drone' ? 'selected' : ''}>Ouvrière de Ruche Oviducte (Genocide / AvP)</option>
             <option value="rhino_drone" ${activeCaste === 'rhino_drone' ? 'selected' : ''}>Rhino / Juggernaut Alien de Charon (Kenner 1992 / Genocide)</option>
             <option value="crab_drone" ${activeCaste === 'crab_drone' ? 'selected' : ''}>Killer Crab Alien de Charon (Kenner 1992 / Dark Horse)</option>
+            <option value="prowler" ${activeCaste === 'prowler' ? 'selected' : ''}>Prowler — Traqueur d'Embuscade (Fireteam Elite)</option>
+            <option value="palatine" ${activeCaste === 'palatine' ? 'selected' : ''}>Palatine — Garde Royale Élite (Dark Descent)</option>
+            <option value="offspring" ${activeCaste === 'offspring' ? 'selected' : ''}>Offspring — Hybride Z-01 (Alien: Romulus)</option>
           </select>
         </div>
         <!-- Audit QA #21 & #26 : Badges de raccourcis visuels & Indicateurs de Cooldown dynamiques -->
@@ -35904,13 +36013,15 @@
         <button type="button" id="btn-drone-prowl" class="act-btn" data-tab-cat="stealth"><span class="key-badge">Z</span>POSTURE BASSE TRAQUE</button>
         <button type="button" id="btn-wall-mimicry" class="act-btn" data-tab-cat="stealth" style="border-color: #22c55e; background: rgba(34,197,94,0.18);"><span class="key-badge">Z</span>CAMOUFLAGE MURAL DE RÉSINE</button>
         <button type="button" id="btn-crusher-charge" class="act-btn" data-tab-cat="predation" data-caste-only="crusher" style="border-color: #f97316; background: rgba(249,115,22,0.22); display: ${activeCaste === 'crusher' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>CHARGE BÉLIER CRUSHER</button>
-        <button type="button" id="btn-hive-submission" class="act-btn" data-tab-cat="predation" style="border-color: #a855f7; background: rgba(168,85,247,0.22); display: ${['alpha', 'queen', 'praetorian'].includes(activeCaste) ? 'inline-block' : 'none'};"><span class="key-badge">H</span>ONDE DE SOUMISSION DE RUCHE</button>
+        <button type="button" id="btn-hive-submission" class="act-btn" data-tab-cat="predation" style="border-color: #a855f7; background: rgba(168,85,247,0.22); display: ${['alpha', 'queen', 'praetorian', 'palatine'].includes(activeCaste) ? 'inline-block' : 'none'};"><span class="key-badge">H</span>ONDE DE SOUMISSION DE RUCHE</button>
+        <button type="button" id="btn-prowler-ambush" class="act-btn" data-tab-cat="predation" data-caste-only="prowler" style="border-color: #c084fc; background: rgba(192,132,252,0.25); display: ${activeCaste === 'prowler' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>EMBUSCADE FURTIVE PROWLER</button>
+        <button type="button" id="btn-offspring-siphon" class="act-btn" data-tab-cat="predation" data-caste-only="offspring" style="border-color: #a855f7; background: rgba(168,85,247,0.28); display: ${activeCaste === 'offspring' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>SIPHON MÉTABOLIQUE Z-01</button>
         <button type="button" id="btn-drone-prowl-leap" class="act-btn" data-tab-cat="predation" style="border-color: #39ff14; background: rgba(57,255,20,0.18);"><span class="key-badge">K</span>BOND DE TRAQUE</button>
         <button type="button" id="btn-drone-vent" class="act-btn" data-tab-cat="stealth"><span class="key-badge">C</span>CONDUITS D'AÉRATION</button>
         <button type="button" id="btn-sabotage-power" class="act-btn" data-tab-cat="environment" style="border-color: #eab308; background: rgba(234,179,8,0.18);"><span class="key-badge">B</span>COUPER LE COURANT</button>
         <button type="button" id="btn-acoustic-decoy" class="act-btn" data-tab-cat="stealth" style="border-color: #38bdf8; background: rgba(56,189,248,0.22);"><span class="key-badge">N</span>ÉCHO RADAR FANTÔME</button>
         <button type="button" id="btn-neomorph-frenzy" class="act-btn" data-tab-cat="predation" data-caste-only="neomorph" style="border-color: #f1f5f9; background: rgba(241,245,249,0.25); display: ${activeCaste === 'neomorph' ? 'inline-block' : 'none'};"><span class="key-badge">B</span>FRINGALE FRÉNÉTIQUE</button>
-        <button type="button" id="btn-praetorian-roar" class="act-btn" data-tab-cat="predation" data-caste-only="praetorian" style="border-color: #c084fc; background: rgba(192,132,252,0.25); display: ${activeCaste === 'praetorian' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>RUGISSEMENT BÉLIER</button>
+        <button type="button" id="btn-praetorian-roar" class="act-btn" data-tab-cat="predation" style="border-color: #c084fc; background: rgba(192,132,252,0.25); display: ${['praetorian', 'palatine'].includes(activeCaste) ? 'inline-block' : 'none'};"><span class="key-badge">R</span>RUGISSEMENT BÉLIER</button>
         <button type="button" id="btn-alpha-psychic" class="act-btn" data-tab-cat="predation" style="border-color: #dc2626; background: rgba(220,38,38,0.25);"><span class="key-badge">T</span>IMPULSION PSYCHIQUE ALPHA</button>
         <button type="button" id="btn-supersonic-tail" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);"><span class="key-badge">Y</span>FOUET BIFIDE SUPERSONIQUE</button>
         <button type="button" id="btn-spawn-swarmers" class="act-btn" data-tab-cat="predation" style="border-color: #090d16; background: rgba(15,23,42,0.45);"><span class="key-badge">U</span>NUÉE DE SWARMERS</button>
@@ -36017,6 +36128,10 @@
       document.getElementById('btn-drone-hiss').onclick = () => this.executeTerrifyingHiss();
       document.getElementById('btn-acid-spit').onclick = () => this.executeAcidSpit();
       document.getElementById('btn-drone-ceiling').onclick = () => this.toggleCeilingProwl();
+      const btnProwlerAmbush = document.getElementById('btn-prowler-ambush');
+      if (btnProwlerAmbush) btnProwlerAmbush.onclick = () => playerCreature.executeProwlerAmbush();
+      const btnOffspringSiphon = document.getElementById('btn-offspring-siphon');
+      if (btnOffspringSiphon) btnOffspringSiphon.onclick = () => playerCreature.executeOffspringZ01Siphon();
       document.getElementById('btn-drone-prowl').onclick = () => playerCreature.toggleProwlStance();
       const btnWallMimic = document.getElementById('btn-wall-mimicry');
       if (btnWallMimic) btnWallMimic.onclick = () => playerCreature.toggleResinWallMimicry();
@@ -38378,12 +38493,13 @@
       rendererEngine.addScreenShake?.(0.44, 0.26);
 
       const isVulnerable = (target.staggerTimer > 0) || ((target.stress || 0) >= 70) || (target.hp <= profile.jawDamage * 1.5);
-      if (isVulnerable && target.bossId !== 'MANTIS_4') {
+      if (isVulnerable && !target.bossId) {
         // Exécution fatale instantanée avec perforation crânienne 1:1
         rendererEngine.addHitstop?.(0.14);
         rendererEngine.triggerCameraFovPunch?.(7.5);
         rendererEngine.triggerScreenFlash?.('#ef4444', 0.24);
         target.takeDamage(target.hp + 50, playerCreature);
+        HumanAI.notifySquadWitness?.('HEADBITE', target.x, target.z, target);
         window.HiveSystems?.vfx?.fleshImpact?.(target.x, target.z, 0xb91c1c, 32);
         window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xb91c1c, 24, 0.16, 1.8);
         window.HiveSystems?.vfx?.floatingText?.(target.x, 3.4, target.z, 'PERFORATION CRÂNIENNE (FATAL 1:1)', '#ef4444', true);
@@ -39383,6 +39499,10 @@
       if (window.gameInstance) {
         const briareos = new HumanAI(201, 'synthetic', -42, -38, 'BRIAREOS-7 — synthétique de siège');
         briareos.bossId = 'BRIAREOS_7';
+        briareos.hp = briareos.maxHp = 520;
+        briareos.bossPhase = 1;
+        briareos.bossShield = briareos.maxBossShield = 180;
+        this.briareosBoss = briareos;
         window.HiveSystems?.unlockCodex?.(['briareos_7', 'codex_palimpseste']);
         const responseForce = [
           briareos,
@@ -39999,10 +40119,35 @@
             chip.type = 'button';
             chip.className = 'rts-squad-chip';
             chip.title = `Centrer caméra sur ${caste.toUpperCase()}`;
-            chip.textContent = `${caste.toUpperCase()} ×${count}`;
+            chip.innerHTML = `<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="10" cy="10" r="6" stroke-width="1.5"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg><span>${caste.toUpperCase()} ×${count}</span>`;
             chip.addEventListener('click', () => this.selectRtsCaste(caste));
             chipsEl.appendChild(chip);
           });
+        }
+      }
+
+      // Wave 18 : Bandeau Télémétrie Boss Diégétique (MANTIS-4 & BRIAREOS-7)
+      const bossHud = document.getElementById('boss-telemetry-hud');
+      if (bossHud) {
+        const activeBosses = [this.mantisBoss, this.briareosBoss].filter((b) => b && !b.isIncapacitated && !b.isCocooned && b.hp > 0);
+        if (activeBosses.length === 0) {
+          bossHud.classList.add('hidden');
+        } else {
+          bossHud.classList.remove('hidden');
+          const primary = activeBosses[0];
+          const nameEl = document.getElementById('boss-hud-name');
+          const phaseEl = document.getElementById('boss-hud-phase');
+          const shieldFill = document.getElementById('boss-hud-shield-fill');
+          const hpFill = document.getElementById('boss-hud-hp-fill');
+          const hpVal = document.getElementById('boss-hud-hp-val');
+          if (nameEl) nameEl.textContent = primary.bossId === 'MANTIS_4' ? 'MANTIS-4 // EXOSQUELETTE KAPPA' : 'BRIAREOS-7 // SYNTHÉTIQUE DE SIÈGE';
+          if (phaseEl) phaseEl.textContent = `PHASE ${primary.bossPhase || 1}`;
+          const maxSh = primary.maxBossShield || (primary.bossId === 'MANTIS_4' ? 260 : 180);
+          const shPct = Math.max(0, Math.min(100, ((primary.bossShield || 0) / maxSh) * 100));
+          const hpPct = Math.max(0, Math.min(100, (primary.hp / (primary.maxHp || 460)) * 100));
+          if (shieldFill) shieldFill.style.width = `${shPct.toFixed(1)}%`;
+          if (hpFill) hpFill.style.width = `${hpPct.toFixed(1)}%`;
+          if (hpVal) hpVal.textContent = `${Math.ceil(primary.hp)}/${primary.maxHp || 460} PV`;
         }
       }
     }
@@ -40069,8 +40214,9 @@
         this.heavyBossForceSpawned = true;
         const mantis = new HumanAI(206, 'exosuit', 22, -42, 'MANTIS-4 — exosquelette KAPPA');
         mantis.bossId = 'MANTIS_4';
+        mantis.hp = mantis.maxHp = 460;
         mantis.bossPhase = 1;
-        mantis.bossShield = 260;
+        mantis.bossShield = mantis.maxBossShield = 260;
         mantis.createMesh();
         this.mantisBoss = mantis;
         this.decorateMantisBoss();
@@ -40902,11 +41048,37 @@
       }
       const visibleCreature = this.currentStageIndex === 5 ? this.currentStage?.queen : playerCreature;
       rendererEngine.updatePropVisibility(visibleCreature || playerCreature, this.currentStageIndex === 5);
-      if (visibleCreature) rendererEngine.updateWallVisibility({
-        x: visibleCreature.x,
-        z: visibleCreature.z,
-        y: this.currentStageIndex === 5 ? 3 : 1.4
-      }, deltaSeconds);
+      if (visibleCreature) {
+        const effY = this.currentStageIndex === 5
+          ? 3
+          : (playerCreature.isCeilingProwling ? 4.2 : (playerCreature.isInVent ? 4.0 : 1.4));
+        rendererEngine.updateWallVisibility({
+          x: visibleCreature.x,
+          z: visibleCreature.z,
+          y: effY
+        }, deltaSeconds);
+      }
+      // Wave 18 : Mise à jour temps réel du capteur diégétique de furtivité / visibilité (Phases 2 à 4)
+      const stealthSensor = document.getElementById('stealth-visibility-sensor');
+      const stealthVal = document.getElementById('stealth-status-val');
+      if (stealthSensor && stealthVal) {
+        const showStealth = this.currentStageIndex >= 2 && this.currentStageIndex <= 4;
+        stealthSensor.classList.toggle('hidden', !showStealth);
+        if (showStealth) {
+          let label = 'EXPOSÉ';
+          let cls = 'exposed';
+          if (playerCreature.isInVent) { label = 'CONDUIT (INVISIBLE)'; cls = 'hidden-stealth'; }
+          else if (playerCreature.isCeilingProwling) { label = 'PLAFOND (ANGLE MORT)'; cls = 'hidden-stealth'; }
+          else if (playerCreature.isWallMimic || playerCreature.isHiveMelded) { label = 'MIMÉTISME RÉSINE'; cls = 'hidden-stealth'; }
+          else if (playerCreature.isInMist) { label = 'BROUILLARD HALON'; cls = 'hidden-stealth'; }
+          else if (playerCreature.isProwling) { label = 'OMBRES (TRAQUE)'; cls = 'caution'; }
+          else if ((alarmSystem?.level || 0) >= 3) { label = 'DÉTECTÉ !'; cls = 'detected'; }
+          if (stealthVal.textContent !== label) {
+            stealthVal.textContent = label;
+            stealthSensor.className = `stealth-visibility-sensor ${cls}`;
+          }
+        }
+      }
       rendererEngine.render();
       requestAnimationFrame((nextTimestamp) => this.gameLoop(nextTimestamp));
     }

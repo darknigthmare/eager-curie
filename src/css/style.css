@@ -148,9 +148,29 @@ button {
 }
 
 @media (min-width: 1051px) {
-  .hud-left { min-width: 0; gap: 12px; }
-  .hud-left .brand-title { flex-shrink: 0; }
-  .hud-left .stage-badge { max-width: 280px; font-size: 10px; line-height: 1.35; }
+  #hud-header {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 6px 14px;
+    padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+  }
+  #hud-header .hud-left { flex: 1 1 auto; min-width: 0; gap: 10px; }
+  #hud-header .brand-title { flex-shrink: 0; font-size: 16px; }
+  #hud-header .stage-badge { padding-inline: 8px; font-size: 11px; line-height: 1.35; }
+  #hud-header .hud-center, #hud-header .hud-right { flex-shrink: 0; }
+  #hud-header .hud-right { max-width: 100%; margin-inline-start: auto; flex-wrap: wrap; gap: 6px 8px; }
+  #hud-header .vis-btn { padding-inline: 8px; }
+  #hud-header .alert-label { display: none; }
+  #hud-header .alert-level { padding-inline: 7px; letter-spacing: .35px; }
+  #hud-header :is(.cryo-ambient-sensor, .atmo-composition-sensor, .stealth-visibility-sensor) { gap: 5px; padding-inline: 5px; }
+  #hud-header .cryo-temp-bar-track, #hud-header .atmo-o2-bar-track { width: 28px; }
+  #hud-gyro-compass { top: calc(var(--hud-header-height) + 4px) !important; }
+}
+
+@media (min-width: 1051px) and (max-width: 1150px) {
+  #hud-header .cryo-temp-bar-track, #hud-header .atmo-o2-bar-track { display: none; }
 }
 
 .stage-badge {

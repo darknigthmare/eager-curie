@@ -13635,22 +13635,30 @@
 
       // Chantier 138 : Caméra de Surveillance Thermique Rotative USCM & Écran CRT (Aliens 1986 / Isolation)
       this.thermalSurveillancePosts = [
-        { id: 'thermal_cam_1', name: 'Poste Thermique USCM Couloir A', x: -14, z: -12, isDestroyed: false, hp: 50, rotAngle: 0, rotDir: 1, mesh: null },
-        { id: 'thermal_cam_2', name: 'Poste Thermique USCM Baie Fret', x: 16, z: 32, isDestroyed: false, hp: 50, rotAngle: 0, rotDir: -1, mesh: null }
+        // Keep both consoles outside structural walls and reserved circulation;
+        // their optical sweeps face the adjacent passages, preserving the layout.
+        { id: 'thermal_cam_1', name: 'Poste Thermique USCM Couloir A', x: -18.25, z: -12, baseYaw: Math.PI * 1.5, isDestroyed: false, hp: 50, rotAngle: 0, rotDir: 1, mesh: null },
+        { id: 'thermal_cam_2', name: 'Poste Thermique USCM Baie Fret', x: 18.25, z: 40.75, baseYaw: Math.PI * 2 / 3, isDestroyed: false, hp: 50, rotAngle: 0, rotDir: -1, mesh: null }
       ];
       this.thermalSurveillancePosts.forEach((tc) => {
+        tc.initialRotDir = tc.rotDir;
+        tc.alertTimer = tc.alertCooldown = 0;
         const mesh = window.HiveModelFactory?.createThermalSurveillancePost?.();
         if (mesh) {
           mesh.position.set(tc.x, 0, tc.z);
           rendererEngine.propsGroup.add(mesh);
           tc.mesh = mesh;
+          tc.swivelHead = mesh.getObjectByName('thermal_camera_swivel');
+          tc.sensorMesh = mesh.getObjectByName('thermal_camera_lens');
+          if (tc.swivelHead) tc.swivelHead.rotation.y = tc.baseYaw;
         }
-        this.colliders.push({
+        tc.collider = {
           minX: tc.x - 1.2, maxX: tc.x + 1.2,
           minZ: tc.z - 1.2, maxZ: tc.z + 1.2,
           isThermalCam: true,
           camRef: tc
-        });
+        };
+        this.colliders.push(tc.collider);
       });
 
       // Chantier 140 : Console de Déconnexion du Réacteur Principal & Sirène d'Évacuation (Aliens 1986)
@@ -18238,6 +18246,7 @@
         cam.sensorMesh?.material.color.setHex(0x22c55e);
         cam.sensorMesh?.material.emissive?.setHex(0x16a34a);
       }
+      this.resetThermalSurveillancePosts();
     }
 
     // Mission Wave 10 : Sabotage Diégétique de Caméras de Surveillance (Alien: Isolation / Romulus)
@@ -21664,6 +21673,8 @@
       post.hp = (post.hp || 50) - dmg;
       if (post.hp <= 0) {
         post.isDestroyed = true;
+        post.alertTimer = post.alertCooldown = 0;
+        if (post.swivelHead) post.swivelHead.rotation.z = -.3;
         audioManager.playThermalCameraScream?.(post.x, post.z);
         audioManager.playWelderSparks?.(post.x, post.z);
         rendererEngine.addScreenShake?.(0.35, 0.25);
@@ -21674,27 +21685,55 @@
       return true;
     }
 
+    resetThermalSurveillancePosts() {
+      for (const post of this.thermalSurveillancePosts || []) {
+        post.isDestroyed = false;
+        post.hp = 50;
+        post.rotAngle = 0;
+        post.rotDir = post.initialRotDir || 1;
+        post.alertTimer = post.alertCooldown = 0;
+        delete post.lastAlert;
+        post.swivelHead?.rotation.set(0, post.baseYaw || 0, 0);
+      }
+    }
+
     updateThermalSurveillancePosts(safeDelta) {
+      const game = window.gameInstance;
+      if (game?.isSystemPaused || !Number.isFinite(safeDelta) || safeDelta <= 0) return;
+      const target = playerCreature;
+      const canTrack = game?.campaignActive && game.isRunning && game.currentStageIndex >= 2 && game.currentStageIndex <= 4 &&
+        target.mesh?.visible && !target.isDefeated && !target.isBiologicalTransition &&
+        !target.isInVent && !target.isCeilingProwling && !target.isSubfloorProwling;
       (this.thermalSurveillancePosts || []).forEach((tc) => {
-        if (tc.isDestroyed) return;
+        if (tc.isDestroyed || !tc.mesh || !this.isPropActiveForStage(tc)) return;
+        const head = tc.swivelHead || (tc.swivelHead = tc.mesh.getObjectByName('thermal_camera_swivel'));
+        const sensor = tc.sensorMesh || (tc.sensorMesh = tc.mesh.getObjectByName('thermal_camera_lens'));
+        if (!head || !sensor) return;
         tc.rotAngle = (tc.rotAngle || 0) + (tc.rotDir || 1) * safeDelta * 0.8;
         if (tc.rotAngle > 0.85) { tc.rotAngle = 0.85; tc.rotDir = -1; }
         else if (tc.rotAngle < -0.85) { tc.rotAngle = -0.85; tc.rotDir = 1; }
-        if (tc.mesh) tc.mesh.rotation.y = tc.rotAngle;
-
-        // Détection thermique dans l'arc de vue
-        const dist = Math.hypot(playerCreature.x - tc.x, playerCreature.z - tc.z);
-        if (dist <= 12.0 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
-          if (!tc.lastAlert || Date.now() - tc.lastAlert > 5000) {
-            tc.lastAlert = Date.now();
-            audioManager.playThermalCameraScream?.(tc.x, tc.z);
-            window.HiveSystems?.vfx?.floatingText?.(tc.x, 3.2, tc.z, 'THERMIQUE: SIGNATURE ACQUISE !', '#ef4444', true);
-            (window.gameInstance?.humans || []).forEach((h) => {
-              if (!h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - tc.x, h.z - tc.z) <= 30) {
-                h.aiState = 'CHASE';
-                h.targetPos = { x: playerCreature.x, z: playerCreature.z };
-              }
-            });
+        head.rotation.y = (tc.baseYaw || 0) + tc.rotAngle;
+        tc.alertCooldown = Math.max(0, (tc.alertCooldown || 0) - safeDelta);
+        let observing = false;
+        if (canTrack) {
+          const lens = sensor.getWorldPosition(tc.lensPosition ||= new THREE.Vector3());
+          const forward = head.getWorldDirection(tc.lensDirection ||= new THREE.Vector3());
+          const dx = target.x - lens.x, dz = target.z - lens.z, distance = Math.hypot(dx, dz);
+          if (distance > .05 && distance <= 12 && dx * forward.x + dz * forward.z >= distance * Math.cos(.48)) {
+            // The lens starts inside its own fixed post envelope, not inside a
+            // wall. Ignore that post only; every other active solid still wins.
+            observing = this.hasLineOfSight(lens.x, lens.z, target.x, target.z, .08, tc.collider);
+          }
+        }
+        tc.alertTimer = observing ? Math.min(.75, (tc.alertTimer || 0) + safeDelta) : 0;
+        if (tc.alertTimer >= .75 && tc.alertCooldown <= 0) {
+          tc.alertCooldown = 5;
+          audioManager.playThermalCameraScream?.(tc.x, tc.z);
+          window.HiveSystems?.vfx?.floatingText?.(tc.x, 3.2, tc.z, 'THERMIQUE: SIGNATURE ACQUISE !', '#ef4444', true);
+          for (const human of game.humans || []) {
+            if (human.canEngageHostiles?.() && Math.hypot(human.x - tc.x, human.z - tc.z) <= 30) {
+              human.receiveThreatReport?.(target.x, target.z, target);
+            }
           }
         }
       });
@@ -26507,14 +26546,14 @@
       return Math.hypot(px - (x1 + t * (x2 - x1)), pz - (z1 + t * (z2 - z1)));
     }
 
-    hasClearSegment(startX, startZ, endX, endZ, padding = 0.08) {
+    hasClearSegment(startX, startZ, endX, endZ, padding = 0.08, ignoredCollider = null) {
       return !this.colliders.some((collider) => (
-        this.segmentIntersectsCollider(startX, startZ, endX, endZ, collider, padding)
+        collider !== ignoredCollider && this.segmentIntersectsCollider(startX, startZ, endX, endZ, collider, padding)
       ));
     }
 
-    hasLineOfSight(startX, startZ, endX, endZ, padding = 0.08) {
-      if (!this.hasClearSegment(startX, startZ, endX, endZ, padding)) return false;
+    hasLineOfSight(startX, startZ, endX, endZ, padding = 0.08, ignoredCollider = null) {
+      if (!this.hasClearSegment(startX, startZ, endX, endZ, padding, ignoredCollider)) return false;
 
       // Masquage thermique et visuel par les geysers de vapeur (Alien Isolation 1:1)
       const vfxEffects = window.HiveSystems?.vfx?.effects || [];

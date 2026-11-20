@@ -79,6 +79,7 @@ def main():
     parser.add_argument('--output', required=True)
     parser.add_argument('--no-captures', action='store_true')
     parser.add_argument('--cameras-only', action='store_true')
+    parser.add_argument('--thermal-only', action='store_true')
     args = parser.parse_args()
     root, out = Path(args.source_root).resolve(), Path(args.output).resolve()
     if out.exists():
@@ -163,6 +164,126 @@ def main():
             report['complete'] = True
             save()
 
+        def thermal_checks():
+            check('Both thermal desks keep their console and footprint fixed while only the mounted optical head pans', r"""
+              f.reset();f.placePlayer(60,60);
+              const before=map.thermalSurveillancePosts.map(post=>{
+                const head=post.mesh.getObjectByName('thermal_camera_swivel'),lens=post.mesh.getObjectByName('thermal_camera_lens');
+                post.mesh.updateWorldMatrix(true,true);
+                return {post,head,lens,pan:head?.rotation.y,position:post.mesh.position.clone(),quaternion:post.mesh.quaternion.clone(),
+                  fixed:post.mesh.children.filter(child=>child!==head).map(child=>[child,child.matrixWorld.clone()]),
+                  collider:map.colliders.find(col=>col.camRef===post),bounds:null};
+              });
+              before.forEach(row=>row.bounds=[row.collider.minX,row.collider.maxX,row.collider.minZ,row.collider.maxZ]);
+              f.active(()=>map.updateThermalSurveillancePosts(.5));
+              const rows=before.map(row=>{
+                const {post,head,lens,collider}=row;post.mesh.updateWorldMatrix(true,true);
+                return {id:post.id,rootFixed:post.mesh.position.equals(row.position)&&post.mesh.quaternion.equals(row.quaternion),
+                  staticConsoleFixed:row.fixed.every(([child,matrix])=>child.matrixWorld.equals(matrix)),
+                  colliderFixed:JSON.stringify(row.bounds)===JSON.stringify([collider.minX,collider.maxX,collider.minZ,collider.maxZ]),
+                  footprintClear:!map.colliders.some(col=>col!==collider&&!col.disabled&&collider.maxX>col.minX+.01&&collider.minX<col.maxX-.01&&collider.maxZ>col.minZ+.01&&collider.minZ<col.maxZ-.01),
+                  mountedOptics:!!head&&!!lens&&head.parent===post.mesh&&lens.parent===head,
+                  headPan:head?Math.abs(head.rotation.y-row.pan):null};
+              });f.failureDetail=rows;
+              need(rows.length===2&&rows.every(row=>row.rootFixed&&row.staticConsoleFixed&&row.colliderFixed&&row.footprintClear&&row.mountedOptics&&row.headPan>.01),
+                'Thermal mast/head/console contract invalid '+JSON.stringify(rows));return rows;
+            """)
+            capture('00-native-thermal-head.png','Poste thermique : pupitre fixe et lentille sur tête pivotante',{'x':-18.25,'z':-12})
+            check('Thermal optics reject rear and structural cover, require sustained exposure and report only to local guards', r"""
+              f.reset();const original=map.thermalSurveillancePosts,results=[];
+              const clear=(post,point,pan)=>{
+                const head=post.mesh.getObjectByName('thermal_camera_swivel'),lensMesh=post.mesh.getObjectByName('thermal_camera_lens');
+                head.rotation.y=(post.baseYaw||0)+pan;const lens=lensMesh.getWorldPosition(new T.Vector3());
+                return map.hasLineOfSight(lens.x,lens.z,point.x,point.z,.08,post.collider);
+              };
+              for(const post of original){f.reset();const direction=post.initialRotDir||1;
+              let fixture=null;
+              for(const distance of [8.5,7,5.5,4]){for(const offset of [-.32,.32,-.62,.62,0]){
+                const angle=(post.baseYaw||0)+offset;
+                const point={x:post.x+.55+Math.sin(angle)*distance,z:post.z+.25+Math.cos(angle)*distance};
+                if(!map.checkCollision(point.x,point.z,.8)&&[offset-.30,offset,offset+.30].every(pan=>clear(post,point,pan))){fixture={post,point};break;}
+              }if(fixture)break;}
+              f.failureDetail={id:post.id,point:fixture?.point};need(fixture,'No free authored optical sweep point exists for '+post.id);
+              const {point}=fixture,head=post.mesh.getObjectByName('thermal_camera_swivel');map.thermalSurveillancePosts=[post];
+              const calls=[],audio=q.audioManager.playThermalCameraScream;
+              q.audioManager.playThermalCameraScream=function(...args){calls.push(args);return audio?.apply(this,args);};
+              const snapshot=()=>({angle:post.rotAngle,exposure:post.alertTimer,cooldown:post.alertCooldown,alerts:calls.length});
+              const tick=frames=>f.active(()=>{for(let i=0;i<frames;i++)map.updateThermalSurveillancePosts(1/60);});
+              const resetAim=()=>{post.rotAngle=0;post.rotDir=direction;head.rotation.y=post.baseYaw||0;};
+              const waitForAlert=expected=>{let frames=0,firstExposure=null,brief=null,maxExposure=0;
+                while(calls.length<expected&&frames<360){const before=snapshot();tick(1);frames++;
+                  maxExposure=Math.max(maxExposure,post.alertTimer);if(post.alertTimer>0&&firstExposure===null)firstExposure=frames/60;
+                  if(post.alertTimer>=.6&&calls.length<expected&&!brief)brief=snapshot();
+                  if(calls.length>before.alerts)need(post.alertTimer>=.75&&before.cooldown<=1/60+1e-8,'Thermal ping lacks sustained exposure or simulation cooldown');
+                }
+                f.failureDetail={id:post.id,point,frames,firstExposure,brief,maxExposure,state:snapshot()};
+                need(calls.length===expected&&maxExposure>=.75,'No sustained native sweep acquires '+post.id);return {seconds:frames/60,firstExposure,brief,maxExposure};};
+              let barrier=null,steam=null;
+              try{
+                const guard=f.actor('guard',point.x,point.z),civilian=f.actor('scientist',point.x,point.z),remote=f.actor('guard',65,65);
+                const nearReports=[],receive=guard.receiveThreatReport;guard.receiveThreatReport=function(...args){nearReports.push(args.slice(0,2));return receive.apply(this,args);};
+                resetAim();f.placePlayer(post.x+.55-Math.sin(post.baseYaw||0)*5,post.z+.25-Math.cos(post.baseYaw||0)*5);tick(360);const rear=snapshot();
+                need(calls.length===0&&post.alertTimer===0,'Thermal post observes behind its actual optical head');
+                resetAim();f.placePlayer(point.x,point.z);
+                const lens=post.mesh.getObjectByName('thermal_camera_lens').getWorldPosition(new T.Vector3());
+                const mx=(lens.x+point.x)/2,mz=(lens.z+point.z)/2;
+                barrier={minX:mx-.35,maxX:mx+.35,minZ:mz-.35,maxZ:mz+.35};map.colliders.push(barrier);
+                tick(360);const occluded=snapshot();need(calls.length===0&&post.alertTimer===0,'Thermal post acquires through a real solid barrier');
+                map.colliders.splice(map.colliders.indexOf(barrier),1);barrier=null;resetAim();
+                steam={x:mx,z:mz,steamCloud:true,age:0,lifetime:5,radius:2};HiveSystems.vfx.effects.push(steam);
+                tick(360);const obscured=snapshot();need(calls.length===0&&post.alertTimer===0,'Thermal post acquires through native steam cover');
+                HiveSystems.vfx.effects.splice(HiveSystems.vfx.effects.indexOf(steam),1);steam=null;resetAim();const sweep=waitForAlert(1),brief=sweep.brief,confirmed=snapshot();
+                need(brief&&brief.alerts===0&&brief.exposure<.75,'No pre-confirmation sustained exposure sample was observed');
+                need(calls.length===1&&nearReports.length===1,'Clear sustained thermal exposure did not produce exactly one local report');
+                need(guard.aiState==='SEARCH'&&guard.lastKnownThreat?.source==='radio'&&guard.lastKnownThreat.x===point.x&&guard.lastKnownThreat.z===point.z,
+                  'Thermal post bypassed the real copied radio/search contract');
+                need(!civilian.lastKnownThreat&&!remote.lastKnownThreat,'Thermal post tasked unarmed or remote humans');
+                const paused=snapshot();for(let i=0;i<180;i++)map.updateThermalSurveillancePosts(1/60);
+                need(JSON.stringify(paused)===JSON.stringify(snapshot()),'Paused thermal head, exposure or cooldown advanced');
+                p.isInVent=true;tick(30);need(post.alertTimer===0,'A concealed target retains thermal exposure');
+                p.isInVent=false;const recovery=waitForAlert(2);
+                need(.5+recovery.seconds>=5-1e-8,'Thermal cooldown expired before five simulation seconds');
+                need(calls.length===2&&nearReports.length===2,'Thermal alert did not recover after five simulation seconds');
+                results.push({id:post.id,point,baseYaw:post.baseYaw,sweep,recovery,rear,occluded,obscured,brief,confirmed,paused,afterCooldown:snapshot(),copiedReports:nearReports,
+                  occlusion:'Explicit added AABB and steam fixtures; all authored solids and original scan directions retained'});
+              }finally{if(barrier)map.colliders.splice(map.colliders.indexOf(barrier),1);if(steam)HiveSystems.vfx.effects.splice(HiveSystems.vfx.effects.indexOf(steam),1);map.thermalSurveillancePosts=original;q.audioManager.playThermalCameraScream=audio;p.isInVent=false;}
+              }return results;
+            """)
+            check('Thermal sabotage stays silent and a new campaign restores only its optical state', r"""
+              f.reset();const post=map.thermalSurveillancePosts[0],position=post.mesh.position.clone(),quaternion=post.mesh.quaternion.clone();
+              need(f.active(()=>map.destroyThermalSurveillancePost(post,50))&&post.isDestroyed,'Thermal sabotage did not destroy the real device');
+              const angle=post.rotAngle;f.active(()=>map.updateThermalSurveillancePosts(1));need(post.rotAngle===angle,'Destroyed thermal head still scans');
+              g.startCampaign(4);g.setSystemPaused(true);
+              need(!post.isDestroyed&&post.hp===50&&post.alertTimer===0&&post.alertCooldown===0&&post.rotAngle===0,'Thermal sabotage/timer leaked into a new campaign');
+              need(post.mesh.position.equals(position)&&post.mesh.quaternion.equals(quaternion),'Thermal reset moved the fixed console');
+              return {id:post.id,hp:post.hp,position:post.mesh.position.toArray(),reset:true};
+            """)
+            for post_index in range(2):
+                prepared = page.evaluate(r"""index=>{
+                  const f=__worldNative,{g,p,map,need}=f;f.reset();const post=map.thermalSurveillancePosts[index];let point=null;
+                  for(const distance of [2.5,3,3.8,4.4]){for(let i=0;i<24;i++){
+                    const candidate={x:post.x+Math.cos(i*Math.PI/12)*distance,z:post.z+Math.sin(i*Math.PI/12)*distance};
+                    if(map.checkCollision(candidate.x,candidate.z,.8))continue;f.placePlayer(candidate.x,candidate.z);
+                    if(map.canInteractWithProp(post)){point=candidate;break;}
+                  }if(point)break;}
+                  need(point,'No real adjacent thermal interaction point for '+post.id);
+                  f.uiThermal={post,point,stage:g.currentStage,calls:0,method:g.currentStage.interactWithNearbyProps};
+                  g.currentStage.interactWithNearbyProps=function(...args){f.uiThermal.calls++;return f.uiThermal.method.apply(this,args);};
+                  return {id:post.id,point,distance:Math.hypot(point.x-post.x,point.z-post.z),clear:map.canInteractWithProp(post)};
+                }""", post_index)
+                page.evaluate('()=>{document.activeElement?.blur();gameInstance.setSystemPaused(false)}')
+                page.keyboard.press('Space')
+                detail = page.evaluate(r"""()=>{const f=__worldNative,{g,map,need}=f,row=f.uiThermal;g.setSystemPaused(true);
+                  row.stage.interactWithNearbyProps=row.method;
+                  const result={calls:row.calls,destroyedFromSpace:row.post.isDestroyed,stage:g.currentStageIndex};
+                  need(row.calls===1&&row.post.isDestroyed,'A single Space must sabotage the selected thermal post through the normal interaction');
+                  return result;
+                }""")
+                report['checks'].append({'name': 'Thermal adjacent real Space interaction ' + prepared['id'], 'passed': True,
+                    'detail': {**prepared, **detail, 'scope': 'Live keyboard action with all authored props and colliders active'}})
+                save()
+                print('PASS Thermal adjacent real Space interaction', prepared['id'], detail, flush=True)
+
         try:
             save()
             page.goto(args.url, wait_until='domcontentloaded')
@@ -173,6 +294,10 @@ def main():
             page.evaluate('()=>gameInstance.setSystemPaused(true)')
             report['prepare'] = page.evaluate(PREPARE)
             save()
+            if args.thermal_only:
+                thermal_checks()
+                finish()
+                return
             check('Every surveillance bracket is mounted on a real wall and only the head pans', r"""
               f.reset();f.placePlayer(0,0);
               const walls=map.walls.map(wall=>new T.Box3().setFromObject(wall));
@@ -559,6 +684,9 @@ def main():
             sectors = page.evaluate('()=>__worldQA.stationMap.getIndustrialLayoutSectors()')
             for index, sector in enumerate([item for item in sectors if item['id'] in ['medical', 'foundry']], start=3):
                 capture(f'{index:02d}-native-sector-{sector["id"]}.png', 'Secteur ' + sector['id'], {'x': sector['x'], 'z': sector['z']})
+            # Unpausing for the live thermal sabotage applies Act IV quarantine.
+            # Check routes in their declared initial door state first.
+            thermal_checks()
             finish()
         except Exception as error:
             report['failure'] = str(error)

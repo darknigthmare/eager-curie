@@ -8635,7 +8635,13 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         root.add(this._box(crtScreen, { x: 1.05, y: 0.52, z: 0.04 }, { x: 0, y: 1.35, z: -0.02 }, 'thermal_crt_display'));
         // Caméra sur mât
         root.add(this._segment(dark, new T.Vector3(0.55, 1.1, 0.25), new T.Vector3(0.55, 2.2, 0.25), 0.04, 0.04, 'camera_mast', 8));
-        root.add(this._box(dark, { x: 0.22, y: 0.16, z: 0.35 }, { x: 0.55, y: 2.22, z: 0.25 }, 'thermal_camera_head', true));
+        const opticalHead = new T.Group();
+        opticalHead.name = 'thermal_camera_swivel';
+        opticalHead.position.set(0.55, 2.22, 0.25);
+        opticalHead.add(this._box(dark, { x: 0.22, y: 0.16, z: 0.35 }, { x: 0, y: 0, z: 0 }, 'thermal_camera_head', true));
+        const lensMaterial = this._material('emissiveRed', { color: 0x7f1d1d, emissive: 0xb91c1c, emissiveIntensity: 0.45, roughness: 0.2 });
+        opticalHead.add(this._cylinder(lensMaterial, 0.055, 0.055, 0.035, { x: 0, y: 0, z: 0.19 }, { x: Math.PI / 2, y: 0, z: 0 }, 'thermal_camera_lens'));
+        root.add(opticalHead);
       } else if (normalizedType === 'reactor_disconnect_console' || normalizedType === 'reactor_console') {
         // Chantier 140 : Console de Déconnexion du Réacteur Principal & Sirène d'Évacuation (Aliens 1986)
         const reactorMetal = this._material('darkMetal', { color: 0x1e293b, roughness: 0.3, metalness: 0.85 });

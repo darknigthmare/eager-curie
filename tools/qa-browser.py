@@ -262,6 +262,51 @@ def main():
                 return 'Actual reload and continue; stored checkpoint seeded through save API'
             check('Reload and continue checkpoint', resume)
 
+            def desktop_hud_layout():
+                original = page.viewport_size
+                records = []
+                page.locator('#stealth-visibility-sensor').wait_for(state='visible')
+                page.wait_for_function('() => !!document.getElementById("hud-gyro-compass")')
+                page.evaluate('() => gameInstance.setSystemPaused(true)')
+                try:
+                    for width in (1440, 1100, 1051):
+                        page.set_viewport_size({'width': width, 'height': original['height']})
+                        # Chromium can expose the new innerWidth before applying the new layout.
+                        page.wait_for_function('''expectedWidth => {
+                            const header = document.getElementById('hud-header').getBoundingClientRect();
+                            const measuredHeight = parseFloat(getComputedStyle(document.documentElement)
+                                .getPropertyValue('--hud-header-height'));
+                            return innerWidth === expectedWidth && Math.abs(header.width - expectedWidth) < .5 &&
+                                Math.ceil(header.height) === measuredHeight;
+                        }''', arg=width)
+                        state = page.evaluate('''() => {
+                            const header = document.getElementById('hud-header');
+                            const bounds = header.getBoundingClientRect();
+                            const selector = '.brand-title, #stage-badge, .vis-btn, #alert-box, #cryo-ambient-sensor, ' +
+                                '#atmo-composition-sensor, #stealth-visibility-sensor, .utility-btn';
+                            const nodes = [...header.querySelectorAll(selector)].filter(node => node.offsetHeight > 0);
+                            const boxes = nodes.map(node => {
+                                const {left, right, top, bottom} = node.getBoundingClientRect();
+                                return {id: node.id || node.className, left, right, top, bottom};
+                            });
+                            const collides = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > .5 &&
+                                Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > .5;
+                            return {width: innerWidth, headerWidth: bounds.width, height: bounds.height, boxes,
+                                gyroTop: document.getElementById('hud-gyro-compass').getBoundingClientRect().top,
+                                commands: nodes.filter(node => node.tagName === 'BUTTON' && node.tabIndex >= 0 && !node.disabled).length,
+                                outside: boxes.filter(box => box.left < -.5 || box.right > innerWidth + .5),
+                                overlapping: boxes.some((box, index) => boxes.slice(index + 1).some(other => collides(box, other)))};
+                        }''')
+                        if state['outside'] or state['overlapping'] or state['commands'] != 7 or state['gyroTop'] < state['height']:
+                            page.screenshot(path=str(output / f'desktop-hud-failed-{width}.png'))
+                            raise AssertionError(f'Desktop stage/telemetry and all commands fit without overlap: {state}')
+                        records.append(state)
+                finally:
+                    page.set_viewport_size(original)
+                    page.evaluate('() => gameInstance.setSystemPaused(false)')
+                return records
+            check('Desktop HUD keeps stage, sensors and commands clear', desktop_hud_layout)
+
             def restart():
                 page.locator('#game-canvas').focus()
                 page.keyboard.press('Escape')

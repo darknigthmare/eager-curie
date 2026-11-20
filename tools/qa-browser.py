@@ -55,7 +55,8 @@ def main():
     def start(page):
         # This smoke path has one reproducible authored origin. The dedicated
         # cycle suite covers the four origin/host journeys independently.
-        page.select_option('#origin-select', 'starship')
+        # The visible radio card, not its internal hidden campaign select.
+        page.locator('.origin-card[data-origin="starship"]').click()
         page.click('#btn-new-campaign')
         page.click('#btn-start-act-one')
         page.wait_for_function('() => gameInstance.campaignActive && !gameInstance.isSystemPaused')

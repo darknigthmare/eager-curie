@@ -197,6 +197,82 @@ def main():
                 return {fixture:'Legitimate copied radio point; live player concealed, actual A-star and actual HumanAI movement, fixed2.8s',start,route,calls,samples:f.positions,after:f.actorState(h)};
               }finally{map.findPath=original;p.isInVent=false;}
             """)
+            check('Native human grenade fuse pauses and resolves once without a VFX impact authority', r"""
+              f.reset();const pair=f.visiblePair();f.placePlayer(pair.visible.x,pair.visible.z);
+              const h=f.actor('guard',pair.human.x,pair.human.z);h.mesh.rotation.y=Math.atan2(p.x-h.x,p.z-h.z);
+              const vfx=HiveSystems.vfx,projectile=vfx.projectile,take=p.takeDamage,visuals=[],hits=[];
+              vfx.projectile=function(spec){visuals.push({hasImpact:typeof spec.onImpact==='function',x:spec.endX,z:spec.endZ});return projectile.call(this,spec);};
+              p.takeDamage=function(...args){hits.push({amount:args[0],type:args[2],attacker:args[1]===h});return take.apply(this,args);};
+              try{
+                const hp=p.health;need(f.active(()=>h.launchGrenade(p,36)),'Actual human grenade refused clear native line of sight');
+                const initial=h.pendingProjectiles[0].remaining;h.isIncapacitated=true;
+                f.tickActor(h,.1);need(hits.length===0,'Native grenade impacted before its fuse');
+                const beforePause=h.pendingProjectiles[0].remaining;
+                for(let frame=0;frame<90;frame++)h.update(1/60);
+                need(h.pendingProjectiles[0].remaining===beforePause&&hits.length===0,'Paused native grenade changed fuse or health');
+                f.tickActor(h,initial);need(hits.length===1&&hits[0].amount===36&&hits[0].type==='explosive'&&hits[0].attacker,'Native grenade failed real exactly-once raw damage');
+                f.tickActor(h,.5);need(hits.length===1&&h.pendingProjectiles.length===0,'Native grenade repeated damage');
+                need(visuals.length===1&&!visuals[0].hasImpact,'Presentation owns an authoritative impact callback');
+                return {fixture:'Actual room clearance, guard/player meshes, optional real projectile, real forwarded damage and fixed HumanAI ticks; launcher incapacitation and paused simulation are explicitly prepared, not human play',
+                  pair,initial,beforePause,pausedTicks:90,visuals,hits,hpBefore:hp,hpAfter:p.health};
+              }finally{vfx.projectile=projectile;p.takeDamage=take;}
+            """)
+            check('Native human grenade can be evaded with missing VFX and cancels an obsolete stage', r"""
+              f.reset();const pair=f.visiblePair();f.placePlayer(pair.visible.x,pair.visible.z);
+              const h=f.actor('guard',pair.human.x,pair.human.z);h.mesh.rotation.y=Math.atan2(p.x-h.x,p.z-h.z);
+              const vfx=window.HiveSystems.vfx,take=p.takeDamage,hits=[];
+              p.takeDamage=function(...args){hits.push(args[0]);return take.apply(this,args);};
+              try{
+                window.HiveSystems.vfx=null;
+                need(f.active(()=>h.launchGrenade(p,36)),'Missing VFX prevented actual grenade launch');
+                const shot=h.pendingProjectiles[0],impact={x:shot.x,z:shot.z},duration=shot.remaining;
+                need(Math.hypot(pair.hidden.x-impact.x,pair.hidden.z-impact.z)>3.2,'Prepared dodge is still inside blast radius');
+                h.isIncapacitated=true;f.placePlayer(pair.hidden.x,pair.hidden.z);f.tickActor(h,duration+.05);
+                need(hits.length===0&&h.pendingProjectiles.length===0,'Grenade followed live player instead of copied native impact point');
+                h.isIncapacitated=false;f.placePlayer(pair.visible.x,pair.visible.z);h.mesh.rotation.y=Math.atan2(p.x-h.x,p.z-h.z);
+                need(f.active(()=>h.launchGrenade(p,36)),'Second native grenade refused');h.isIncapacitated=true;
+                const stage=g.currentStage;try{g.currentStage={obsoleteStageProbe:true};f.tickActor(h,1/60);}
+                finally{g.currentStage=stage;}
+                need(hits.length===0&&h.pendingProjectiles.length===0,'Obsolete stage retained native grenade authority');
+                return {fixture:'Actual guard/player and production clearance, VFX deliberately absent; positions and stage invalidation are prepared subsystem checks, not player movement or rendered projectile QA',
+                  impact,duration,dodge:{x:p.x,z:p.z},hits,obsoleteQueue:h.pendingProjectiles.length};
+              }finally{window.HiveSystems.vfx=vfx;p.takeDamage=take;}
+            """)
+            check('Native SADAR shot keeps simulation time when reduced motion is enabled mid-flight', r"""
+              f.reset();const pair=f.visiblePair();f.placePlayer(pair.visible.x,pair.visible.z);
+              const h=f.actor('uscm_sadar_operator',pair.human.x,pair.human.z);
+              h.mesh.rotation.y=Math.atan2(p.x-h.x,p.z-h.z);h.shootCooldown=0;
+              const vfx=HiveSystems.vfx,take=p.takeDamage,wasReduced=vfx.reducedMotion,hits=[];
+              p.takeDamage=function(...args){hits.push({amount:args[0],attacker:args[1]===h,type:args[2]});return take.apply(this,args);};
+              try{
+                vfx.setReducedMotion(false);f.tickActor(h,1/60);
+                need(h.pendingProjectiles.length===1&&hits.length===0,'Native SADAR did not launch with a delayed impact');
+                const shot=h.pendingProjectiles[0],remaining=shot.remaining;
+                const visible=vfx.effects.find(effect=>effect.projectile&&Math.abs(effect.end.x-shot.x)<1e-6&&Math.abs(effect.end.z-shot.z)<1e-6);
+                need(visible&&typeof visible.onImpact!=='function','Native visible SADAR projectile owns an impact callback');
+                h.isIncapacitated=true;
+                vfx.setReducedMotion(true);
+                need(hits.length===0&&shot.remaining===remaining,'Switching visual preference caused a native impact');
+                for(let frame=0;frame<30;frame++)h.update(1/60);
+                need(shot.remaining===remaining,'Paused native SADAR fuse advanced');
+                f.tickActor(h,remaining+.02);
+                f.tickActor(h,.3);
+                need(h.pendingProjectiles.length===0&&hits.length===1&&hits[0].amount===65&&hits[0].attacker&&hits[0].type==='explosive',
+                  'Actual native SADAR did not deliver one authored impact after resume');
+                return {pair,fuse:remaining,hits,effectRemoved:!vfx.effects.includes(visible),remaining:h.pendingProjectiles.length};
+              }finally{p.takeDamage=take;vfx.setReducedMotion(wasReduced);}
+            """)
+            check('Starting a campaign removes the previous phosphorus and in-flight EMP mesh', r"""
+              f.reset();f.placePlayer(0,0);
+              f.active(()=>{map.deployWhitePhosphorus(0,0);map.throwEMPGrenade(0,0,4,0);});
+              const emp=map.activeEMPGrenades[0],mesh=emp.mesh,previousStage=g.currentStage;
+              need(map.whitePhosphorusPatches.length===1&&mesh?.parent,'Transient fire and EMP mesh did not initialize');
+              g.startCampaign(4);g.setSystemPaused(true);
+              need(previousStage!==g.currentStage&&map.whitePhosphorusPatches.length===0&&map.activeEMPGrenades.length===0,
+                'Transient munitions survived the actual campaign reset');
+              need(!mesh.parent,'Old EMP mesh remains in the new scene');
+              return {fire:map.whitePhosphorusPatches.length,grenades:map.activeEMPGrenades.length,removed:!mesh.parent};
+            """)
             check('The actual station dispatcher advances the steam subsystem once per tick', r"""
               f.reset();f.placePlayer(0,0);const original=map.updateSteamVents;let calls=0;
               map.updateSteamVents=function(dt){calls++;return original.call(this,dt);};

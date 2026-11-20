@@ -12,6 +12,8 @@ import shutil
 
 from playwright.sync_api import sync_playwright
 
+SAVE_KEY = "hive-ascension-campaign-v2"
+
 
 def run(url, chromium):
     results = []
@@ -38,6 +40,105 @@ def run(url, chromium):
             page.goto(url, wait_until="domcontentloaded")
             page.wait_for_function("() => !!window.HiveSystems?.ui.game", timeout=120000)
             return context, page, errors
+
+        def return_to_menu(page):
+            page.locator("#game-canvas").focus()
+            page.keyboard.press("Escape")
+            page.click("#btn-return-menu")
+
+        def stored_origin(page):
+            return page.evaluate("key => JSON.parse(localStorage.getItem(key)).origin", SAVE_KEY)
+
+        context, page, errors = new_page(f"""
+            const key = {json.dumps(SAVE_KEY)};
+            if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({{
+                stage: 4, campaignStarted: true, origin: 'colony', difficulty: 'story',
+                unlockedCodex: ['drone'], completedEndings: ['dominion']
+            }}));
+        """)
+        checkpoint = page.evaluate("key => localStorage.getItem(key)", SAVE_KEY)
+        page.click("#btn-new-campaign")
+        assert page.locator("#prologue-screen").is_visible()
+        assert page.evaluate("key => localStorage.getItem(key)", SAVE_KEY) == checkpoint, "Opening the prologue replaced an existing checkpoint"
+        page.reload(wait_until="domcontentloaded")
+        page.wait_for_function("() => !!window.HiveSystems?.ui.game", timeout=120000)
+        page.click("#btn-continue-campaign")
+        assert page.evaluate("gameInstance.currentStageIndex") == 4
+        assert stored_origin(page) == "colony"
+        return_to_menu(page)
+        page.click('[data-difficulty="nightmare"]')
+        page.click('[data-origin="hive"]')
+        page.click("#btn-new-campaign")
+        page.click("#btn-start-act-one")
+        saved = page.evaluate("key => JSON.parse(localStorage.getItem(key))", SAVE_KEY)
+        assert saved["stage"] == 1 and saved["campaignStarted"] is True
+        assert saved["difficulty"] == "nightmare" and saved["origin"] == "hive"
+        assert "drone" in saved["unlockedCodex"] and "dominion" in saved["completedEndings"]
+        assert not errors, errors
+        results.append("Opening and abandoning the prologue preserves the existing checkpoint; confirming a new campaign commits the selected options and retains discoveries and endings")
+        context.close()
+
+        for origin, host_type in (("hive", "marine"), ("juggernaut", "spacesuit")):
+            saved = {"stage": 2, "campaignStarted": True, "origin": origin}
+            context, page, errors = new_page(f"""
+                localStorage.setItem({json.dumps(SAVE_KEY)}, JSON.stringify({json.dumps(saved)}));
+            """)
+            for attempt in range(2):
+                page.click("#btn-continue-campaign")
+                state = page.evaluate("""() => {
+                    const game = gameInstance;
+                    const host = game.humans.find(human => human.id === 1);
+                    return {stage: game.currentStageIndex, origin: game.activeOrigin?.id || null,
+                        royal: game.currentStage.isRoyal, hostType: host?.type || null, hostHasModel: !!host?.mesh};
+                }""")
+                assert state == {"stage": 2, "origin": origin, "royal": True,
+                                 "hostType": host_type, "hostHasModel": True}, state
+                assert stored_origin(page) == origin
+                if attempt == 0:
+                    return_to_menu(page)
+            # Prepare a completed act so the actual transition can exercise
+            # its checkpoint without replacing any of the persistence code.
+            page.evaluate("""() => {
+                gameInstance.currentStage.isCompleted = true;
+                gameInstance.advanceStage(gameInstance.currentStage);
+            }""")
+            assert page.evaluate("gameInstance.currentStageIndex") == 3
+            assert stored_origin(page) == origin
+            assert not errors, errors
+            results.append(f"Act II {origin} restores its royal variant and modeled {host_type} on fresh boot and from menu, then preserves its origin in the next checkpoint")
+            context.close()
+
+        for origin, expected in (("random", "starship"), ("constructor", "starship")):
+            saved = {"stage": 2, "campaignStarted": True, "origin": origin, "adultCaste": "__proto__"}
+            context, page, errors = new_page(f"""
+                localStorage.setItem({json.dumps(SAVE_KEY)}, JSON.stringify({json.dumps(saved)}));
+            """)
+            page.click("#btn-continue-campaign")
+            assert page.evaluate("gameInstance.activeOrigin?.id") == expected, origin
+            assert page.evaluate("gameInstance.campaignConfig.adultCaste") == "drone"
+            assert stored_origin(page) == expected
+            assert not errors, errors
+            results.append(f"Legacy Act II origin {origin} resolves to a valid stable origin and inherited caste ID is rejected")
+            context.close()
+
+        context, page, errors = new_page("")
+        page.click('[data-origin="random"]')
+        page.click("#btn-new-campaign")
+        page.click("#btn-start-act-one")
+        resolved = page.evaluate("gameInstance.activeOrigin?.id")
+        assert resolved in ("hive", "juggernaut", "colony", "starship"), resolved
+        assert stored_origin(page) == resolved, "The roll must persist before the next act"
+        return_to_menu(page)
+        page.click("#btn-continue-campaign")
+        assert page.evaluate("gameInstance.activeOrigin?.id") == resolved
+        page.reload(wait_until="domcontentloaded")
+        page.wait_for_function("() => !!window.HiveSystems?.ui.game", timeout=120000)
+        page.click("#btn-continue-campaign")
+        assert page.evaluate("gameInstance.activeOrigin?.id") == resolved
+        assert stored_origin(page) == resolved
+        assert not errors, errors
+        results.append(f"New random origin {resolved} survives return to menu and full reload while still in Act I")
+        context.close()
 
         context, page, errors = new_page("""
             localStorage.setItem('hive-ascension-campaign-v2', JSON.stringify({

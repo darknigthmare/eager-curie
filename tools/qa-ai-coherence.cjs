@@ -14,6 +14,17 @@ const classSource = (start, end) => {
 };
 const humanSource = classSource('  class HumanAI {', '  class HiveUnit {');
 const mapSource = classSource('  class StationMap {', '  const stationMap = new StationMap();');
+const systemsSource = fs.readFileSync(path.join(root, 'src/game-systems.js'), 'utf8');
+const vfxSource = systemsSource.slice(systemsSource.indexOf('  class VFXManager {'), systemsSource.indexOf('  class CampaignUI {'));
+const projectileProfiles = [
+  { type: 'smartgunner', damage: 7.2, speed: 38, vertical: 1.42 },
+  { type: 'weyland_plasma_gunner', damage: 20, stagger: 1.2, speed: 32, vertical: 1.5 },
+  { type: 'weyland_steel_team_synth', damage: 28, speed: 42, vertical: 1.5 },
+  { type: 'uscm_sniper', damage: 42, speed: 65, vertical: 1.5 },
+  { type: 'uscm_sadar_operator', damage: 65, speed: 30, vertical: 1.5 },
+  { type: 'marine', phosphorus: true, speed: 20, vertical: 2.5 },
+  { type: 'guard', damage: 8, speed: 34, vertical: 1.42 }
+];
 function fixture({ type = 'guard', stage = 4, x = 0, z = 0, px = 0, pz = 20, wall = null } = {}) {
   const audio = [], render = [], animations = [], effects = [], damage = [], paths = [];
   const sink = calls => new Proxy({}, { get: (_, method) => (...args) => calls.push({ method: String(method), args }) });
@@ -350,6 +361,202 @@ check('Seegson booth calls actual synthetic classification without globally stag
   checkSyntheticHazard('overloadSeegsonBooth', { globalSynthetic: true, stagger: 5, timerKey: 'glitchTimer', timer: 9 }));
 check('Assembly station keeps local-only range and raw160 human versus320 synthetic damage', () =>
   checkSyntheticHazard('overloadAssemblyStation', { globalSynthetic: false, humanDamage: 160, syntheticDamage: 320, stagger: 4.5, timerKey: 'overloadTimer', timer: 10 }));
+check('Human grenades have a simulation fuse without any presentation subsystem', () => {
+  const f = fixture({ pz: 10 }); f.context.window.HiveSystems = null;
+  assert.equal(f.actor.launchGrenade(f.p, 36), true);
+  assert.equal(f.damage.length, 0); f.actor.isIncapacitated = true;
+  f.step(.44); assert.equal(f.damage.length, 0);
+  f.step(.03); assert.deepEqual(f.damage, [36]); assert.equal(f.actor.pendingProjectiles.length, 0);
+  f.step(1); assert.deepEqual(f.damage, [36]);
+});
+check('The optional grenade visual receives no authoritative impact callback', () => {
+  const f = fixture({ pz: 10 }), visuals = [];
+  f.context.window.HiveSystems.vfx.projectile = spec => { visuals.push(spec); return { cancel() {} }; };
+  assert.equal(f.actor.launchGrenade(f.p, 36), true);
+  assert.equal(visuals.length, 1); assert.equal(visuals[0].onImpact, undefined);
+  f.actor.isIncapacitated = true; f.step(.5); assert.deepEqual(f.damage, [36]);
+});
+check('A paused simulation freezes a human grenade and resumes its remaining fuse', () => {
+  const f = fixture({ pz: 10 }); f.actor.launchGrenade(f.p, 36);
+  f.actor.isIncapacitated = true; f.step(.2); const remaining = f.actor.pendingProjectiles[0].remaining;
+  f.game.isSystemPaused = true; f.step(3); assert.equal(f.actor.pendingProjectiles[0].remaining, remaining);
+  assert.equal(f.damage.length, 0); f.game.isSystemPaused = false;
+  f.step(.27); assert.deepEqual(f.damage, [36]);
+});
+check('A human grenade lands at the copied point and a moving target can evade it', () => {
+  const f = fixture({ pz: 10 }); f.actor.launchGrenade(f.p, 36);
+  f.actor.isIncapacitated = true; f.p.x = 9; f.step(.5);
+  assert.equal(f.damage.length, 0); assert.equal(f.actor.pendingProjectiles.length, 0);
+  const impacts = f.audio.filter(row => row.method === 'playGrenadeExplode');
+  assert.equal(impacts.length, 1); assert.deepEqual(impacts[0].args, [0, 10]);
+});
+check('Blast clearance blocks a nearby target behind a newly closed actual wall', () => {
+  const f = fixture({ pz: 10 }); f.actor.launchGrenade(f.p, 36);
+  f.actor.isIncapacitated = true; f.p.x = 2;
+  f.map.colliders.push({ minX: .8, maxX: 1.2, minZ: 8, maxZ: 12 }); f.step(.5);
+  assert.equal(f.damage.length, 0); assert.equal(f.actor.pendingProjectiles.length, 0);
+});
+check('Stage reset and replaced target meshes cannot receive an old grenade', () => {
+  for (const change of ['stage', 'mesh', 'humans', 'campaign']) {
+    const f = fixture({ pz: 10 }); f.actor.launchGrenade(f.p, 36); f.actor.isIncapacitated = true;
+    if (change === 'stage') f.game.currentStage = {};
+    if (change === 'mesh') f.p.mesh = { visible: true };
+    if (change === 'humans') f.game.humans = [f.actor];
+    if (change === 'campaign') f.game.campaignActive = false;
+    f.step(.5); assert.equal(f.damage.length, 0, change); assert.equal(f.actor.pendingProjectiles.length, 0, change);
+  }
+});
+check('A grenade already in flight remains live if its launcher is incapacitated', () => {
+  const f = fixture({ pz: 10 }); f.actor.launchGrenade(f.p, 14);
+  f.actor.isIncapacitated = true; f.actor.ceilingActionOwner = {}; f.step(.5);
+  assert.deepEqual(f.damage, [14]); assert.equal(f.animations.length, 0);
+});
+function prepareWeapon({ type, phosphorus }, reducedMotion = false) {
+  const f = fixture({ type, pz: 10 });
+  const VFX = vm.runInNewContext('(' + vfxSource + '\n)', f.context);
+  const vfx = new VFX();
+  vfx.setReducedMotion(reducedMotion);
+  f.context.window.HiveSystems.vfx = vfx;
+  f.map.whitePhosphorusPatches = [];
+  f.actor.u1GrenadeCooldown = 999;
+  f.p.mesh.position = { set() {} };
+  if (phosphorus) {
+    f.actor.stress = 65;
+    f.actor.whitePhosphorusCooldown = 0;
+  }
+  return f;
+}
+for (const profile of projectileProfiles) {
+  check(`${profile.type} has no immediate impact with real reduced-motion VFX or without a scene`, () => {
+    for (const reducedMotion of [false, true]) {
+      const f = prepareWeapon(profile, reducedMotion);
+      f.actor.update(1 / 60);
+      assert.equal(f.damage.length, 0, 'Weapon damage occurred during launch');
+      assert.equal(f.map.whitePhosphorusPatches.length, 0, 'Fire appeared during launch');
+      assert.equal(f.actor.pendingProjectiles.length, 1, 'Weapon branch did not queue a shot');
+      const { remaining, startX, startZ } = f.actor.pendingProjectiles[0];
+      const authored = Math.max(.08, Math.hypot(startX, startZ - 10, profile.vertical) / profile.speed);
+      assert(Math.abs(remaining - authored) < 1e-9, 'Authored flight time changed');
+      f.actor.isIncapacitated = true;
+      f.step(remaining - .01);
+      assert.equal(f.damage.length + f.map.whitePhosphorusPatches.length, 0);
+      f.game.isSystemPaused = true;
+      f.step(1);
+      assert.equal(f.damage.length + f.map.whitePhosphorusPatches.length, 0);
+      f.game.isSystemPaused = false;
+      f.step(.02);
+      f.step(1);
+      if (profile.phosphorus) {
+        assert.equal(f.map.whitePhosphorusPatches.length, 1);
+        const patch = f.map.whitePhosphorusPatches[0];
+        assert.deepEqual([patch.x, patch.z, patch.radius, patch.timer], [0, 10, 4.2, 8]);
+      } else {
+        assert.deepEqual(f.damage, [profile.damage]);
+        if (profile.stagger) assert.equal(f.p.staggerTimer, profile.stagger);
+      }
+      assert.equal(f.actor.pendingProjectiles.length, 0);
+    }
+  });
+}
+check('SADAR keeps its launch point when evaded and cannot hit through newly closed solid cover', () => {
+  for (const cover of [false, true]) {
+    const f = prepareWeapon(projectileProfiles[4]);
+    f.actor.update(1 / 60);
+    f.actor.isIncapacitated = true;
+    if (cover) f.map.colliders.push({ minX: -4, maxX: 4, minZ: 4, maxZ: 6 });
+    else f.p.x = 6;
+    f.step(.5);
+    assert.equal(f.damage.length, 0);
+    assert.equal(f.actor.pendingProjectiles.length, 0);
+    const blasts = f.audio.filter(row => row.method === 'playGrenadeExplode');
+    assert.equal(blasts.length, cover ? 0 : 1);
+    if (!cover) assert.deepEqual(blasts[0].args, [0, 10]);
+  }
+});
+check('Obsolete campaign and stage prevent damage and persistent phosphorus fire', () => {
+  for (const profile of [projectileProfiles[4], projectileProfiles[5]]) {
+    for (const change of ['stage', 'campaign', 'closed']) {
+      const f = prepareWeapon(profile);
+      f.actor.update(1 / 60);
+      assert.equal(f.actor.pendingProjectiles.length, 1);
+      f.actor.isIncapacitated = true;
+      if (change === 'stage') f.game.currentStage = {};
+      if (change === 'campaign') f.game.campaignActive = false;
+      if (change === 'closed') f.game.isRunning = false;
+      f.step(1);
+      assert.equal(f.damage.length + f.map.whitePhosphorusPatches.length, 0, change);
+      assert.equal(f.actor.pendingProjectiles.length, 0, change);
+    }
+  }
+});
+check('Concussion damage does not push the player through a thin solid collider', () => {
+  const f = prepareWeapon(projectileProfiles[2]);
+  f.map.colliders.push({ minX: -3, maxX: 3, minZ: 10.8, maxZ: 11.2 });
+  f.actor.update(1 / 60);
+  f.actor.isIncapacitated = true;
+  f.step(.5);
+  assert.deepEqual(f.damage, [28]);
+  assert.equal(f.p.z, 10);
+});
+check('Deployed phosphorus freezes while paused and cannot burn a new act', () => {
+  const f = fixture({ pz: 10 });
+  f.map.deployWhitePhosphorus(0, 10);
+  f.game.isSystemPaused = true;
+  f.map.updateWhitePhosphorusPatches(.1);
+  assert.equal(f.map.whitePhosphorusPatches[0].timer, 8);
+  assert.equal(f.damage.length, 0);
+  f.game.isSystemPaused = false;
+  f.map.updateWhitePhosphorusPatches(.1);
+  assert.deepEqual(f.damage, [1.5]);
+  f.game.currentStage = {};
+  f.map.updateWhitePhosphorusPatches(.1);
+  assert.deepEqual(f.damage, [1.5]);
+  assert.equal(f.map.whitePhosphorusPatches.length, 0);
+});
+check('Thrown EMP freezes in pause and its old mesh disappears without detonation on stage change', () => {
+  const f = fixture();
+  const observed = [];
+  const mesh = { position: { set() {} } };
+  f.map.activeEMPGrenades = [];
+  f.context.window.HiveModelFactory = { createEMPGrenade: () => mesh };
+  Object.assign(f.context.rendererEngine, { propsGroup: { add(value) { assert.equal(value, mesh); } },
+    removeObject(value) { observed.push(value); }, sabotagePower() { observed.push('explosion'); } });
+  f.map.throwEMPGrenade(0, 0, 0, 10);
+  f.game.isSystemPaused = true;
+  f.map.updateEMPGrenades(.9);
+  assert.equal(f.map.activeEMPGrenades[0].elapsed, 0);
+  f.game.isSystemPaused = false;
+  f.game.currentStage = {};
+  f.map.updateEMPGrenades(.9);
+  assert.deepEqual(observed, [mesh]);
+  assert.equal(f.map.activeEMPGrenades.length, 0);
+  f.map.throwEMPGrenade(0, 0, 0, 10);
+  f.map.deployWhitePhosphorus(0, 10);
+  f.map.clearTransientMunitions();
+  f.map.clearTransientMunitions();
+  assert.deepEqual(observed, [mesh, mesh]);
+  assert.equal(f.map.activeEMPGrenades.length, 0);
+  assert.equal(f.map.whitePhosphorusPatches.length, 0);
+});
+check('Lost squad leaders do not grant hidden live coordinates for routed retreat', () => {
+  const f = fixture({ pz: 12 }); f.actor.shootCooldown = 999; f.actor.u1GrenadeCooldown = 999;
+  f.actor.update(1 / 60); const known = { x: f.actor.lastKnownThreat.x, z: f.actor.lastKnownThreat.z };
+  f.map.colliders.push({ minX: -72, maxX: 72, minZ: 5, maxZ: 7 });
+  f.p.x = 30; f.p.z = 20; f.actor.squadLeaderDownTimer = 5;
+  const points = []; f.actor.fleeFrom = (x, z) => { points.push([x, z]); return true; };
+  f.actor.update(1 / 60); assert(points.length > 0);
+  assert(points.every(point => point[0] === known.x && point[1] === known.z));
+});
+check('Squad suppression has a bounded simulation cadence instead of one burst per frame', () => {
+  const f = fixture({ type: 'marine', pz: 10 }); f.actor.id = 2;
+  const ally = new f.Human(3, 'marine', 5, 0); f.game.humans.push(ally);
+  f.actor.shootCooldown = .2; f.actor.u1GrenadeCooldown = 999; f.actor.grenadeCooldown = 999;
+  // Keep the main shot cooldown near the support-fire threshold without
+  // executing another weapon branch; only the squad cadence is under test.
+  for (let frame = 0; frame < 120; frame++) { f.actor.shootCooldown = .2; f.actor.update(1 / 60); }
+  const bursts = f.audio.filter(row => row.method === 'playPulseRifleFire');
+  assert(bursts.length >= 2 && bursts.length <= 3, 'Unexpected suppression bursts: ' + bursts.length);
+});
 const report = { scope: 'Actual unchanged classes, authored collision/path methods on prepared AABB and actors, fixed ticks; not native render or human play',
   sourceSha256: crypto.createHash('sha256').update(source).digest('hex'), groups: results.length,
   passed: results.filter(row => row.passed).length, results };

@@ -23,7 +23,8 @@ const report={started:new Date().toISOString(),scope:'Independent local suites, 
 const save=()=>fs.writeFileSync(path.join(output,'summary.json'),JSON.stringify(report,null,2)+'\n');
 save();
 const nodeTests=['qa-models.cjs','qa-model-detail.cjs','qa-organic.cjs','qa-mortar-lifecycle.cjs',
-  'qa-audio-boot.cjs','qa-boot-contract.cjs','qa-controls-coherence.cjs','qa-ai-coherence.cjs','qa-pathfinding-coherence.cjs','qa-level-coherence.cjs',
+  'qa-audio-boot.cjs','qa-acid-pool.cjs','qa-boot-contract.cjs','qa-controls-coherence.cjs','qa-ai-coherence.cjs','qa-pathfinding-coherence.cjs','qa-level-coherence.cjs',
+  'qa-menu-cards.cjs','qa-animation-merge.cjs','qa-model-merge.cjs',
   'qa-creature-coherence.cjs','qa-cycle-coherence.cjs','qa-transport-coherence.cjs','qa-rts-lineage.cjs','qa-hud-coherence.cjs',
   'qa-alien-base.cjs','qa-alien-base-lore.cjs','qa-alien-base-media.cjs','qa-alien-base-ui.cjs','qa-public-surface.cjs'];
 const layoutEvidence=path.join(output,'level-geometry.json');

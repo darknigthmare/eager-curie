@@ -317,11 +317,13 @@
       this.reducedMotion = !!reduced;
       for (const effect of this.effects) {
         if (effect.mortarWarning) effect.shell.visible = !this.reducedMotion;
+        if (effect.acidPool) {
+          effect.group.children.slice(1).forEach((child) => { child.visible = !this.reducedMotion; });
+        }
       }
       if (!this.reducedMotion || this.effects.length === 0) return;
-      // A mortar telegraph is gameplay information, not an optional animation.
-      // Hiding motion must not erase its fixed warning or resolve its shot.
-      this.clear(true, true);
+      // Keep the static warnings for persistent hazards.
+      this.clear({ preserveHazardMarkers: true });
     }
 
     getMaterial(color) {
@@ -353,12 +355,20 @@
       return particle;
     }
 
-    clear(resolveProjectiles = false, preserveMortarWarnings = false) {
+    clear({ preserveHazardMarkers = false } = {}) {
       const effects = this.effects.splice(0, this.effects.length);
       for (const effect of effects) {
         if (effect.mortarWarning) {
-          if (preserveMortarWarnings && !effect.released) this.effects.push(effect);
+          if (preserveHazardMarkers && !effect.released) this.effects.push(effect);
           else this.releaseMortarWarning(effect);
+          continue;
+        }
+        if (preserveHazardMarkers && (effect.acidPool || effect.steamCloud)) {
+          this.effects.push(effect);
+          continue;
+        }
+        if (effect.sprite) {
+          this.releaseFloatingText(effect);
           continue;
         }
         if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
@@ -377,13 +387,6 @@
         if (effect.group?.material?.dispose) effect.group.material.dispose();
         if (this.removeObject) this.removeObject(effect.group);
         else effect.group.parent?.remove(effect.group);
-        if (
-          resolveProjectiles &&
-          effect.projectile &&
-          typeof effect.onImpact === 'function'
-        ) {
-          effect.onImpact();
-        }
       }
     }
 
@@ -495,13 +498,9 @@
       color = 0x38bdf8,
       scale = 0.12,
       speed = 42,
-      acid = false,
-      onImpact = null
+      acid = false
     }) {
-      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') {
-        if (typeof onImpact === 'function') onImpact();
-        return;
-      }
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
       const start = new THREE.Vector3(startX, startY, startZ);
       const end = new THREE.Vector3(endX, endY, endZ);
       const distance = Math.max(0.01, start.distanceTo(end));
@@ -541,7 +540,7 @@
       }
       group.position.copy(start);
       this.scene.add(group);
-      this.effects.push({
+      const effect = {
         group,
         age: 0,
         lifetime: Math.max(0.08, distance / Math.max(1, speed)),
@@ -550,9 +549,20 @@
         color,
         scale,
         start,
-        end,
-        onImpact
-      });
+        end
+      };
+      this.effects.push(effect);
+      return { cancel: () => {
+        const index = this.effects.indexOf(effect);
+        if (index < 0) return;
+        this.effects.splice(index, 1);
+        if (this.removeObject) this.removeObject(group);
+        else {
+          group.parent?.remove(group);
+          projectile.geometry.dispose();
+          projectile.material.dispose();
+        }
+      } };
     }
 
     muzzleFlash(x, y, z, color = 0xfbbf24, scale = 0.18) {
@@ -630,30 +640,91 @@
 
     floatingText(x, y, z, text, color = '#ef4444', isCrit = false) {
       if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const label = String(text ?? '').trim();
+      if (!label) return;
       const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 96;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      ctx.font = isCrit ? '900 48px monospace' : '700 38px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      const fontSize = isCrit ? 48 : 38;
+      const font = `${isCrit ? 900 : 700} ${fontSize}px monospace`;
+      const padding = 10;
+      const maxLineWidth = 620;
+      const lineGap = 7;
+      ctx.font = font;
+      ctx.textAlign = 'left';
+      const measure = (value) => {
+        const metrics = ctx.measureText(value);
+        const left = Math.max(0, metrics.actualBoundingBoxLeft || 0);
+        return {
+          value, left, width: left + Math.max(metrics.width, metrics.actualBoundingBoxRight || 0),
+          ascent: metrics.actualBoundingBoxAscent ?? fontSize,
+          descent: metrics.actualBoundingBoxDescent ?? fontSize * 0.3
+        };
+      };
+
+      const lines = [];
+      let line = '';
+      for (const word of label.split(/\s+/)) {
+        const joined = line ? `${line} ${word}` : word;
+        if (!line || measure(joined).width <= maxLineWidth) line = joined;
+        else {
+          lines.push(measure(line));
+          line = word;
+        }
+      }
+      lines.push(measure(line));
+      const width = Math.min(maxLineWidth, Math.max(...lines.map((entry) => entry.width)));
+      const ascent = Math.max(fontSize * 0.7, ...lines.map((entry) => entry.ascent));
+      const descent = Math.max(0, ...lines.map((entry) => entry.descent));
+      const lineHeight = ascent + descent;
+      canvas.width = Math.ceil(width + padding * 2);
+      canvas.height = Math.ceil(lineHeight * lines.length + lineGap * (lines.length - 1) + padding * 2);
+
+      ctx.font = font;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
       ctx.strokeStyle = '#020617';
+      ctx.lineJoin = 'round';
       ctx.lineWidth = 6;
-      ctx.strokeText(text, 128, 48);
       ctx.fillStyle = color;
-      ctx.fillText(text, 128, 48);
+      lines.forEach((entry, index) => {
+        const lineWidth = Math.min(width, entry.width);
+        const left = padding + (width - lineWidth) / 2 + entry.left;
+        const baseline = padding + ascent + index * (lineHeight + lineGap);
+        ctx.strokeText(entry.value, left, baseline, lineWidth - entry.left);
+        ctx.fillText(entry.value, left, baseline, lineWidth - entry.left);
+      });
 
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMat = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
         opacity: 1.0,
-        depthTest: false
+        depthTest: false,
+        depthWrite: false
       });
       const sprite = new THREE.Sprite(spriteMat);
-      const scale = isCrit ? 3.4 : 2.6;
-      sprite.scale.set(scale, scale * 0.38, 1);
+      // Preserve the previous glyph scale at a distance, with a CSS-pixel
+      // budget at close range. Use the camera of the actual scene render.
+      const worldPerTexel = (isCrit ? 3.4 : 2.6) / 256;
+      const widthInWorld = canvas.width * worldPerTexel;
+      const heightInWorld = canvas.height * worldPerTexel;
+      sprite.scale.set(widthInWorld, heightInWorld, 1);
+      const viewPosition = new THREE.Vector3();
+      const viewport = new THREE.Vector2();
+      sprite.onBeforeRender = (renderer, _scene, camera) => {
+        const depth = camera.isPerspectiveCamera
+          ? -viewPosition.setFromMatrixPosition(sprite.matrixWorld).applyMatrix4(camera.matrixWorldInverse).z
+          : 1;
+        if (depth <= 0) return;
+        renderer.getSize(viewport);
+        const projection = camera.projectionMatrix.elements;
+        const projectedWidth = widthInWorld * projection[0] * viewport.x / (2 * depth);
+        const projectedHeight = heightInWorld * projection[5] * viewport.y / (2 * depth);
+        const ratio = Math.min(1, Math.min(220, viewport.x * 0.48) / projectedWidth, 48 / projectedHeight);
+        sprite.scale.set(widthInWorld * ratio, heightInWorld * ratio, 1);
+        sprite.updateMatrixWorld();
+      };
       sprite.position.set(x + (Math.random() - 0.5) * 0.4, y, z + (Math.random() - 0.5) * 0.4);
       this.scene.add(sprite);
       this.effects.push({
@@ -664,6 +735,13 @@
         lifetime: 0.92,
         speedY: isCrit ? 2.8 : 2.2
       });
+    }
+
+    releaseFloatingText(effect) {
+      // Three sprites share geometry. The label only owns its texture and material.
+      effect.group.parent?.remove(effect.group);
+      effect.texture.dispose();
+      effect.group.material.dispose();
     }
 
     fleshImpact(x, z, color = 0xb91c1c, count = 16) {
@@ -786,7 +864,7 @@
     }
 
     spawnAcidPool(x, z, radius = 1.5, duration = 8.5) {
-      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      if (!this.scene || typeof THREE === 'undefined') return;
       const group = new THREE.Group();
       const poolGeo = new THREE.CircleGeometry(radius, 24);
       const poolMat = new THREE.MeshBasicMaterial({
@@ -801,7 +879,7 @@
       group.add(poolMesh);
 
       const bubbles = [];
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < (this.reducedMotion ? 0 : 6); i++) {
         const bGeo = new THREE.SphereGeometry(0.07 + Math.random() * 0.07, 6, 6);
         const bMat = new THREE.MeshBasicMaterial({
           color: 0xa3e635,
@@ -817,7 +895,7 @@
         group.add(b);
       }
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < (this.reducedMotion ? 0 : 3); i++) {
         const sGeo = new THREE.SphereGeometry(0.12, 5, 5);
         const sMat = new THREE.MeshBasicMaterial({
           color: 0x84cc16,
@@ -832,20 +910,128 @@
 
       group.position.set(x, 0, z);
       this.scene.add(group);
-      this.effects.push({
+      const effect = {
         group,
         age: 0,
         lifetime: duration,
         acidPool: true,
-        radius,
-        x,
-        z,
         bubbles
+      };
+      this.effects.push(effect);
+      return {
+        cancel: () => {
+          const index = this.effects.indexOf(effect);
+          if (index < 0) return;
+          this.effects.splice(index, 1);
+          if (this.removeObject) this.removeObject(group);
+          else group.parent?.remove(group);
+        }
+      };
+    }
+
+    // Persistance de fumees acides corrosives rongeant le metal avec bulles caustiques montantes
+    persistentCorrosiveFumes(x, z, duration = 6.0) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const radius = 1.8;
+      for (let i = 0; i < 14; i++) {
+        const size = 0.35 + Math.random() * 0.45;
+        const geo = new THREE.SphereGeometry(size, 7, 7);
+        const smokeColor = Math.random() < 0.6 ? 0x84cc16 : (Math.random() < 0.5 ? 0xa3e635 : 0x4d7c0f);
+        const mat = new THREE.MeshBasicMaterial({
+          color: smokeColor,
+          transparent: true,
+          opacity: 0.32 + Math.random() * 0.22,
+          depthWrite: false
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(
+          (Math.random() - 0.5) * radius * 1.5,
+          0.15 + Math.random() * 0.7,
+          (Math.random() - 0.5) * radius * 1.5
+        );
+        mesh.userData.isSmoke = true;
+        mesh.userData.baseOpacity = mat.opacity;
+        mesh.userData.vy = 0.4 + Math.random() * 0.5;
+        mesh.userData.vx = (Math.random() - 0.5) * 0.22;
+        mesh.userData.vz = (Math.random() - 0.5) * 0.22;
+        group.add(mesh);
+      }
+      for (let i = 0; i < 8; i++) {
+        const bGeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 6, 6);
+        const bMat = new THREE.MeshBasicMaterial({
+          color: 0xecfccb,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: false
+        });
+        const bubble = new THREE.Mesh(bGeo, bMat);
+        bubble.position.set(
+          (Math.random() - 0.5) * radius * 0.9,
+          0.04 + Math.random() * 0.15,
+          (Math.random() - 0.5) * radius * 0.9
+        );
+        bubble.userData.isBubble = true;
+        bubble.userData.phase = Math.random() * Math.PI * 2;
+        bubble.userData.vy = 0.4 + Math.random() * 0.35;
+        group.add(bubble);
+      }
+      const light = new THREE.PointLight(0xa3e635, 2.2, 6.0);
+      light.position.set(0, 0.4, 0);
+      group.add(light);
+
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        age: 0,
+        lifetime: duration,
+        corrosiveFumes: true,
+        radius,
+        light
+      });
+    }
+
+    // Etincelles d'impact de ricochets balistiques sur la chitine blindee
+    ballisticRicochetSparks(x, y = 1.4, z, normalX = 0, normalY = 1, normalZ = 0, count = 16) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const sparkColors = [0xfff7ed, 0xfef08a, 0xfbbf24, 0xf97316];
+      for (let i = 0; i < count; i++) {
+        const size = 0.04 + Math.random() * 0.04;
+        const geo = new THREE.SphereGeometry(size, 4, 4);
+        const col = sparkColors[Math.floor(Math.random() * sparkColors.length)];
+        const mat = new THREE.MeshBasicMaterial({
+          color: col,
+          transparent: true,
+          opacity: 1.0,
+          depthWrite: false
+        });
+        const spark = new THREE.Mesh(geo, mat);
+        spark.position.set(0, y, 0);
+        const speed = 7.0 + Math.random() * 8.5;
+        const spreadX = (Math.random() - 0.5) * 6.0;
+        const spreadY = 2.0 + Math.random() * 6.0;
+        const spreadZ = (Math.random() - 0.5) * 6.0;
+        spark.userData.velocity = new THREE.Vector3(
+          normalX * speed * 0.6 + spreadX,
+          Math.max(1.5, normalY * speed * 0.6 + spreadY),
+          normalZ * speed * 0.6 + spreadZ
+        );
+        group.add(spark);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        age: 0,
+        lifetime: 0.38 + Math.random() * 0.2,
+        ricochetSparks: true
       });
     }
 
     spawnSteamCloud(x, y, z, duration = 3.6) {
-      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      if (!this.scene || typeof THREE === 'undefined') return;
       const group = new THREE.Group();
       for (let i = 0; i < 9; i++) {
         const sGeo = new THREE.SphereGeometry(0.35 + Math.random() * 0.4, 6, 6);
@@ -965,13 +1151,15 @@
             }
           });
         } else if (effect.steamCloud) {
-          effect.group.children.forEach((p) => {
-            p.position.y += p.userData.vy * deltaSeconds;
-            p.position.x += p.userData.vx * deltaSeconds;
-            p.position.z += p.userData.vz * deltaSeconds;
-            p.scale.addScalar(deltaSeconds * 0.55);
-            if (p.material) p.material.opacity = Math.max(0, 0.38 * (1 - progress));
-          });
+          if (!this.reducedMotion) {
+            effect.group.children.forEach((p) => {
+              p.position.y += p.userData.vy * deltaSeconds;
+              p.position.x += p.userData.vx * deltaSeconds;
+              p.position.z += p.userData.vz * deltaSeconds;
+              p.scale.addScalar(deltaSeconds * 0.55);
+              if (p.material) p.material.opacity = Math.max(0, 0.38 * (1 - progress));
+            });
+          }
         } else if (effect.drip) {
           effect.group.children.forEach((drop) => {
             drop.position.y += drop.userData.vy * deltaSeconds;
@@ -982,7 +1170,7 @@
             if (drop.material) drop.material.opacity = 0.82 * (1 - progress);
           });
         } else if (effect.acidPool) {
-          if (effect.bubbles) {
+          if (!this.reducedMotion) {
             effect.bubbles.forEach((b) => {
               b.userData.phase += deltaSeconds * 6;
               const scaleY = 0.8 + Math.sin(b.userData.phase) * 0.5;
@@ -992,18 +1180,34 @@
           if (effect.group.children[0]?.material) {
             effect.group.children[0].material.opacity = Math.max(0, 0.68 * (1 - Math.pow(progress, 2)));
           }
-          effect.damageTimer = (effect.damageTimer || 0) + deltaSeconds;
-          if (effect.damageTimer >= 0.48 && window.gameInstance?.humans) {
-            effect.damageTimer = 0;
-            for (const h of window.gameInstance.humans) {
-              if (h.isIncapacitated || h.isCocooned) continue;
-              const d = Math.hypot(h.x - effect.x, h.z - effect.z);
-              if (d <= effect.radius) {
-                h.takeDamage?.(12);
-                window.HiveSystems?.vfx?.floatingText?.(h.x, 2.2, h.z, '-12 ACIDE', '#39ff14');
-                window.audioManager?.playAcidSizzle?.();
+        } else if (effect.corrosiveFumes) {
+          effect.group.children.forEach((p) => {
+            if (p.userData.isBubble) {
+              p.userData.phase = (p.userData.phase || 0) + deltaSeconds * 5.0;
+              p.position.y += p.userData.vy * deltaSeconds;
+              const scale = Math.max(0.1, 1 + Math.sin(p.userData.phase) * 0.4);
+              p.scale.set(scale, scale, scale);
+              if (p.position.y > 0.48) {
+                p.position.y = 0.04;
+                p.position.x = (Math.random() - 0.5) * effect.radius * 0.9;
+                p.position.z = (Math.random() - 0.5) * effect.radius * 0.9;
               }
+            } else if (p.userData.isSmoke) {
+              p.position.y += p.userData.vy * deltaSeconds;
+              p.position.x += p.userData.vx * deltaSeconds;
+              p.position.z += p.userData.vz * deltaSeconds;
+              p.scale.addScalar(deltaSeconds * 0.32);
+              if (p.material) p.material.opacity = Math.max(0, (p.userData.baseOpacity || 0.35) * (1 - progress));
             }
+          });
+          if (effect.light) {
+            effect.light.intensity = (1 - progress) * (2.2 + Math.sin(effect.age * 12) * 0.6);
+          }
+        } else if (effect.ricochetSparks) {
+          for (const spark of effect.group.children) {
+            spark.position.addScaledVector(spark.userData.velocity, deltaSeconds);
+            spark.userData.velocity.y -= 14.0 * deltaSeconds;
+            if (spark.material) spark.material.opacity = Math.max(0, 1 - progress);
           }
         } else {
           for (const particle of effect.group.children) {
@@ -1013,6 +1217,11 @@
           }
         }
         if (progress < 1) continue;
+        if (effect.sprite) {
+          this.releaseFloatingText(effect);
+          this.effects.splice(index, 1);
+          continue;
+        }
         const impact = effect.projectile
           ? {
             x: effect.end.x,
@@ -1042,7 +1251,6 @@
             impact.acid ? impact.scale * 0.72 : impact.scale * 0.38,
             effect.end.y
           );
-          if (typeof effect.onImpact === 'function') effect.onImpact();
         }
       }
     }
@@ -1094,18 +1302,28 @@
       const difficulty = document.getElementById('difficulty-select');
       const originSelect = document.getElementById('origin-select');
       const expandedLore = document.getElementById('expanded-lore-toggle');
+      let newCampaignOptions = null;
+
+      this.bindCardSelectors();
 
       document.getElementById('btn-new-campaign')?.addEventListener('click', () => {
         this.clearBiologicalTransition();
-        const originVal = originSelect?.value || 'random';
-        const save = this.saveManager.startNew(difficulty?.value || 'survivor', !!expandedLore?.checked, originVal);
-        this.game?.configureCampaign?.(save);
+        newCampaignOptions = {
+          difficulty: difficulty?.value || 'survivor',
+          expandedLore: !!expandedLore?.checked,
+          origin: originSelect?.value || 'random'
+        };
         this.hideLayer(boot, false);
         this.showLayer(prologue, false);
         document.getElementById('btn-start-act-one')?.focus({ preventScroll: true });
       });
 
       document.getElementById('btn-start-act-one')?.addEventListener('click', () => {
+        if (!newCampaignOptions) return;
+        const { difficulty, expandedLore, origin } = newCampaignOptions;
+        newCampaignOptions = null;
+        const save = this.saveManager.startNew(difficulty, expandedLore, origin);
+        this.game?.configureCampaign?.(save);
         this.hideLayer(prologue, false);
         this.campaignActive = true;
         this.game?.startCampaign?.(1);
@@ -1126,6 +1344,53 @@
       document.getElementById('btn-open-codex-menu')?.addEventListener('click', () => {
         this.openCodex(true);
       });
+    }
+
+    bindCardSelectors() {
+      if (this.cardSelectorsBound) return;
+      this.cardSelectorsBound = true;
+      const bind = (selectId, selector, attribute, statusSelector, fallback) => {
+        const select = document.getElementById(selectId);
+        const cards = Array.from(document.querySelectorAll(selector));
+        if (!select || !cards.length) return;
+        const update = () => {
+          const value = cards.some(card => card.getAttribute(attribute) === select.value)
+            ? select.value : fallback;
+          select.value = value;
+          cards.forEach(card => {
+            const selected = card.getAttribute(attribute) === value;
+            card.classList.toggle('active', selected);
+            card.setAttribute('aria-checked', String(selected));
+            // A radio group is one Tab stop; arrows move selection inside it.
+            card.setAttribute('tabindex', selected ? '0' : '-1');
+            const status = card.querySelector(statusSelector);
+            if (status) status.textContent = selected ? 'ACTIF' : (selectId === 'origin-select' ? 'SÉLECTIONNER' : 'STANDBY');
+          });
+        };
+        const choose = card => {
+          select.value = card.getAttribute(attribute);
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          card.focus({ preventScroll: true });
+        };
+        cards.forEach((card, index) => {
+          card.addEventListener('click', () => choose(card));
+          card.addEventListener('keydown', event => {
+            let next = index;
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % cards.length;
+            else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index - 1 + cards.length) % cards.length;
+            else if (event.key === 'Home') next = 0;
+            else if (event.key === 'End') next = cards.length - 1;
+            else if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            choose(cards[next]);
+            cards[next].scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+          });
+        });
+        select.addEventListener('change', update);
+        update();
+      };
+      bind('difficulty-select', '.diff-card', 'data-difficulty', '.status-text', 'survivor');
+      bind('origin-select', '.origin-card', 'data-origin', '.origin-select-tag', 'random');
     }
 
     bindUtilityControls() {

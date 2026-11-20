@@ -128,6 +128,32 @@ for (const stereo of [true, false]) for (const [method, radius, duration, source
     return {sourceCount, radius, duration: actual, masterBus: true, stereo};
   });
 }
+check('Merged material, breathing and machinery sounds use finite master-bus sources and honor mute', () => {
+  const calls = [
+    ['playMaterialFootstep', ['metal', 3, 4, true, false]],
+    ['playMaterialFootstep', ['water', 3, 4, false, false]],
+    ['playMaterialFootstep', ['resin', 3, 4, true, true]],
+    ['playXenoGutturalBreathing', [3, 4]],
+    ['playHighFrequencyElectricArc', [3, 4]],
+    ['playCavernousHullCreak', [3, 4]],
+    ['playSyntheticCalmChime', [3, 4]]
+  ];
+  for (const [name, args] of calls) {
+    const {audio} = fixture();
+    audio[name](...args);
+    assert(audio.ctx.sources.length > 0, name);
+    for (const sourceNode of audio.ctx.sources) {
+      assert(reaches(sourceNode, audio.masterGain), name + ' missed master bus');
+      assert(Number.isFinite(sourceNode.stoppedAt), name + ' has unbounded lifetime');
+    }
+    audio.toggleMuted();
+    const count = audio.ctx.sources.length, nodes = audio.ctx.nodes.length;
+    audio[name](...args);
+    assert.equal(audio.ctx.sources.length, count);
+    assert.equal(audio.ctx.nodes.length, nodes);
+  }
+  return {variants:calls.length,scope:'Real methods with strict graph fixtures; not native PCM/listening'};
+});
 check('Cold sound calls remain no-op without WebAudio initialization', () => {
   const {audio} = fixture(true, false);
   for (const [method] of methods) assert.equal(audio[method](3, 4), undefined);

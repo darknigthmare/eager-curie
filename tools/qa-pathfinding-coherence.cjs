@@ -6,8 +6,9 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
 const root=path.resolve(__dirname,'..'),source=fs.readFileSync(path.join(root,'src/game.js'),'utf8');
 const start=source.indexOf('  class StationMap {'),end=source.indexOf('  const stationMap = new StationMap();',start);
 assert(start>0&&end>start,'Actual StationMap boundaries required');
+const fixtureWindow={HiveSystems:{vfx:{effects:[]}},playerCreature:{}};
 const classSource=source.slice(start,end),MapClass=vm.runInNewContext('('+classSource.trim()+')',{
-  window:{HiveSystems:{vfx:{effects:[]}}},console,Math,performance});
+  window:fixtureWindow,console,Math,performance});
 const options={min:-10,max:10,padding:.1,step:2.5};
 function fixture(colliders=[]){const map=new MapClass();map.colliders=colliders.map(col=>({...col}));return map;}
 function observeGrids(map){const calls=[],original=map.findPathOnGrid;map.findPathOnGrid=function(...args){calls.push({...args[4]});return original.apply(this,args);};return calls;}
@@ -29,6 +30,17 @@ function verifyRoute(map,route,origin,{padding=.1,min=-10,max=10}={}){
 const results=[];
 function check(name,run){try{const detail=run();results.push({name,passed:true,detail});console.log('PASS '+name);}catch(error){results.push({name,passed:false,error:error.stack||String(error)});console.error('FAIL '+name+': '+error.message);}}
 
+check('Player ceiling or vent traversal never disables ground duct collisions for other actors',()=>{
+  const map=fixture([{minX:-1,maxX:1,minZ:-1,maxZ:1,isDuctSplitter:true}]);
+  for(const state of [{},{isInVent:true},{isCeilingProwling:true}]){
+    fixtureWindow.playerCreature=state;
+    assert.equal(map.checkCollision(0,0,.1),true);
+    assert.equal(map.hasLineOfSight(-3,0,3,0,.1),false);
+    assert.equal(map.findPath(0,0,4,0,options).length,0);
+  }
+  fixtureWindow.playerCreature={};
+  return {states:3,scope:'Shared production geometry remains actor-independent'};
+});
 check('Direct clear route uses one coarse call without unnecessary refinement',()=>{
   const map=fixture(),calls=observeGrids(map),route=map.findPath(-8,-8,8,8,options);
   assert.equal(calls.length,1);assert.equal(calls[0].step,2.5);assert.equal(route.length,1);

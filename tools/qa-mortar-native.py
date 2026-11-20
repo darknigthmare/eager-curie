@@ -176,8 +176,15 @@ def main():
                                  ('playHydraulicServo', 15), ('playAutomatonFootstep', 16),
                                  ('playSyntheticFluidLeak', 14),
                                  ('playBrineEvaporatorSteamHiss', 58),
-                                 ('playGeothermalWellheadPressureRelief', 58)]
-                report['audio'] = {'scope': 'Native OfflineAudioContext renders: mortar and eleven repaired AudioManager methods, active/muted/zero-volume each. Real shared connect routing and void API; PCM diagnostics, not listening QA. Mortar pause is separately tested as no newly scheduled SFX, not as an absent AudioManager.pause API.',
+                                 ('playGeothermalWellheadPressureRelief', 58),
+                                 ('playXenoGutturalBreathing', 35),
+                                 ('playHighFrequencyElectricArc', 38),
+                                 ('playCavernousHullCreak', 75),
+                                 ('playSyntheticCalmChime', 30),
+                                 ('playMaterialFootstep:metal', 48),
+                                 ('playMaterialFootstep:water', 42),
+                                 ('playMaterialFootstep:resin', 38)]
+                report['audio'] = {'scope': 'Native OfflineAudioContext renders: repaired and merged AudioManager methods, active/muted/zero-volume each. Material variants are separate. Real shared connect routing and void API; PCM diagnostics, not listening QA. Machinery methods tested here are not claimed to be bound to new interactions.',
                                    'expectedCases': len(audio_methods) * 3, 'results': []}
                 for method, radius in audio_methods:
                     for mode in ['active', 'muted', 'zero-volume']:
@@ -187,8 +194,9 @@ def main():
                     const originalManager=window.audioManager,originalContext=window.AudioContext,
                         Original=__mortarQA.audioManager.constructor;
                     try{
-                            const context=new OfflineAudioContext(2,48000*1.6,48000),audio=new Original();
-                            if(typeof audio[method]!=='function')throw Error('Actual AudioManager method missing: '+method);
+                            const context=new OfflineAudioContext(2,48000*3.2,48000),audio=new Original();
+                            const [methodName,surface]=method.split(':');
+                            if(typeof audio[methodName]!=='function')throw Error('Actual AudioManager method missing: '+method);
                             // Initialize zero-volume at zero, not during the intentional
                             // 30ms smoothing ramp of an already audible master gain.
                             if(mode==='zero-volume')audio.setVolume(0);
@@ -199,7 +207,8 @@ def main():
                             const routingCalls=[],connect=audio.connect,
                                 x=__mortarQA.playerCreature.x,z=__mortarQA.playerCreature.z;
                             audio.connect=function(node,px,pz,range){routingCalls.push({x:px,z:pz,radius:range});return connect.call(this,node,px,pz,range);};
-                            const raw=audio[method](x,z),buffer=await context.startRendering(),connections=routingCalls.length;
+                            const raw=surface ? audio[methodName](surface,x,z,true,false) : audio[methodName](x,z);
+                            const buffer=await context.startRendering(),connections=routingCalls.length;
                             if(raw!==undefined)throw Error('Legacy native sound API is not void: '+method);
                             let peak=0,energy=0;for(let channel=0;channel<buffer.numberOfChannels;channel++)for(const sample of buffer.getChannelData(channel)){
                                 if(!Number.isFinite(sample))throw Error('Nonfinite native PCM: '+method);peak=Math.max(peak,Math.abs(sample));energy+=sample*sample;

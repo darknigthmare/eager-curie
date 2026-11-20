@@ -36,11 +36,12 @@ console.log('PASS: playFlashlightFlicker présent dans src/game.js');
 assert(gameJs.includes('playHumanSpotXenoGasp('), 'AudioManager doit inclure playHumanSpotXenoGasp');
 console.log('PASS: playHumanSpotXenoGasp présent dans src/game.js');
 
-// 2. Kidnapping Vertical au Plafond (Scène Brett 1979 - executeCeilingImpale)
-assert(gameJs.includes('audioManager.playCeilingBloodDrip?.(victim.x, victim.z)'), 'executeCeilingImpale doit jouer le sang qui goutte');
-assert(gameJs.includes('rendererEngine.addFloorFluidDecal?.(victim.x, victim.z, 2.4, 0x7f1d1d, 35)'), 'executeCeilingImpale doit poser une flaque de sang sous la victime');
-assert(gameJs.includes('window.HiveSystems?.vfx?.sporeDrip?.(victim.x, 3.8, victim.z, 8)'), 'executeCeilingImpale doit émettre des gouttes de sang tombant des combles');
-console.log('PASS: executeCeilingImpale hitstop, flaque de sang au sol, audio et gouttes validés');
+// Le contact simulé possède le son et les gouttes. Les régressions Chromium
+// qa-creature-native et qa-t140-audio éprouvent la chronologie avec T et Q.
+assert(gameJs.includes("audioManager.playCeilingCaptureCue?.('CONTACT', victim.x, victim.z)"), 'Le contact T140 doit jouer son signal spatial');
+assert(gameJs.includes('vfx?.sporeDrip?.(contact.center.x, contact.center.z') && gameJs.includes('height: contact.center.y'), 'Les gouttes partent de l’ancre du dard');
+assert(gameJs.includes("notifySquadWitness?.('CEILING_KIDNAP'"), 'Le contact T140 doit alerter les témoins');
+console.log('PASS: Décor vertical T140 et déclencheurs du contact présents');
 
 // 3. Embuscade de Sortie de Conduit (exitVent)
 assert(gameJs.includes('audioManager.playVentGrateKick?.(this.x, this.z)'), 'exitVent doit jouer le coup de pied dans la grille');

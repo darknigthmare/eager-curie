@@ -221,7 +221,7 @@ def main():
                 context = browser.new_context(viewport=dict(width=width, height=height), has_touch=True, is_mobile=True)
                 contexts.append(context)
                 page = context.new_page()
-                boot(page)
+                boot(page, touch=True)
 
                 def compact():
                     initial = geometry(page)

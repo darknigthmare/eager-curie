@@ -20,6 +20,14 @@
     bounds(){p.mesh.updateMatrixWorld(true);return new T.Box3().setFromObject(p.detailedModel);},
     victimBounds(){return this.victim?.mesh?.parent?p.getCeilingVictimBounds(this.victim):null;},
     imported(h){let found=null;h?.mesh?.traverse(child=>{if(!found&&HiveAssetLibrary?.getRuntime(child))found=child;});return found;},
+    tailAttachment(){
+      const action=p.ceilingAction,tail=action?.tailPose;
+      if(!tail)return null;
+      const tip=tail.blade.localToWorld(tail.point.clone());
+      const anchor=p.getCeilingTailContact(action).center;
+      return {tip:tip.toArray(),anchor:anchor.toArray(),gap:tip.distanceTo(anchor),weight:tail.weight,
+        lengthRatio:tail.weight>0?tail.curveLength/tail.rest.getLength():1};
+    },
     snapshot(){const box=this.bounds(),h=this.victim,vbox=this.victimBounds(),state=p.ceilingTransition||p.ceilingSupport,
       support=p.ceilingAction?.support||state?.support,model=this.imported(h),runtime=model&&HiveAssetLibrary.getRuntime(model);
       return {phase:p.ceilingAction?.phase||p.ceilingTransition?.phase||(p.isCeilingProwling?'HANG':'GROUND'),
@@ -27,7 +35,7 @@
         position:p.mesh.position.toArray(),rotation:p.mesh.rotation.toArray(),clock:p.creatureAnimationTime,
         elapsed:p.ceilingAction?.elapsed??p.ceilingTransition?.elapsed??null,
         bounds:{min:box.min.toArray(),max:box.max.toArray()},ceiling:support?.undersideY??null,
-        hits:this.hits.map(hit=>({...hit})),victim:h?{hp:h.hp,isRestrained:h.isRestrained,isCocooned:h.isCocooned,
+        hits:this.hits.map(hit=>({...hit})),tailAttachment:this.tailAttachment(),victim:h?{hp:h.hp,isRestrained:h.isRestrained,isCocooned:h.isCocooned,
           isIncapacitated:h.isIncapacitated,hostEligibility:h.hostEligibility,isConsumedByCycle:h.isConsumedByCycle,
           owner:!!h.ceilingActionOwner,position:h.mesh.position.toArray(),rotation:h.mesh.rotation.toArray(),
           bounds:vbox?{min:vbox.min.toArray(),max:vbox.max.toArray()}:null,
@@ -105,7 +113,7 @@
       camera.clearViewOffset();
       // Let the installed camera and wall-fade controllers settle on the
       // observed phase. The HUD, actors, and collision geometry stay visible.
-      for(let i=0;i<30;i++){
+      for(let i=0;i<60;i++){
         r.setCameraTarget(target.x,target.z,0,false,1/60);
         r.updateWallVisibility({x:p.x,y:1.4,z:p.z},1/60);
       }

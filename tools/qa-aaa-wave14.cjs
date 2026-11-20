@@ -10,7 +10,7 @@ const gameJs = fs.readFileSync('src/game.js', 'utf8');
 const indexHtml = fs.readFileSync('index.html', 'utf8');
 const styleCss = fs.readFileSync('src/css/style.css', 'utf8');
 const gameSystemsJs = fs.readFileSync('src/game-systems.js', 'utf8');
-const contentJs = fs.readFileSync('src/content.js', 'utf8');
+const contentJs = fs.readFileSync('src/campaign-archives.js', 'utf8');
 
 // 1. Écran Splash "Fan Game by darknigthmare"
 assert(indexHtml.includes('id="fan-disclaimer-screen"'), 'Écran #fan-disclaimer-screen manquant dans index.html');

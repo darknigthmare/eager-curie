@@ -129,7 +129,18 @@ def main():
               f.require(!q.stationMap.checkCollision(plan.start.x,plan.start.z,plan.clearance.radius),'Burst starts inside a collider');
               return {start:plan.start,end:plan.end,radius:plan.clearance.radius,duration:plan.duration};
             ''')
+            pressure_start = page.evaluate('''() => {
+              gameInstance.setSystemPaused(false);
+              return gameInstance.currentStage.sternumPressure;
+            }''')
             click('#btn-thoracic-erupt')
+            pressure_step = page.evaluate('() => ({step:gameInstance.currentStage.step, pressure:gameInstance.currentStage.sternumPressure})')
+            assert pressure_step['step'] == 'READY_TO_BURST' and pressure_start < pressure_step['pressure'] < 100, pressure_step
+            for _ in range(4):
+                if page.evaluate('() => gameInstance.currentStage.step !== "READY_TO_BURST"'):
+                    break
+                click('#btn-thoracic-erupt')
+            page.evaluate('() => gameInstance.setSystemPaused(true)')
             check('Sternum rupture begins an owned visible extraction, not immediate free movement', '''
               f.until(()=>g.currentStage.step==='BURST_EXTRACTION',120);f.step(20);
               f.require(g.currentStage.step==='BURST_EXTRACTION'&&p.isBiologicalTransition&&p.mesh.visible&&f.host.isConsumedByCycle,'Rupture skipped extraction');return f.snapshot();

@@ -109,12 +109,15 @@ def main():
             save()
             return detail
 
+        def assert_actor_visible(actor):
+            assert any(sample['inFrame'] and not sample['hudOverlap'] and not sample['occluder']
+                       for sample in actor['samples']), actor
+
         def assert_capture_legible(detail):
             beam = next(item for item in detail['beams'] if item['id'] == detail['activeSupport'])
             assert beam['opacity'] <= .18 and not beam['depthWrite'], beam
             for actor in detail['actors']:
-                assert any(sample['inFrame'] and not sample['hudOverlap'] and not sample['occluder']
-                           for sample in actor['samples']), actor
+                assert_actor_visible(actor)
             assert all(other['opacity'] == 1 and other['depthWrite'] for other in detail['beams'] if other != beam)
 
         try:
@@ -199,6 +202,15 @@ def main():
               need(f.hits.length===1&&hold.victim.hp===160&&hold.victim.owner&&hold.victim.isCocooned,'Native hold changed owner/health');
               need(hold.victim.bounds.min[1]>=-.035&&hold.victim.bounds.max[1]<=hold.ceiling+.04,'Native hold clipped deck/support');return {hold,samples:f.samples};
             """)
+            check('The rendered stinger stays on the rigged chest through lift and hold', r"""
+              const attached=f.samples.filter(state=>['HOIST','HOLD'].includes(state.actionPhase)).map(state=>state.tailAttachment);
+              need(attached.length>=60&&attached.every(Boolean),'Missing rendered stinger samples');
+              const maxGap=Math.max(...attached.map(frame=>frame.gap));
+              const lengths=attached.map(frame=>frame.lengthRatio);
+              need(maxGap<=.05&&attached.every(frame=>frame.weight===1),'Stinger slides away from the chest during capture');
+              need(lengths.every(length=>length>=.77&&length<=1.16),'Tail curve stretched or collapsed away from its rest length');
+              return {poses:attached.length,maxGap,minLength:Math.min(...lengths),maxLength:Math.max(...lengths)};
+            """)
             view = capture('07-t140-hold-gameplay.png', 'T140 · maintien', gameplay=True)
             if view:
                 assert_capture_legible(view)
@@ -208,7 +220,10 @@ def main():
             check('Chromium Q releases a native victim with gravity before descending the creature', r"""
               const before=f.beforeRelease;need(p.ceilingAction?.phase==='RELEASE','Installed Q did not release held actor');
               need(f.victim.mesh.position.y===before.victim.position[1],'Q teleported victim to deck');f.ticks(10);
-              need(f.victim.mesh.position.y<before.victim.position[1]&&f.hits.length===1,'Release is not falling/created extra wound');return {before,after:f.snapshot()};
+              const after=f.snapshot(),tail=after.tailAttachment;
+              need(f.victim.mesh.position.y<before.victim.position[1]&&f.hits.length===1,'Release is not falling/created extra wound');
+              need(tail&&tail.weight>0&&tail.weight<.35&&tail.gap>.15,'Stinger did not retract progressively from the falling actor');
+              return {before,after};
             """)
             capture('08-t140-release-gameplay.png', 'T140 · libération', gameplay=True)
             capture('08-t140-release.png', 'Libération gravitaire avant retour au sol')
@@ -216,12 +231,50 @@ def main():
               f.until('GROUND');f.ticks(10);const landed=f.snapshot();
               need(!p.ceilingAction&&!p.ceilingTransition&&!p.isCeilingProwling,'Creature retained old capture/locomotion');
               need(!f.victim.ceilingActionOwner&&!f.victim.isRestrained&&!f.victim.isCocooned,'Released living actor retained capture flags');
+              need(!landed.tailAttachment,'Landed creature retained a tail constraint');
               need(f.hits.length===1&&landed.victim.bounds.min[1]>=-.035,'Landing caused duplicate damage or actor sank');return landed;
             """)
             landed_view = capture('09-t140-landed-gameplay.png', 'T140 · retour au pont', gameplay=True)
-            if landed_view:
-                assert all(beam['opacity'] == 1 and beam['depthWrite'] for beam in landed_view['beams']), landed_view['beams']
             capture('09-t140-landed.png', 'Retour au pont : acteurs libérés et contacts conservés')
+            if landed_view:
+                assert_actor_visible(next(actor for actor in landed_view['actors'] if actor['id'] == 'player'))
+                selected = report['approachFixture']['support']['id']
+                beam = next(beam for beam in landed_view['beams'] if beam['id'] == selected)
+                assert beam['opacity'] <= .18 and not beam['depthWrite'], beam
+                assert all(beam['opacity'] == 1 and beam['depthWrite'] for beam in landed_view['beams']
+                           if beam['id'] != selected), landed_view['beams']
+                check('Strategic and cinematic cameras restore supports, and reduced motion fades in one frame', r"""
+                  const r=q.rendererEngine, previous=r.reduceMotion;
+                  const meshes=map.ceilingSupports.map(support=>support.mesh);
+                  const faded=meshes.findIndex(mesh=>mesh.material.opacity<=.18);
+                  const original=meshes.map(mesh=>r.ceilingFadeMaterials.get(mesh)?.original || mesh.material);
+                  const restored=()=>meshes.every((mesh,i)=>mesh.material===original[i]&&mesh.material.opacity===1&&mesh.material.depthWrite);
+                  r.setCameraTarget(p.x,p.z,0,true,1/60);
+                  need(restored(),'Strategic camera retained changed ceiling materials');
+                  r.setCameraTarget(p.x,p.z,0,false,4);
+                  try {
+                    g.setReducedMotion(true);
+                    r.updateWallVisibility({x:p.x,y:1.4,z:p.z},1/60);
+                    need(meshes[faded].material.opacity<=.18&&!meshes[faded].material.depthWrite,'Reduced-motion fade did not resolve immediately');
+                    r.setCinematicCamera({position:r.camera.position.clone(),target:new T.Vector3(p.x,1.4,p.z)});
+                    need(restored(),'Cinematic camera retained changed ceiling materials');
+                  } finally {g.setReducedMotion(previous);}
+                  return {strategic:true,cinematic:true,reduced:true};
+                """)
+                check('Normal movement away from the beam restores all original support materials', r"""
+                  const padding=p.creatureEnvelope.radius;
+                  const activeSmoke=()=>HiveSystems.vfx.effects.some(effect=>effect.steamCloud&&effect.age<effect.lifetime*.85);
+                  for(let i=0;i<11&&activeSmoke();i++)f.ticks(30);
+                  const goal=[0,3,6,-3,-6].flatMap(dz=>[3.5,-3.5,4.5,-4.5].map(dx=>({x:p.x+dx,z:p.z+dz})))
+                    .find(({x,z})=>!map.checkCollision(x,z,padding)&&map.hasLineOfSight(p.x,p.z,x,z,padding));
+                  need(goal,'Authored fixture has no clear exit from the camera occlusion');
+                  p.setMoveTarget(goal.x,goal.z);f.ticks(100);
+                  need(Math.hypot(p.x-goal.x,p.z-goal.z)<.05,'The player did not reach the checked exit');
+                  const detail=f.drawGameplay('Poutre dégagée');
+                  need(detail.beams.every(beam=>beam.opacity===1&&beam.depthWrite),'A clear support remained faded');
+                  return {goal,position:[p.x,p.z],beams:detail.beams};
+                """)
+                capture('10-t140-clear-beam-gameplay.png', 'T140 · hors de la poutre', gameplay=True)
             check('A lethal140 hauls a corpse without certifying a new viable implantation host', r"""
               f.climb();f.until('HANG');const fixture=f.makeVictim(100);f.key('t');f.until('HOLD');const corpse=f.snapshot();
               need(f.hits.length===1&&f.hits[0].amount===140&&corpse.victim.hp===0,'Native lethal140 did not remain one wound');

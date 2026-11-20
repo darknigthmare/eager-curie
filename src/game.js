@@ -1003,6 +1003,59 @@
       osc.start(now); osc.stop(now + 0.2);
     }
 
+    playCeilingCaptureCue(phase, x, z) {
+      if (!this.initialized || this.isMuted || this.volume <= 0 || !Number.isFinite(x) || !Number.isFinite(z)) return;
+      const profiles = {
+        WINDUP: { shape: 'sine', pitch: [280, 730], tone: .08, band: [800, 2400], texture: .25, duration: .26, radius: 44 },
+        CONTACT: { shape: 'triangle', pitch: [172, 52], tone: .53, band: [1750, 510], texture: .48, duration: .19, radius: 52 },
+        RELEASE: { shape: 'sine', pitch: [440, 152], tone: .09, band: [2600, 930], texture: .29, duration: .14, radius: 38 },
+        LANDING: { shape: 'sine', pitch: [105, 36], tone: .62, band: [420, 160], texture: .38, duration: .35, radius: 58 }
+      };
+      if (!Object.prototype.hasOwnProperty.call(profiles, phase)) return;
+      const { shape, pitch, tone, band, texture, duration, radius } = profiles[phase];
+      this.resume();
+      const now = this.ctx.currentTime;
+      const end = now + duration;
+      const bus = this.ctx.createGain();
+      const envelope = (gain, level, attack) => {
+        gain.setValueAtTime(.001, now);
+        gain.linearRampToValueAtTime(level, now + attack);
+        gain.exponentialRampToValueAtTime(.001, end);
+      };
+
+      const oscillator = this.ctx.createOscillator();
+      const toneGain = this.ctx.createGain();
+      oscillator.type = shape;
+      oscillator.frequency.setValueAtTime(pitch[0], now);
+      oscillator.frequency.exponentialRampToValueAtTime(pitch[1], end);
+      envelope(toneGain.gain, tone, phase === 'WINDUP' ? .055 : .005);
+      oscillator.connect(toneGain);
+      toneGain.connect(bus);
+
+      const frames = Math.ceil(this.ctx.sampleRate * duration);
+      const buffer = this.ctx.createBuffer(1, frames, this.ctx.sampleRate);
+      const samples = buffer.getChannelData(0);
+      for (let index = 0; index < frames; index++) samples[index] = Math.random() * 2 - 1;
+      const noise = this.ctx.createBufferSource();
+      const filter = this.ctx.createBiquadFilter();
+      const noiseGain = this.ctx.createGain();
+      noise.buffer = buffer;
+      filter.type = 'bandpass';
+      filter.Q.value = .9;
+      filter.frequency.setValueAtTime(band[0], now);
+      filter.frequency.exponentialRampToValueAtTime(band[1], end);
+      envelope(noiseGain.gain, texture, phase === 'WINDUP' ? .075 : .008);
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(bus);
+
+      this.connect(bus, x, z, radius);
+      oscillator.start(now);
+      oscillator.stop(end);
+      noise.start(now);
+      noise.stop(end);
+    }
+
     playSteamVentHiss(x = null, z = null) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
@@ -10807,6 +10860,8 @@
       this.stationDetail = null;
       this.cameraDistance = 1;
       this.lastWheelZoom = 0;
+      this.ceilingFadeMaterials = new Map();
+      this.followsAdultCreature = false;
     }
 
     sabotagePower(duration = 22) {
@@ -10970,6 +11025,8 @@
     }
 
     setCameraTarget(x, z, heightOffset = 0, isRTS = false, deltaSeconds = 1 / 60) {
+      this.followsAdultCreature = !isRTS && window.gameInstance?.currentStageIndex === 4;
+      if (!this.followsAdultCreature) this.restoreCeilingMaterials();
       if (this.beaconPivot && this.beaconSpot) {
         const isAlarmActive = (window.alarmSystem?.level || 0) >= 2;
         this.beaconSpot.intensity = isAlarmActive ? 85 : 0;
@@ -11222,6 +11279,8 @@
 
     setCinematicCamera({ position, target, fov = 72, near = 0.025, exposure = 1.18 }, deltaSeconds = 1 / 60) {
       if (!position || !target) return;
+      this.followsAdultCreature = false;
+      this.restoreCeilingMaterials();
       let projectionChanged = false;
       if (this.camera.fov !== fov) {
         this.camera.fov = fov;
@@ -11271,47 +11330,67 @@
         if (Math.abs(wall.material.opacity - targetOpacity) < 0.005) wall.material.opacity = targetOpacity;
         wall.material.depthWrite = wall.material.opacity >= 0.99;
       }
-      this.updateCeilingCaptureVisibility(blend);
+      this.updateCeilingVisibility(this.reduceMotion ? 1 : blend);
     }
 
-    updateCeilingCaptureVisibility(blend) {
-      const action = playerCreature.ceilingAction;
-      const support = action?.support.mesh;
-      let blocker = null;
-      if (support?.visible && action.targetMesh?.parent) {
-        action.targetMesh.updateWorldMatrix(true, false);
-        const bounds = action.localBounds.clone().applyMatrix4(action.targetMesh.matrixWorld);
-        const point = bounds.getCenter(new THREE.Vector3());
-        for (const height of [.25, .5, .75]) {
-          point.y = THREE.MathUtils.lerp(bounds.min.y, bounds.max.y, height);
-          const direction = point.clone().sub(this.camera.position);
-          this.wallVisibilityRay.far = Math.max(0, direction.length() - .08);
-          this.wallVisibilityRay.set(this.camera.position, direction.normalize());
-          if (this.wallVisibilityRay.intersectObject(support, false).length) {
-            blocker = support;
-            break;
-          }
-        }
+    restoreCeilingMaterial(mesh, fade) {
+      if (mesh.material === fade.material) mesh.material = fade.original;
+      fade.material.dispose();
+      this.ceilingFadeMaterials.delete(mesh);
+    }
+
+    restoreCeilingMaterials() {
+      for (const [mesh, fade] of this.ceilingFadeMaterials) this.restoreCeilingMaterial(mesh, fade);
+    }
+
+    updateCeilingVisibility(blend) {
+      const body = playerCreature.mesh;
+      const localBounds = playerCreature.creatureEnvelope?.bounds;
+      if (!this.followsAdultCreature || !body?.parent || !body.visible || !localBounds) {
+        this.restoreCeilingMaterials();
+        return;
       }
 
-      for (const entry of stationMap.ceilingSupports || []) {
-        const mesh = entry.mesh;
-        const targetOpacity = mesh === blocker ? .14 : 1;
-        if (!mesh.userData.ceilingCaptureMaterial) {
-          if (targetOpacity === 1) continue;
-          // The station shares its base metal material with other props.
-          mesh.material = mesh.material.clone();
-          mesh.userData.ceilingCaptureMaterial = true;
+      const supports = (stationMap.ceilingSupports || []).map(entry => entry.mesh)
+        .filter(mesh => mesh?.visible && mesh.parent);
+      const blocking = new Set();
+      const direction = new THREE.Vector3();
+      const point = new THREE.Vector3();
+      const traceActor = (mesh, bounds) => {
+        mesh.updateWorldMatrix(true, false);
+        const worldBounds = bounds.clone().applyMatrix4(mesh.matrixWorld);
+        worldBounds.getCenter(point);
+        for (const height of [.22, .5, .78]) {
+          point.y = THREE.MathUtils.lerp(worldBounds.min.y, worldBounds.max.y, height);
+          direction.subVectors(point, this.camera.position);
+          this.wallVisibilityRay.far = Math.max(0, direction.length() - .08);
+          this.wallVisibilityRay.set(this.camera.position, direction.normalize());
+          for (const hit of this.wallVisibilityRay.intersectObjects(supports, false)) blocking.add(hit.object);
         }
-        const material = mesh.material;
-        material.opacity += (targetOpacity - material.opacity) * blend;
-        if (Math.abs(material.opacity - targetOpacity) < .005) material.opacity = targetOpacity;
-        const transparent = material.opacity < 1;
-        if (material.transparent !== transparent) {
-          material.transparent = transparent;
-          material.needsUpdate = true;
+      };
+      traceActor(body, localBounds);
+      const capture = playerCreature.ceilingAction;
+      if (capture?.targetMesh?.parent && capture.targetMesh.visible) traceActor(capture.targetMesh, capture.localBounds);
+
+      for (const mesh of blocking) {
+        if (this.ceilingFadeMaterials.has(mesh)) continue;
+        // The metal is shared by beams and props. Keep the original instance
+        // intact and return it once this beam leaves the actor sightline.
+        const original = mesh.material;
+        const material = original.clone();
+        material.transparent = true;
+        material.depthWrite = false;
+        mesh.material = material;
+        this.ceilingFadeMaterials.set(mesh, { original, material });
+      }
+      for (const [mesh, fade] of this.ceilingFadeMaterials) {
+        const blocked = blocking.has(mesh);
+        const target = blocked ? .14 : fade.original.opacity;
+        fade.material.opacity += (target - fade.material.opacity) * blend;
+        if (Math.abs(fade.material.opacity - target) < .005) {
+          if (blocked) fade.material.opacity = target;
+          else this.restoreCeilingMaterial(mesh, fade);
         }
-        material.depthWrite = !transparent;
       }
     }
 
@@ -29445,7 +29524,9 @@
         if (nextSupport && stationMap.isCreaturePoseClear?.(this.getCreaturePoseBounds(nextX, y, nextZ, Math.PI, state.yaw))) {
           this.x = nextX; this.z = nextZ; this.mesh.position.set(this.x, y, this.z);
         }
-        animateProceduralModel(this.mesh, { phase: this.creatureAnimationTime * 7, movement: direction ? .35 : .03 });
+        const action = this.ceilingAction;
+        const attack = action?.phase === 'WINDUP' ? Math.min(1, action.elapsed / .32) : 0;
+        animateProceduralModel(this.mesh, { phase: this.creatureAnimationTime * 7, movement: direction ? .35 : .03, attack });
         this.mesh.rotation.set(0, state.yaw, Math.PI, 'YXZ');
         if (!this.constrainCreatureContacts(support.undersideY, true)) this.beginCeilingDescent();
         return;
@@ -29585,10 +29666,172 @@
           showToast('Trajectoire de capture obstruée : la victime ne peut être hissée sans heurter le décor.'); return false;
         }
       }
+      action.tailPose = this.createCeilingTailPose();
       this.ceilingAction = action;
       this.moveTarget = null; this.moveWaypoints = [];
-      audioManager.playTailWhip?.(this.x, this.z);
+      audioManager.playCeilingCaptureCue?.('WINDUP', this.x, this.z);
       showToast('Dard en approche. Maintenez la prise ; Q libère puis fait descendre.');
+      return true;
+    }
+
+    createCeilingTailPose() {
+      const joint = this.detailedModel?.getObjectByName('segmented_tail');
+      const skin = joint?.getObjectByName('tail_skin'), blade = joint?.getObjectByName('tail_blade');
+      const geometry = skin?.geometry, joints = joint?.userData?.vertebrae;
+      const position = geometry?.getAttribute('position'), normal = geometry?.getAttribute('normal');
+      const uv = geometry?.getAttribute('uv');
+      if (!position || !normal || !uv || blade?.parent !== joint || !joints || joints.length < 3) return null;
+      const rest = new THREE.CatmullRomCurve3(joints.map(node => node.position.clone()));
+      const ringByParameter = new Map(), vertexRings = [];
+      for (let index = 0; index < position.count; index++) {
+        const parameter = uv.getY(index);
+        if (!ringByParameter.has(parameter)) ringByParameter.set(parameter, {
+          parameter, center: rest.getPointAt(parameter), direction: rest.getTangentAt(parameter)
+        });
+        vertexRings.push(ringByParameter.get(parameter));
+      }
+      blade.geometry.computeBoundingBox();
+      const point = new THREE.Vector3(0, 0, blade.geometry.boundingBox.min.z);
+      return { joint, skin, blade, point, rest, vertexRings, rings: [...ringByParameter.values()],
+        restPositions: position.array.slice(), restNormals: normal.array.slice(),
+        bladePosition: blade.position.clone(), bladeRotation: blade.quaternion.clone(), weight: 0 };
+    }
+
+    getCeilingTailContact(action) {
+      const victim = action.target, mesh = action.targetMesh;
+      const model = getAnimationModel(mesh), bones = window.HiveAssetLibrary?.getRuntime?.(model)?.bindings;
+      const center = new THREE.Vector3(), forward = new THREE.Vector3(0, 0, 1);
+      if (bones?.spine && bones.neck && victim.faceAnchor) {
+        const origin = victim.faceAnchor.getWorldPosition(new THREE.Vector3());
+        forward.copy(victim.faceAnchor.localToWorld(forward)).sub(origin).normalize();
+        bones.spine.getWorldPosition(center).lerp(bones.neck.getWorldPosition(new THREE.Vector3()), .28);
+        const left = bones.leftUpperArm?.getWorldPosition(new THREE.Vector3());
+        const right = bones.rightUpperArm?.getWorldPosition(new THREE.Vector3());
+        const thickness = left && right ? THREE.MathUtils.clamp(left.distanceTo(right) * .36, .14, .39) : .24;
+        center.addScaledVector(forward, thickness);
+      } else {
+        const bounds = action.localBounds;
+        bounds.getCenter(center);
+        center.y = THREE.MathUtils.lerp(bounds.min.y, bounds.max.y, .71);
+        center.z = THREE.MathUtils.lerp(center.z, bounds.max.z, .58);
+        mesh.localToWorld(center);
+        forward.applyQuaternion(mesh.getWorldQuaternion(new THREE.Quaternion()));
+      }
+      return { center, direction: forward.negate() };
+    }
+
+    restoreCeilingTailPose(action) {
+      const tail = action?.tailPose;
+      if (!tail?.weight) return;
+      const geometry = tail.skin.geometry;
+      geometry.getAttribute('position').array.set(tail.restPositions);
+      geometry.getAttribute('normal').array.set(tail.restNormals);
+      geometry.getAttribute('position').needsUpdate = geometry.getAttribute('normal').needsUpdate = true;
+      geometry.computeBoundingBox(); geometry.computeBoundingSphere();
+      tail.blade.position.copy(tail.bladePosition);
+      tail.blade.quaternion.copy(tail.bladeRotation);
+      tail.weight = 0;
+    }
+
+    poseCeilingTail(action, contact, weight) {
+      const tail = action.tailPose;
+      if (!tail || weight <= 0) { this.restoreCeilingTailPose(action); return true; }
+      const { joint, skin, blade, rest } = tail, start = rest.getPointAt(0);
+      const tip = joint.worldToLocal(contact.center.clone());
+      const inward = joint.worldToLocal(contact.center.clone().add(contact.direction)).sub(tip).normalize();
+      const approach = tip.clone().sub(start).normalize();
+      const facing = approach.dot(inward);
+      // The dard enters the anterior surface but need not approach at 90°.
+      // Following the root-to-contact line obliquely avoids an excursion
+      // around the front of the whole body in narrow hissage corridors.
+      if (facing < .38) {
+        approach.addScaledVector(inward, -facing);
+        if (approach.lengthSq() < .001) approach.copy(inward);
+        else approach.normalize().multiplyScalar(Math.sqrt(1 - .38 * .38)).addScaledVector(inward, .38);
+      }
+      const bladeReach = -tail.point.z * blade.scale.z;
+      const bladeCenter = tip.clone().addScaledVector(approach, -bladeReach);
+      const end = bladeCenter.clone().addScaledVector(approach, -.75 * bladeReach);
+      const length = rest.getLength(), span = start.distanceTo(end);
+      if (span > length * 1.12) return false;
+      const launch = rest.getTangentAt(0), slack = Math.max(0, length - span);
+      const bend = new THREE.Vector3().crossVectors(launch, approach);
+      if (bend.lengthSq() < .001) bend.set(1, 0, 0);
+      else bend.normalize();
+      const distalCurl = THREE.MathUtils.clamp(span * .39 + slack * .57, .45, length * .62);
+      const candidate = new THREE.CubicBezierCurve3(start, start.clone(), end.clone(), end);
+      candidate.arcLengthDivisions = 32;
+      const restPosition = new THREE.Vector3(), restNormal = new THREE.Vector3();
+      const rotation = new THREE.Quaternion(), localPoint = new THREE.Vector3();
+      const position = skin.geometry.getAttribute('position'), normal = skin.geometry.getAttribute('normal');
+      const bounds = new THREE.Box3(), sample = new THREE.Vector3();
+      const worldScale = joint.getWorldScale(new THREE.Vector3());
+      const radius = worldScale.x * .14;
+      rotation.setFromUnitVectors(new THREE.Vector3(0, 0, -1), approach);
+      const rotationAtWeight = tail.bladeRotation.clone().slerp(rotation, weight);
+      const bladeAtWeight = tail.bladePosition.clone().lerp(bladeCenter, weight);
+      const bladeTip = joint.localToWorld(tail.point.clone().multiply(blade.scale).applyQuaternion(rotationAtWeight).add(bladeAtWeight));
+      let usable = false;
+      // Prefer the direct curl. If it sweeps a solid, try moving its leading
+      // shoulder to either side without changing the attachment point.
+      for (const [side, distal, lengthFraction] of [[0, .62, 1], [.29, .62, 1], [-.29, .62, 1], [0, .48, .8], [.29, .48, .8], [-.29, .48, .8]]) {
+        candidate.v2.copy(end).addScaledVector(approach, -distalCurl * distal);
+        let near = 0, far = length * 1.45;
+        for (let iteration = 0; iteration < 8; iteration++) {
+          const handle = (near + far) / 2;
+          candidate.v1.copy(start).addScaledVector(launch, handle).addScaledVector(bend, side * length);
+          candidate.updateArcLengths();
+          if (candidate.getLength() < length * lengthFraction) near = handle;
+          else far = handle;
+        }
+        if (candidate.getLength() > length * 1.15) continue;
+        bounds.makeEmpty();
+        for (let index = 0; index <= 14; index++) {
+          const u = index / 14;
+          rest.getPointAt(u, sample).lerp(candidate.getPointAt(u), weight);
+          joint.localToWorld(sample);
+          bounds.expandByPoint(sample);
+        }
+        bounds.expandByPoint(bladeTip);
+        bounds.expandByScalar(radius);
+        if (bounds.max.y > action.support.undersideY + .015) continue;
+        if (stationMap.isCreaturePoseClear(bounds)) { usable = true; break; }
+        // A bent tail's overall box includes empty space. Verify the actual
+        // segments before rejecting a curve beside a prop.
+        let clear = true, last = null;
+        for (let index = 0; index <= 20; index++) {
+          const u = index / 20;
+          rest.getPointAt(u, sample).lerp(candidate.getPointAt(u), weight);
+          joint.localToWorld(sample);
+          if (last && !stationMap.isCreaturePoseClear(bounds.setFromPoints([last, sample]).expandByScalar(radius))) {
+            clear = false; break;
+          }
+          last = sample.clone();
+        }
+        if (clear && stationMap.isCreaturePoseClear(bounds.setFromPoints([last, bladeTip]).expandByScalar(radius))) {
+          usable = true; break;
+        }
+      }
+      if (!usable) return false;
+      for (const ring of tail.rings) {
+        ring.position = ring.center.clone().lerp(candidate.getPointAt(ring.parameter), weight);
+        const direction = ring.direction.clone().lerp(candidate.getTangentAt(ring.parameter), weight).normalize();
+        ring.rotation = new THREE.Quaternion().setFromUnitVectors(ring.direction, direction);
+      }
+      for (let index = 0; index < position.count; index++) {
+        const ring = tail.vertexRings[index];
+        localPoint.copy(restPosition.fromArray(tail.restPositions, index * 3)).sub(ring.center)
+          .applyQuaternion(ring.rotation).add(ring.position);
+        restNormal.fromArray(tail.restNormals, index * 3).applyQuaternion(ring.rotation);
+        position.setXYZ(index, localPoint.x, localPoint.y, localPoint.z);
+        normal.setXYZ(index, restNormal.x, restNormal.y, restNormal.z);
+      }
+      position.needsUpdate = normal.needsUpdate = true;
+      skin.geometry.computeBoundingBox(); skin.geometry.computeBoundingSphere();
+      blade.position.copy(bladeAtWeight);
+      blade.quaternion.copy(rotationAtWeight);
+      tail.weight = weight;
+      tail.curveLength = candidate.getLength();
       return true;
     }
 
@@ -29637,7 +29880,7 @@
         }
         library.setState(model, { frozen: false, movement: 0, attack: 0, dead: !alive });
         library.updateModel(model, alive ? delta : 0);
-        const strain = alive ? .42 + Math.sin(this.creatureAnimationTime * 6) * .12 : .07;
+        const strain = alive ? .42 + (rendererEngine.reduceMotion ? 0 : Math.sin(this.creatureAnimationTime * 6) * .12) : .07;
         for (const [key, angle] of [
           ['leftUpperArm', -.75 * strain], ['rightUpperArm', -.75 * strain],
           ['leftForeArm', -.9 * strain], ['rightForeArm', -.9 * strain], ['spine', -.18 * strain],
@@ -29654,6 +29897,7 @@
       const action = this.ceilingAction;
       if (!action) return;
       this.ceilingAction = null;
+      this.restoreCeilingTailPose(action);
       const victim = action.target;
       if (victim?.ceilingActionOwner === action) {
         delete victim.ceilingActionOwner;
@@ -29700,12 +29944,17 @@
         for (let index = 0; index <= 20; index++) {
           if (!stationMap.isCreaturePoseClear(this.getCeilingVictimPose(action, index / 20, true).bounds)) { clear = false; break; }
         }
-        if (clear) return true;
+        if (clear) {
+          action.releaseTailContact = this.getCeilingTailContact(action);
+          audioManager.playCeilingCaptureCue?.('RELEASE', action.target.x, action.target.z);
+          return true;
+        }
       }
       action.releaseLandingPosition = action.startPosition.clone();
       action.phase = 'HOLD'; action.elapsed = 0;
       if (this.anchorCeilingVictim(action)) {
         const descend = action.afterReleaseDescend;
+        this.restoreCeilingTailPose(action);
         this.ceilingAction = null;
         showToast('Sol obstrué : prise fixée à la poutre par résine. Descente vers un passage libre.');
         if (descend) this.beginCeilingDescent();
@@ -29805,8 +30054,15 @@
           victim.mesh.quaternion.angleTo(action.startQuaternion) > .4 || !stationMap.hasLineOfSight(this.x, this.z, victim.x, victim.z, .1)) {
           this.cancelCeilingAction(); return;
         }
-        animateProceduralModel(this.mesh, { phase: this.creatureAnimationTime * 8, attack: Math.min(1, action.elapsed / .32) });
-        if (action.elapsed < .32) return;
+        const reach = Math.min(1, action.elapsed / .32);
+        const contact = this.getCeilingTailContact(action);
+        const canReach = this.poseCeilingTail(action, contact, reach * reach * (3 - 2 * reach));
+        if (reach < 1) return;
+        if (!canReach) {
+          this.cancelCeilingAction();
+          showToast('Le dard ne peut pas atteindre cette prise sans heurter le décor.');
+          return;
+        }
         action.hit = true;
         victim.ceilingActionOwner = action; victim.isRestrained = true;
         // Commit the phase before invoking another actor: re-entrancy or a
@@ -29818,13 +30074,11 @@
         action.scale.copy(victim.mesh.scale);
         if (victim.hp <= 0) { victim.isConsumedByCycle = true; victim.hostEligibility = 'none'; }
         victim.stress = 100;
-        audioManager.playWetImpact?.(victim.x, victim.z);
-        const contactHeight = action.startPosition.y + action.localBounds.getCenter(new THREE.Vector3()).y;
-        window.HiveSystems?.vfx?.sporeDrip?.(victim.x, victim.z, 6, {
-          height: contactHeight, spread: .55, color: victim.isSynthetic?.() ? 0xf1f5f9 : 0x9d2033
+        audioManager.playCeilingCaptureCue?.('CONTACT', victim.x, victim.z);
+        window.HiveSystems?.vfx?.sporeDrip?.(contact.center.x, contact.center.z, 6, {
+          height: contact.center.y, spread: .55, color: victim.isSynthetic?.() ? 0xf1f5f9 : 0x9d2033
         });
         victim.constructor.notifySquadWitness?.('CEILING_KIDNAP', victim.x, victim.z, victim);
-        window.HiveSystems?.vfx?.beam?.(this.x, this.mesh.position.y - this.creatureEnvelope.height * .45, this.z, victim.x, 2.7, victim.z, 0x0c121e);
       }
       const progress = action.phase === 'HOIST' ? Math.min(1, action.elapsed / 1.05)
         : (action.phase === 'RELEASE' ? Math.min(1, action.elapsed / action.releaseDuration) : 1);
@@ -29854,6 +30108,13 @@
         }
       }
       action.lastSafePosition.copy(victim.mesh.position); action.lastSafeQuaternion.copy(pose.quaternion);
+      if (action.phase === 'RELEASE') {
+        const retract = Math.min(1, action.elapsed / .22);
+        if (!this.poseCeilingTail(action, action.releaseTailContact, 1 - retract * retract * (3 - 2 * retract))) this.restoreCeilingTailPose(action);
+      } else if (!this.poseCeilingTail(action, this.getCeilingTailContact(action), 1)) {
+        this.releaseCeilingAction(true);
+        return;
+      }
       if (action.phase === 'HOIST' && progress >= 1) {
         action.phase = 'HOLD'; action.elapsed = 0;
         // A corpse can be hauled up (Brett-like aftermath), never reused as a
@@ -29866,7 +30127,7 @@
         victim.isCocooned = action.wasCocooned;
         victim.staggerTimer = Math.max(victim.staggerTimer || 0, .8);
         window.HiveModelFactory?.placeOnGround?.(victim.mesh, .015);
-        audioManager.playWetImpact?.(victim.x, victim.z);
+        audioManager.playCeilingCaptureCue?.('LANDING', victim.x, victim.z);
         if (descend) this.beginCeilingDescent();
       }
     }
@@ -33126,7 +33387,6 @@
       if (window.gameInstance?.isSystemPaused) return;
       const safeDelta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(.05, deltaSeconds)) : 0;
       this.creatureAnimationTime += safeDelta;
-      this.updateCeilingAction(safeDelta);
       this.actionAnimation = Math.max(0, this.actionAnimation - safeDelta * 3.4);
 
       // Chantier 123 : Surtension Bio-Génétique Z-01
@@ -33192,9 +33452,14 @@
       }
 
       if (this.ceilingTransition || this.isCeilingProwling) {
+        // Only the resting rig controls foot/support contact. The grab aligns
+        // the rendered tail after the body has settled on that anchor.
+        this.restoreCeilingTailPose(this.ceilingAction);
         this.updateCeilingLocomotion(safeDelta);
+        this.updateCeilingAction(safeDelta);
         return;
       }
+      this.updateCeilingAction(safeDelta);
 
       if (this.isBiologicalTransition || this.disposalTransfer) return;
 

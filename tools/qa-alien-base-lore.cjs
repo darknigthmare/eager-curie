@@ -28,4 +28,15 @@ for(const [id,record] of Object.entries(c.castes)){
 }
 assert.ok(exported.records.every(e=>e.kind!=="game-card"));
 assert.ok(!exported.records.some(e=>e.damage||e.hp||e.attackSpeed));
+vm.runInNewContext(fs.readFileSync(path.join(root,"src/campaign-archives.js"),"utf8"),w,{timeout:1500});
+const runtime=w.window.HIVE_CONTENT;
+assert.equal(runtime.castes,c.castes);
+assert.equal(runtime.enemies,c.enemies);
+assert.equal(runtime.bosses,c.bosses);
+assert.equal(runtime.codex.entries.length,c.codex.entries.length+11);
+assert.equal(runtime.journals.length,c.journals.length+6);
+assert.equal(new Set(runtime.codex.entries.map(entry=>entry.id)).size,runtime.codex.entries.length);
+assert.equal(new Set(runtime.journals.map(entry=>entry.id)).size,runtime.journals.length);
+assert.ok(runtime.codex.entries.every(entry=>Object.isFrozen(entry)&&Object.isFrozen(entry.unlock)));
+assert.ok(runtime.journals.every(entry=>Object.isFrozen(entry)&&Object.isFrozen(entry.unlock)));
 console.log("Lore/registry bridge: 16 stable forms, 9 reviewed corrections, Z-01 and Royal Facehugger safely scoped.");

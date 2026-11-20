@@ -10,7 +10,7 @@ const gameJs = fs.readFileSync('src/game.js', 'utf8');
 const indexHtml = fs.readFileSync('index.html', 'utf8');
 const styleCss = fs.readFileSync('src/css/style.css', 'utf8');
 const gameSystemsJs = fs.readFileSync('src/game-systems.js', 'utf8');
-const contentJs = fs.readFileSync('src/content.js', 'utf8');
+const contentJs = fs.readFileSync('src/campaign-archives.js', 'utf8');
 
 // 1. Prologue CRT & Schéma Tactique ÉCHO-12
 assert(indexHtml.includes('prologue-schematic-banner'), 'Schéma tactique #prologue-schematic-banner manquant dans index.html');

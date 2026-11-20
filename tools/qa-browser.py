@@ -55,6 +55,7 @@ def main():
         open_campaign_menu(page)
 
     def start(page):
+        open_campaign_menu(page)
         # This smoke path has one reproducible authored origin. The dedicated
         # cycle suite covers the four origin/host journeys independently.
         # The visible radio card, not its internal hidden campaign select.

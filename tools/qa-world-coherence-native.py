@@ -78,6 +78,7 @@ def main():
     parser.add_argument('--source-root', default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument('--output', required=True)
     parser.add_argument('--no-captures', action='store_true')
+    parser.add_argument('--cameras-only', action='store_true')
     args = parser.parse_args()
     root, out = Path(args.source_root).resolve(), Path(args.output).resolve()
     if out.exists():
@@ -153,6 +154,15 @@ def main():
             report['captures'].append({'file': name, **detail})
             save()
 
+        def finish():
+            for errors in ('pageErrors', 'consoleErrors', 'httpFailures', 'failedRequests'):
+                assert not report[errors], report[errors]
+            assert all(row['match'] for row in report['assets'].values()), report['assets']
+            report['sourceAfter'] = {str(path.relative_to(root)): digest(path.read_bytes()) for path in runtime_paths()}
+            assert before == report['sourceAfter'], 'Sources changed during native world cohort'
+            report['complete'] = True
+            save()
+
         try:
             save()
             page.goto(args.url, wait_until='domcontentloaded')
@@ -163,6 +173,98 @@ def main():
             page.evaluate('()=>gameInstance.setSystemPaused(true)')
             report['prepare'] = page.evaluate(PREPARE)
             save()
+            check('Every surveillance bracket is mounted on a real wall and only the head pans', r"""
+              f.reset();f.placePlayer(0,0);
+              const walls=map.walls.map(wall=>new T.Box3().setFromObject(wall));
+              const cameras=map.securityCameras.map(cam=>{
+                need(cam.swivelHead&&cam.sensorMesh&&cam.fovCone,'Missing optical pivot for '+cam.id);
+                cam.mesh.updateWorldMatrix(true,true);
+                const inverse=cam.mesh.matrixWorld.clone().invert(),vertex=new T.Vector3();
+                let vertices=0,wallContacts=0;
+                // Static decorative meshes are batched. Inspect the actual
+                // triangles at the back of the plate in camera-local space.
+                for(const part of cam.mesh.children.filter(node=>node.isMesh)){
+                  const positions=part.geometry.getAttribute('position');
+                  for(let i=0;i<positions.count;i++){
+                    vertex.fromBufferAttribute(positions,i).applyMatrix4(part.matrixWorld).applyMatrix4(inverse);
+                    if(Math.abs(vertex.x)>.24||vertex.y<-.08||vertex.y>.5||vertex.z>-.1||vertex.z<-.14)continue;
+                    vertices++;vertex.applyMatrix4(cam.mesh.matrixWorld);
+                    if(walls.some(wall=>wall.containsPoint(vertex)))wallContacts++;
+                  }
+                }
+                return {cam,mount:cam.mesh.getWorldPosition(new T.Vector3()).toArray(),
+                  yaw:cam.mesh.rotation.y,head:cam.swivelHead.rotation.y,vertices,wallContacts};
+              });
+              f.active(()=>{for(let i=0;i<30;i++)map.updateSecurityCameras(1/60);});
+              const detail=cameras.map(({cam,mount,yaw,head,vertices,wallContacts})=>({id:cam.id,vertices,wallContacts,
+                mountUnchanged:JSON.stringify(mount)===JSON.stringify(cam.mesh.getWorldPosition(new T.Vector3()).toArray()),
+                rootYawUnchanged:cam.mesh.rotation.y===yaw,pan:Math.abs(cam.swivelHead.rotation.y-head),
+                opticalAssembly:cam.sensorMesh.parent===cam.swivelHead&&cam.fovCone.parent===cam.swivelHead}));
+              f.failureDetail=detail;
+              need(detail.every(cam=>cam.wallContacts>0&&cam.mountUnchanged&&cam.rootYawUnchanged&&cam.pan>.01&&cam.opticalAssembly),
+                'Surveillance camera mount or optical pivot invalid '+JSON.stringify(detail));
+              return detail;
+            """)
+            check('Optics respect cover, exposure time and line-based local radio alerts', r"""
+              f.reset();const originalCameras=map.securityCameras;
+              const points=(cam,visible)=>{
+                const origin=()=>cam.sensorMesh.getWorldPosition(new T.Vector3());
+                const safeSight=point=>[.63,.72].every(pan=>{
+                  cam.swivelHead.rotation.y=pan;const lens=origin();
+                  return map.hasLineOfSight(lens.x,lens.z,point.x,point.z,.08)===visible;
+                });
+                for(const range of [4,5.5,7,8.5,10])for(const angle of [0,-.2,.2,-.33,.33]){
+                  const heading=cam.wallAngle+.67+angle;
+                  const point={x:cam.x+Math.sin(heading)*range,z:cam.z+Math.cos(heading)*range};
+                  if(!map.checkCollision(point.x,point.z,.45)&&safeSight(point))return point;
+                }
+                return null;
+              };
+              let pair=null;
+              for(const cam of originalCameras){
+                const hidden=points(cam,false),visible=points(cam,true);
+                if(hidden&&visible){pair={cam,hidden,visible};break;}
+              }
+              need(pair,'No authored cover/clear pair is available inside a camera optical sweep');
+              const {cam,hidden,visible}=pair;
+              const snapshot=()=>({state:cam.state,elapsed:cam.alertTimer,alarm:q.alarmSystem.level});
+              const tick=frames=>f.active(()=>{for(let i=0;i<frames;i++)map.updateSecurityCameras(1/60);});
+              const aim=point=>{
+                cam.sweep=Math.PI/2;cam.alertTimer=0;cam.state='idle';
+                q.alarmSystem.setLevel(0);f.placePlayer(point.x,point.z);
+              };
+              map.securityCameras=[cam];
+              try{
+                aim(hidden);tick(49);const occluded=snapshot();
+                f.failureDetail={id:cam.id,hidden,visible,occluded};
+                need(occluded.state==='idle'&&occluded.elapsed===0&&occluded.alarm===0,'Real camera accumulated exposure through cover');
+                aim(visible);
+                const nearby=f.actor('guard',visible.x+.8,visible.z),civilian=f.actor('scientist',visible.x,visible.z+.8);
+                tick(38);const brief=snapshot();
+                need(brief.state!=='alert'&&brief.alarm===0,'Brief exposure alerted before .75s');
+                tick(11);const confirmed=snapshot();
+                need(confirmed.state==='alert'&&confirmed.alarm>=3,'Clear sustained sight did not raise a real alert');
+                need(nearby.lastKnownThreat?.source==='radio'&&nearby.lastKnownThreat.x===visible.x&&nearby.lastKnownThreat.z===visible.z
+                  &&!civilian.lastKnownThreat,'Camera did not report the real seen point to nearby security');
+                const paused=snapshot();for(let i=0;i<60;i++)map.updateSecurityCameras(1/60);
+                need(JSON.stringify(snapshot())===JSON.stringify(paused),'Paused camera advanced its exposure');
+                p.isInVent=true;tick(60);
+                need(cam.state==='idle'&&cam.alertTimer===0,'Camera did not forget a lost target');
+                return {id:cam.id,hidden,visible,occluded,brief,confirmed,forgotten:snapshot(),reported:f.actorState(nearby).known};
+              }finally{map.securityCameras=originalCameras;p.isInVent=false;}
+            """)
+            capture('00-native-camera-mount.png', 'Caméra fixée au mur et tête pivotante', {'x': -14, 'z': -30})
+            check('A new campaign restores a sabotaged surveillance camera without moving its bracket', r"""
+              f.reset();const cam=map.securityCameras[0],mount=cam.mesh.position.clone();
+              need(f.active(()=>map.destroySecurityCamera(cam,p))&&!cam.fovCone.visible&&cam.isDestroyed,'Sabotage did not disable the optical head');
+              g.startCampaign(4);g.setSystemPaused(true);
+              need(cam.fovCone.visible&&!cam.isDestroyed&&cam.state==='idle'&&cam.alertTimer===0,'Sabotage leaked into the next campaign');
+              need(cam.mesh.position.equals(mount)&&cam.swivelHead.rotation.z===0,'Campaign reset moved the wall anchor or left the head tilted');
+              return {id:cam.id,mount:cam.mesh.position.toArray(),cameraAvailable:cam.fovCone.visible};
+            """)
+            if args.cameras_only:
+                finish()
+                return
             check('Actual laboratory wall prevents unobserved acquisition', r"""
               f.reset();f.placePlayer(-30,-28);const h=f.actor('guard',-30,-22);f.h=h;h.mesh.rotation.y=Math.PI;
               let imported=null;h.mesh.traverse(child=>{if(!imported&&window.HiveAssetLibrary?.getRuntime(child))imported=child;});
@@ -274,6 +376,25 @@ def main():
                 'Transient munitions survived the actual campaign reset');
               need(!mesh.parent,'Old EMP mesh remains in the new scene');
               return {fire:map.whitePhosphorusPatches.length,grenades:map.activeEMPGrenades.length,removed:!mesh.parent};
+            """)
+            check('An actual grouped acid breach fades without stopping the station and clears on restart', r"""
+              f.reset();f.placePlayer(30,36);
+              const point=[{x:0,z:0},{x:2,z:8},{x:8,z:-4}].find(({x,z})=>!map.checkCollision(x,z)&&
+                !map.vents.some(vent=>Math.hypot(vent.x-x,vent.z-z)<3));
+              need(point,'Fixture has no clear ground for an acid breach');
+              f.active(()=>{map.addAcidCorrosion(point.x,point.z);map.addAcidCorrosion(point.x,point.z);});
+              const breach=map.acidCorrosions.find(corrosion=>corrosion.isDeckBreached);
+              need(breach?.mesh?.isGroup&&breach.mesh.parent&&breach.mesh.children.length===2,'Second impact did not create the real breach assembly');
+              const passage=map.vents.find(vent=>vent.isAcidBreach&&vent.x===point.x&&vent.z===point.z);
+              need(passage,'Breach did not open its authored passage');
+              const [disk,rim]=breach.mesh.children;
+              const opacity=rim.material.opacity,age=breach.timer;
+              f.active(()=>map.update(1/60));
+              need(breach.timer<age&&rim.material.opacity<opacity&&disk.material.opacity===1,'Station tick did not fade the rim independently of the deck opening');
+              const after={age:breach.timer,opacity:rim.material.opacity};
+              g.startCampaign(4);g.setSystemPaused(true);
+              need(!breach.mesh.parent&&!map.acidCorrosions.length&&!map.vents.includes(passage),'Old breach or its passage survived a new campaign');
+              return {point,before:{age,opacity},after,removed:true};
             """)
             check('The actual station dispatcher advances the steam subsystem once per tick', r"""
               f.reset();f.placePlayer(0,0);const original=map.updateSteamVents;let calls=0;
@@ -438,15 +559,7 @@ def main():
             sectors = page.evaluate('()=>__worldQA.stationMap.getIndustrialLayoutSectors()')
             for index, sector in enumerate([item for item in sectors if item['id'] in ['medical', 'foundry']], start=3):
                 capture(f'{index:02d}-native-sector-{sector["id"]}.png', 'Secteur ' + sector['id'], {'x': sector['x'], 'z': sector['z']})
-            assert not report['pageErrors'], report['pageErrors']
-            assert not report['consoleErrors'], report['consoleErrors']
-            assert not report['httpFailures'], report['httpFailures']
-            assert not report['failedRequests'], report['failedRequests']
-            assert all(row['match'] for row in report['assets'].values()), report['assets']
-            report['sourceAfter'] = {str(path.relative_to(root)): digest(path.read_bytes()) for path in runtime_paths()}
-            assert before == report['sourceAfter'], 'Sources changed during native world cohort'
-            report['complete'] = True
-            save()
+            finish()
         except Exception as error:
             report['failure'] = str(error)
             try:

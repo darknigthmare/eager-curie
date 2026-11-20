@@ -114,11 +114,11 @@ def main():
                        for sample in actor['samples']), actor
 
         def assert_capture_legible(detail):
-            beam = next(item for item in detail['beams'] if item['id'] == detail['activeSupport'])
-            assert beam['opacity'] <= .18 and not beam['depthWrite'], beam
             for actor in detail['actors']:
                 assert_actor_visible(actor)
-            assert all(other['opacity'] == 1 and other['depthWrite'] for other in detail['beams'] if other != beam)
+            faded = [beam for beam in detail['beams'] if beam['opacity'] < 1]
+            assert all(beam['opacity'] <= .18 and not beam['depthWrite'] for beam in faded), faded
+            assert all(beam['depthWrite'] for beam in detail['beams'] if beam not in faded)
 
         try:
             save()
@@ -214,6 +214,27 @@ def main():
             view = capture('07-t140-hold-gameplay.png', 'T140 · maintien', gameplay=True)
             if view:
                 assert_capture_legible(view)
+                check('Capture framing separates the rendered torso joints from the Drone', r"""
+                  const r=q.rendererEngine,rig=HiveAssetLibrary.getRuntime(f.imported(f.victim)).bindings;
+                  const parts=[];
+                  p.detailedModel.traverseVisible(mesh=>{if(mesh.isMesh)parts.push(mesh);});
+                  p.mesh.updateWorldMatrix(true,true);
+                  const ray=new T.Raycaster();
+                  const settle=()=>{for(let i=0;i<90;i++)r.setCameraTarget(p.x,p.z,0,false,1/60);};
+                  const visible=()=>['head','neck','spine','hips'].filter(name=>{
+                    const dir=rig[name].getWorldPosition(new T.Vector3()).sub(r.camera.position);
+                    ray.far=Math.max(0,dir.length()-.06);
+                    ray.set(r.camera.position,dir.normalize());
+                    return !ray.intersectObjects(parts,false).length;
+                  });
+                  const oblique=visible(),previous=r.reduceMotion;
+                  let overhead;
+                  try { g.setReducedMotion(true);settle();overhead=visible(); }
+                  finally { g.setReducedMotion(previous);settle(); }
+                  need(oblique.length>=3&&oblique.length>=overhead.length+2,
+                    'Capture view still overlaps the captive and Drone '+JSON.stringify({oblique,overhead}));
+                  return {oblique,overhead};
+                """)
             capture('07-t140-hold.png', 'T140 : prise maintenue, réaction humaine et propriété unique')
             page.evaluate('()=>{__creatureNative.beforeRelease=__creatureNative.snapshot()}')
             press('q')

@@ -113,7 +113,7 @@
       camera.clearViewOffset();
       // Let the installed camera and wall-fade controllers settle on the
       // observed phase. The HUD, actors, and collision geometry stay visible.
-      for(let i=0;i<60;i++){
+      for(let i=0;i<90;i++){
         r.setCameraTarget(target.x,target.z,0,false,1/60);
         r.updateWallVisibility({x:p.x,y:1.4,z:p.z},1/60);
       }

@@ -24,8 +24,9 @@ console.log('PASS: Synthétiseurs WebAudio, flash écran et locomotion arachnide
 
 // 3. Phase 1 (StageEgg) & Phase 2 (StageFacehugger)
 assert(gameJs.includes('derelictLaserPlane') && gameJs.includes('THERMOSENSOR'), 'Champ laser LV-426 et télémétrie thermique manquants dans StageEgg');
-assert(gameJs.includes('this.royalImplantCount = 0') && gameJs.includes('DOUBLE IMPLANTATION ALIEN 3'), 'Double-implantation royale manquante dans StageFacehugger');
-console.log('PASS: Fidélité 1:1 Phase 1 (Ovomorphe) et Phase 2 (Facehugger / Royal) validée');
+assert(gameJs.includes('this.royalImplantCount = 0') && gameJs.includes("this.setRecoveryPhase('ROYAL_CHOICE')") &&
+  gameJs.includes('beginSecondRoyalHunt()'), 'Choix après récupération du premier hôte royal manquant');
+console.log('PASS: Champ laser, télémétrie et choix royal après récupération présents');
 
 // 4. Phase 3 (StageChestburster) & Phase 4 (StageDrone)
 assert(gameJs.includes('earlyHeartbeatTimer') && gameJs.includes('chrysalisRingMesh'), 'Arythmie précoce et anneau 3D de chrysalide manquants dans StageChestburster');

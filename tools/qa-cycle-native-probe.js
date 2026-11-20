@@ -4,17 +4,31 @@
   const q=window.__cycleQA,g=window.gameInstance,p=q.playerCreature,map=q.stationMap;
   const f={host:null,face:null,phases:[],samples:[],extractionSamples:[],
     require(pass,message){if(!pass)throw Error(message);},
-    prepare(origin='starship'){
+    prepare(origin='starship',type='scientist'){
       g.campaignConfig.origin=origin;g.startCampaign(1);g.setSystemPaused(true);g.startCampaign(2);g.setSystemPaused(true);g.clearHumans();
       let point=null;
       for(const x of [-12,-4,4,12,28,-28])for(const z of [-8,8,20,-20,36,-36]){
         if(!point&&!map.checkCollision(x,z,.45)&&!map.checkCollision(x,z-2,.45)&&map.hasLineOfSight(x,z,x,z-2,.12))point={x,z};
       }
       this.require(point,'No native free host/leap fixture found');
-      const host=new q.HumanAI(9401,'scientist',point.x,point.z,'Hôte QA du cycle');host.createMesh();g.humans.push(host);
+      const host=new q.HumanAI(9401,type,point.x,point.z,'Hôte QA du cycle');host.createMesh();g.humans.push(host);
       p.x=point.x;p.z=point.z-2;p.mesh.position.set(p.x,.1,p.z);p.moveTarget=null;p.moveWaypoints=[];
       this.host=host;this.face=g.currentStage;this.phases=[];this.samples=[];this.extractionSamples=[];
       return {origin,hostId:host.id,host:[host.x,host.z],player:[p.x,p.z],fixture:'One actual host on a collider-free authored floor, no unrelated AI/map hazards stepped; actual host AI starts after attachment'};
+    },
+    addRoyalCandidate(){
+      const first=this.host;
+      first.characterKey='asterRho';first.maskAttachments=0;first.hostEligibility='viable';
+      let point=null;
+      for(const radius of [5,6,8,10])for(let i=0;i<16;i++){
+        const x=first.x+Math.cos(i*Math.PI/8)*radius,z=first.z+Math.sin(i*Math.PI/8)*radius;
+        if(!point&&!map.checkCollision(x,z,.6)&&map.hasLineOfSight(first.x,first.z,x,z,.2))point={x,z};
+      }
+      this.require(point,'No native lane for the distinct second host');
+      const second=new q.HumanAI(9402,'colonist',point.x,point.z,'Second hôte QA du cycle');
+      second.hostEligibility='viable';second.isRestrained=true;second.createMesh();g.humans.push(second);
+      this.secondHost=second;
+      return {first:first.id,second:second.id,point,fixture:'Distinct actual hosts are placed and the future candidate is restrained until approached'};
     },
     tick(dt=1/60){
       if(g.currentStageIndex!==5)p.update(dt);

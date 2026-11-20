@@ -70,6 +70,32 @@ check('Click-spam cannot skip attachment residence or recovery phases',()=>{
   const {face,game,host}=fixture();face.isAttacking=true;face.implantProgress=100;assert.equal(face.finishImplantationIfReady(),false);assert.equal(host.usedAsHost,false);
   for(let i=0;i<125;i++)face.update(1/60);assert.equal(face.postImplantPhase,'ATTACHED_HOLD');assert.equal(game.currentStage,face);assert.equal(host.isRestrained,true);
 });
+check('A lost second royal host releases the attachment and can only return to a living first host',()=>{
+  for(const firstAlive of [true,false]){
+    const {face,game,host,player,scene,observations}=fixture();
+    Object.assign(host,{usedAsHost:true,isInfected:true,hp:firstAlive?110:0,isIncapacitated:!firstAlive});
+    const other={type:'colonist',hostEligibility:'viable',hp:100,isRestrained:true,mesh:new THREE.Group(),x:2,z:1};
+    scene.add(other.mesh);player.attachedHost=other;player.isLeaping=true;player.leapHost=other;
+    player.leapComplete=()=>assert.fail('Lost alternate callback ran');
+    Object.assign(face,{isRoyal:true,royalImplantCount:1,royalFirstRecovery:{host,completed:true},targetHost:other,isAttacking:true});
+    face.update(1/60);
+    assert.equal(player.attachedHost,null);assert.equal(player.leapHost,null);assert.equal(player.leapComplete,null);
+    assert.equal(other.isRestrained,false);assert.equal(face.royalImplantCount,1);
+    assert.equal(observations.advances,firstAlive?1:0);assert.equal(game.hostRecoveryRecord?.host,firstAlive?host:undefined);
+    assert.equal(game.isRunning,firstAlive);
+  }
+});
+check('The first royal host can be chosen once and choice input freezes during pause',()=>{
+  const {face,game,host,observations}=fixture();
+  Object.assign(host,{usedAsHost:true,isInfected:true,characterKey:'asterRho'});
+  Object.assign(face,{isRoyal:true,royalImplantCount:1,royalFirstRecovery:{host,completed:true},postImplantPhase:'ROYAL_CHOICE'});
+  game.isSystemPaused=true;
+  face.handleKeyDown('1');assert.equal(observations.advances,0);
+  game.isSystemPaused=false;
+  face.handleKeyDown('1');assert.equal(observations.advances,1);
+  assert.equal(game.hostRecoveryRecord.host,host);assert.equal(game.hostProfile,'asterRho');
+  face.handleKeyDown('1');assert.equal(observations.advances,1);
+});
 check('Imported host actively braces both hands beside its face with exclusive animation ownership',()=>{
   const f=fixture(),model=new THREE.Group(),bindings={};f.host.mesh.add(model);
   const bone=(key,parent,position)=>{const result=new THREE.Bone();result.name=key;result.position.fromArray(position);parent.add(result);bindings[key]=result;return result;};

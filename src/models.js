@@ -1116,9 +1116,10 @@
         { x: side * length * 0.36, y: lift * 0.15, z: -length * 0.7 },
         { x: side * length * 0.47, y: lift, z: -length }
       ];
-      tailRoot.add(this._sweptBody(material, points,
+      const skin = this._sweptBody(material, points,
         [thickness * 1.45, thickness * 1.16, thickness * 0.83, thickness * 0.5, thickness * 0.24],
-        'tail_skin', 128, 24));
+        'tail_skin', 128, 24);
+      tailRoot.add(skin);
       // Vertebral scutes are relief in the tapered tail surface, not ring beads.
       const tip = points[points.length - 1];
       const blade = this._ellipsoid(boneMaterial,
@@ -1126,17 +1127,100 @@
         { x: tip.x, y: tip.y, z: tip.z - thickness * 2.9 }, 'tail_blade', 24);
       blade.rotation.y = -side * 0.35;
       tailRoot.add(blade);
-      // Articulated osselets / vertebrae chain nodes for AAA procedural wave propagation
       const vertebrae = [];
-      for (let v = 0; v < points.length; v++) {
-        const vertGroup = new T.Group();
-        vertGroup.name = `tail_vertebra_${v}`;
-        vertGroup.position.set(points[v].x, points[v].y, points[v].z);
-        tailRoot.add(vertGroup);
-        vertebrae.push(vertGroup);
+      const restPoints = points.map(({x, y, z}) => new T.Vector3(x, y, z));
+      for (let index = 0; index < restPoints.length; index++) {
+        const pivot = new T.Group(), previous = vertebrae.at(-1);
+        pivot.name = `tail_vertebra_${index}`;
+        pivot.position.copy(restPoints[index]);
+        if (previous) pivot.position.sub(restPoints[index - 1]);
+        (previous || tailRoot).add(pivot);
+        vertebrae.push(pivot);
       }
       tailRoot.userData.vertebrae = vertebrae;
+      // Lazily bind the continuous skin for actors that actually need flex.
+      // The factory's untouched silhouette still defines gameplay clearance.
+      let rig;
+      tailRoot.userData.getTailRig = () => rig ||= this._bindTailSkin(tailRoot, skin, blade, restPoints, vertebrae);
+      tailRoot.userData.restoreTailPose = () => rig?.restore();
       parent.add(tailRoot); return tailRoot;
+    }
+
+    _bindTailSkin(joint, skin, blade, points, vertebrae) {
+      const T = this._three(), geometry = skin.geometry;
+      const position = geometry.getAttribute('position'), normal = geometry.getAttribute('normal'), uv = geometry.getAttribute('uv');
+      position.setUsage(T.DynamicDrawUsage); normal.setUsage(T.DynamicDrawUsage);
+      const rest = new T.CatmullRomCurve3(points);
+      const rings = new Map(), vertexRings = [];
+      for (let index = 0; index < position.count; index++) {
+        const parameter = uv.getY(index);
+        if (!rings.has(parameter)) rings.set(parameter, {
+          parameter, center: rest.getPointAt(parameter), direction: rest.getTangentAt(parameter),
+          posedCenter: new T.Vector3(), rotation: new T.Quaternion()
+        });
+        vertexRings.push(rings.get(parameter));
+      }
+      const restPositions = position.array.slice(), restNormals = normal.array.slice();
+      const bladePosition = blade.position.clone(), bladeRotation = blade.quaternion.clone();
+      geometry.computeBoundingBox(); geometry.computeBoundingSphere(); blade.geometry.computeBoundingBox();
+      const restBox = geometry.boundingBox.clone(), restSphere = geometry.boundingSphere.clone();
+      const point = new T.Vector3(0, 0, blade.geometry.boundingBox.min.z);
+      const posedDirection = new T.Vector3(), vertex = new T.Vector3(), vertexNormal = new T.Vector3();
+      const updates = () => { position.needsUpdate = normal.needsUpdate = true; };
+      let active = false, flexed = false;
+      const curve = new T.CatmullRomCurve3(points.map(point => point.clone()));
+      const accumulated = new T.Quaternion(), terminalRotation = new T.Quaternion(), terminalPosition = new T.Vector3();
+      const tipOffset = bladePosition.clone().sub(points.at(-1));
+      const rig = {
+        joint, blade, skin, point, rest, bladePosition, bladeRotation,
+        applyCurve(curve, weight, bladeCenter, bladeQuaternion) {
+          for (const ring of rings.values()) {
+            curve.getPointAt(ring.parameter, ring.posedCenter).lerp(ring.center, 1 - weight);
+            curve.getTangentAt(ring.parameter, posedDirection).lerp(ring.direction, 1 - weight).normalize();
+            ring.rotation.setFromUnitVectors(ring.direction, posedDirection);
+          }
+          for (let index = 0; index < position.count; index++) {
+            const ring = vertexRings[index];
+            vertex.fromArray(restPositions, index * 3).sub(ring.center).applyQuaternion(ring.rotation).add(ring.posedCenter);
+            vertexNormal.fromArray(restNormals, index * 3).applyQuaternion(ring.rotation);
+            position.setXYZ(index, vertex.x, vertex.y, vertex.z);
+            normal.setXYZ(index, vertexNormal.x, vertexNormal.y, vertexNormal.z);
+          }
+          updates();
+          geometry.computeBoundingBox(); geometry.computeBoundingSphere();
+          blade.position.copy(bladeCenter); blade.quaternion.copy(bladeQuaternion);
+          active = true;
+        },
+        restore() {
+          if (!active) return;
+          position.array.set(restPositions); normal.array.set(restNormals); updates();
+          geometry.boundingBox.copy(restBox); geometry.boundingSphere.copy(restSphere);
+          blade.position.copy(bladePosition); blade.quaternion.copy(bladeRotation);
+          if (flexed) vertebrae.forEach(pivot => pivot.rotation.set(0, 0, 0));
+          active = flexed = false;
+        },
+        flex(phase, movement, strike) {
+          // Absolute joint offsets delay the motion along the chain; each
+          // link keeps its authored length while the skin follows one tube.
+          accumulated.identity();
+          const pace = phase * (1.1 + movement * .45);
+          for (let index = 1; index < points.length; index++) {
+            const pivot = vertebrae[index - 1], delay = (index - 1) * .58;
+            const lateral = Math.sin(pace - delay) * (.04 + movement * .055) + strike * .075;
+            const pitch = Math.cos(pace * .72 - delay) * (.019 + movement * .026) - strike * .035;
+            pivot.rotation.set(pitch, lateral, 0, 'YXZ');
+            accumulated.multiply(pivot.quaternion);
+            curve.points[index].copy(vertebrae[index].position).applyQuaternion(accumulated).add(curve.points[index - 1]);
+          }
+          curve.updateArcLengths();
+          terminalRotation.setFromUnitVectors(rest.getTangentAt(1, posedDirection), curve.getTangentAt(1));
+          terminalPosition.copy(tipOffset).applyQuaternion(terminalRotation).add(curve.points.at(-1));
+          terminalRotation.multiply(bladeRotation);
+          rig.applyCurve(curve, 1, terminalPosition, terminalRotation);
+          flexed = true;
+        }
+      };
+      return rig;
     }
 
     _addCrest(parent, material, size, isRoyal) {

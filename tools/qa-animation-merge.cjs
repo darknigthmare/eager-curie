@@ -61,7 +61,7 @@ test('Undeclared crusher tail restores its bind orientation without accumulating
   for (let index = 0; index < 300; index++) animate(f.container, { phase: .9, movement: .5, attack: .4 });
   assert.deepEqual(tail.quaternion.toArray(), first); f.dispose();
 });
-test('Tail motion moves visible geometry without rotating empty vertebral markers or blade independently', () => {
+test('Traversal baseline keeps the stationary tail skin and blade in their bind shape', () => {
   const f = fixture(() => factory.createAdult('drone')), tail = f.model.getObjectByName('segmented_tail');
   const mesh = tail.children.find(child => child.isMesh), markers = tail.userData.vertebrae || [];
   const beforeMarkers = markers.map(node => node.quaternion.toArray()), blade = tail.getObjectByName('tail_blade');
@@ -71,6 +71,48 @@ test('Tail motion moves visible geometry without rotating empty vertebral marker
   const second = new T.Box3().setFromObject(mesh).getCenter(new T.Vector3()); assert(first.distanceTo(second) > .1);
   assert.deepEqual(markers.map(node => node.quaternion.toArray()), beforeMarkers);
   if (blade) assert(blade.quaternion.equals(bladeRotation)); f.dispose();
+});
+test('Ground flex articulates the continuous shell and retains blade attachment and bind shape', () => {
+  for (const caste of ['drone', 'runner', 'crusher', 'warrior', 'queen']) {
+    const f = fixture(() => factory.createAdult(caste));
+    const tail = f.model.getObjectByName('segmented_tail'), rig = tail.userData.getTailRig();
+    const joints = tail.userData.vertebrae;
+    const position = rig.skin.geometry.getAttribute('position');
+    const rest = position.array.slice(), indices = rig.skin.geometry.index.array;
+    const bladeRest = rig.blade.getWorldPosition(new T.Vector3());
+    const jointEnd = () => joints.at(-1).getWorldPosition(new T.Vector3());
+    const bladeOffsetDistance = bladeRest.distanceTo(jointEnd());
+    const lengths = joints.slice(1).map((joint, index) => joint.getWorldPosition(new T.Vector3())
+      .distanceTo(joints[index].getWorldPosition(new T.Vector3())));
+    assert(joints.every((joint, index) => joint.parent === (joints[index - 1] || tail)), caste);
+    const state = { phase: 1.07, movement: .85, flexTail: true };
+    animate(f.container, state);
+    const first = position.array.slice();
+    const maxShift = first.reduce((max, value, index) => Math.max(max, Math.abs(value - rest[index])), 0);
+    assert(maxShift > .12 && maxShift < 1.8, `${caste} local skin flex ${maxShift}`);
+    const cap = position.count - 2;
+    assert.deepEqual([position.getX(cap), position.getY(cap), position.getZ(cap)], [0, 0, 0], caste);
+    assert.equal(rig.skin.geometry.index.array, indices);
+    const currentOffset = rig.blade.getWorldPosition(new T.Vector3()).distanceTo(jointEnd());
+    assert(Math.abs(currentOffset - bladeOffsetDistance) < 1e-6, caste);
+    joints.slice(1).forEach((joint, index) => {
+      const current = joint.getWorldPosition(new T.Vector3()).distanceTo(joints[index].getWorldPosition(new T.Vector3()));
+      assert(Math.abs(current - lengths[index]) < 1e-6, caste);
+    });
+    const normals = rig.skin.geometry.getAttribute('normal');
+    for (let index = 0; index < normals.count; index++) {
+      const magnitude = Math.hypot(normals.getX(index), normals.getY(index), normals.getZ(index));
+      assert(Math.abs(magnitude - 1) < 1e-5, `${caste} normal ${index}: ${magnitude}`);
+    }
+    animate(f.container, { ...state, phase: 2.43 });
+    assert.notDeepEqual(position.array, first, caste);
+    for (let index = 0; index < 8; index++) animate(f.container, state);
+    assert.deepEqual(position.array, first, caste);
+    animate(f.container, { ...state, flexTail: false });
+    assert.deepEqual(position.array, rest, caste);
+    assert(rig.blade.position.equals(rig.bladePosition) && rig.blade.quaternion.equals(rig.bladeRotation), caste);
+    f.dispose();
+  }
 });
 test('Saliva cylinders bridge the real jaw extension along their authored Y axis', () => {
   const f = fixture(() => factory.createAdult('drone'));

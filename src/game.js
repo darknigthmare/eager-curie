@@ -10862,6 +10862,8 @@
       this.lastWheelZoom = 0;
       this.ceilingFadeMaterials = new Map();
       this.followsAdultCreature = false;
+      this.ceilingCaptureAimOffset = null;
+      this.ceilingCaptureView = null;
     }
 
     sabotagePower(duration = 22) {
@@ -11124,12 +11126,56 @@
       }
       const prowlOffsetY = isProwl ? -5.5 : focusY - 1.2;
       const prowlOffsetZ = isProwl ? -3.0 : 0;
-      const targetY = isRTS ? 120 : ((31 + heightOffset) * this.cameraDistance + prowlOffsetY);
-      const targetZ = isRTS ? (z + 70) : (z + 25 * this.cameraDistance + prowlOffsetZ);
+      let targetX = x;
+      let targetY = isRTS ? 120 : ((31 + heightOffset) * this.cameraDistance + prowlOffsetY);
+      let targetZ = isRTS ? (z + 70) : (z + 25 * this.cameraDistance + prowlOffsetZ);
       const prowlSmoothingFactor = isProwl ? 0.88 : 0.92;
       const smoothing = 1 - Math.pow(prowlSmoothingFactor, Math.max(0, deltaSeconds) * 60);
+      const canFrameCapture = this.followsAdultCreature && !this.reduceMotion;
+      const action = canFrameCapture && actor?.ceilingAction;
+      const capture = action?.targetMesh?.parent && action.targetMesh.visible ? action : null;
+      let aimX = x, aimY = isRTS ? 0 : focusY, aimZ = z;
+      if (!canFrameCapture) this.ceilingCaptureView = null;
+      if (capture || this.ceilingCaptureView) {
+        const depth = targetZ - z, lateral = .966 * depth;
+        const eyeZ = z + .259 * depth;
+        const supportY = capture ? capture.support.undersideY : this.ceilingCaptureView.supportY;
+        const eyeY = Math.max(supportY + 4.2, targetY - 17 * this.cameraDistance);
+        if (capture && this.ceilingCaptureView?.action !== capture) {
+          // Choose the clearest side once and keep it as the captive rotates.
+          const side = this.chooseCeilingCaptureSide(actor, capture, lateral, eyeY, eyeZ);
+          this.ceilingCaptureView = { action: capture, side, supportY, progress: 0 };
+        }
+        const view = this.ceilingCaptureView;
+        view.action = capture;
+        const step = Math.max(0, deltaSeconds) / .55;
+        view.progress = THREE.MathUtils.clamp(view.progress + (capture ? step : -step), 0, 1);
+        const weight = THREE.MathUtils.smoothstep(view.progress, 0, 1);
+        const eyeX = THREE.MathUtils.clamp(x + lateral * view.side, -72, 72);
+        targetX += (eyeX - targetX) * weight;
+        targetY += (eyeY - targetY) * weight;
+        targetZ += (eyeZ - targetZ) * weight;
+        if (!capture && !view.progress) this.ceilingCaptureView = null;
+      }
+      if (capture) {
+        capture.targetMesh.updateWorldMatrix(true, false);
+        const victimCenter = capture.localBounds.getCenter(new THREE.Vector3()).applyMatrix4(capture.targetMesh.matrixWorld);
+        aimX += (victimCenter.x - x) * .42;
+        aimY += (victimCenter.y - focusY) * .42;
+        aimZ += (victimCenter.z - z) * .42;
+      }
+      if (!canFrameCapture) this.ceilingCaptureAimOffset = null;
+      if (capture || this.ceilingCaptureAimOffset) {
+        if (!this.ceilingCaptureAimOffset) this.ceilingCaptureAimOffset = new THREE.Vector3();
+        const offset = this.ceilingCaptureAimOffset;
+        offset.x += (aimX - x - offset.x) * smoothing;
+        offset.y += (aimY - focusY - offset.y) * smoothing;
+        offset.z += (aimZ - z - offset.z) * smoothing;
+        if (!capture && offset.lengthSq() < .0001) this.ceilingCaptureAimOffset = null;
+        aimX = x + offset.x; aimY = focusY + offset.y; aimZ = z + offset.z;
+      }
 
-      this.camera.position.x += (x - this.camera.position.x) * smoothing;
+      this.camera.position.x += (targetX - this.camera.position.x) * smoothing;
       this.camera.position.z += (targetZ - this.camera.position.z) * smoothing;
       this.camera.position.y += (targetY - this.camera.position.y) * smoothing;
 
@@ -11152,7 +11198,7 @@
         this.camera.updateProjectionMatrix();
       }
 
-      this.camera.lookAt(x, isRTS ? 0 : focusY, z);
+      this.camera.lookAt(aimX, aimY, aimZ);
 
       // Audit QA #89 : Inclinaison Contextuelle de Caméra en Virage (Camera Banking / Roll)
       if (!isRTS && actor) {
@@ -11170,6 +11216,37 @@
           this.camera.rotation.z *= Math.pow(0.82, Math.max(0, deltaSeconds) * 60);
         }
       }
+    }
+
+    chooseCeilingCaptureSide(actor, action, lateral, y, z) {
+      const mesh = action.targetMesh;
+      const bindings = window.HiveAssetLibrary?.getRuntime?.(getAnimationModel(mesh))?.bindings;
+      mesh.updateWorldMatrix(true, false);
+      actor.mesh.updateWorldMatrix(true, true);
+      const end = new THREE.Matrix4().compose(action.endPosition, action.endQuaternion, action.scale);
+      const actorFocus = actor.creatureEnvelope.bounds.getCenter(new THREE.Vector3()).applyMatrix4(actor.mesh.matrixWorld);
+      const captivePoints = ['head', 'neck', 'spine', 'hips'].flatMap(name => {
+        const joint = bindings?.[name];
+        return joint ? [mesh.worldToLocal(joint.getWorldPosition(new THREE.Vector3())).applyMatrix4(end)] : [];
+      });
+      if (!captivePoints.length) captivePoints.push(action.localBounds.getCenter(new THREE.Vector3()).applyMatrix4(end));
+      const actorParts = [];
+      actor.detailedModel?.traverseVisible(part => { if (part.isMesh) actorParts.push(part); });
+      const ray = this.wallVisibilityRay;
+      const sightlineBlocked = (from, to, objects) => {
+        const direction = to.clone().sub(from);
+        ray.far = Math.max(0, direction.length() - .08);
+        ray.set(from, direction.normalize());
+        return ray.intersectObjects(objects, false).length > 0;
+      };
+      const score = side => {
+        const origin = new THREE.Vector3(THREE.MathUtils.clamp(actor.x + side * lateral, -72, 72), y, z);
+        const covered = captivePoints.filter(point => sightlineBlocked(origin, point, actorParts)).length;
+        const walls = [actorFocus, ...captivePoints].filter(point => sightlineBlocked(origin, point, stationMap.walls)).length;
+        return covered + walls * 2;
+      };
+      const innerSide = actor.x > 0 ? -1 : 1;
+      return score(-innerSide) < score(innerSide) ? -innerSide : innerSide;
     }
 
     triggerCameraFovPunch(punchAmount = 5.5) {
@@ -11280,6 +11357,8 @@
     setCinematicCamera({ position, target, fov = 72, near = 0.025, exposure = 1.18 }, deltaSeconds = 1 / 60) {
       if (!position || !target) return;
       this.followsAdultCreature = false;
+      this.ceilingCaptureAimOffset = null;
+      this.ceilingCaptureView = null;
       this.restoreCeilingMaterials();
       let projectionChanged = false;
       if (this.camera.fov !== fov) {
@@ -12611,11 +12690,11 @@
 
       // Chantier 33 : Caméras de Sécurité Motorisées CRT Seegson / Weyland-Yutani (Alien: Isolation - Ancrage mural 1:1)
       this.securityCameras = [
-        { id: 'cam_nord', name: 'Caméra Couloir Nord', x: -14.1, z: -22, wallAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
-        { id: 'cam_airlock', name: 'Caméra Sas Est EVA', x: 55.0, z: -17.1, wallAngle: 0, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
-        { id: 'cam_armory', name: 'Caméra Armurerie', x: 16.1, z: -45, wallAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
-        { id: 'cam_reactor', name: 'Caméra Réacteur Mantis', x: -16.1, z: 35, wallAngle: -Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
-        { id: 'cam_nursery', name: 'Caméra Ruche Nurserie', x: 16.1, z: 35, wallAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false }
+        { id: 'cam_nord', name: 'Caméra Couloir Nord', x: -13.96, z: -31, wallAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_airlock', name: 'Caméra Sas Est EVA', x: 55, z: -16.96, wallAngle: 0, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_armory', name: 'Caméra Armurerie', x: 16.04, z: -45, wallAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_reactor', name: 'Caméra Réacteur Mantis', x: -16.04, z: 35, wallAngle: -Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false },
+        { id: 'cam_nursery', name: 'Caméra Ruche Nurserie', x: 16.04, z: 35, wallAngle: Math.PI / 2, sweep: 0, state: 'idle', alertTimer: 0, mesh: null, isDestroyed: false }
       ];
       this.securityCameras.forEach((cam) => {
         const mesh = window.HiveModelFactory?.createSecurityCamera?.();
@@ -16877,6 +16956,7 @@
           breachGroup.position.set(existing.x, 0, existing.z);
           rendererEngine.propsGroup.add(breachGroup);
           existing.mesh = breachGroup;
+          existing.fadeMaterial = rimRing.material;
           audioManager.playAcidDeckBurnThrough?.(existing.x, existing.z);
           audioManager.playAcidSizzle?.();
           audioManager.playMetalImpact?.(existing.x, existing.z);
@@ -16896,6 +16976,7 @@
             });
           }
         }
+        existing.maxTimer = Math.max(existing.maxTimer, existing.timer);
         return;
       }
       if (this.acidCorrosions.length >= 14) {
@@ -16952,6 +17033,13 @@
         window.HiveSystems?.vfx?.burst?.(wallX, wallZ, 0x39ff14, 18, 0.2, 1.5);
         this.acidCorrosions.push({ x: wallX, z: wallZ, radius: 1.2, timer: 8.0, maxTimer: 8.0, tick: 0, mesh: wallMesh });
       }
+    }
+
+    clearAcidCorrosions() {
+      for (const corrosion of this.acidCorrosions.splice(0)) {
+        if (corrosion.mesh) rendererEngine.removeObject(corrosion.mesh);
+      }
+      if (this.vents) this.vents = this.vents.filter(vent => !vent.isAcidBreach);
     }
 
     // Chantier 15 : Dépressurisation et bris du caisson d'hypersommeil cryogénique (Alien 1979 / Aliens 1986)
@@ -17142,7 +17230,8 @@
         const corr = this.acidCorrosions[i];
         corr.timer -= safeDelta;
         corr.tick -= safeDelta;
-        if (corr.mesh) corr.mesh.material.opacity = Math.max(0.08, (corr.timer / corr.maxTimer) * 0.78);
+        const fade = corr.fadeMaterial || corr.mesh?.material;
+        if (fade?.transparent) fade.opacity = Math.max(.08, (corr.timer / corr.maxTimer) * .78);
         if (corr.tick <= 0) {
           corr.tick = 0.5;
           (window.gameInstance?.humans || []).forEach((h) => {
@@ -18053,7 +18142,12 @@
 
     // Chantier 33 : Caméras de Sécurité Motorisées CRT Seegson / Weyland-Yutani (Alien: Isolation)
     updateSecurityCameras(safeDelta) {
-      if (!this.securityCameras) return;
+      const game = window.gameInstance;
+      if (!this.securityCameras || game?.isSystemPaused) return;
+      const target = playerCreature;
+      const canTrack = game?.campaignActive && game.isRunning && game.currentStageIndex >= 2 && game.currentStageIndex <= 4 && target.mesh?.visible &&
+        !target.isDefeated && !target.isBiologicalTransition && !target.isInVent &&
+        !target.isCeilingProwling && !target.isSubfloorProwling;
       this.securityCameras.forEach((cam) => {
         if (!cam.mesh) return;
         if (cam.isDestroyed) {
@@ -18064,6 +18158,7 @@
           }
           return;
         }
+        const previousSweep = cam.sweep;
         cam.sweep += safeDelta * 0.65;
         const localPan = Math.sin(cam.sweep) * 0.72;
         const currentAngle = (cam.wallAngle || 0) + localPan;
@@ -18076,37 +18171,33 @@
         }
 
         // Bruitage subtil de servomoteur pas-à-pas aux inversions de balayage
-        if (Math.abs(Math.cos(cam.sweep)) < 0.038) {
+        if ((Math.cos(previousSweep) > 0) !== (Math.cos(cam.sweep) > 0)) {
           audioManager.playCameraServoPan?.(cam.x, cam.z);
         }
 
-        // Cône de vision de 11 mètres, ouverture 48 degrés
-        const dx = playerCreature.x - cam.x;
-        const dz = playerCreature.z - cam.z;
-        const dist = Math.hypot(dx, dz);
-        if (dist <= 11 && !playerCreature.isInVent && !playerCreature.isCeilingProwling) {
-          const angleToPlayer = Math.atan2(dx, dz);
-          const angleDiff = Math.abs((((angleToPlayer - currentAngle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
-          if (angleDiff <= 0.48) {
-            cam.alertTimer = (cam.alertTimer || 0) + safeDelta;
-            if (cam.alertTimer >= 0.75 && cam.state !== 'alert') {
-              cam.state = 'alert';
-              audioManager.playCameraAlertBeep?.(cam.x, cam.z);
-              window.HiveSystems?.vfx?.ring?.(cam.x, cam.z, 0xef4444, 9.0);
-              showToast(`ALERTE CAMÉRA : ${cam.name} a détecté l'organisme !`);
-              window.alarmSystem?.setLevel(Math.max((window.alarmSystem.level || 0), 3));
-
-              // Convergence tactique de tous les combattants de sécurité vers la caméra
-              (window.gameInstance?.humans || []).forEach((h) => {
-                if (h.isCombatant && !h.isIncapacitated) {
-                  h.aiState = 'CHASE';
-                  h.targetPos = { x: cam.x, z: cam.z };
-                }
-              });
+        let observing = false;
+        if (canTrack && cam.sensorMesh && Math.hypot(target.x - cam.x, target.z - cam.z) <= 12.5) {
+          // Trace from the lens on the moving optical head. The bracket is
+          // inside the wall, and would block every ray started at its plate.
+          const lens = cam.sensorMesh.getWorldPosition(cam.lensPosition ||= new THREE.Vector3());
+          const dx = target.x - lens.x, dz = target.z - lens.z;
+          const distance = Math.hypot(dx, dz);
+          observing = distance <= 11 &&
+            dx * Math.sin(currentAngle) + dz * Math.cos(currentAngle) >= distance * Math.cos(.48) &&
+            this.hasLineOfSight(lens.x, lens.z, target.x, target.z, .08);
+        }
+        cam.alertTimer = observing ? Math.min(.75, cam.alertTimer + safeDelta) : Math.max(0, cam.alertTimer - safeDelta * 1.5);
+        if (cam.alertTimer <= 0) cam.state = 'idle';
+        if (cam.alertTimer >= .75 && cam.state !== 'alert') {
+          cam.state = 'alert';
+          audioManager.playCameraAlertBeep?.(cam.x, cam.z);
+          window.HiveSystems?.vfx?.ring?.(cam.x, cam.z, 0xef4444, 9);
+          showToast(`ALERTE CAMÉRA : ${cam.name} a détecté l'organisme !`);
+          alarmSystem.setLevel(Math.max(alarmSystem.level, 3));
+          for (const human of game.humans) {
+            if (human.canEngageHostiles?.() && Math.hypot(human.x - cam.x, human.z - cam.z) <= 24) {
+              human.receiveThreatReport?.(target.x, target.z, target);
             }
-          } else {
-            cam.alertTimer = Math.max(0, (cam.alertTimer || 0) - safeDelta * 0.5);
-            if (cam.alertTimer <= 0) cam.state = 'idle';
           }
         }
 
@@ -18129,6 +18220,24 @@
           }
         }
       });
+    }
+
+    resetSecurityCameras() {
+      for (const cam of this.securityCameras || []) {
+        cam.sweep = 0;
+        cam.state = 'idle';
+        cam.alertTimer = 0;
+        cam.isDestroyed = false;
+        delete cam.sparkTimer;
+        cam.swivelHead?.rotation.set(-.12, 0, 0);
+        if (cam.fovCone) {
+          cam.fovCone.visible = true;
+          cam.fovCone.material.color.setHex(0x22c55e);
+          cam.fovCone.material.opacity = .065;
+        }
+        cam.sensorMesh?.material.color.setHex(0x22c55e);
+        cam.sensorMesh?.material.emissive?.setHex(0x16a34a);
+      }
     }
 
     // Mission Wave 10 : Sabotage Diégétique de Caméras de Surveillance (Alien: Isolation / Romulus)
@@ -26907,7 +27016,8 @@
     movement = 0,
     attack = 0,
     crouch = 0,
-    pulse = 0
+    pulse = 0,
+    flexTail = false
   } = {}) {
     const model = getAnimationModel(container);
     if (window.HiveAssetLibrary?.handlesRoot?.(model)) {
@@ -26988,23 +27098,13 @@
       tail.rotation.y += horizontalSway;
       tail.rotation.x += verticalWave;
 
-      // Empty authoring markers do not deform tail_skin. A blade is not a
-      // vertebra either: its orientation must remain relative to the tail.
-      const vertebrae = (tail.userData?.vertebrae || []).filter((joint) => joint?.isGroup && joint.children?.length);
-      if (vertebrae && vertebrae.length > 0) {
-        vertebrae.forEach((vert, vIdx) => {
-          if (!vert.userData.runtimeWaveBase) vert.userData.runtimeWaveBase = vert.quaternion.clone();
-          vert.quaternion.copy(vert.userData.runtimeWaveBase);
-          const delay = vIdx * 0.36;
-          vert.rotation.y += Math.sin(phase * tailSpeed - delay) * (0.09 + movement * 0.14);
-          vert.rotation.x += Math.cos(phase * tailSpeed * 0.8 - delay * 0.7) * (0.04 + movement * 0.06);
-        });
-      }
-      if (attack > 0) {
-        const whipEnv = Math.sin(Math.min(1, Math.max(0, attack)) * Math.PI);
+      const whipEnv = Math.sin(Math.min(1, Math.max(0, attack)) * Math.PI);
+      if (whipEnv > 0) {
         tail.rotation.x += whipEnv * 0.86;
         tail.rotation.z += Math.sin(whipEnv * Math.PI * 2) * 0.34;
       }
+      if (flexTail) tail.userData.getTailRig?.()?.flex(phase, movement, whipEnv);
+      else tail.userData.restoreTailPose?.();
     }
 
     const attackJoints = Array.isArray(rig.roles?.attack) ? rig.roles.attack : [];
@@ -28969,7 +29069,7 @@
     }),
     pathogen_popper: Object.freeze({
       key: 'pathogen_popper',
-      label: 'POPPER PATHOGÃˆNE',
+      label: 'POPPER PATHOGÈNE',
       maxHealth: 90,
       speed: 0.58,
       huntAction: 'PULSATION EXPLOSIVE',
@@ -28981,7 +29081,7 @@
     }),
     pathogen_blight: Object.freeze({
       key: 'pathogen_blight',
-      label: 'BLIGHT PATHOGÃˆNE',
+      label: 'BLIGHT PATHOGÈNE',
       maxHealth: 210,
       speed: 0.44,
       huntAction: 'BRUME CORROSIVE',
@@ -28993,10 +29093,10 @@
     }),
     pathogen_mimic: Object.freeze({
       key: 'pathogen_mimic',
-      label: 'MIMIC PATHOGÃˆNE',
+      label: 'MIMIC PATHOGÈNE',
       maxHealth: 230,
       speed: 0.46,
-      huntAction: 'MIMÃ‰TISME BIOMÃ‰CANIQUE',
+      huntAction: 'MIMÉTISME BIOMÉCANIQUE',
       huntCost: 28,
       huntRange: 68,
       huntDamage: 115,
@@ -29005,10 +29105,10 @@
     }),
     harbinger: Object.freeze({
       key: 'harbinger',
-      label: 'HARBINGER PATHOGÃˆNE',
+      label: 'HARBINGER PATHOGÈNE',
       maxHealth: 310,
       speed: 0.40,
-      huntAction: 'SIGNAL PATHOGÃˆNE',
+      huntAction: 'SIGNAL PATHOGÈNE',
       huntCost: 35,
       huntRange: 72,
       huntDamage: 125,
@@ -29017,7 +29117,7 @@
     }),
     engineer_hybrid: Object.freeze({
       key: 'engineer_hybrid',
-      label: 'HYBRIDE INGÃ‰NIEUR PRIMORDIAL',
+      label: 'HYBRIDE INGÉNIEUR PRIMORDIAL',
       maxHealth: 420,
       speed: 0.38,
       huntAction: 'COLOSSE PRIMORDIAL',
@@ -29029,10 +29129,10 @@
     }),
     arcology_lurker: Object.freeze({
       key: 'arcology_lurker',
-      label: 'RÃ”DEUR Dâ€™ARCOLOGIE',
+      label: 'RÔDEUR D’ARCOLOGIE',
       maxHealth: 185,
       speed: 0.50,
-      huntAction: 'EMBUSCADE Dâ€™ARCOLOGIE',
+      huntAction: 'EMBUSCADE D’ARCOLOGIE',
       huntCost: 25,
       huntRange: 72,
       huntDamage: 105,
@@ -29068,7 +29168,7 @@
       label: 'RUNNER DES DUNES',
       maxHealth: 150,
       speed: 0.57,
-      huntAction: 'CHARGE DU DÃ‰SERT',
+      huntAction: 'CHARGE DU DÉSERT',
       huntCost: 28,
       huntRange: 70,
       huntDamage: 98,
@@ -29080,7 +29180,7 @@
       label: 'EXPLODEUR ACIDE',
       maxHealth: 140,
       speed: 0.53,
-      huntAction: 'DÃ‰FLAGRATION CAUSTIQUE',
+      huntAction: 'DÉFLAGRATION CAUSTIQUE',
       huntCost: 32,
       huntRange: 66,
       huntDamage: 160,
@@ -29113,10 +29213,10 @@
     }),
     k_series_yellow_xenomorph: Object.freeze({
       key: 'k_series_yellow_xenomorph',
-      label: 'XÃ‰NOMORPHE SÃ‰RIE K',
+      label: 'XÉNOMORPHE SÉRIE K',
       maxHealth: 220,
       speed: 0.44,
-      huntAction: 'ASSAUT SÃ‰PARATISTE',
+      huntAction: 'ASSAUT SÉPARATISTE',
       huntCost: 30,
       huntRange: 65,
       huntDamage: 112,
@@ -29125,7 +29225,7 @@
     }),
     monica_line: Object.freeze({
       key: 'monica_line',
-      label: 'LIGNÃ‰E MONICA',
+      label: 'LIGNÉE MONICA',
       maxHealth: 390,
       speed: 0.46,
       huntAction: 'BOND CARMIN PRIORITAIRE',
@@ -29137,10 +29237,10 @@
     }),
     neuro_xeno_drone: Object.freeze({
       key: 'neuro_xeno_drone',
-      label: 'DRONE NEURO-CONTRÃ”LÃ‰',
+      label: 'DRONE NEURO-CONTRÔLÉ',
       maxHealth: 185,
       speed: 0.41,
-      huntAction: 'DIRECTIVE SYNAPTIQUE FORCÃ‰E',
+      huntAction: 'DIRECTIVE SYNAPTIQUE FORCÉE',
       huntCost: 25,
       huntRange: 68,
       huntDamage: 92,
@@ -29149,7 +29249,7 @@
     }),
     pale_crucible_hunter: Object.freeze({
       key: 'pale_crucible_hunter',
-      label: 'CHASSEUR DU CREUSET PÃ‚LE',
+      label: 'CHASSEUR DU CREUSET PÂLE',
       maxHealth: 205,
       speed: 0.47,
       huntAction: 'TRAQUE DU CREUSET',
@@ -29161,7 +29261,7 @@
     }),
     reef_spitter: Object.freeze({
       key: 'reef_spitter',
-      label: 'CRACHEUR RÃ‰CIFAL',
+      label: 'CRACHEUR RÉCIFAL',
       maxHealth: 170,
       speed: 0.41,
       huntAction: 'JET HYDRO-ACIDE',
@@ -29173,7 +29273,7 @@
     }),
     reef_stalker: Object.freeze({
       key: 'reef_stalker',
-      label: 'TRAQUEUR RÃ‰CIFAL',
+      label: 'TRAQUEUR RÉCIFAL',
       maxHealth: 190,
       speed: 0.49,
       huntAction: 'BOND SOUS-MARIN',
@@ -29188,7 +29288,7 @@
       label: 'REINE RIPPEUR',
       maxHealth: 680,
       speed: 0.30,
-      huntAction: 'CARNAGE Dâ€™Ã‰VISCÃ‰RATION',
+      huntAction: 'CARNAGE D’ÉVISCÉRATION',
       huntCost: 45,
       huntRange: 68,
       huntDamage: 165,
@@ -29197,7 +29297,7 @@
     }),
     salvage_hive_brute: Object.freeze({
       key: 'salvage_hive_brute',
-      label: 'BRUTE DE RÃ‰CUPÃ‰RATION',
+      label: 'BRUTE DE RÉCUPÉRATION',
       maxHealth: 340,
       speed: 0.36,
       huntAction: 'BROYAGE DE COQUE',
@@ -29209,7 +29309,7 @@
     }),
     siege_royal: Object.freeze({
       key: 'siege_royal',
-      label: 'GARDE SIÃˆGE ROYAL',
+      label: 'GARDE SIÈGE ROYAL',
       maxHealth: 540,
       speed: 0.31,
       huntAction: 'PAVOIS ROYAL',
@@ -29221,7 +29321,7 @@
     }),
     specimen_six_line: Object.freeze({
       key: 'specimen_six_line',
-      label: 'LIGNÃ‰E SPÃ‰CIMEN SIX',
+      label: 'LIGNÉE SPÉCIMEN SIX',
       maxHealth: 215,
       speed: 0.54,
       huntAction: 'FOUET CAUDAL VENDETTA',
@@ -29245,7 +29345,7 @@
     }),
     ravager: Object.freeze({
       key: 'ravager',
-      label: 'RAVAGEUR Dâ€™ASSAUT',
+      label: 'RAVAGEUR D’ASSAUT',
       maxHealth: 370,
       speed: 0.39,
       huntAction: 'FAUCHAGE TRANCHANT',
@@ -29676,25 +29776,10 @@
 
     createCeilingTailPose() {
       const joint = this.detailedModel?.getObjectByName('segmented_tail');
-      const skin = joint?.getObjectByName('tail_skin'), blade = joint?.getObjectByName('tail_blade');
-      const geometry = skin?.geometry, joints = joint?.userData?.vertebrae;
-      const position = geometry?.getAttribute('position'), normal = geometry?.getAttribute('normal');
-      const uv = geometry?.getAttribute('uv');
-      if (!position || !normal || !uv || blade?.parent !== joint || !joints || joints.length < 3) return null;
-      const rest = new THREE.CatmullRomCurve3(joints.map(node => node.position.clone()));
-      const ringByParameter = new Map(), vertexRings = [];
-      for (let index = 0; index < position.count; index++) {
-        const parameter = uv.getY(index);
-        if (!ringByParameter.has(parameter)) ringByParameter.set(parameter, {
-          parameter, center: rest.getPointAt(parameter), direction: rest.getTangentAt(parameter)
-        });
-        vertexRings.push(ringByParameter.get(parameter));
-      }
-      blade.geometry.computeBoundingBox();
-      const point = new THREE.Vector3(0, 0, blade.geometry.boundingBox.min.z);
-      return { joint, skin, blade, point, rest, vertexRings, rings: [...ringByParameter.values()],
-        restPositions: position.array.slice(), restNormals: normal.array.slice(),
-        bladePosition: blade.position.clone(), bladeRotation: blade.quaternion.clone(), weight: 0 };
+      const rig = joint?.userData.getTailRig?.();
+      if (!rig) return null;
+      rig.restore();
+      return { ...rig, weight: 0 };
     }
 
     getCeilingTailContact(action) {
@@ -29723,20 +29808,14 @@
     restoreCeilingTailPose(action) {
       const tail = action?.tailPose;
       if (!tail?.weight) return;
-      const geometry = tail.skin.geometry;
-      geometry.getAttribute('position').array.set(tail.restPositions);
-      geometry.getAttribute('normal').array.set(tail.restNormals);
-      geometry.getAttribute('position').needsUpdate = geometry.getAttribute('normal').needsUpdate = true;
-      geometry.computeBoundingBox(); geometry.computeBoundingSphere();
-      tail.blade.position.copy(tail.bladePosition);
-      tail.blade.quaternion.copy(tail.bladeRotation);
+      tail.restore();
       tail.weight = 0;
     }
 
     poseCeilingTail(action, contact, weight) {
       const tail = action.tailPose;
       if (!tail || weight <= 0) { this.restoreCeilingTailPose(action); return true; }
-      const { joint, skin, blade, rest } = tail, start = rest.getPointAt(0);
+      const { joint, blade, rest } = tail, start = rest.getPointAt(0);
       const tip = joint.worldToLocal(contact.center.clone());
       const inward = joint.worldToLocal(contact.center.clone().add(contact.direction)).sub(tip).normalize();
       const approach = tip.clone().sub(start).normalize();
@@ -29761,9 +29840,7 @@
       const distalCurl = THREE.MathUtils.clamp(span * .39 + slack * .57, .45, length * .62);
       const candidate = new THREE.CubicBezierCurve3(start, start.clone(), end.clone(), end);
       candidate.arcLengthDivisions = 32;
-      const restPosition = new THREE.Vector3(), restNormal = new THREE.Vector3();
-      const rotation = new THREE.Quaternion(), localPoint = new THREE.Vector3();
-      const position = skin.geometry.getAttribute('position'), normal = skin.geometry.getAttribute('normal');
+      const rotation = new THREE.Quaternion();
       const bounds = new THREE.Box3(), sample = new THREE.Vector3();
       const worldScale = joint.getWorldScale(new THREE.Vector3());
       const radius = worldScale.x * .14;
@@ -29813,23 +29890,7 @@
         }
       }
       if (!usable) return false;
-      for (const ring of tail.rings) {
-        ring.position = ring.center.clone().lerp(candidate.getPointAt(ring.parameter), weight);
-        const direction = ring.direction.clone().lerp(candidate.getTangentAt(ring.parameter), weight).normalize();
-        ring.rotation = new THREE.Quaternion().setFromUnitVectors(ring.direction, direction);
-      }
-      for (let index = 0; index < position.count; index++) {
-        const ring = tail.vertexRings[index];
-        localPoint.copy(restPosition.fromArray(tail.restPositions, index * 3)).sub(ring.center)
-          .applyQuaternion(ring.rotation).add(ring.position);
-        restNormal.fromArray(tail.restNormals, index * 3).applyQuaternion(ring.rotation);
-        position.setXYZ(index, localPoint.x, localPoint.y, localPoint.z);
-        normal.setXYZ(index, restNormal.x, restNormal.y, restNormal.z);
-      }
-      position.needsUpdate = normal.needsUpdate = true;
-      skin.geometry.computeBoundingBox(); skin.geometry.computeBoundingSphere();
-      blade.position.copy(bladeAtWeight);
-      blade.quaternion.copy(rotationAtWeight);
+      tail.applyCurve(candidate, weight, bladeAtWeight, rotationAtWeight);
       tail.weight = weight;
       tail.curveLength = candidate.getLength();
       return true;
@@ -33704,13 +33765,21 @@
           }
         }
 
+        const flexTail = this.form === 'drone' && !this.isEmerging && !this.isInVent &&
+          !this.draggedHost && !this.isSubmerged && !rendererEngine.reduceMotion;
         animateProceduralModel(this.mesh, {
           phase: this.creatureAnimationTime * (this.form === 'facehugger' ? 14 : 9),
           movement: dx !== 0 || dy !== 0 ? 1 : 0.08,
           attack: this.actionAnimation,
-          pulse: this.form === 'chestburster' ? 0.4 : 0
+          pulse: this.form === 'chestburster' ? 0.4 : 0,
+          flexTail
         });
         if (!this.isEmerging) this.applyGroundContact();
+        const articulatedTail = flexTail ? this.detailedModel?.getObjectByName('segmented_tail') : null;
+        if (articulatedTail?.userData.getTailRig && !stationMap.isCreaturePoseClear(new THREE.Box3().setFromObject(articulatedTail))) {
+          articulatedTail.userData.restoreTailPose();
+          this.applyGroundContact();
+        }
       } else if (this.isChrysalis) {
         animateProceduralModel(this.mesh, {
           phase: this.creatureAnimationTime * 6,
@@ -34506,6 +34575,12 @@
     updateNavigation(deltaSeconds) {
       if (!this.navigationGoal) return;
       this.navigationRepathTimer = Math.max(0, this.navigationRepathTimer - deltaSeconds);
+      // A closed door can exhaust the route while its destination remains
+      // valid. With no waypoint left there is no movement/stuck branch to
+      // request another plan, so retry here at the existing bounded cadence.
+      if (this.navigationBlocked && this.pathWaypoints.length === 0 && this.navigationRepathTimer <= 0) {
+        this.planNavigation(this.navigationGoal.x, this.navigationGoal.z, true);
+      }
       while (
         this.pathWaypoints.length > 0 &&
         Math.hypot(
@@ -37475,6 +37550,8 @@
       this.implantProgress = 0;
       this.lastImplantPercent = -1;
       this.isRoyal = false;
+      this.royalImplantCount = 0;
+      this.royalFirstRecovery = null;
       this.attachedElapsed = 0;
       this.postImplantPhase = null;
       this.phaseElapsed = 0;
@@ -37518,12 +37595,25 @@
       window.HiveSystems?.setMission(2, 0, 'Approcher un hôte viable sans toucher les équipes de capture.');
     }
     updateHUD() {
+      const actionsContainer = document.getElementById('action-buttons-container');
+      if (this.postImplantPhase === 'ROYAL_CHOICE') {
+        document.getElementById('bio-title').textContent = 'SECONDE IMPLANTATION ROYALE';
+        document.getElementById('stage-instructions').textContent = 'Le premier hôte a trouvé refuge. Le parasite royal a quitté son enveloppe et peut encore chercher un autre hôte.';
+        actionsContainer.innerHTML = `
+          <button type="button" id="btn-royal-first-host" class="act-btn">SUIVRE LE PREMIER HÔTE [1]</button>
+          <button type="button" id="btn-royal-second-host" class="act-btn">CHERCHER UN AUTRE HÔTE [2]</button>`;
+        document.getElementById('btn-royal-first-host').onclick = () => this.followFirstRoyalHost();
+        document.getElementById('btn-royal-second-host').onclick = () => this.beginSecondRoyalHunt();
+        setHudBar('sec', 'HÔTES IMPLANTÉS', 50, '1/2');
+        enrichActionButtonsWithSquareIcons(actionsContainer);
+        return;
+      }
       if (this.postImplantPhase) {
-        const labels = { ATTACHED_HOLD: 'IMPLANTATION TERMINÉE — MAINTIEN', COLLAPSE: 'ÉVANOUISSEMENT DE L’HÔTE', HUSK_FALL: 'DÉTACHEMENT DU PARASITE', UNCONSCIOUS: 'HÔTE INCONSCIENT', WAKE: 'REPRISE DE CONSCIENCE', DISCOVER: 'DÉCOUVERTE DU CADAVRE', PANIC_FLEE: 'FUITE DE L’HÔTE', FADE_OUT: 'CHANGEMENT DE SECTEUR', RELOCATING: 'DÉPLACEMENT VERS UN SECTEUR ABRITÉ', FADE_IN: 'MÊME HÔTE — NOUVEAU SECTEUR' };
+        const labels = { ATTACHED_HOLD: 'IMPLANTATION TERMINÉE — MAINTIEN', COLLAPSE: 'ÉVANOUISSEMENT DE L’HÔTE', HUSK_FALL: 'DÉTACHEMENT DU PARASITE', UNCONSCIOUS: 'HÔTE INCONSCIENT', WAKE: 'REPRISE DE CONSCIENCE', DISCOVER: this.royalReturnPoint ? 'DÉCOUVERTE DE L’ENVELOPPE' : 'DÉCOUVERTE DU CADAVRE', PANIC_FLEE: 'FUITE DE L’HÔTE', FADE_OUT: 'CHANGEMENT DE SECTEUR', RELOCATING: 'DÉPLACEMENT VERS UN SECTEUR ABRITÉ', FADE_IN: 'MÊME HÔTE — NOUVEAU SECTEUR', ROYAL_RETURN: 'RETOUR AU PARASITE ROYAL' };
         const label = labels[this.postImplantPhase] || 'CYCLE BIOLOGIQUE';
         document.getElementById('bio-title').textContent = label;
         document.getElementById('stage-instructions').textContent = 'Suivez le même hôte : le parasite se détache avant son réveil. La croissance reste interne.';
-        document.getElementById('action-buttons-container').innerHTML = `<button type="button" class="act-btn" disabled>${label}</button>`;
+        actionsContainer.innerHTML = `<button type="button" class="act-btn" disabled>${label}</button>`;
         setHudBar('sec', 'IMPLANTATION ACHEVÉE', 100);
         return;
       }
@@ -37548,20 +37638,23 @@
         ? '<strong>Lutte :</strong><br><br>• Le parasite est replié sur le visage et sa queue verrouille la nuque.<br>• Pressez Espace ou le bouton pour resserrer l’étreinte.<br>• Maintenez l’agrippement jusqu’à implantation complète.'
         : (this.isBonding
           ? '<strong>Bond en cours :</strong><br><br>• Trajectoire verrouillée sur le visage de l’hôte.'
-          : `<strong>Choix d’hôte :</strong><br><br>• Un hôte humain permet le développement d’un Drone.<br>• L’animal de service produit un Runner quadrupède.<br>• L’équipement militaire n’est pas un caractère génétique.<br>• Masque d’Aster Rho : ${maskStatus}. Chaque bond arrache une attache avant toute implantation.<br>• Déplacez-vous puis bondissez à courte portée.`);
-      const actionsContainer = document.getElementById('action-buttons-container');
+          : this.royalFirstRecovery ? '<strong>Seconde recherche royale :</strong><br><br>• Approchez un autre hôte viable et recommencez l’implantation.<br>• Vous pouvez encore suivre le premier hôte.'
+            : `<strong>Choix d’hôte :</strong><br><br>• Un hôte humain permet le développement d’un Drone.<br>• L’animal de service produit un Runner quadrupède.<br>• L’équipement militaire n’est pas un caractère génétique.<br>• Masque d’Aster Rho : ${maskStatus}. Chaque bond arrache une attache avant toute implantation.<br>• Déplacez-vous puis bondissez à courte portée.`);
       actionsContainer.innerHTML = this.isAttacking
         ? `<button type="button" id="btn-action-leap" class="act-btn" style="border-color: #f59e0b;">RESSERRER L’ÉTREINTE — ${Math.round(this.implantProgress)}% [ESPACE]</button>`
         : `
           <button type="button" id="btn-action-leap" class="act-btn" ${this.isBonding ? 'disabled' : ''} style="border-color: #39ff14;">${this.isBonding ? 'BOND EN COURS…' : 'BONDIR SUR LE VISAGE [ESPACE]'}</button>
           <button type="button" id="btn-thermal-vision" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.15);"><span class="key-badge">I</span>VISION THERMIQUE</button>
           ${this.isRoyal ? '<button type="button" class="act-btn" disabled style="border-color: #a855f7; color: #c084fc;">VARIANTE ROYALE — LIGNÉE DE CAMPAGNE</button>' : ''}
+          ${this.royalFirstRecovery && !this.isBonding ? '<button type="button" id="btn-royal-first-host" class="act-btn">SUIVRE LE PREMIER HÔTE [1]</button>' : ''}
         `;
       document.getElementById('btn-action-leap').onclick = () => this.isAttacking ? this.tightenGrip() : this.attemptLeap();
       const btnThermal = document.getElementById('btn-thermal-vision');
       if (btnThermal) btnThermal.onclick = () => visionSystem.toggleThermal();
       const btnRoyal = document.getElementById('btn-royal-mutate');
       if (btnRoyal) btnRoyal.onclick = () => this.applyRoyalMutation();
+      const btnFirstHost = document.getElementById('btn-royal-first-host');
+      if (btnFirstHost) btnFirstHost.onclick = () => this.followFirstRoyalHost();
       enrichActionButtonsWithSquareIcons(actionsContainer);
     }
 
@@ -37766,6 +37859,7 @@
       this.targetHost.usedAsHost = true;
       this.targetHost.isRestrained = true;
       this.targetHost.isRecoveringFromFacehugger = true;
+      if (this.isRoyal) this.royalImplantCount++;
       playerCreature.isBiologicalTransition = true;
       this.isAttacking = false;
       playerCreature.moveTarget = null;
@@ -37876,6 +37970,131 @@
       if (model) window.HiveAssetLibrary?.setState?.(model, { frozen: false, movement: 0, attack: 0, dead: false });
     }
 
+    isAvailableRoyalHost(host) {
+      return host?.mesh?.parent && host.hp > 0 && !host.isIncapacitated && !host.isInfected &&
+        !host.isCocooned && !host.isDisposed && !host.usedAsHost && !host.isSynthetic?.() &&
+        (host.hostEligibility === 'viable' || (host.hostEligibility === 'protected' && host.maskAttachments > 0));
+    }
+
+    findRoyalReturnPoint() {
+      const { x, z } = this.huskEnd;
+      const padding = playerCreature.creatureEnvelope?.radius || .3;
+      const targets = this.ownerGame.humans.filter(host => this.isAvailableRoyalHost(host)).sort((a, b) =>
+        Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z));
+      if (!targets.length) return null;
+      const sites = [{ x, z }];
+      for (const distance of [1.1, 2.2]) for (let index = 0; index < 8; index++) {
+        const angle = index * Math.PI / 4;
+        sites.push({ x: x + Math.cos(angle) * distance, z: z + Math.sin(angle) * distance });
+      }
+      const site = sites.find(point => !stationMap.checkCollision(point.x, point.z, padding));
+      if (!site) return null;
+      for (const target of targets) {
+        const clearJump = point => Math.hypot(target.x - point.x, target.z - point.z) <= 10 &&
+          stationMap.hasLineOfSight(point.x, point.z, target.x, target.z, .12);
+        if (clearJump(site)) return site;
+        const route = stationMap.findPath(site.x, site.z, target.x, target.z, { padding });
+        if (route.length && clearJump(route.at(-1))) return site;
+      }
+      return null;
+    }
+
+    isRecoveredHostAvailable(record) {
+      const host = record?.host;
+      return record?.completed && host?.mesh?.parent && host.isInfected && host.usedAsHost && host.hp > 0 &&
+        !host.isIncapacitated && !host.isConsumedByCycle && !host.isDisposed && this.ownerGame.humans.includes(host);
+    }
+
+    completeRecoveredHost(record) {
+      if (this.isCompleted || !this.isRecoveredHostAvailable(record)) return false;
+      this.releaseRecoveryPose();
+      this.isCompleted = true;
+      this.ownerGame.hostRecoveryRecord = record;
+      this.ownerGame.hostProfile = record.host.characterKey || record.host.type;
+      playerCreature.x = record.host.x; playerCreature.z = record.host.z;
+      playerCreature.isBiologicalTransition = false;
+      if (playerCreature.attachedHost) playerCreature.detachFromHost({ releaseHost: true, hide: true });
+      if (playerCreature.mesh) playerCreature.mesh.visible = false;
+      window.HiveSystems?.ui?.clearBiologicalTransition?.();
+      window.HiveSystems?.updateObjective(2, 2);
+      this.ownerGame.advanceStage(this);
+      return true;
+    }
+
+    canChooseRoyalHost() {
+      const game = window.gameInstance;
+      return this.royalFirstRecovery && !this.isCompleted && game === this.ownerGame && game.currentStage === this &&
+        game.campaignActive && game.isRunning && !game.isSystemPaused;
+    }
+
+    followFirstRoyalHost() {
+      if (!this.canChooseRoyalHost() || this.isAttacking || this.isBonding ||
+        (this.postImplantPhase && this.postImplantPhase !== 'ROYAL_CHOICE')) return false;
+      if (this.completeRecoveredHost(this.royalFirstRecovery)) return true;
+      showToast('Le premier hôte n’est plus viable. Cherchez un autre hôte.');
+      return false;
+    }
+
+    beginSecondRoyalHunt() {
+      if (!this.canChooseRoyalHost() || this.postImplantPhase !== 'ROYAL_CHOICE') return false;
+      this.royalReturnPoint = this.findRoyalReturnPoint();
+      if (!this.royalReturnPoint) return this.followFirstRoyalHost();
+      appendSensorLog('[SECONDE IMPLANTATION ROYALE] Le parasite quitte son enveloppe pour chercher un hôte distinct.', 'bio');
+      this.setRecoveryPhase('ROYAL_RETURN');
+      return true;
+    }
+
+    updateRoyalReturn(delta) {
+      this.phaseElapsed += delta;
+      const elapsed = this.phaseElapsed;
+      window.HiveSystems?.ui?.setBiologicalTransition?.(elapsed < .4 ? elapsed / .4 : Math.max(0, 1 - (elapsed - .4) / .55), 'Reprise du contrôle du parasite royal.');
+      if (elapsed >= .4 && this.targetHost) {
+        const { x, z } = this.royalReturnPoint;
+        const padding = playerCreature.creatureEnvelope?.radius || .3;
+        if (stationMap.checkCollision(x, z, padding)) {
+          if (!this.completeRecoveredHost(this.royalFirstRecovery)) this.abortRecovery();
+          return;
+        }
+        this.targetHost = null;
+        playerCreature.x = x; playerCreature.z = z;
+        playerCreature.mesh?.position.set(x, 0, z);
+        if (playerCreature.mesh) window.HiveModelFactory?.placeOnGround?.(playerCreature.mesh, .015);
+        rendererEngine.snapCameraTarget(x, z);
+      }
+      if (elapsed < .95) return;
+      this.royalReturnPoint = null;
+      this.postImplantPhase = null;
+      this.implantProgress = 0;
+      this.attachedElapsed = 0;
+      this.attachedPoseTime = 0;
+      this.lastImplantPercent = -1;
+      this.deadHusk = null;
+      this.recoveryDestination = null;
+      this.recoveryRoute = null;
+      this.recoveryOriginSector = null;
+      this.failedRecoveryDestinations = null;
+      this.recoverySearchAttempts = 0;
+      this.recoverySearchCooldown = 0;
+      this.recoveryRepathCooldown = 0;
+      playerCreature.isBiologicalTransition = false;
+      if (playerCreature.mesh) playerCreature.mesh.visible = true;
+      window.HiveSystems?.ui?.clearBiologicalTransition?.();
+      window.HiveSystems?.updateObjective(2, 1, 'Trouver un second hôte, ou suivre le premier dans sa gestation.');
+      this.updateHUD();
+      if (!this.ownerGame.humans.some(host => this.isAvailableRoyalHost(host))) this.followFirstRoyalHost();
+    }
+
+    abortRecovery() {
+      if (this.recoveryAborted) return;
+      if (this.completeRecoveredHost(this.royalFirstRecovery)) {
+        showToast('Aucune seconde implantation viable. La lignée demeure dans le premier refuge.');
+        return;
+      }
+      this.recoveryAborted = true;
+      this.destroy();
+      this.ownerGame?.showEndModal?.('Cycle interrompu', 'L’hôte a été perdu avant la maturation. Recommencez le cycle.');
+    }
+
     beginHuskFall() {
       const host = this.targetHost;
       const start = new THREE.Vector3(host.x, .8, host.z);
@@ -37895,6 +38114,8 @@
         const x = host.x + Math.cos(angle) * .9, z = host.z + Math.sin(angle) * .9;
         if (!stationMap.checkCollision(x, z, .12)) { this.huskEnd = { x, z }; break; }
       }
+      this.royalReturnPoint = this.isRoyal && this.royalImplantCount === 1 ? this.findRoyalReturnPoint() : null;
+      if (this.royalReturnPoint && this.deadHusk) this.deadHusk.name = 'shed_royal_facehugger_sheath';
       audioManager.playWetImpact?.(host.x, host.z);
     }
 
@@ -37951,13 +38172,14 @@
     }
 
     updateRecovery(delta) {
+      if (this.postImplantPhase === 'ROYAL_RETURN') { this.updateRoyalReturn(delta); return; }
+      if (this.postImplantPhase === 'ROYAL_CHOICE') {
+        if (!this.ownerGame.humans.some(host => this.isAvailableRoyalHost(host))) this.abortRecovery();
+        return;
+      }
       const host = this.targetHost;
       if (!host?.mesh || host.isIncapacitated || host.isConsumedByCycle) {
-        if (!this.recoveryAborted) {
-          this.recoveryAborted = true;
-          this.destroy();
-          this.ownerGame?.showEndModal?.('Cycle interrompu', 'L’hôte a été perdu avant la maturation. Recommencez le cycle.');
-        }
+        this.abortRecovery();
         return;
       }
       this.phaseElapsed += delta;
@@ -38011,6 +38233,7 @@
             host.isRecoveringFromFacehugger = true; host.isRestrained = true;
             this.setRecoveryPhase('FADE_OUT');
           } else if (this.recoverySearchAttempts >= 5) {
+            if (this.completeRecoveredHost(this.royalFirstRecovery)) return;
             this.recoveryAborted = true;
             this.destroy();
             this.ownerGame?.showEndModal?.('Voie de fuite inaccessible', 'L’hôte ne peut atteindre aucun secteur abrité par les passages disponibles. Recommencez le cycle.');
@@ -38042,16 +38265,18 @@
         if (t >= 1.1) {
           window.HiveSystems?.ui?.clearBiologicalTransition?.();
           this.releaseRecoveryPose();
-          this.isCompleted = true;
-          playerCreature.isBiologicalTransition = false;
-          this.ownerGame.hostRecoveryRecord = { host, husk: this.deadHusk, destination: this.recoveryDestination, completed: true };
-          window.HiveSystems?.updateObjective(2, 2);
-          this.ownerGame.advanceStage(this);
+          const recovery = { host, husk: this.deadHusk, destination: this.recoveryDestination, completed: true };
+          if (this.royalReturnPoint && this.findRoyalReturnPoint()) {
+            this.royalFirstRecovery = recovery;
+            this.setRecoveryPhase('ROYAL_CHOICE');
+          } else if (!this.completeRecoveredHost(recovery)) this.abortRecovery();
         }
       }
     }
 
     handleKeyDown(key) {
+      if (key === '1' && this.royalFirstRecovery) { this.followFirstRoyalHost(); return; }
+      if (key === '2' && this.postImplantPhase === 'ROYAL_CHOICE') { this.beginSecondRoyalHunt(); return; }
       if (this.postImplantPhase) return;
       if (key === 'i') {
         visionSystem.toggleThermal();
@@ -38093,9 +38318,21 @@
     }
     update(deltaSeconds = 1 / 60) {
       const game = window.gameInstance;
-      if (game?.isSystemPaused || (this.ownerGame && (game !== this.ownerGame || game.currentStage !== this || !game.isRunning || !game.campaignActive))) return;
+      if (this.isCompleted || game?.isSystemPaused || (this.ownerGame && (game !== this.ownerGame || game.currentStage !== this || !game.isRunning || !game.campaignActive))) return;
       const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(.05, deltaSeconds)) : 0;
       if (this.postImplantPhase) { this.updateRecovery(delta); return; }
+      if (this.royalFirstRecovery) {
+        const selectedHost = this.targetHost || playerCreature.leapHost;
+        const available = this.isAttacking || this.isBonding
+          ? game.humans.includes(selectedHost) && this.isAvailableRoyalHost(selectedHost)
+          : game.humans.some(host => this.isAvailableRoyalHost(host));
+        if (!available) {
+          this.isAttacking = false; this.isBonding = false;
+          playerCreature.isLeaping = false; playerCreature.leapHost = null; playerCreature.leapComplete = null;
+          this.abortRecovery();
+          return;
+        }
+      }
       if (!this.isAttacking || this.isCompleted) return;
       this.attachedElapsed += delta;
       this.poseAttachedHost(delta);
@@ -38264,12 +38501,14 @@
         : (this.ownerGame?.humans.find((human) => human.isInfected && human.usedAsHost && Number.isFinite(human.hp) && human.hp > 0 && !human.isIncapacitated && !human.isConsumedByCycle) || null);
       if (!this.infectedHost && window.gameInstance) {
         const savedAster = window.gameInstance.campaignCharacters.asterRho;
-        const restoredType = savedAster.usedAsHost
-          ? 'commando'
-          : (window.gameInstance.hostProfile || 'scientist');
-        const restoredName = savedAster.usedAsHost ? 'Surveillante Aster Rho' : 'Hôte de quarantaine';
+        const profile = window.gameInstance.hostProfile;
+        const isAster = profile === 'asterRho' || (savedAster.usedAsHost && (!profile || ['commando', 'royal_host'].includes(profile)));
+        const origin = this.ownerGame.activeOrigin;
+        const restoredType = isAster ? 'commando' : (profile === 'royal_host' ? origin?.hostType : profile) || 'scientist';
+        const restoredName = isAster ? 'Surveillante Aster Rho'
+          : (origin?.hostType === restoredType && origin.hostName) || 'Hôte de quarantaine';
         this.infectedHost = new HumanAI(31, restoredType, playerCreature.x, playerCreature.z, restoredName);
-        if (savedAster.usedAsHost) {
+        if (isAster) {
           this.infectedHost.characterKey = 'asterRho';
           this.infectedHost.maskAttachments = savedAster.maskAttachments;
         }
@@ -44135,6 +44374,8 @@
       window.HiveSystems?.ui?.setBiologicalTransition?.(0, '');
       resinGrid.reset();
       pheromoneSystem.reset();
+      stationMap.resetSecurityCameras();
+      stationMap.clearAcidCorrosions();
       inputManager.reset();
       window.HiveSystems?.vfx?.clear?.();
 

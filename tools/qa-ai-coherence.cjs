@@ -189,6 +189,52 @@ check('Unreachable search points wait and replan instead of steering through a w
   assert.equal(f.actor.navigationBlocked, true); f.step(1);
   assert.deepEqual([f.actor.x, f.actor.z], initial); assert(f.paths.length <= 2);
 });
+check('A blocked civilian flee resumes its remembered route after the door opens without a forced order', () => {
+  const f = fixture({ type: 'scientist', x: -18, z: -20, px: 40, pz: 40 });
+  assert.equal(f.actor.fleeFrom(-18, -11), true);
+  const goal = { x: f.actor.navigationGoal.x, z: f.actor.navigationGoal.z };
+  assert.equal(goal.x, -18); assert.equal(goal.z, -29);
+  const door = { minX: -74, maxX: 74, minZ: -25.5, maxZ: -24.5 };
+  f.map.colliders.push(door); f.actor.planNavigation(goal.x, goal.z, true);
+  assert.equal(f.actor.navigationBlocked, true); assert.equal(f.actor.pathWaypoints.length, 0);
+  const blocked = [f.actor.x, f.actor.z]; f.step(.3);
+  assert.deepEqual([f.actor.x, f.actor.z], blocked);
+  f.map.colliders.splice(f.map.colliders.indexOf(door), 1);
+  const plans = f.paths.length;
+  // A real path now exists, but no manual planNavigation/fleeFrom call is used.
+  const path = f.MapClass.prototype.findPath.call(f.map, f.actor.x, f.actor.z, goal.x, goal.z);
+  assert(path.length > 0); f.p.x = 60; f.p.z = 60; f.step(.6);
+  assert.equal(f.paths.length, plans + 1); assert.equal(f.actor.navigationBlocked, false);
+  assert(f.actor.z < blocked[1] - .1, 'the same flee order must actually resume movement');
+  assert.equal(f.actor.navigationGoal.x, goal.x); assert.equal(f.actor.navigationGoal.z, goal.z);
+  f.step(2.2); assert(f.actor.z < -25.5, 'the actor crosses the reopened doorway using the real route');
+  assert.equal(f.map.checkCollision(f.actor.x, f.actor.z), false);
+  return { goal, blocked, resumed: [f.actor.x, f.actor.z], resumedPlans: f.paths.length - plans };
+});
+check('An empty blocked route retries at .8 seconds, not every simulation frame', () => {
+  const f = fixture({ type: 'scientist', x: -18, z: -20, px: 40, pz: 40 });
+  assert.equal(f.actor.fleeFrom(-18, -11), true);
+  f.map.colliders.push({ minX: -74, maxX: 74, minZ: -25.5, maxZ: -24.5 });
+  f.actor.planNavigation(-18, -29, true); const plans = f.paths.length;
+  f.step(2.45);
+  assert.equal(f.actor.navigationBlocked, true); assert.equal(f.actor.pathWaypoints.length, 0);
+  assert.deepEqual([f.actor.x, f.actor.z], [-18, -20]);
+  const retries = f.paths.length - plans;
+  assert(retries >= 2 && retries <= 3, 'Unexpected blocked-route retries: ' + retries);
+  return { simulationSeconds: 2.45, retries };
+});
+check('Pause preserves a blocked flee deadline and resumes only the remaining simulation time', () => {
+  const f = fixture({ type: 'scientist', x: -18, z: -20, px: 40, pz: 40 });
+  assert.equal(f.actor.fleeFrom(-18, -11), true);
+  const door = { minX: -74, maxX: 74, minZ: -25.5, maxZ: -24.5 };
+  f.map.colliders.push(door); f.actor.planNavigation(-18, -29, true); f.step(.3);
+  const remaining = f.actor.navigationRepathTimer, plans = f.paths.length;
+  f.game.isSystemPaused = true; f.map.colliders.splice(f.map.colliders.indexOf(door), 1); f.step(3);
+  assert.equal(f.paths.length, plans); assert.equal(f.actor.navigationRepathTimer, remaining);
+  assert.deepEqual([f.actor.x, f.actor.z], [-18, -20]);
+  f.game.isSystemPaused = false; f.step(.4); assert.equal(f.paths.length, plans);
+  f.step(.15); assert.equal(f.paths.length, plans + 1); assert(f.actor.z < -20);
+});
 check('The biological lure retains its existing A-star priority', () => {
   const f = fixture({ stage: 1, x: -8, px: 8, pz: 0, wall });
   f.actor.lureTowards(8, 0); assert.equal(f.actor.isLured, true); assert(f.actor.pathWaypoints.length >= 2);

@@ -4,11 +4,11 @@
 
 const fs = require('fs');
 const assert = require('assert');
+const vm = require('node:vm');
 
 console.log('--- EXÉCUTION DE LA SUITE DE TESTS QA AAA WAVE 21 ---');
 
 const gameJs = fs.readFileSync('src/game.js', 'utf8');
-const modelsJs = fs.readFileSync('src/models.js', 'utf8');
 const styleCss = fs.readFileSync('src/css/style.css', 'utf8');
 const indexHtml = fs.readFileSync('index.html', 'utf8');
 
@@ -20,16 +20,45 @@ assert(styleCss.includes('backdrop-filter: contrast(1.45) saturate(1.9) hue-rota
 assert(styleCss.includes('backdrop-filter: contrast(1.65) brightness(0.92) saturate(1.4)'), 'backdrop-filter acoustique manquant dans style.css');
 console.log('PASS: Vision Thermique FLIR & Acoustique 3D réelles + backdrop-filter CSS validés');
 
-// 2. Chaîne vertébrale caudale parent-enfant réellement articulée (_addTail)
-assert(modelsJs.includes('currentParent.add(vertGroup);') && modelsJs.includes('currentParent = vertGroup;') && modelsJs.includes('currentParent.add(blade);'), 'Chaîne parent-enfant articulée manquante dans _addTail');
-assert(modelsJs.includes('`tail_seg_${v}`') && modelsJs.includes('`tail_scute_${v}`'), 'Segments et écussons vertébraux manquants dans _addTail');
-console.log('PASS: Chaîne vertébrale caudale parent-enfant réellement articulée validée');
+// 2. La chaîne parent-enfant pose la peau caudale continue et le dard.
+global.THREE = require('../assets/vendor/three.r128.min.js');
+for (const file of ['organic-sculpt.js', 'surface-detail.js', 'model-detail.js', 'models.js']) require('../src/' + file);
+const factory = global.HiveModelFactory;
+const adult = factory.createAdult('drone');
+try {
+  const tail = adult.getObjectByName('segmented_tail'), pivots = tail.userData.vertebrae, rig = tail.userData.getTailRig();
+  assert(pivots.length >= 5 && pivots.every((pivot, index) => pivot.parent === (pivots[index - 1] || tail)));
+  const vertices = rig.skin.geometry.getAttribute('position').array, rest = vertices.slice();
+  const blade = rig.blade.position.clone();
+  rig.flex(.85, .85, .4);
+  assert(vertices.some((coordinate, index) => Math.abs(coordinate - rest[index]) > .15));
+  assert(rig.blade.position.distanceTo(blade) > .15);
+  rig.restore();
+  assert.deepStrictEqual(vertices, rest);
+} finally {
+  factory.disposeModel(adult);
+}
+console.log('PASS: Chaîne caudale et déformation mesurée du maillage continu');
 
-// 3. Chestburster standard sinueux (segments + segmented_tail dans animationJoints)
-assert(modelsJs.includes('`chestburster_seg_${cs}`'), 'Segments dorsaux chestburster_seg_ manquants dans createChestburster');
-assert(modelsJs.includes("animationJoints: ['juvenile_arm_-1', 'juvenile_arm_1', 'articulated_jaw', 'segmented_tail']"), 'segmented_tail manquant dans animationJoints du Chestburster');
-assert(gameJs.includes("{ segs: ['chestburster_seg_'], heads: ['juvenile_head'], maxSeg: 4 }"), 'Animation sinueuse du Chestburster standard manquante dans animateProceduralModel');
-console.log('PASS: Chestburster standard sinueux (segments + queue + tête) validé');
+// 3. Marche et attaque utilisent les groupes articulés réellement livrés.
+const start = gameJs.indexOf('  function getAnimationModel');
+const end = gameJs.indexOf('  function setHudBar', start);
+assert(start >= 0 && end > start);
+const context = { window: {} };
+vm.createContext(context);
+vm.runInContext(gameJs.slice(start, end) + '\nthis.animate = animateProceduralModel;', context);
+const juvenile = factory.createChestburster(false);
+try {
+  const joints = ['segmented_tail', 'juvenile_head', ...Array.from({ length: 4 }, (_, index) => `chestburster_seg_${index}`)]
+    .map(name => juvenile.getObjectByName(name));
+  assert(joints.every(node => node && juvenile.userData.animationRig.joints.includes(node)));
+  const before = joints.map(node => node.quaternion.clone());
+  context.animate(juvenile, { phase: .71, movement: .8, attack: .35 });
+  assert(joints.every((node, index) => !node.quaternion.equals(before[index])));
+} finally {
+  factory.disposeModel(juvenile);
+}
+console.log('PASS: Joints du juvénile mesurés en marche et en attaque');
 
 // 4. Embuscade conduit plafond avec chute verticale animée & tension cardiaque furtive
 assert(gameJs.includes('this.ventDropTimer = 0.32') && gameJs.includes('this.ventDropStartY = 3.6'), 'Chute verticale animée manquante dans executeCeilingVentDropAmbush');

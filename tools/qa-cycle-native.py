@@ -202,7 +202,11 @@ def main():
             check('Extraction finishes once and leaves the real exuvia', '''f.require(g.currentStageIndex===4&&!g.pendingEvolution,'Completion did not advance once');f.require([...g.biologicalRemains].some(o=>o.name==='discarded_chrysalis_exuvia'&&o.parent),'Exuvia missing');return f.snapshot();''')
             capture('06-emerged-adult.png')
             check('Restart clears all remains and old phase ownership', '''const old=f.face,remains=[...g.biologicalRemains];g.startCampaign(1);g.setSystemPaused(true);f.require(g.biologicalRemains.size===0&&remains.every(o=>!o.parent),'Restart retained prior remains');const stage=g.currentStage;old.update(.05);f.require(g.currentStage===stage,'Stale cycle advanced new game');return {remaining:g.biologicalRemains.size};''')
-            report['royalFixture']=page.evaluate('()=>__cycleNative.prepare("hive")');save();click('#btn-action-leap')
+            report['royalFixture']=page.evaluate('''()=>{
+              const f=__cycleNative;
+              HiveSystems.ui.saveManager.startNew('survivor',true,'hive');
+              return {start:f.prepare('hive','commando'),pair:f.addRoyalCandidate()};
+            }''');save();click('#btn-action-leap')
             check('Royal attachment folds the actual visible descendant', '''
               f.until(()=>p.attachedHost===f.host,100);let contains=false;p.mesh.traverse(o=>{if(o===p.detailedModel)contains=true;});
               f.require(contains&&p.detailedModel.userData.foldedPose===true,'Royal pose targets a detached model');
@@ -214,6 +218,58 @@ def main():
               const bounds=f.attachmentBounds(),size=bounds.visibleSize;
               f.require(bounds.renderedMeshes>0&&size[0]<2.2&&size[1]<2.2,'Rendered royal parasite remains torso-sized '+JSON.stringify(bounds));return bounds;
             ''')
+            check('First royal host wakes and flees before the second implantation choice', '''
+              const first=f.host,result=f.until(()=>f.face.postImplantPhase==='ROYAL_CHOICE',7000);
+              f.require(!g.pendingEvolution&&f.face.royalImplantCount===1&&f.face.royalFirstRecovery.host===first,'First recovery did not stay in act II');
+              f.require(!p.mesh.visible&&!p.attachedHost&&first.infectionState==='GESTATING'&&!first.isRestrained,'First host or hidden survivor still held');
+              f.require(f.phases.includes('WAKE')&&f.phases.includes('PANIC_FLEE')&&f.phases.includes('RELOCATING'),'First recovery skipped a required beat');
+              f.require(f.face.deadHusk?.name==='shed_royal_facehugger_sheath'&&g.biologicalRemains.has(f.face.deadHusk),'Missing first shedded envelope');
+              f.require(!f.secondHost.isInfected,'Second host infected without the second choice');
+              return result;
+            ''')
+            capture('08-royal-choice.png')
+            page.evaluate('()=>gameInstance.setSystemPaused(false)')
+            click('#btn-royal-second-host')
+            check('Second choice returns the same parasite to walkable floor under the fade', '''
+              f.require(f.face.postImplantPhase==='ROYAL_RETURN','Second action did not begin its controlled return');
+              const mesh=p.mesh;f.until(()=>f.face.postImplantPhase===null,100);
+              f.require(mesh===p.mesh&&p.mesh.visible&&!p.isBiologicalTransition&&!p.attachedHost,'Second hunt replaced or left the parasite locked');
+              f.require(!q.stationMap.checkCollision(p.x,p.z,p.creatureEnvelope.radius),'Return point did not fit the royal body');
+              const ground=new THREE.Box3().setFromObject(mesh).min.y;
+              f.require(ground>=-.02&&ground<=.05,'Returning parasite floats or clips through the floor '+ground);
+              f.require(f.face.royalFirstRecovery.host===f.host&&document.getElementById('btn-royal-first-host'),'Escape back to the first gestation unavailable');
+              f.firstHost=f.host;f.host=f.secondHost;return f.snapshot();
+            ''')
+            click('#btn-action-leap')
+            check('Second royal implantation has a distinct actor and the same minimum hold', '''
+              f.until(()=>p.attachedHost===f.secondHost,100);
+              for(let i=0;i<9;i++)document.getElementById('btn-action-leap').click();
+              f.require(f.face.royalImplantCount===1&&!f.secondHost.isInfected&&f.face.attachedElapsed<2,'Second implantation bypassed minimum residence');
+              f.until(()=>g.pendingEvolution===f.face,7000);
+              f.require(f.face.royalImplantCount===2&&g.hostRecoveryRecord.host===f.secondHost&&f.secondHost!==f.firstHost,'Second recovery selected the wrong host');
+              f.require(f.face.deadHusk?.parent&&f.face.deadHusk.name!=='shed_royal_facehugger_sheath'&&g.biologicalRemains.size===2,'Terminal parasite did not leave its own corpse');
+              f.require(f.phases.filter(phase=>phase==='PANIC_FLEE').length===2,'Second host skipped wake and flight');
+              return {state:f.snapshot(),first:f.firstHost.id,second:f.secondHost.id};
+            ''')
+            click('#modal-btn-continue')
+            check('Second biological host is retained by the real next-act checkpoint', '''
+              const save=window.HiveSystems.ui.saveManager.read();
+              f.require(g.currentStage.infectedHost===f.secondHost&&save.stage===3&&save.adultCaste==='praetorian'&&save.hostProfile==='colonist',
+                'Checkpoint did not retain the selected second profile '+JSON.stringify({stage:save.stage,caste:save.adultCaste,profile:save.hostProfile}));
+              f.require(save.campaignCharacters.asterRho.usedAsHost,'First host history disappeared');
+              g.configureCampaign(save);g.startCampaign(save.stage);g.setSystemPaused(true);
+              f.require(g.currentStage.infectedHost.type==='colonist'&&g.currentStage.infectedHost.characterKey!=='asterRho','Resume chose the first host instead of the second profile');
+              return {stage:save.stage,hostProfile:save.hostProfile,adultCaste:save.adultCaste,firstHistory:save.campaignCharacters.asterRho.usedAsHost};
+            ''')
+            page.evaluate('()=>__cycleNative.prepare("hive")');click('#btn-action-leap')
+            check('An isolated royal implantation falls back to the ordinary single-host ending', '''
+              f.until(()=>p.attachedHost===f.host,100);
+              f.until(()=>g.pendingEvolution===f.face,7000);
+              f.require(!f.phases.includes('ROYAL_CHOICE')&&f.face.royalImplantCount===1&&g.hostRecoveryRecord.host===f.host,'Single viable host did not resume the ordinary cycle');
+              f.require(f.face.deadHusk?.name!=='shed_royal_facehugger_sheath','Single-host ending left a shed envelope instead of a corpse');
+              return {state:f.snapshot(),record:g.hostRecoveryRecord.host.id};
+            ''')
+            click('#modal-btn-continue')
             report['sourcesAfter']={str(p.relative_to(root)):sha(p.read_bytes()) for p in files};assert report['sourcesBefore']==report['sourcesAfter'],'Runtime source changed during native cohort'
             assert not report['pageErrors'],report['pageErrors'];assert not report['consoleErrors'],report['consoleErrors'];assert not report['httpFailures'],report['httpFailures']
             assert all(item['match'] for item in report['assets'].values()),'A served asset differs from the local source'

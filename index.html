@@ -50,7 +50,7 @@
         <div class="fan-notice-box">
           <p class="fan-legal-notice">
             <strong>AVIS DE NON-AFFILIATION & MENTION LÉGALE :</strong><br>
-            Ce projet interactif est une création bénévole et passionnée réalisée par <strong>darknigthmare</strong>.<br>
+            Ce projet interactif est une création bénévole et passionnée réalisée par <strong>DARKNIGHTMARE</strong>.<br>
             Il s'agit d'un <em>Fan Game</em> non commercial rendu en hommage à la franchise cinématographique et vidéoludique <strong>ALIEN</strong>.<br>
             Il n'est ni affilié, ni sponsorisé, ni approuvé par 20th Century Studios, The Walt Disney Company ou SEGA.<br>
             Tous les droits, marques déposées et éléments visuels ou sonores originaux appartiennent à leurs ayants droit respectifs.
@@ -1038,6 +1038,13 @@
             <span id="stat-vital-val">100%</span>
           </div>
           <div class="bar-track"><div class="bar-fill vital-fill" id="stat-vital-fill" role="progressbar" aria-labelledby="stat-vital-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" style="width: 100%;"></div></div>
+          <!-- Wave 22 : Bio-Moniteur EKG Live CRT (Nostromo / Sevastopol) -->
+          <div id="hud-bio-ekg" class="hud-bio-ekg healthy" aria-hidden="true">
+            <svg viewBox="0 0 180 28" preserveAspectRatio="none" class="hud-ekg-svg">
+              <polyline class="hud-ekg-trace" points="0,14 28,14 36,14 42,4 48,24 54,10 60,14 96,14 104,14 110,4 116,24 122,10 128,14 180,14" />
+            </svg>
+            <span id="hud-bio-ekg-bpm" class="hud-ekg-bpm">72 BPM // NOMINAL</span>
+          </div>
         </div>
 
         <!-- Secondary Resource Bar (Acide / Biomass / Time) -->
@@ -1423,6 +1430,17 @@
           <span class="decompress-subtext">VIDE SPATIAL IMMINENT</span>
         </div>
       </div>
+    </div>
+
+    <!-- Wave 22 : Bandeau d'Urgence Autodestruction / Purge M.U.T.H.U.R. 6000 (Alien 1979 / Nostromo) -->
+    <div id="muthur-purge-banner" class="muthur-purge-banner hidden" role="alert" aria-live="assertive">
+      <div class="muthur-purge-stripes" aria-hidden="true"></div>
+      <div class="muthur-purge-content">
+        <span class="muthur-purge-kicker">M.U.T.H.U.R. 6000 // PROTOCOLE D'AUTODESTRUCTION</span>
+        <span id="muthur-purge-countdown" class="muthur-purge-countdown">T-01:30</span>
+        <span id="muthur-purge-sub" class="muthur-purge-sub">FUSION DU CŒUR IMMINENTE — ISOLEZ LES RELAIS PALIMPSESTE</span>
+      </div>
+      <div class="muthur-purge-stripes" aria-hidden="true"></div>
     </div>
 
     <!-- Story transmissions do not steal focus and disappear automatically. -->

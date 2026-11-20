@@ -6331,6 +6331,26 @@
       osc.stop(now + 0.055);
     }
 
+    // Wave 22 : Claquement métallique d'éjection et d'insertion de chargeur M41A Pulse Rifle (Aliens 1986)
+    playM41AReloadClack(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      [0, 0.24].forEach((offset, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(idx === 0 ? 1180 : 1520, now + offset);
+        osc.frequency.exponentialRampToValueAtTime(idx === 0 ? 320 : 480, now + offset + 0.065);
+        gain.gain.setValueAtTime(0.22, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.075);
+        osc.connect(gain);
+        this.connect(gain, x, z, 52);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.08);
+      });
+    }
+
     playAcidBurn(x = null, z = null) { this.playAcidSizzle?.(x, z); }
     playAcidBurnSizzle(x = null, z = null) { this.playAcidDeckBurnThrough?.(x, z); }
     playChestburst(x = null, z = null) { this.playChestburstScreech?.(x, z); }
@@ -16125,10 +16145,14 @@
       if (door.weldHp <= 0) {
         door.isWelded = false;
         door.weldHp = 0;
+        const weldSeam = door.mesh?.getObjectByName?.('door_weld_seam');
+        if (weldSeam && weldSeam.parent) weldSeam.parent.remove(weldSeam);
         showToast(`SOUDURES FONDUES PAR L'ACIDE ! ${door.name} peut être forcée avec [J] !`);
         appendSensorLog(`[ACIDE] Soudures plasma de ${door.name} dissoutes par le sang acide.`, 'bio');
         window.HiveSystems?.vfx?.floatingText?.(door.x, 4.2, door.z, 'SOUDURE DISSOUTE !', '#84cc16', true);
       } else {
+        const weldSeam = door.mesh?.getObjectByName?.('door_weld_seam');
+        if (weldSeam?.material) weldSeam.material.opacity = Math.max(0.25, door.weldHp / 100);
         showToast(`Soudures attaquées par l'acide : ${door.weldHp}% restant.`);
       }
       return true;
@@ -16136,9 +16160,18 @@
 
     weldDoor(door, marineName = 'Marine') {
       if (!door || door.isWelded) return false;
-      this.setBlastDoorState(door, false);
+      if (this.setBlastDoorState(door, false) === false) return false;
       door.isWelded = true;
       door.weldHp = 100;
+      if (door.mesh && !door.mesh.getObjectByName?.('door_weld_seam')) {
+        const seam = new THREE.Mesh(
+          new THREE.BoxGeometry(0.18, 3.6, 0.24),
+          new THREE.MeshBasicMaterial({ color: 0xff6b1a, transparent: true, opacity: 0.92 })
+        );
+        seam.name = 'door_weld_seam';
+        seam.position.set(0, 1.8, 0.26);
+        door.mesh.add(seam);
+      }
       audioManager.playWelderSparks?.(door.x, door.z);
       window.HiveSystems?.vfx?.burst?.(door.x, door.z, 0x38bdf8, 20, 0.16, 1.4);
       showToast(`${marineName} A SOUDÉ ${door.name.toUpperCase()} AU CHALUMEAU PLASMA !`);
@@ -16968,7 +17001,7 @@
             sj.loreDiscovered = true;
             showToast("RELIQUE DU SPACE JOCKEY : La carcasse de l'Ingénieur résonne du signal Derelict (+Régénération).");
             appendSensorLog("[RELIC 1979] Siège de navigation stellaire fossilisé. Cage thoracique explosée de l'intérieur.", 'bio');
-            window.HiveSystems?.saveManager?.unlock?.(['journal_01', 'palimpseste']);
+            window.HiveSystems?.unlockCodex?.(['journal_01', 'palimpseste']);
           }
         }
       }
@@ -18199,8 +18232,18 @@
         window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 3.6, playerCreature.z, `M.U.T.H.U.R. T-MOINS ${Math.ceil(sd.timer)}s`, '#ef4444', true);
       }
 
+      // Wave 22 : Mise à jour en direct du bandeau d'urgence M.U.T.H.U.R. 6000
+      const purgeBanner = document.getElementById('muthur-purge-banner');
+      const purgeCountdownEl = document.getElementById('muthur-purge-countdown');
+      if (purgeBanner && purgeCountdownEl) {
+        purgeBanner.classList.remove('hidden');
+        const rem = Math.max(0, Math.ceil(sd.timer));
+        purgeCountdownEl.textContent = `T-${String(Math.floor(rem / 60)).padStart(2, '0')}:${String(rem % 60).padStart(2, '0')}`;
+      }
+
       if (sd.timer <= 0 && !sd.triggered) {
         sd.triggered = true;
+        if (purgeBanner) purgeBanner.classList.add('hidden');
         rendererEngine.addScreenShake?.(0.65, 0.8);
         audioManager.playCryoDetonation?.();
         showToast("DÉTONATION THERMONUCLÉAIRE DU RÉACTEUR MANTIS : STATION PURGÉE !");
@@ -18208,7 +18251,7 @@
         window.gameInstance?.showEndModal?.(
           "PURGE THERMONUCLÉAIRE M.U.T.H.U.R. 1:1",
           "Le réacteur Mantis a explosé dans une déflagration thermonucléaire de 100 mégatonnes, détruisant la station Mnemosyne et purgeant toute trace biologique et cybernétique selon l'Ordre Spécial 937 !",
-          "#ef4444"
+          false
         );
       }
     }
@@ -19324,11 +19367,18 @@
     // Chantier 78 : Flares de Magnésium Luminescents USCM & Feux de Détresse (Aliens 1986)
     spawnMagnesiumFlare(x, z) {
       const mesh = window.HiveModelFactory?.createMagnesiumFlare?.();
+      // Wave 22 : Vraie lumière dynamique rouge-orangé sur la fusée au magnésium (Aliens 1986)
+      const light = typeof THREE !== 'undefined' ? new THREE.PointLight(0xff4500, 4.8, 16, 1.6) : null;
+      if (light) {
+        light.position.set(x, 0.55, z);
+        rendererEngine.propsGroup.add(light);
+      }
       const flare = {
         x,
         z,
         timer: 30.0,
-        mesh
+        mesh,
+        light
       };
       if (mesh) {
         mesh.position.set(x, 0.05, z);
@@ -19349,6 +19399,10 @@
       for (let i = this.magnesiumFlares.length - 1; i >= 0; i--) {
         const flare = this.magnesiumFlares[i];
         flare.timer -= safeDelta;
+        if (flare.light) {
+          const sputter = flare.timer < 4.0 ? Math.max(0.15, flare.timer / 4.0) : 1.0;
+          flare.light.intensity = (3.8 + Math.random() * 1.9) * sputter;
+        }
         if (Math.random() < 0.3) {
           window.HiveSystems?.vfx?.burst?.(flare.x, flare.z + 0.15, 0xff5722, 6, 0.12, 1.0);
         }
@@ -19363,6 +19417,7 @@
 
         if (flare.timer <= 0) {
           if (flare.mesh) rendererEngine.removeObject(flare.mesh);
+          if (flare.light) rendererEngine.removeObject(flare.light);
           this.magnesiumFlares.splice(i, 1);
         }
       }
@@ -26200,6 +26255,26 @@
       fillElement.style.width = `${normalizedValue}%`;
       fillElement.setAttribute('aria-valuenow', String(Math.round(normalizedValue)));
     }
+    if (kind === 'vital') {
+      const ekgEl = document.getElementById('hud-bio-ekg');
+      const bpmEl = document.getElementById('hud-bio-ekg-bpm');
+      if (ekgEl && bpmEl) {
+        ekgEl.classList.remove('healthy', 'stressed', 'critical', 'flatline');
+        if (normalizedValue <= 0) {
+          ekgEl.classList.add('flatline');
+          bpmEl.textContent = '000 BPM // FLATLINE';
+        } else if (normalizedValue <= 25) {
+          ekgEl.classList.add('critical');
+          bpmEl.textContent = `${Math.round(145 + (25 - normalizedValue) * 1.4)} BPM // CRITIQUE`;
+        } else if (normalizedValue <= 60) {
+          ekgEl.classList.add('stressed');
+          bpmEl.textContent = `${Math.round(98 + (60 - normalizedValue) * 1.1)} BPM // ALERTE`;
+        } else {
+          ekgEl.classList.add('healthy');
+          bpmEl.textContent = `${Math.round(68 + (100 - normalizedValue) * 0.5)} BPM // NOMINAL`;
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------
@@ -31870,8 +31945,9 @@
 
     ensureFlashlight(active) {
       if (!this.mesh) return;
+      const shouldLight = Boolean(active) && this.flashlightActive !== false;
       if (!this.flashlight) {
-        if (!active) return;
+        if (!shouldLight) return;
         const spot = new THREE.SpotLight(0xfff8e7, 3.8, 22, Math.PI / 4.5, 0.45, 1.2);
         spot.position.set(0.22, 1.38, 0.28);
         const targetObj = new THREE.Object3D();
@@ -31880,8 +31956,32 @@
         this.mesh.add(targetObj);
         spot.target = targetObj;
         this.flashlight = spot;
+        // Wave 22 : Cône volumétrique additif visible de lampe-torche USCM (Aliens 1986)
+        const coneGeo = new THREE.ConeGeometry(2.1, 10.5, 14, 1, true);
+        const coneMat = new THREE.MeshBasicMaterial({
+          color: 0xfff3c4,
+          transparent: true,
+          opacity: 0.11,
+          side: THREE.DoubleSide,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false
+        });
+        const coneMesh = new THREE.Mesh(coneGeo, coneMat);
+        coneMesh.name = 'flashlight_cone_mesh';
+        coneMesh.rotation.x = -Math.PI / 2;
+        coneMesh.position.set(0.22, 1.32, 5.5);
+        this.mesh.add(coneMesh);
+        this.flashlightCone = coneMesh;
       }
-      this.flashlight.intensity = active ? 3.8 : 0;
+      this.flashlight.intensity = shouldLight ? 3.8 : 0;
+      if (this.flashlightCone) {
+        this.flashlightCone.visible = shouldLight;
+        if (shouldLight && this.aiState === 'PATROL') {
+          const sweep = Math.sin(performance.now() * 0.0022 + (this.id || 0)) * 0.24;
+          this.flashlightCone.rotation.z = sweep;
+          if (this.flashlight.target) this.flashlight.target.position.x = 0.22 + sweep * 8.0;
+        }
+      }
     }
 
     destroy() {
@@ -33792,6 +33892,19 @@
                 onU1Impact();
               }
             } else {
+              // Wave 22 : Compteur de chargeur M41A Pulse Rifle & fenêtre de rechargement vulnérable (Aliens 1986)
+              const usesM41A = ['marine', 'guard', 'commando'].includes(this.type);
+              if (usesM41A) {
+                if (this.m41aMagBursts === undefined) this.m41aMagBursts = 8;
+                if (this.m41aMagBursts <= 0) {
+                  this.m41aMagBursts = 8;
+                  this.shootCooldown = 2.1;
+                  audioManager.playM41AReloadClack?.(this.x, this.z);
+                  window.HiveSystems?.vfx?.floatingText?.(this.x, 3.05, this.z, 'RECHARGEMENT M41A ! COUVREZ-MOI !', '#38bdf8', false);
+                  return;
+                }
+                this.m41aMagBursts -= 1;
+              }
               this.shootCooldown = ['powerloader', 'exosuit'].includes(this.type) ? 1.9 : 1.35;
               audioManager.playM41APulseBurst?.(this.x, this.z);
               const projectileColor = this.bossId === 'MANTIS_4'
@@ -40543,6 +40656,16 @@
           const s = String(secs % 60).padStart(2, '0');
           timerEl.textContent = `PURGE ${m}:${s}`;
           timerEl.className = `rts-purge-val${secs <= 60 ? ' critical' : ''}`;
+          const purgeBanner = document.getElementById('muthur-purge-banner');
+          const purgeCd = document.getElementById('muthur-purge-countdown');
+          if (purgeBanner && purgeCd) {
+            if (secs < 90 && secs > 0) {
+              purgeBanner.classList.remove('hidden');
+              purgeCd.textContent = `T-${m}:${s}`;
+            } else {
+              purgeBanner.classList.add('hidden');
+            }
+          }
         }
       }
 
@@ -40648,7 +40771,8 @@
         const synthesis = `${epilogueText}\n\nBILAN TACTIQUE DE CAMPAGNE :\n• Phénotype dominant : ${caste}\n• Mutation embryonnaire : ${mutation}\n• Couverture de résine : ${coverage}%\n• Statut Surveillante Aster Rho : ${asterStatus}`;
         window.gameInstance.showEndModal(
           `${ending.title || 'VICTOIRE DE LA RUCHE'}${ending.tone ? ' [' + ending.tone + ']' : ''}`,
-          synthesis
+          synthesis,
+          true
         );
       });
     }
@@ -41071,10 +41195,10 @@
       if (completedStage !== this.currentStage || !completedStage.isCompleted || this.currentStageIndex >= 5) return;
       const nextStage = this.currentStageIndex + 1;
       const unlocksByStage = {
-        2: ['facehugger', 'journal_01', 'journal_02'],
-        3: ['chestburster', 'journal_03', 'journal_04'],
-        4: ['drone', 'runner', 'security_agent', 'thermal_operator', 'gyro_gunner', 'journal_05'],
-        5: ['worker', 'warrior', 'spitter', 'praetorian', 'queen', 'argos_synthetic', 'capture_commando', 'journal_06', 'journal_07', 'journal_08']
+        2: ['facehugger', 'codex_ovomorphe', 'codex_sens_biologique', 'codex_facehugger', 'codex_confinement', 'journal_01', 'journal_02'],
+        3: ['chestburster', 'codex_empreinte_hote', 'codex_chestburster', 'codex_mue', 'journal_03', 'journal_04'],
+        4: ['drone', 'runner', 'codex_drone', 'codex_runner', 'security_agent', 'thermal_operator', 'gyro_gunner', 'journal_05'],
+        5: ['worker', 'warrior', 'spitter', 'praetorian', 'queen', 'codex_worker', 'codex_warrior', 'codex_spitter', 'codex_praetorian', 'codex_queen', 'argos_synthetic', 'capture_commando', 'journal_06', 'journal_07', 'journal_08']
       };
       window.HiveSystems?.checkpoint(nextStage, unlocksByStage[nextStage] || [], {
         adultCaste: playerCreature.adultCaste,
@@ -41108,7 +41232,7 @@
           desc: act?.summary || 'L’organisme parasitaire arachnoïde émerge de l’ovomorphe pour localiser et féconder un hôte viable.',
           morphology: 'Appendices arachnoïdes véloces, queue constrictrice préhensile et ovipositeur sous pression.',
           host: 'Matrice de ponte LV-426 sélectionnée. Détection cardiaque active.',
-          abilities: 'Bond balistique [Espace], camouflage dans les conduits [C], détection thermique [I].'
+          abilities: 'Bond balistique [Espace], camouflage dans les conduits [E/V], détection thermique [F2].'
         },
         3: {
           num: 'ACTE III // GESTATION ET ÉRUPTION',
@@ -41142,6 +41266,15 @@
         host: 'Spécimen Weyland-Yutani XX121.',
         abilities: 'Capacités avancées débloquées.'
       };
+
+      const directiveCode = modal.querySelector('.directive-code');
+      const directiveBadge = modal.querySelector('.directive-badge');
+      if (directiveCode) directiveCode.textContent = 'DIRECTIVE 937 // TRANSITION BIOMORPHIQUE';
+      if (directiveBadge) {
+        directiveBadge.textContent = 'MUTATION ACTIVE';
+        directiveBadge.style.color = '';
+        directiveBadge.style.borderColor = '';
+      }
 
       const stageNumEl = document.getElementById('modal-stage-num');
       const titleEl = document.getElementById('modal-title');
@@ -41414,7 +41547,7 @@
       const continueButton = document.getElementById('modal-btn-continue');
       if (!modal || !continueButton) return;
 
-      const isWin = isVictory || title.includes('VICTOIRE') || title.includes('DOMINION') || title.includes('EXODE') || title.includes('GRAINE');
+      const isWin = isVictory === true || /VICTOIRE|DOMINION|EXODE|GRAINE/i.test(String(title || ''));
 
       const directiveCode = modal.querySelector('.directive-code');
       const directiveBadge = modal.querySelector('.directive-badge');

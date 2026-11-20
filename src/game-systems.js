@@ -2665,6 +2665,9 @@
       container.replaceChildren();
 
       const endingThumbnails = {
+        ENDING_DOMINION: null,
+        ENDING_EXODUS: null,
+        ENDING_ASHES: null,
         dominion: `
           <div class="ending-card-thumb" aria-hidden="true">
             <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
@@ -2732,11 +2735,18 @@
         `
       };
 
+      endingThumbnails.ENDING_DOMINION = endingThumbnails.dominion;
+      endingThumbnails.ENDING_EXODUS = endingThumbnails.exodus;
+      endingThumbnails.ENDING_ASHES = endingThumbnails.seed;
+
       const endingIcons = {
         dominion: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 18 L12 4 L20 18 L16 18 L12 11 L8 18 Z" stroke="#c084fc" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="18" r="3" fill="#a855f7"/></svg>',
         exodus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke="#38bdf8" stroke-width="1.5"/><path d="M12 3 A9 9 0 0 1 21 12" stroke="#7dd3fc" stroke-width="2.2"/><path d="M8 12 L16 12 L13 8 M16 12 L13 16" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round"/></svg>',
         seed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="13" rx="6" ry="8" stroke="#84cc16" stroke-width="1.6"/><circle cx="12" cy="13" r="2.5" fill="#84cc16"/><path d="M12 2 L12 5 M8 4 L10 6 M16 4 L14 6" stroke="#a3e635" stroke-width="1.4" stroke-linecap="round"/></svg>'
       };
+      endingIcons.ENDING_DOMINION = endingIcons.dominion;
+      endingIcons.ENDING_EXODUS = endingIcons.exodus;
+      endingIcons.ENDING_ASHES = endingIcons.seed;
 
       endings.forEach((ending) => {
         const button = document.createElement('button');
@@ -2770,6 +2780,7 @@
         }
         button.addEventListener('click', () => {
           this.saveManager.completeEnding(ending.id);
+          this.saveManager.unlockCodex(['codex_archives_complete']);
           this.hideLayer(overlay, false);
           onChoice?.(ending);
         });

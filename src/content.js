@@ -1681,6 +1681,33 @@
           unlock: { type: "campaignComplete", targetId: "any" }
         },
         {
+          id: "codex_reflexe_adn",
+          category: "biology",
+          title: "Réflexe ADN (Adaptation Hôte)",
+          body:
+            "L'embryon XX121 assimile immédiatement des séquences structurelles de son hôte durant la gestation, " +
+            "adaptant sa morphologie finale (bipède, quadrupède ou hybride) au biotope de la station.",
+          unlock: { type: "event", targetId: "dna_reflex" }
+        },
+        {
+          id: "codex_castes_etendues",
+          category: "biology",
+          title: "Castes Étendues de la Ruche",
+          body:
+            "Sous pression tactique prolongée, la lignée royale différencie des phénotypes spécialisés : " +
+            "Crusher blindé, Prowler embusqué, Spitter acide, Praetorian et Garde Palatine.",
+          unlock: { type: "event", targetId: "extended_castes" }
+        },
+        {
+          id: "codex_protocole_kappa",
+          category: "station",
+          title: "Protocole KAPPA (Exosquelettes MANTIS-4)",
+          body:
+            "Mesure ultime d'IRISE : déploiement des exosquelettes de confinement KAPPA et de l'unité " +
+            "MANTIS-4 à bouclier cinétique pour purger la nurserie avant l'effondrement des relais.",
+          unlock: { type: "bossSeen", targetId: "MANTIS_4" }
+        },
+        {
           id: "codex_weyland_curie07",
           category: "station",
           title: "Station Curie-07 (Mnemosyne)",

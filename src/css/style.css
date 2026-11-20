@@ -5217,3 +5217,99 @@ select, input[type='range'] { touch-action: manipulation; }
   0%, 100% { box-shadow: 0 0 24px rgba(239, 68, 68, 0.35); }
   50% { box-shadow: 0 0 38px rgba(239, 68, 68, 0.72); }
 }
+
+/* ============================================================================
+   WAVE 23 : LAYOUT 2-NIVEAUX RTS, TÉLÉMÉTRIE REINE/ORDRES & ANTI-CHEVAUCHEMENT
+   ============================================================================ */
+:root {
+  --rts-reserved-space: 138px;
+}
+
+.boss-telemetry-hud {
+  top: 126px;
+}
+
+#rts-control-bar.rts-bar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: visible;
+}
+
+.rts-cmd-palette {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#rts-control-bar .rts-tactical-monitor {
+  border-left: none;
+  padding-left: 0;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+  padding-bottom: 6px;
+}
+
+.rts-queen-status,
+.rts-active-order,
+.rts-bio-quick {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.rts-queen-status {
+  color: #e879f9;
+  background: rgba(88, 28, 135, 0.45);
+  border: 1px solid rgba(192, 132, 252, 0.5);
+}
+
+.rts-queen-status.under-attack {
+  color: #fecaca;
+  background: rgba(153, 27, 27, 0.72);
+  border-color: #ef4444;
+  animation: muthurBannerPulse 0.7s ease-in-out infinite;
+}
+
+.rts-active-order {
+  color: #4ade80;
+  background: rgba(20, 83, 45, 0.45);
+  border: 1px solid rgba(74, 222, 128, 0.45);
+}
+
+.rts-bio-quick {
+  color: #fde047;
+  background: rgba(113, 63, 18, 0.4);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+}
+
+.rts-squad-chip {
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 6px;
+}
+
+.rts-chip-hp-track {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 2px;
+  height: 2.5px;
+  background: rgba(15, 23, 42, 0.85);
+  border-radius: 2px;
+}
+
+.rts-chip-hp-fill {
+  height: 100%;
+  background: #22c55e;
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
+
+.rts-chip-hp-fill.wounded { background: #f59e0b; }
+.rts-chip-hp-fill.critical { background: #ef4444; }

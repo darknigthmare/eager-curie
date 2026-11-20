@@ -14,8 +14,8 @@ const modelsJs = fs.readFileSync('src/models.js', 'utf8');
 
 // 1. Synthétiseurs WebAudio RTS
 assert(gameJs.includes('playRtsUnitSelect()'), 'playRtsUnitSelect manquant dans AudioManager');
-assert(gameJs.includes('playRtsOrderPing(x = null, z = null)'), 'playRtsOrderPing manquant dans AudioManager');
-assert(gameJs.includes('playRtsRelayIsolated(x = null, z = null)'), 'playRtsRelayIsolated manquant dans AudioManager');
+assert(gameJs.includes('playRtsOrderPing(x = null, z = null'), 'playRtsOrderPing manquant dans AudioManager');
+assert(gameJs.includes('playRtsRelayIsolated(x = null, z = null'), 'playRtsRelayIsolated manquant dans AudioManager');
 console.log('PASS: Synthétiseurs WebAudio RTS (sélection unité, ping ordre, isolement relais) validés');
 
 // 2. Caméra libre RTS, Clic-Droit Contextuel & Sélection d\'Escouade

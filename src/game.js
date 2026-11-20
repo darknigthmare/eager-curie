@@ -6111,55 +6111,101 @@
       osc.stop(now + 0.07);
     }
 
-    playRtsOrderPing(x = null, z = null) {
+    playRtsOrderPing(x = null, z = null, command = 'HUNT') {
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
-
+      const profiles = {
+        HUNT: { type: 'sawtooth', f1: 520, f2: 780, dur: 0.14 },
+        CAPTURE: { type: 'sine', f1: 310, f2: 240, dur: 0.19 },
+        DEFEND: { type: 'triangle', f1: 220, f2: 330, dur: 0.18 },
+        INFEST: { type: 'sawtooth', f1: 180, f2: 420, dur: 0.22 },
+        RUSH: { type: 'sawtooth', f1: 380, f2: 960, dur: 0.20 },
+        ROYAL_GUARD: { type: 'triangle', f1: 260, f2: 520, dur: 0.24 }
+      };
+      const p = profiles[command] || profiles.HUNT;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(440, now);
-      osc.frequency.exponentialRampToValueAtTime(660, now + 0.09);
+      osc.type = p.type;
+      osc.frequency.setValueAtTime(p.f1, now);
+      osc.frequency.exponentialRampToValueAtTime(p.f2, now + p.dur * 0.75);
       gain.gain.setValueAtTime(0.24, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + p.dur);
       osc.connect(gain);
       this.connect(gain, x, z, 55);
       osc.start(now);
-      osc.stop(now + 0.14);
+      osc.stop(now + p.dur + 0.02);
     }
 
-    playRtsRelayIsolated(x = null, z = null) {
+    playRtsUnitHatched(caste = 'drone', x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      const heavy = ['praetorian', 'palatine', 'crusher', 'offspring'].includes(caste);
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = heavy ? 'sawtooth' : 'triangle';
+      osc.frequency.setValueAtTime(heavy ? 180 : 340, now);
+      osc.frequency.exponentialRampToValueAtTime(heavy ? 420 : 760, now + 0.24);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.connect(gain);
+      this.connect(gain, x, z, 65);
+      osc.start(now);
+      osc.stop(now + 0.32);
+    }
+
+    playQueenUnderAttackAlert(x = null, z = null) {
+      if (!this.initialized || this.isMuted) return;
+      this.resume();
+      const now = this.ctx.currentTime;
+      [0, 0.18].forEach((off) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(520, now + off);
+        osc.frequency.exponentialRampToValueAtTime(190, now + off + 0.16);
+        gain.gain.setValueAtTime(0.26, now + off);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + off + 0.17);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now + off);
+        osc.stop(now + off + 0.18);
+      });
+    }
+
+    playRtsRelayIsolated(x = null, z = null, relayCount = 1) {
       if (!this.initialized || this.isMuted) return;
       this.resume();
       const ctx = this.ctx;
       const now = ctx.currentTime;
+      const pitchBoost = 1 + Math.max(0, (relayCount - 1) * 0.22);
 
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'sawtooth';
-      osc1.frequency.setValueAtTime(220, now);
-      osc1.frequency.exponentialRampToValueAtTime(68, now + 0.28);
+      osc1.frequency.setValueAtTime(220 * pitchBoost, now);
+      osc1.frequency.exponentialRampToValueAtTime(68, now + 0.32);
       gain1.gain.setValueAtTime(0.32, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
       osc1.connect(gain1);
       this.connect(gain1, x, z, 70);
       osc1.start(now);
-      osc1.stop(now + 0.3);
+      osc1.stop(now + 0.35);
 
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
       osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(880, now + 0.14);
-      osc2.frequency.setValueAtTime(1320, now + 0.24);
+      osc2.frequency.setValueAtTime(780 * pitchBoost, now + 0.14);
+      osc2.frequency.setValueAtTime(1180 * pitchBoost, now + 0.26);
       gain2.gain.setValueAtTime(0.001, now);
-      gain2.gain.setValueAtTime(0.22, now + 0.14);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      gain2.gain.setValueAtTime(0.24, now + 0.14);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.62);
       osc2.connect(gain2);
       gain2.connect(this.masterGain);
       osc2.start(now + 0.14);
-      osc2.stop(now + 0.55);
+      osc2.stop(now + 0.64);
     }
 
     // -------------------------------------------------------------------------
@@ -11635,12 +11681,19 @@
       const scentBtn = document.getElementById('btn-scent-trail');
       if (scentBtn) {
         scentBtn.addEventListener('click', () => {
-          const x = playerCreature?.x || 0;
-          const z = playerCreature?.z || 0;
-          this.dropManualScent(x, z);
+          const origin = this.getActiveOriginPoint();
+          this.dropManualScent(origin.x, origin.z);
         });
       }
       this.updateUI();
+    }
+    getActiveOriginPoint() {
+      if (window.gameInstance?.currentStageIndex === 5 && window.gameInstance?.currentStage) {
+        const stg = window.gameInstance.currentStage;
+        const focus = stg.possessedUnit || stg.selectedUnit || stg.cameraFocus || stg.queen;
+        if (focus) return { x: focus.x || 0, z: focus.z || 0 };
+      }
+      return { x: playerCreature?.x || 0, z: playerCreature?.z || 0 };
     }
     setCommand(cmd) {
       if (!['HUNT', 'CAPTURE', 'DEFEND', 'INFEST', 'RUSH', 'ROYAL_GUARD'].includes(cmd)) return;
@@ -11648,8 +11701,9 @@
       this.possessionMode = false;
       this.updateUI();
       audioManager.playHiveMindSynapticPulse?.(cmd);
-      const rippleColor = cmd === 'RUSH' ? 0xef4444 : ((cmd === 'CAPTURE' || cmd === 'ROYAL_GUARD') ? 0xa855f7 : (cmd === 'DEFEND' ? 0x38bdf8 : 0x39ff14));
-      window.HiveSystems?.vfx?.hiveSynapticRipple?.(playerCreature.x, playerCreature.z, rippleColor, 14);
+      const rippleColor = cmd === 'RUSH' ? 0xef4444 : ((cmd === 'CAPTURE' || cmd === 'ROYAL_GUARD') ? 0xd946ef : (cmd === 'DEFEND' ? 0x38bdf8 : 0x39ff14));
+      const origin = this.getActiveOriginPoint();
+      window.HiveSystems?.vfx?.hiveSynapticRipple?.(origin.x, origin.z, rippleColor, 14);
       if (cmd === 'RUSH') {
         audioManager.playXenoHiss();
         audioManager.playHeartbeat(1.4);
@@ -11675,10 +11729,33 @@
         btn.classList.toggle('active', isActive);
         btn.setAttribute('aria-pressed', String(isActive));
       });
+      const guardBtn = document.getElementById('btn-royal-guard');
+      if (guardBtn) {
+        guardBtn.classList.toggle('active', !this.possessionMode && this.activeCommand === 'ROYAL_GUARD');
+      }
+      const orderEl = document.getElementById('rts-active-order');
+      if (orderEl) {
+        const labels = {
+          HUNT: 'ORDRE: CHASSER [1]',
+          CAPTURE: 'ORDRE: CAPTURER [2]',
+          DEFEND: 'ORDRE: DÉFENDRE [3]',
+          INFEST: 'ORDRE: INFESTER [4]',
+          RUSH: 'ORDRE: RUSH [5]',
+          ROYAL_GUARD: 'ORDRE: GARDE ROYALE [G]'
+        };
+        orderEl.textContent = this.possessionMode ? 'SYNAPSE DIRECTE [P]' : (labels[this.activeCommand] || `ORDRE: ${this.activeCommand}`);
+      }
     }
     addZone(zone) {
+      // Wave 23 : Évite l'empilement de 12 anneaux obsolètes en estompant et limitant les zones actives à 3
+      this.commandZones.forEach((old) => {
+        if (old.mesh?.material) old.mesh.material.opacity = Math.min(old.mesh.material.opacity || 0.8, 0.25);
+        old.timer = Math.min(old.timer ?? 25, 4.0);
+      });
+      zone.timer = zone.timer ?? 35.0;
+      zone.maxTimer = zone.timer;
       this.commandZones.push(zone);
-      while (this.commandZones.length > 12) {
+      while (this.commandZones.length > 3) {
         const expiredZone = this.commandZones.shift();
         if (expiredZone && expiredZone.mesh) rendererEngine.removeObject(expiredZone.mesh);
       }
@@ -11737,6 +11814,25 @@
         if (st.timer <= 0) {
           if (st.mesh) rendererEngine.removeObject(st.mesh);
           this.scentTrails.splice(i, 1);
+        }
+      }
+      // Wave 23 : Animation pulsante et expiration propre des anneaux phéromonaux RTS
+      const nowSec = performance.now() * 0.001;
+      for (let i = this.commandZones.length - 1; i >= 0; i--) {
+        const z = this.commandZones[i];
+        if (typeof z.timer === 'number') {
+          z.timer -= safeDelta;
+          if (z.timer <= 0) {
+            if (z.mesh) rendererEngine.removeObject(z.mesh);
+            this.commandZones.splice(i, 1);
+            continue;
+          }
+        }
+        if (z.mesh) {
+          const isLatest = i === this.commandZones.length - 1;
+          const pulse = isLatest ? (1 + Math.sin(nowSec * 4.2) * 0.12) : 0.85;
+          z.mesh.scale.set(pulse, pulse, 1);
+          z.mesh.rotation.z += safeDelta * (isLatest ? 0.9 : 0.3);
         }
       }
     }
@@ -19437,8 +19533,9 @@
         target.takeDamage?.(999, playerCreature);
         showToast(`EXÉCUTION ENVIRONNEMENTALE : ${target.name} broyé dans les mâchoires rotatives de Fiorina 161 ! (+80 Biomasse)`);
         appendSensorLog(`[TRÉMIE FIORINA] Hôte aspiré dans le broyeur à déchets. Déchiquetage industriel complet.`, 'bio');
-        if (window.gameInstance?.currentStage?.rtsBiomass !== undefined) {
-          window.gameInstance.currentStage.rtsBiomass += 80;
+        if (window.gameInstance?.currentStage?.biomass !== undefined) {
+          window.gameInstance.currentStage.biomass = Math.min(220, window.gameInstance.currentStage.biomass + 80);
+          window.gameInstance.currentStage.updateStats?.();
         }
         return true;
       }
@@ -34238,6 +34335,18 @@
 
       if (isQueen) {
         setHudBar('vital', 'INTÉGRITÉ REINE', (this.hp / this.maxHp) * 100);
+        const stg = window.gameInstance?.currentStage;
+        if (stg) {
+          stg.queenUnderAttackTimer = 4.0;
+          const nowMs = performance.now();
+          if (!stg._lastQueenAlertAt || nowMs - stg._lastQueenAlertAt > 6000) {
+            stg._lastQueenAlertAt = nowMs;
+            audioManager.playQueenUnderAttackAlert?.(this.x, this.z);
+            showToast('ALERTE MATRIARCAT : La Reine subit des tirs ennemis ! Ralliez la Garde Royale [G] !');
+            stg.log?.(`[ALERTE REINE] Intégrité Matriarche : ${Math.ceil(this.hp)}/${this.maxHp} PV !`);
+          }
+          stg.updateRtsTacticalMonitor?.();
+        }
       }
 
       // Canon 1:1 Lore — Projection de sang acide pressurisé sur les cibles humaines proches
@@ -34287,13 +34396,29 @@
       audioManager.playXenoDeathScreech?.();
 
       if (window.gameInstance) {
+        const stageIndex = window.gameInstance.currentStageIndex;
         if (isQueen) {
           window.gameInstance.showEndModal(
             'LIGNÉE ROYALE ÉTEINTE',
-            'La dernière Reine a été détruite avant la sécurisation de MNEMOSYNE.'
+            'La dernière Reine a été détruite par les forces IRISE / KAPPA avant la sécurisation de MNEMOSYNE.',
+            false
           );
+        } else if (stageIndex === 5) {
+          // Wave 23 (Fix P0) : La perte d'une unité RTS non-Reine ne termine PAS la campagne
+          const stg = window.gameInstance.currentStage;
+          if (stg) {
+            if (stg.selectedUnit === this) stg.selectedUnit = null;
+            if (stg.possessedUnit === this) {
+              stg.possessedUnit = null;
+              pheromoneSystem.possessionMode = false;
+              pheromoneSystem.updateUI?.();
+            }
+            stg.rtsUnits = (stg.rtsUnits || []).filter((u) => u !== this);
+            stg.log?.(`[PERTE ESSAIM] ${this.caste.toUpperCase()} #${this.id} neutralisé au combat.`);
+            showToast(`Unité ${this.caste.toUpperCase()} tombée au combat !`);
+            stg.updateStats?.();
+          }
         } else {
-          const stageIndex = window.gameInstance.currentStageIndex;
           const defeatTitles = {
             1: 'SPÉCIMEN OVOMORPHE DÉTRUIT',
             2: 'SPÉCIMEN PARASITAIRE ÉRADIQUÉ',
@@ -34304,11 +34429,12 @@
             1: 'L\'ovomorphe a été détruit par les flammes avant éclosion.',
             2: 'Le Facehugger a succombé aux tirs défensifs avant d\'avoir pu féconder un hôte viable.',
             3: 'Le Chestburster a été abattu par les forces de confinement avant sa métamorphose adulte.',
-            4: 'Le xénomorphe a succombé aux tirs nourris des USCM. La station reste sous contrôle humain.'
+            4: 'Le xénomorphe a succombé aux tirs nourris des forces de sécurité IRISE / KAPPA. La station reste sous contrôle humain.'
           };
           window.gameInstance.showEndModal(
             defeatTitles[stageIndex] || 'SPÉCIMEN NEUTRALISÉ',
-            defeatDescs[stageIndex] || 'L\'organisme biomécanique a succombé aux forces défensives humaines.'
+            defeatDescs[stageIndex] || 'L\'organisme biomécanique a succombé aux forces défensives humaines.',
+            false
           );
         }
       }
@@ -34502,9 +34628,7 @@
           if (targetX !== null) {
             const dist = Math.hypot(targetX - this.x, targetZ - this.z);
             if (dist > 3.0) {
-              const dirX = (targetX - this.x) / dist;
-              const dirZ = (targetZ - this.z) / dist;
-              this.moveDirect(dirX, dirZ, deltaSeconds);
+              this.moveTowards(targetX, targetZ, deltaSeconds, 1.0);
             }
           }
         }
@@ -34541,17 +34665,19 @@
             human.isIncapacitated &&
             !human.isCocooned &&
             human.hostEligibility !== 'none'
-          )) || activeZone;
-        } else if (activeZone.command === 'DEFEND' || activeZone.command === 'ROYAL_GUARD') {
+          )) || nearestInZone((human) => !human.isCocooned && !human.isIncapacitated) || activeZone;
+        } else if (activeZone.command === 'DEFEND' || activeZone.command === 'ROYAL_GUARD' || (activeZone.command === 'INFEST' && this.caste !== 'worker')) {
           target = nearestInZone((human) => !human.isCocooned && !human.isIncapacitated) || activeZone;
         }
 
+        const isRangedCaste = ['spitter', 'reef_spitter', 'pathogen_blight'].includes(this.caste);
         const dist = Math.hypot(target.x - this.x, target.z - this.z);
         const isRush = activeZone.command === 'RUSH';
         const isRoyalGuard = activeZone.command === 'ROYAL_GUARD';
-        const isAttackOrder = activeZone.command === 'HUNT' || activeZone.command === 'DEFEND' || isRush || isRoyalGuard;
+        const isAttackOrder = activeZone.command === 'HUNT' || activeZone.command === 'DEFEND' || isRush || isRoyalGuard || (activeZone.command === 'CAPTURE' && target.human && !target.human.isIncapacitated) || (activeZone.command === 'INFEST' && this.caste !== 'worker' && Boolean(target.human));
+        const hasTargetLoS = !target.human || !isRangedCaste || stationMap.hasLineOfSight(this.x, this.z, target.human.x, target.human.z, 0.3);
         const stopRadius = target.human && isAttackOrder
-          ? this.attackRange
+          ? (hasTargetLoS ? this.attackRange : 2.0)
           : (isRoyalGuard ? 5.5 : (activeZone.command === 'DEFEND' ? 4 : (activeZone.command === 'CAPTURE' ? 1.5 : 2)));
         if (dist > stopRadius) {
           // Chantier 109 : Bond Prédateur du Prowler (Aliens: Fireteam Elite) à moyenne portée
@@ -34575,26 +34701,20 @@
             window.HiveSystems?.vfx?.floatingText?.(target.human.x, 2.7, target.human.z, `-${leapDmg} BOND PRÉDATEUR PROWLER !`, '#ef4444', true);
           } else {
             const speedMultiplier = isRush ? 1.45 : (isRoyalGuard ? 1.30 : (activeZone.command === 'HUNT' ? 1.15 : (activeZone.command === 'DEFEND' ? 0.75 : 1)));
-            this.moveDirect(
-              (target.x - this.x) / dist,
-              (target.z - this.z) / dist,
-              deltaSeconds,
-              dist,
-              speedMultiplier
-            );
+            this.moveTowards(target.x, target.z, deltaSeconds, speedMultiplier);
           }
         } else if (target.human) {
           if (activeZone.command === 'CAPTURE' && target.human.isIncapacitated) {
             if (target.human.cocoonInResin()) resinGrid.addResinPatch(target.human.x, target.human.z);
           } else if (isAttackOrder) {
             if (this.attackCooldown <= 0) {
-              const baseCooldown = (this.caste === 'swarmers' || this.caste === 'swarmer') ? 0.45 : (this.caste === 'runner' ? 0.62 : (this.caste === 'spitter' ? 1.45 : 0.86));
+              const baseCooldown = (this.caste === 'swarmers' || this.caste === 'swarmer') ? 0.45 : (this.caste === 'runner' ? 0.62 : (isRangedCaste ? 1.45 : 0.86));
               this.attackCooldown = isRush ? baseCooldown * 0.68 : baseCooldown;
               this.attackAnimation = 1;
               const furyMult = (this.royalFuryTimer || 0) > 0 ? 1.30 : 1.0;
               const bonusDmg = Math.round((isRush ? this.damage * 1.35 : this.damage) * furyMult);
-              const color = this.caste === 'spitter' ? 0xa3e635 : (isRush ? 0xdc2626 : 0x39ff14);
-              if (this.caste === 'spitter') {
+              const color = isRangedCaste ? 0xa3e635 : (isRush ? 0xdc2626 : 0x39ff14);
+              if (isRangedCaste) {
                 const applyAcidHit = () => {
                   target.human?.takeDamage(bonusDmg, this);
                   audioManager.playAcidSizzle();
@@ -34661,12 +34781,18 @@
             }
           }
         } else if (activeZone.command === 'INFEST' && this.caste === 'worker' && this.supportCooldown <= 0) {
-          this.supportCooldown = 3.2;
+          this.supportCooldown = 3.8;
           this.attackAnimation = 0.65;
           resinGrid.addResinPatch(this.x, this.z, 3.4);
           audioManager.playCocoonWeave?.(this.x, this.z);
           window.HiveSystems?.vfx?.ring(this.x, this.z, 0x9d4edd, 2.4);
-          const activeCycle = window.gameInstance?.currentStage?.incubationCycles
+          const stg = window.gameInstance?.currentStage;
+          if (stg && typeof stg.biomass === 'number') {
+            stg.biomass = Math.min(220, stg.biomass + 5);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.5, this.z, '+5 BIOMASSE RÉSINE', '#84cc16', false);
+            stg.updateStats?.();
+          }
+          const activeCycle = stg?.incubationCycles
             ?.find((cycle) => cycle.isActive && Math.hypot(cycle.x - this.x, cycle.z - this.z) <= 8);
           activeCycle?.reinforce?.(8);
         }
@@ -34680,22 +34806,30 @@
           .sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z))[0];
 
         if (localThreat) {
+          const isRangedAuto = ['spitter', 'reef_spitter', 'pathogen_blight'].includes(this.caste);
           const distThreat = Math.hypot(localThreat.x - this.x, localThreat.z - this.z);
-          if (distThreat > this.attackRange) {
-            this.moveDirect(
-              (localThreat.x - this.x) / distThreat,
-              (localThreat.z - this.z) / distThreat,
-              deltaSeconds,
-              distThreat,
-              1.1
-            );
+          const canShoot = !isRangedAuto || stationMap.hasLineOfSight(this.x, this.z, localThreat.x, localThreat.z, 0.3);
+          if (distThreat > this.attackRange || !canShoot) {
+            this.moveTowards(localThreat.x, localThreat.z, deltaSeconds, 1.1);
           } else if (this.attackCooldown <= 0) {
-            this.attackCooldown = (this.caste === 'swarmers' || this.caste === 'swarmer') ? 0.45 : (this.caste === 'runner' ? 0.65 : 0.9);
+            this.attackCooldown = (this.caste === 'swarmers' || this.caste === 'swarmer') ? 0.45 : (this.caste === 'runner' ? 0.65 : (isRangedAuto ? 1.45 : 0.9));
             this.attackAnimation = 1;
-            localThreat.takeDamage(this.damage, this);
-            audioManager.playBoneCrunch?.();
-            audioManager.playWetImpact?.(localThreat.x, localThreat.z);
-            window.HiveSystems?.vfx?.burst(localThreat.x, localThreat.z, 0xef4444, 12, 0.1, 1.2);
+            if (isRangedAuto && window.HiveSystems?.vfx?.projectile) {
+              window.HiveSystems.vfx.projectile({
+                startX: this.x, startY: 1.55, startZ: this.z,
+                endX: localThreat.x, endY: 1.1, endZ: localThreat.z,
+                color: 0xa3e635, scale: 0.2, speed: 17, acid: true,
+                onImpact: () => {
+                  localThreat.takeDamage(this.damage, this);
+                  audioManager.playAcidSizzle?.();
+                }
+              });
+            } else {
+              localThreat.takeDamage(this.damage, this);
+              audioManager.playBoneCrunch?.();
+              audioManager.playWetImpact?.(localThreat.x, localThreat.z);
+              window.HiveSystems?.vfx?.burst(localThreat.x, localThreat.z, 0xef4444, 12, 0.1, 1.2);
+            }
           }
         } else {
           // 2. Garde d'élite & ralliement automatique autour de la Reine ou du nid
@@ -34703,13 +34837,7 @@
           if (queenUnit && queenUnit !== this && !queenUnit.isDestroyed) {
             const distToQueen = Math.hypot(queenUnit.x - this.x, queenUnit.z - this.z);
             if (distToQueen > (['praetorian', 'palatine'].includes(this.caste) ? 6.5 : 12)) {
-              this.moveDirect(
-                (queenUnit.x - this.x) / distToQueen,
-                (queenUnit.z - this.z) / distToQueen,
-                deltaSeconds,
-                distToQueen,
-                0.85
-              );
+              this.moveTowards(queenUnit.x, queenUnit.z, deltaSeconds, 0.85);
             }
           }
         }
@@ -39886,6 +40014,7 @@
       if (!this.possessedUnit || this.possessedUnit.isDestroyed) return;
       const humans = window.gameInstance?.humans || [];
       const unit = this.possessedUnit;
+      if ((unit.attackCooldown || 0) > 0) return;
       const isQueen = unit.caste === 'queen';
       const maxReach = isQueen ? 7.5 : (unit.attackRange + 2.5);
 
@@ -40087,7 +40216,7 @@
           new HumanAI(202, 'incinerator', -24, 34, 'Opératrice thermique Sava Rhee'),
           new HumanAI(204, 'smartgunner', 38, -26, 'Artilleur gyro Kade Mercer'),
           new HumanAI(205, 'marine', -6, 18, 'Fusilier orbital Niko Vale'),
-          new HumanAI(208, 'marine', 12, -28, 'Tourelle sentinelle UA 571-C (Opérateur Novak)')
+          new HumanAI(208, 'marine', 12, -28, 'Tourelle autonome KAPPA-7 (Opérateur Novak)')
         ];
         this.mantisBoss = null;
         this.heavyBossForceSpawned = false;
@@ -40124,6 +40253,15 @@
         relay.position.set(position.x, 2, position.z);
         relay.userData.relayIndex = index;
         relay.userData.isolated = false;
+        relay.userData.corruptProgress = 0;
+        // Wave 23 : Balise verticale lumineuse PALIMPSESTE (rouge actif -> vert isolé)
+        const beamMesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.18, 0.42, 16, 10, 1, true),
+          new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false })
+        );
+        beamMesh.name = 'relay_beacon_beam';
+        beamMesh.position.y = 8;
+        relay.add(beamMesh);
         rendererEngine.propsGroup.add(relay);
         this.relayMeshes.push(relay);
         window.HiveSystems?.vfx?.ring(position.x, position.z, 0xef4444, 4);
@@ -40132,17 +40270,20 @@
       const difficulty = window.gameInstance?.campaignConfig?.difficulty || 'survivor';
       this.purgeRemaining = difficulty === 'story' ? 330 : (difficulty === 'nightmare' ? 180 : 240);
       this.cameraFocus = { x: this.queen.x - 10, z: this.queen.z - 8 };
-      document.getElementById('btn-rts-focus-queen')?.addEventListener('click', () => this.focusCameraOnQueen());
-      document.getElementById('btn-royal-cry')?.addEventListener('click', () => this.triggerRoyalCry());
-      document.getElementById('btn-royal-guard')?.addEventListener('click', () => this.rallyRoyalGuard());
+      const focusBtn = document.getElementById('btn-rts-focus-queen');
+      if (focusBtn) focusBtn.onclick = () => this.focusCameraOnQueen();
+      const cryBtn = document.getElementById('btn-royal-cry');
+      if (cryBtn) cryBtn.onclick = () => this.triggerRoyalCry();
+      const guardBtn = document.getElementById('btn-royal-guard');
+      if (guardBtn) guardBtn.onclick = () => this.rallyRoyalGuard();
       this.updateHUD();
       this.updateStats();
       this.updateRtsTacticalMonitor();
       this.log(`[RUCHE] La Reine issue de ${window.gameInstance?.royalCycleRecord?.hostName || 'l’hôte royal'} est attachée à son ovipositeur.`);
       this.log(`[LIGNÉE] Le ${foundingCaste.toUpperCase()} de l’acte IV constitue l’unique adulte initial.`);
-      this.log('[MANTIS-4] Phase 1 : deux réseaux hydrauliques protègent encore le châssis.');
-      this.log('[PALIMPSESTE] Trois relais pilotent la purge. Posez trois ordres INFEST distincts.');
-      window.HiveSystems?.setMission(5, 0, 'Désactiver trois relais de PALIMPSESTE avec des impulsions INFEST.');
+      this.log('[BRIAREOS-7] Synthétique de siège IRISE déployé en interception immédiate.');
+      this.log('[PALIMPSESTE] Trois relais pilotent la purge. Envoyez vos unités corrompre les relais [4] INFEST.');
+      window.HiveSystems?.setMission(5, 0, 'Envoyer vos unités corrompre les 3 relais PALIMPSESTE (ordre INFEST [4]).');
       window.HiveSystems?.narrative('PALIMPSESTE', 'Autodestruction confirmée. Toute vie biologique sera effacée avec les archives.');
     }
 
@@ -40152,7 +40293,7 @@
       document.getElementById('bio-title').textContent = isAttached
         ? 'RÉSEAU SYNAPTIQUE — REINE ANCRÉE À L’OVIPOSITEUR'
         : 'RÉSEAU SYNAPTIQUE — REINE DE GUERRE DÉTACHÉE (COMBAT DIRECT)';
-      document.getElementById('stage-instructions').innerHTML = '<strong>Commandement de la Ruche :</strong><br><br>• <strong>ZQSD / Flèches</strong> : déplacer librement la caméra tactique (<strong>[H]</strong> recentrer Reine).<br>• <strong>Clic-Gauche / Clic-Droit</strong> : peindre les phéromones ou donner un ordre contextuel direct (HUNT / INFEST / RUSH).<br>• <strong>Q / W / E / R / T</strong> : modes phéromonaux (Chasser, Capturer, Défendre, Infester, Rush).<br>• <strong>X</strong> : détacher / réarrimer la Reine · <strong>P</strong> : contrôle synaptique direct (ESPACE attaquer).';
+      document.getElementById('stage-instructions').innerHTML = '<strong>Commandement de la Ruche :</strong><br><br>• <strong>ZQSD / Flèches</strong> : déplacer librement la caméra tactique (<strong>[H]</strong> recentrer Reine).<br>• <strong>Clic-Gauche / Clic-Droit</strong> : poser l’ordre phéromonal actif ou ordre contextuel (HUNT / INFEST / RUSH).<br>• <strong>1 à 5</strong> : modes phéromonaux (Chasser, Capturer, Défendre, Infester, Rush) · <strong>[G]</strong> Garde Royale · <strong>[C]</strong> Cri Royal.<br>• <strong>[X]</strong> : détacher / réarrimer la Reine · <strong>[P]</strong> : contrôle synaptique direct (ESPACE attaquer).';
       setHudBar('vital', 'INTÉGRITÉ REINE', this.queen ? (this.queen.hp / this.queen.maxHp) * 100 : 100);
       const actionsContainer = document.getElementById('action-buttons-container');
       const oviBtnLabel = isAttached
@@ -40221,9 +40362,14 @@
         palatine: ['praetorian']
       };
       const allowed = precursorMap[caste] || ['drone'];
-      return this.rtsUnits.find((unit) => (
-        !unit.isDestroyed && allowed.includes(unit.caste)
-      )) || null;
+      const candidates = this.rtsUnits.filter((unit) => (
+        !unit.isDestroyed && unit !== this.possessedUnit && allowed.includes(unit.caste)
+      ));
+      if (!candidates.length) return null;
+      const qx = this.queen?.x || 0;
+      const qz = this.queen?.z || 0;
+      candidates.sort((a, b) => Math.hypot(a.x - qx, a.z - qz) - Math.hypot(b.x - qx, b.z - qz));
+      return candidates[0];
     }
 
     canBeginCycle(caste, cost) {
@@ -40335,7 +40481,7 @@
           unit.createMesh();
           this.rtsUnits.push(unit);
           this.updateStats();
-          audioManager.playXenoHiss?.(spawn.x, spawn.z);
+          audioManager.playRtsUnitHatched?.(caste, spawn.x, spawn.z);
           window.HiveSystems?.vfx?.burst(spawn.x, spawn.z, 0x39ff14, 24, 0.14, 1.5);
           this.log(`[NAISSANCE] ${caste.toUpperCase()} mature ; le cycle exposé a survécu.`);
         },
@@ -40452,12 +40598,8 @@
         this.executePossessedAttack();
         return;
       }
+      // Wave 23 : Raccourcis phéromonaux dédiés [1-5] (libère totalement ZQSD/WASD pour la caméra tactique)
       const commandByKey = {
-        q: 'HUNT',
-        w: 'CAPTURE',
-        e: 'DEFEND',
-        r: 'INFEST',
-        t: 'RUSH',
         '1': 'HUNT',
         '2': 'CAPTURE',
         '3': 'DEFEND',
@@ -40565,19 +40707,24 @@
     }
 
     placePheromoneOrder(x, z, command) {
-      const colors = { HUNT: 0xef4444, CAPTURE: 0xa855f7, DEFEND: 0x38bdf8, INFEST: 0x39ff14, RUSH: 0xdc2626 };
+      const colors = { HUNT: 0xef4444, CAPTURE: 0xa855f7, DEFEND: 0x38bdf8, INFEST: 0x39ff14, RUSH: 0xdc2626, ROYAL_GUARD: 0xd946ef };
+      const orderColor = colors[command] || 0x39ff14;
       const marker = new THREE.Mesh(
         new THREE.RingGeometry(1.6, 2.6, 24),
-        new THREE.MeshBasicMaterial({ color: colors[command] || 0x39ff14, transparent: true, opacity: 0.8, side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({ color: orderColor, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
       );
       marker.rotation.x = -Math.PI / 2;
       marker.position.set(x, 0.12, z);
       rendererEngine.scene.add(marker);
-      pheromoneSystem.addZone({ x, z, command, radius: 18, mesh: marker });
-      audioManager.playRtsOrderPing?.(x, z);
+      pheromoneSystem.addZone({ x, z, command, radius: 18, mesh: marker, timer: 35.0 });
+      audioManager.playRtsOrderPing?.(x, z, command);
+      if (this.queen && !this.queen.isDestroyed) {
+        window.HiveSystems?.vfx?.beam?.(this.queen.x, 3.2, this.queen.z, x, 0.4, z, orderColor, 0.35);
+      }
+      window.HiveSystems?.vfx?.floatingText?.(x, 2.2, z, `ORDRE ${command}`, `#${orderColor.toString(16).padStart(6, '0')}`, false);
 
       if (command === 'INFEST') {
-        resinGrid.addResinPatch(x, z, 5);
+        // Wave 23 : Fin de l'exploit clic-instantané global — l'essaim doit converger et corrompre physiquement le relais
         const relayTarget = this.relayMeshes
           .filter((relay) => !relay.userData.isolated)
           .map((relay) => ({
@@ -40586,23 +40733,9 @@
           }))
           .sort((left, right) => left.distance - right.distance)[0];
         if (relayTarget && relayTarget.distance <= 11) {
-          const relay = relayTarget.relay;
-          relay.userData.isolated = true;
-          relay?.traverse((child) => {
-            if (!child.isMesh || !child.material || Array.isArray(child.material)) return;
-            if (child.material.emissive) child.material.emissive.setHex(0x39ff14);
-          });
-          this.relayCount = this.relayMeshes.filter((candidate) => candidate.userData.isolated).length;
-          audioManager.playRtsRelayIsolated?.(relay.position.x, relay.position.z);
-          window.HiveSystems?.vfx?.ring(relay.position.x, relay.position.z, 0x39ff14, 5);
-          window.HiveSystems?.updateObjective(5, this.relayCount, this.relayCount < 3
-            ? `Désactiver encore ${3 - this.relayCount} relais de PALIMPSESTE.`
-            : 'Neutraliser les dernières forces de réponse humaine.');
-          this.log(`[PALIMPSESTE] Relais ${this.relayCount}/3 isolé du réseau de purge.`);
-          if (this.relayCount >= 3) {
-            this.log('[PALIMPSESTE] Réseau de purge interrompu. Neutralisez les dernières menaces.');
-            window.HiveSystems?.narrative('PALIMPSESTE', 'Liaison avec le cœur perdue. Autodestruction interrompue.');
-          }
+          relayTarget.relay.userData.infestTargeted = true;
+          showToast(`RELAIS PALIMPSESTE R${(relayTarget.relay.userData.relayIndex || 0) + 1} CIBLÉ ! Vos unités convergent pour le corrompre !`);
+          this.log(`[PALIMPSESTE] Relais R${(relayTarget.relay.userData.relayIndex || 0) + 1} marqué pour corruption biologique.`);
         }
       }
       this.log(`[PHÉROMONE ${command}] Marque posée en X:${x.toFixed(1)} Z:${z.toFixed(1)}.`);
@@ -40628,36 +40761,58 @@
         this.selectionRingMesh.rotation.x = -Math.PI / 2;
         rendererEngine.scene.add(this.selectionRingMesh);
       }
+      const scaleByCaste = unit.caste === 'queen' ? 2.6 : (['crusher', 'praetorian', 'palatine', 'offspring'].includes(unit.caste) ? 1.55 : 1.0);
+      this.selectionRingMesh.userData.baseScale = scaleByCaste;
+      this.selectionRingMesh.scale.set(scaleByCaste, scaleByCaste, 1);
       this.selectionRingMesh.position.set(unit.x, 0.14, unit.z);
       this.selectionRingMesh.visible = true;
     }
 
     selectRtsCaste(caste) {
-      const unit = this.rtsUnits.find((u) => !u.isDestroyed && u.caste === caste);
-      if (!unit) return;
+      const units = this.rtsUnits.filter((u) => !u.isDestroyed && u.caste === caste);
+      if (!units.length) return;
+      this._casteCycleIdx = this._casteCycleIdx || {};
+      const idx = (this._casteCycleIdx[caste] || 0) % units.length;
+      this._casteCycleIdx[caste] = idx + 1;
+      const unit = units[idx];
       this.cameraFocus = { x: unit.x, z: unit.z };
       this.selectRtsUnit(unit);
       audioManager.playRtsUnitSelect?.();
-      showToast(`Escouade focalisée : ${caste.toUpperCase()}`);
+      showToast(`Escouade focalisée : ${caste.toUpperCase()} (${idx + 1}/${units.length})`);
     }
 
     updateRtsTacticalMonitor() {
       const timerEl = document.getElementById('rts-purge-timer');
       const cyclesEl = document.getElementById('rts-cycles-count');
       const chipsEl = document.getElementById('rts-squad-chips');
+      const queenStatusEl = document.getElementById('rts-queen-status');
+      const bioQuickEl = document.getElementById('rts-bio-quick');
+      const purgeBanner = document.getElementById('muthur-purge-banner');
+      const purgeCd = document.getElementById('muthur-purge-countdown');
+
+      if (queenStatusEl && this.queen) {
+        const qPct = Math.max(0, Math.round((this.queen.hp / (this.queen.maxHp || 1000)) * 100));
+        const stance = this.queen.attachedToOvipositor ? 'REINE ANCRÉE' : 'REINE LIBRE';
+        const isAttacked = (this.queenUnderAttackTimer || 0) > 0;
+        queenStatusEl.textContent = isAttacked ? `REINE ATTAQUÉE ! · ${qPct}%` : `${stance} · ${qPct}%`;
+        queenStatusEl.classList.toggle('under-attack', isAttacked);
+      }
+      if (bioQuickEl) {
+        const cocoons = (window.gameInstance?.humans || []).filter((h) => h.isCocooned && !h.isConsumedByCycle).length;
+        bioQuickEl.textContent = `BIO ${Math.round(this.biomass)}/220 · HÔTES ${cocoons}`;
+      }
 
       if (timerEl) {
         if (this.relayCount >= 3) {
           timerEl.textContent = 'PURGE STOPPÉE';
           timerEl.className = 'rts-purge-val safe';
+          if (purgeBanner) purgeBanner.classList.add('hidden');
         } else {
           const secs = Math.max(0, Math.ceil(this.purgeRemaining));
           const m = String(Math.floor(secs / 60)).padStart(2, '0');
           const s = String(secs % 60).padStart(2, '0');
           timerEl.textContent = `PURGE ${m}:${s}`;
           timerEl.className = `rts-purge-val${secs <= 60 ? ' critical' : ''}`;
-          const purgeBanner = document.getElementById('muthur-purge-banner');
-          const purgeCd = document.getElementById('muthur-purge-countdown');
           if (purgeBanner && purgeCd) {
             if (secs < 90 && secs > 0) {
               purgeBanner.classList.remove('hidden');
@@ -40693,21 +40848,26 @@
       }
 
       if (chipsEl) {
-        const counts = {};
+        const grouped = {};
         for (const u of this.rtsUnits) {
           if (u.isDestroyed) continue;
-          counts[u.caste] = (counts[u.caste] || 0) + 1;
+          if (!grouped[u.caste]) grouped[u.caste] = { count: 0, hpSum: 0, maxSum: 0 };
+          grouped[u.caste].count += 1;
+          grouped[u.caste].hpSum += Math.max(0, u.hp || 0);
+          grouped[u.caste].maxSum += Math.max(1, u.maxHp || 100);
         }
-        const entries = Object.entries(counts);
-        if (chipsEl.dataset.signature !== JSON.stringify(entries)) {
-          chipsEl.dataset.signature = JSON.stringify(entries);
+        const entries = Object.entries(grouped).map(([caste, g]) => [caste, g.count, Math.round((g.hpSum / g.maxSum) * 100)]);
+        const sig = JSON.stringify(entries);
+        if (chipsEl.dataset.signature !== sig) {
+          chipsEl.dataset.signature = sig;
           chipsEl.replaceChildren();
-          entries.forEach(([caste, count]) => {
+          entries.forEach(([caste, count, hpPct]) => {
             const chip = document.createElement('button');
             chip.type = 'button';
             chip.className = 'rts-squad-chip';
-            chip.title = `Centrer caméra sur ${caste.toUpperCase()}`;
-            chip.innerHTML = `<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="10" cy="10" r="6" stroke-width="1.5"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg><span>${caste.toUpperCase()} ×${count}</span>`;
+            chip.title = `Centrer caméra sur ${caste.toUpperCase()} (${hpPct}% PV moyen — cliquer pour cycler)`;
+            const hpClass = hpPct <= 35 ? ' critical' : (hpPct <= 70 ? ' wounded' : '');
+            chip.innerHTML = `<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="10" cy="10" r="6" stroke-width="1.5"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg><span>${caste.toUpperCase()} ×${count}</span><span class="rts-chip-hp-track"><span class="rts-chip-hp-fill${hpClass}" style="width:${hpPct}%"></span></span>`;
             chip.addEventListener('click', () => this.selectRtsCaste(caste));
             chipsEl.appendChild(chip);
           });
@@ -40792,34 +40952,42 @@
       this.relayMeshes.forEach((relay) => rendererEngine.removeObject(relay));
       this.relayMeshes = [];
       document.getElementById('rts-control-bar')?.classList.add('hidden');
+      document.getElementById('muthur-purge-banner')?.classList.add('hidden');
+      document.getElementById('boss-telemetry-hud')?.classList.add('hidden');
       pheromoneSystem.clearZones();
     }
 
     checkRtsReinforcements(safeDelta) {
       if (this.heavyBossForceSpawned || !window.gameInstance) return;
       this.rtsWaveTimer = (this.rtsWaveTimer || 0) + safeDelta;
-      const relayThreatened = (this.relayMeshes || []).some((r) => r.userData?.isolated);
+      const relayThreatened = (this.relayMeshes || []).some((r) => r.userData?.isolated || (r.userData?.corruptProgress || 0) > 25);
       if (this.rtsWaveTimer >= 22 || relayThreatened) {
         this.heavyBossForceSpawned = true;
-        const mantis = new HumanAI(206, 'exosuit', 22, -42, 'MANTIS-4 — exosquelette KAPPA');
+        const mantisSpawn = this.findFreePosition(22, -42, 4);
+        const mantis = new HumanAI(206, 'exosuit', mantisSpawn.x, mantisSpawn.z, 'MANTIS-4 — exosquelette KAPPA');
         mantis.bossId = 'MANTIS_4';
         mantis.hp = mantis.maxHp = 460;
         mantis.bossPhase = 1;
         mantis.bossShield = mantis.maxBossShield = 260;
+        mantis.patrolOrigin = { x: mantisSpawn.x, z: mantisSpawn.z };
+        mantis.choosePatrolWaypoint();
         mantis.createMesh();
         this.mantisBoss = mantis;
         this.decorateMantisBoss();
         window.HiveSystems?.unlockCodex?.(['mantis_4', 'codex_protocole_kappa']);
 
-        const jansen = new HumanAI(207, 'powerloader', -36, 12, 'Élévateur P-5000 Caterpillar — Chef de pont Jansen');
+        const jansenSpawn = this.findFreePosition(-36, 12, 5, [mantisSpawn]);
+        const jansen = new HumanAI(207, 'powerloader', jansenSpawn.x, jansenSpawn.z, 'Exochargeur lourd MN-500 — Chef de pont Jansen');
+        jansen.patrolOrigin = { x: jansenSpawn.x, z: jansenSpawn.z };
+        jansen.choosePatrolWaypoint();
         jansen.createMesh();
 
         window.gameInstance.humans.push(mantis, jansen);
         rendererEngine.addScreenShake?.(0.45, 0.3);
-        audioManager.playPowerloaderBeep?.(-36, 12);
+        audioManager.playPowerloaderBeep?.(jansenSpawn.x, jansenSpawn.z);
         audioManager.playSelfDestructKlaxon?.();
-        showToast('LARGAGE D\'URGENCE PALIMPSESTE : Exosquelette de siège MANTIS-4 & Power Loader P-5000 déployés !');
-        appendSensorLog('[DÉPLOIEMENT TERMINAL] MANTIS-4 et le Power Loader P-5000 descendent du sas de maintenance.', 'alert');
+        showToast('LARGAGE D\'URGENCE PALIMPSESTE : Exosquelette MANTIS-4 & Exochargeur lourd MN-500 déployés !');
+        appendSensorLog('[DÉPLOIEMENT TERMINAL] MANTIS-4 (Phase 1 : bouclier cinétique actif) et l\'Exochargeur MN-500 descendent du sas de maintenance.', 'alert');
         window.HiveSystems?.narrative('PALIMPSESTE', 'Menace de ruche confirmée. Châssis MANTIS-4 déployé en interception terminale.');
       }
     }
@@ -40848,6 +41016,13 @@
         } else {
           this.possessedUnit.moveDirect(dx, dy, deltaSeconds, remainingDistance);
         }
+        // Wave 23 : Décrémenter les cooldowns/animations/régénération de l'unité possédée
+        this.possessedUnit.attackCooldown = Math.max(0, (this.possessedUnit.attackCooldown || 0) - deltaSeconds);
+        this.possessedUnit.attackAnimation = Math.max(0, (this.possessedUnit.attackAnimation || 0) - deltaSeconds * 3);
+        this.possessedUnit.royalFuryTimer = Math.max(0, (this.possessedUnit.royalFuryTimer || 0) - deltaSeconds);
+        if (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.possessedUnit.x, this.possessedUnit.z) > 0) {
+          this.possessedUnit.hp = Math.min(this.possessedUnit.maxHp, this.possessedUnit.hp + 6 * deltaSeconds);
+        }
       } else {
         // Panning libre de la caméra tactique RTS (ZQSD / Flèches)
         const { dx, dy } = inputManager.getMovementVector();
@@ -40859,13 +41034,70 @@
       if (this.selectionRingMesh) {
         if (this.selectedUnit && !this.selectedUnit.isDestroyed) {
           this.selectionRingMesh.position.set(this.selectedUnit.x, 0.14, this.selectedUnit.z);
+          const baseS = this.selectionRingMesh.userData.baseScale || 1.0;
+          const ringPulse = baseS * (1 + Math.sin(performance.now() * 0.005) * 0.08);
+          this.selectionRingMesh.scale.set(ringPulse, ringPulse, 1);
+          this.selectionRingMesh.rotation.z += deltaSeconds * 1.4;
           this.selectionRingMesh.visible = true;
         } else {
           this.selectionRingMesh.visible = false;
         }
       }
+      this.queenUnderAttackTimer = Math.max(0, (this.queenUnderAttackTimer || 0) - deltaSeconds);
       for (const unit of this.rtsUnits) {
         if (unit !== this.possessedUnit || !pheromoneSystem.possessionMode) unit.update(deltaSeconds, humans);
+      }
+
+      // Wave 23 : Corruption biologique physique des Relais PALIMPSESTE par les unités de la Ruche à portée (<= 5.5m)
+      for (const relay of this.relayMeshes) {
+        if (relay.userData.isolated) continue;
+        const nearbyUnits = this.rtsUnits.filter((u) => !u.isDestroyed && Math.hypot(u.x - relay.position.x, u.z - relay.position.z) <= 5.5);
+        if (nearbyUnits.length > 0) {
+          const hasWorker = nearbyUnits.some((u) => u.caste === 'worker');
+          const rate = (hasWorker ? 34 : 22) * Math.min(2.2, 0.8 + nearbyUnits.length * 0.35);
+          relay.userData.corruptProgress = Math.min(100, (relay.userData.corruptProgress || 0) + rate * deltaSeconds);
+          if (Math.random() < 0.25) {
+            window.HiveSystems?.vfx?.burst?.(relay.position.x, relay.position.z, 0x39ff14, 4, 0.12, 1.4);
+          }
+          if (relay.userData.corruptProgress >= 100) {
+            relay.userData.isolated = true;
+            resinGrid.addResinPatch(relay.position.x, relay.position.z, 6);
+            relay?.traverse((child) => {
+              if (!child.isMesh || !child.material || Array.isArray(child.material)) return;
+              if (child.name === 'relay_beacon_beam') {
+                child.material.color?.setHex?.(0x39ff14);
+                child.material.opacity = 0.18;
+              } else if (child.material.emissive) {
+                child.material.emissive.setHex(0x39ff14);
+              }
+            });
+            this.relayCount = this.relayMeshes.filter((candidate) => candidate.userData.isolated).length;
+            audioManager.playRtsRelayIsolated?.(relay.position.x, relay.position.z, this.relayCount);
+            window.HiveSystems?.vfx?.ring(relay.position.x, relay.position.z, 0x39ff14, 6);
+            window.HiveSystems?.vfx?.floatingText?.(relay.position.x, 3.6, relay.position.z, `RELAIS R${(relay.userData.relayIndex || 0) + 1} ISOLÉ !`, '#39ff14', true);
+            window.HiveSystems?.updateObjective(5, this.relayCount, this.relayCount < 3
+              ? `Corrompre encore ${3 - this.relayCount} relais de PALIMPSESTE.`
+              : 'Neutraliser les dernières forces de réponse IRISE / KAPPA.');
+            this.log(`[PALIMPSESTE] Relais ${this.relayCount}/3 isolé du réseau de purge par bio-corruption.`);
+            if (this.relayCount >= 3) {
+              this.log('[PALIMPSESTE] Réseau de purge interrompu. Neutralisez les dernières menaces.');
+              window.HiveSystems?.narrative('PALIMPSESTE', 'Liaison avec le cœur perdue. Autodestruction interrompue.');
+            }
+            this.updateStats();
+          }
+        }
+      }
+
+      // Wave 23 : Récolte organique passive de l'Ovipositeur (évite tout soft-lock économique)
+      if (this.queen?.attachedToOvipositor && !this.queen.isDestroyed) {
+        this.oviBiomassTimer = (this.oviBiomassTimer || 0) + deltaSeconds;
+        if (this.oviBiomassTimer >= 8.0) {
+          this.oviBiomassTimer = 0;
+          if (this.biomass < 220) {
+            this.biomass = Math.min(220, this.biomass + 3);
+            this.updateStats();
+          }
+        }
       }
       const hostCount = humans.filter((human) => human.isCocooned).length;
       if (hostCount !== this.lastHostCount) {
@@ -40936,8 +41168,14 @@
       const purgeSecond = Math.ceil(this.purgeRemaining);
       if (purgeSecond !== this.lastPurgeSecond) {
         this.lastPurgeSecond = purgeSecond;
-        if (this.relayCount < 3 && purgeSecond > 0 && purgeSecond <= 30 && purgeSecond % 5 === 0) {
-          audioManager.playMotionTrackerRapidBeep?.();
+        if (this.relayCount < 3 && purgeSecond > 0) {
+          if (purgeSecond === 90 || purgeSecond === 60) {
+            audioManager.playSelfDestructKlaxon?.();
+          } else if (purgeSecond <= 10) {
+            audioManager.playMotionTrackerRapidBeep?.();
+          } else if (purgeSecond <= 30 && purgeSecond % 5 === 0) {
+            audioManager.playMotionTrackerRapidBeep?.();
+          }
         }
         this.updateStats();
       }
@@ -41137,10 +41375,11 @@
         return;
       }
       if (key === 'n') {
-        pheromoneSystem.dropManualScent(playerCreature.x, playerCreature.z);
+        const scentOrigin = pheromoneSystem.getActiveOriginPoint?.() || { x: playerCreature.x, z: playerCreature.z };
+        pheromoneSystem.dropManualScent(scentOrigin.x, scentOrigin.z);
         return;
       }
-      if (key === 'l' || key === 'p') {
+      if (key === 'l' || (key === 'p' && this.currentStageIndex !== 5)) {
         if (inputManager?.isKeyDown?.('ShiftLeft') || inputManager?.isKeyDown?.('ShiftRight')) {
           window.gameInstance?.motionTracker?.toggleExpandedBlueprint?.();
         } else if (stationMap.showBlueprintOverlay) {
@@ -41256,7 +41495,7 @@
           desc: act?.summary || 'La Reine régit la ruche, pond les ovomorphes et dirige l’essaim par télépathie synaptique.',
           morphology: 'Crête crânienne royale monumentale, ovipositeur de biomasse, plexus neuro-synaptique.',
           host: 'Lignée génétique matriarcale pure avec matrice de pontes illimitée.',
-          abilities: 'Ordres tactiques RTS [Q,W,E,R,T], résine chitineuse bionique, pontes d’ovomorphes.'
+          abilities: 'Ordres tactiques RTS [1-5], Garde Royale [G], Cri Royal [C], Impulsion Synaptique [P], Ovipositeur [X].'
         }
       }[nextStage] || {
         num: `ACTE ${nextStage} // DIRECTIVE 937`,
@@ -41676,7 +41915,9 @@
           deltaSeconds
         );
       }
-      const visibleCreature = this.currentStageIndex === 5 ? this.currentStage?.queen : playerCreature;
+      const visibleCreature = this.currentStageIndex === 5
+        ? (this.currentStage?.possessedUnit || this.currentStage?.cameraFocus || this.currentStage?.queen)
+        : playerCreature;
       rendererEngine.updatePropVisibility(visibleCreature || playerCreature, this.currentStageIndex === 5);
       if (visibleCreature) {
         const effY = this.currentStageIndex === 5

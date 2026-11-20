@@ -1922,6 +1922,11 @@
         }
 
         if (key === 'c') {
+          const codex = document.getElementById('codex-overlay');
+          // Wave 23 : En Stage 5 RTS, [C] déclenche le Cri Royal sans ouvrir le Codex
+          if (window.gameInstance?.currentStageIndex === 5 && codex?.classList.contains('hidden')) {
+            return;
+          }
           if (activeSystemLayer?.id === 'muthur-bioscan-modal') {
             event.preventDefault();
             this.closeBioScan();
@@ -1932,7 +1937,6 @@
             return;
           }
           event.preventDefault();
-          const codex = document.getElementById('codex-overlay');
           if (codex?.classList.contains('hidden')) this.openCodex(false);
           else this.closeCodex();
         }

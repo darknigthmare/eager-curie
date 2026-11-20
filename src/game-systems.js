@@ -1489,9 +1489,10 @@
             });
           }
           const state = this.getPhysicalActionState();
-          const busyLabel = state.ceilingActionPhase === 'HOLD'
-            ? 'PRISE MAINTENUE — Q : LIBÉRER PUIS DESCENDRE'
-            : state.ceilingActionPhase ? 'CAPTURE / LEVAGE — Q : INTERROMPRE' : 'ANNULER LA TRANSITION [Q]';
+          const disposalLabel = this.getDisposalActionLabel(state.disposalPhase);
+          const busyLabel = disposalLabel ? `${disposalLabel} [Q]`
+            : state.ceilingActionPhase === 'HOLD' ? 'PRISE MAINTENUE — Q : LIBÉRER PUIS DESCENDRE'
+              : state.ceilingActionPhase ? 'CAPTURE / LEVAGE — Q : INTERROMPRE' : 'ANNULER LA TRANSITION [Q]';
           const ceilingLabels = {
             'btn-drone-ceiling': state.busy ? busyLabel : 'DESCENDRE AU SOL [Q]',
             'btn-claw-swipe': 'ATTERRISSAGE OFFENSIF [ESPACE]',
@@ -1602,15 +1603,29 @@
     }
 
     getPhysicalActionState() {
-      if (this.game?.currentStageIndex !== 4) return { busy: false, hanging: false, ceilingActionPhase: null };
+      if (this.game?.currentStageIndex !== 4) return { busy: false, hanging: false, ceilingActionPhase: null, disposalPhase: null, prowlLeaping: false };
       const state = this.game?.getLocomotionState?.();
       return { busy: !!(state?.busy ?? this.game?.isLocomotionBusy?.()), hanging: !!state?.hanging,
-        ceilingActionPhase: typeof state?.ceilingActionPhase === 'string' ? state.ceilingActionPhase : null };
+        ceilingActionPhase: typeof state?.ceilingActionPhase === 'string' ? state.ceilingActionPhase : null,
+        disposalPhase: typeof state?.disposalPhase === 'string' ? state.disposalPhase : null,
+        prowlLeaping: Boolean(state?.prowlLeaping) };
+    }
+
+    getDisposalActionLabel(phase) {
+      switch (phase) {
+        case 'OPEN': return 'OUVERTURE — ANNULER';
+        case 'LIFT': return 'LEVAGE — ANNULER';
+        case 'LOAD': return 'CHARGEMENT — ANNULER';
+        case 'LOWER': return 'DÉPOSE — ANNULER';
+        case 'CLOSE': return 'FERMETURE — ANNULER';
+        default: return null;
+      }
     }
 
     isPhysicalActionBusy() { return this.getPhysicalActionState().busy; }
 
     isPhysicalActionBlocked(button, state = this.getPhysicalActionState()) {
+      if (state.prowlLeaping) return true;
       if (state.busy) return button?.id !== 'btn-drone-ceiling';
       return state.hanging && !['btn-drone-ceiling', 'btn-claw-swipe', 'btn-tail-impale', 'btn-ceiling-drop-eviscerate'].includes(button?.id);
     }
@@ -1659,9 +1674,16 @@
       const before = app?.classList.contains('locomotion-busy');
       const beforeHanging = app?.classList.contains('ceiling-hanging');
       const previousPhase = this.lastLocomotionActionPhase;
+      const previousDisposal = this.lastDisposalPhase;
+      const wasProwlLeaping = this.wasProwlLeaping;
       this.lastLocomotionActionPhase = state.ceilingActionPhase;
+      this.lastDisposalPhase = state.disposalPhase;
+      this.wasProwlLeaping = state.prowlLeaping;
       app?.classList.toggle('locomotion-busy', busy);
       app?.classList.toggle('ceiling-hanging', hanging);
+      const cancelLabel = document.getElementById('btn-drone-ceiling')?.querySelector('.action-label');
+      const label = state.prowlLeaping ? 'BOND EN COURS' : this.getDisposalActionLabel(state.disposalPhase) || 'PAROI & PLAFOND';
+      if (cancelLabel && cancelLabel.textContent !== label) cancelLabel.textContent = label;
       for (const [button, snapshot] of this.locomotionLocks) {
         if (buttons.includes(button) && this.isPhysicalActionBlocked(button, state)) continue;
         this.setLocomotionAttribute(button, 'disabled', snapshot.disabled ? '' : null);
@@ -1678,7 +1700,8 @@
         this.setLocomotionAttribute(button, 'aria-disabled', 'true');
         button.dataset.locomotionLocked = 'true';
       }
-      if (before !== busy || beforeHanging !== hanging || previousPhase !== state.ceilingActionPhase) this.syncCompactActions?.();
+      if (before !== busy || beforeHanging !== hanging || previousPhase !== state.ceilingActionPhase ||
+          previousDisposal !== state.disposalPhase || wasProwlLeaping !== state.prowlLeaping) this.syncCompactActions?.();
     }
 
     bindLocomotionGuard() {

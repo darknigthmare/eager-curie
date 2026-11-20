@@ -60,6 +60,22 @@ function check(name, run) {
   catch (error) { results.push({ name, passed: false, error: error.stack || String(error) }); console.error('FAIL ' + name + ': ' + error.message); }
 }
 const wall = { minX: -1, maxX: 1, minZ: -5, maxZ: 5 };
+check('Both Taser guard profiles pursue to baton range without firing a pulse rifle', () => {
+  for (const type of ['weyland_security_taser', 'taser_guard']) {
+    const f = fixture({ type, pz: 8 });
+    assert.equal(f.actor.canEngageHostiles(), true);
+    f.step(1 / 60);
+    assert(f.actor.navigationGoal && f.actor.navigationGoal.z === 8);
+    assert.equal(f.damage.length, 0);
+    assert.equal(f.actor.pendingProjectiles.length, 0);
+    for (let frame = 0; frame < 180 && f.damage.length === 0; frame++) f.step(1 / 60);
+    assert.deepEqual(f.damage, [18]);
+    assert(Math.hypot(f.actor.x - f.p.x, f.actor.z - f.p.z) <= 3);
+    assert.equal(f.p.staggerTimer, 1.8);
+    assert(f.audio.some(event => event.method === 'playStunBatonZap'));
+    assert(!f.audio.some(event => event.method === 'playM41APulseBurst'));
+  }
+});
 check('A real AABB wall prevents first acquisition and radio sight reports', () => {
   const f = fixture({ x: -8, px: 8, pz: 0, wall }); f.actor.mesh.rotation.y = Math.PI / 2;
   assert.equal(f.map.hasLineOfSight(-8, 0, 8, 0), false); f.step(.1);

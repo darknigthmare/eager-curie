@@ -7,6 +7,7 @@ logic is replaced. Stage setup and fixed simulation steps isolate each rule.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 
@@ -16,7 +17,9 @@ from playwright.sync_api import sync_playwright
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:8082")
+    parser.add_argument("--royal-only", action="store_true", help="Run only the prepared adult/royal scenario")
     args = parser.parse_args()
+    royal_only = args.royal_only or os.environ.get("HIVE_QA_ROYAL_ONLY") == "1"
     repository = Path(__file__).resolve().parents[1]
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(
@@ -41,7 +44,7 @@ def main():
         page.wait_for_function("() => !!(window.gameInstance && window.HiveSystems.ui.game)", timeout=120000)
         page.click("#btn-new-campaign")
         page.click("#btn-start-act-one")
-        results = page.evaluate("""() => {
+        results = page.evaluate("""(royalOnly) => {
             const g=gameInstance, q=__qa;
             g.setSystemPaused(true);
             const map=q.stationMap, tests=[];
@@ -49,6 +52,19 @@ def main():
                 tests.push({name,pass,detail});
                 if(!pass) throw Error(name+': '+JSON.stringify(detail));
             };
+            let parasite=null;
+            const fixedTicks=(frames,done=()=>false)=>{
+                const paused=g.isSystemPaused;g.isSystemPaused=false;
+                let elapsedFrames=0;
+                try{for(let i=0;i<frames&&!done();i++){
+                    q.playerCreature.update(1/60);
+                    if(q.playerCreature.attachedHost||parasite?.postImplantPhase||g.currentStageIndex!==2)for(const human of [...g.humans])human.update(1/60);
+                    g.currentStage.update(1/60);window.HiveSystems.update(1/60);window.HiveAssetLibrary?.update(1/60);
+                    elapsedFrames++;
+                }}finally{g.isSystemPaused=paused;}
+                return elapsedFrames;
+            };
+            if (!royalOnly) {
             const renderer=q.rendererEngine;
             renderer.scene.updateMatrixWorld(true);
             const cameraPosition=renderer.camera.position.clone();
@@ -96,19 +112,9 @@ def main():
                 if(!hostPoint&&!map.checkCollision(x,z,.45)&&!map.checkCollision(x,z-2,.45)&&map.hasLineOfSight(x,z,x,z-2,.12))hostPoint={x,z};
             }
             check('prepared cycle has a real free host lane',!!hostPoint);
-            const parasite=g.currentStage, scientist=new q.HumanAI(963,'scientist',hostPoint.x,hostPoint.z);
+            parasite=g.currentStage;
+            const scientist=new q.HumanAI(963,'scientist',hostPoint.x,hostPoint.z);
             scientist.createMesh();g.humans.push(scientist);
-            const fixedTicks=(frames,done=()=>false)=>{
-                const paused=g.isSystemPaused;g.isSystemPaused=false;
-                let elapsedFrames=0;
-                try{for(let i=0;i<frames&&!done();i++){
-                    q.playerCreature.update(1/60);
-                    if(q.playerCreature.attachedHost||parasite.postImplantPhase||g.currentStageIndex!==2)for(const human of [...g.humans])human.update(1/60);
-                    g.currentStage.update(1/60);window.HiveSystems.update(1/60);window.HiveAssetLibrary?.update(1/60);
-                    elapsedFrames++;
-                }}finally{g.isSystemPaused=paused;}
-                return elapsedFrames;
-            };
             q.playerCreature.x=scientist.x; q.playerCreature.z=scientist.z-2;
             q.playerCreature.mesh.position.set(q.playerCreature.x,0,q.playerCreature.z);
             parasite.attemptLeap();
@@ -127,25 +133,54 @@ def main():
             check('rupture releases juvenile and real prey',juvenile.step==='HUNT_FAUNA'&&juvenile.rodents.length>=3&&scientist.isConsumedByCycle);
             juvenile.biomassHunted=3; juvenile.updateHUD();
             const adultRadius=q.playerCreature.getAdultClearance().radius;
+            const hasAdultExit=(x,z)=>[0,Math.PI/2,Math.PI,Math.PI*1.5].some(angle=>
+                Array.from({length:13},(_,i)=>i/12*2.4).every(distance=>
+                    !map.checkCollision(x+Math.sin(angle)*distance,z+Math.cos(angle)*distance,adultRadius)));
             let moltSite=null;
-            for(const distance of [0,4,8,12])for(let i=0;i<16&&!moltSite;i++){
-                const x=q.playerCreature.x+Math.cos(i*Math.PI/8)*distance,z=q.playerCreature.z+Math.sin(i*Math.PI/8)*distance;
-                if(map.checkCollision(x,z,adultRadius))continue;
+            const sites=[...(map.recoveryRoomAnchors||[])];
+            for(const distance of [0,4,8,12,20,28,40])for(let i=0;i<16;i++)sites.push({
+                x:q.playerCreature.x+Math.cos(i*Math.PI/8)*distance,z:q.playerCreature.z+Math.sin(i*Math.PI/8)*distance
+            });
+            for(const {x,z} of sites){
+                if(Math.abs(x)>70||Math.abs(z)>70||!hasAdultExit(x,z))continue;
                 const route=map.findPath(q.playerCreature.x,q.playerCreature.z,x,z,{padding:q.playerCreature.creatureEnvelope.radius});
-                if(distance===0||route.length&&Math.hypot(route.at(-1).x-x,route.at(-1).z-z)<1.5)moltSite={x,z};
+                if(Math.hypot(q.playerCreature.x-x,q.playerCreature.z-z)<=.03||route.length&&Math.hypot(route.at(-1).x-x,route.at(-1).z-z)<=.03){
+                    moltSite={x,z};break;
+                }
             }
             check('molt site fits the actual future adult',!!moltSite);
             q.playerCreature.setMoveTarget(moltSite.x,moltSite.z);
-            fixedTicks(1200,()=>Math.hypot(q.playerCreature.x-moltSite.x,q.playerCreature.z-moltSite.z)<.3);
-            check('juvenile navigates to the free molt site',!map.checkCollision(q.playerCreature.x,q.playerCreature.z,adultRadius));
+            fixedTicks(1200,()=>!q.playerCreature.moveTarget&&Math.hypot(q.playerCreature.x-moltSite.x,q.playerCreature.z-moltSite.z)<=.05);
+            const arrived={x:q.playerCreature.x,z:q.playerCreature.z};
+            check('juvenile navigates to the free molt site with a 2.4-unit adult exit',
+                !q.playerCreature.moveTarget&&Math.hypot(arrived.x-moltSite.x,arrived.z-moltSite.z)<=.05&&hasAdultExit(arrived.x,arrived.z),{moltSite,arrived});
             document.getElementById('btn-start-chrysalis').click();
             fixedTicks(250,()=>juvenile.chrysalisTimer>=100);
             juvenile.emergeAdultForm();
             check('mature cocoon begins a progressive extraction',g.currentStageIndex===3&&juvenile.step==='EMERGING');
             fixedTicks(180,()=>g.currentStageIndex===4);
             check('mature cocoon advances to adult hunt',g.currentStageIndex===4&&q.playerCreature.form==='drone');
+            } else {
+                g.startCampaign(4);g.setSystemPaused(true);
+            }
             const adult=g.currentStage;
             check('royal nursery rejects missing hosts and live threats',!adult.canFoundHive());
+            const deployment=(actors,objective=null)=>actors.map(h=>{
+                const goal=h.navigationGoal;
+                const rally=objective&&goal&&Math.hypot(goal.x-objective.x,goal.z-objective.z)>.05;
+                const objectiveExposed=objective&&map.hasClearSegment(objective.x,objective.z,objective.x,objective.z,.12);
+                let previous=h;
+                const routeReady=h.pathWaypoints.every(point=>{
+                    const clear=!map.checkCollision(point.x,point.z,.72)&&map.hasLineOfSight(previous.x,previous.z,point.x,point.z,.72);
+                    previous=point;
+                    return clear;
+                });
+                return {id:h.id,x:h.x,z:h.z,blocked:map.checkCollision(h.x,h.z,.72),navigationBlocked:h.navigationBlocked,
+                    navigationGoal:goal?{...goal}:null,routeReady,rallyReady:!rally||!map.checkCollision(goal.x,goal.z,.72)&&
+                        Math.hypot(goal.x-objective.x,goal.z-objective.z)<=6&&
+                        (!objectiveExposed||map.hasClearSegment(goal.x,goal.z,objective.x,objective.z,.12))};
+            });
+            const initialOccupants=deployment(g.humans);
             for(const enemy of g.humans) enemy.incapacitate();
             const hosts=g.humans.filter(h=>h.hostEligibility==='viable').slice(0,2);
             for(const candidate of hosts){
@@ -154,11 +189,29 @@ def main():
                 adult.abilityReadyAt.cocoon=0; adult.executeCocoonHost();
             }
             check('two real cocoons permit royal nursery',adult.capturedHosts===2&&adult.canFoundHive());
+            const royalProbe=(type,flags={})=>{
+                const actor=new q.HumanAI(903,type,q.playerCreature.x,q.playerCreature.z+1);
+                actor.createMesh(); Object.assign(actor,flags);g.humans.push(actor);
+                try { return {type,active:adult.getActiveThreats().includes(actor),canFound:adult.canFoundHive()}; }
+                finally { g.humans.splice(g.humans.indexOf(actor),1); actor.destroy(); }
+            };
+            const royalProbes={
+                hazmat:royalProbe('uscm_hazmat_tech'),
+                civilian:royalProbe('scientist'),
+                serviceAnimal:royalProbe('labhound'),
+                infected:royalProbe('marine',{isInfected:true}),
+                docile:royalProbe('guard',{isDocileCatatonic:true,catatonicTimer:0}),
+                recoverable:royalProbe('guard',{isDocileCatatonic:true,catatonicTimer:6}),
+                armedSynthetic:royalProbe('synthetic',{isDocileCatatonic:true,catatonicTimer:0})
+            };
             adult.foundRoyalNursery();
             check('royal cycle consumes one host and requires defense',adult.royalHost.usedAsHost&&adult.royalHost.isConsumedByCycle&&adult.royalCycle.isActive&&!adult.royalCycle.canComplete());
+            const royalDefenseTeam=deployment(adult.getActiveThreats(),adult.royalCycle);
             for(const enemy of g.humans) enemy.incapacitate();
             const royal=adult.royalCycle;
             const royalSnapshot=()=>({stage:g.currentStageIndex,running:g.isRunning,paused:g.isSystemPaused,duration:royal.duration,
+                objective:{x:royal.x,z:royal.z,blocked:map.checkCollision(royal.x,royal.z,.72)},
+                player:{x:q.playerCreature.x,z:q.playerCreature.z,blocked:map.checkCollision(q.playerCreature.x,q.playerCreature.z,.72)},
                 progress:royal.progress,state:royal.state,active:royal.isActive,complete:royal.isComplete,destroyed:royal.isDestroyed,
                 integrity:royal.integrity,canComplete:royal.canComplete(),waveTimer:adult.waveTimer,spawnedWaves:{...adult.spawnedWaves},
                 resin:q.resinGrid.getResin(royal.x,royal.z),threats:adult.getActiveThreats().map(h=>({id:h.id,type:h.type,hp:h.hp,x:h.x,z:h.z,state:h.aiState}))});
@@ -174,25 +227,42 @@ def main():
                 // AFTER their actual appearance, using their real actor method.
                 const incoming=g.humans.filter(enemy=>!observedRoyalActors.has(enemy));
                 if(incoming.length){
-                    const guardBefore=royal.canComplete();
-                    for(const enemy of incoming){observedRoyalActors.add(enemy);enemy.incapacitate();}
-                    const members=incoming.map(h=>({id:h.id,type:h.type,incapacitated:h.isIncapacitated}));
-                    preparedDefense.push({members,progress:royal.progress,guardBefore,guardAfter:royal.canComplete(),waves:{...adult.spawnedWaves}});
+                    const guardBefore=royal.canComplete(),active=new Set(adult.getActiveThreats());
+                    const deployments=deployment(incoming,q.playerCreature);
+                    // Leave a previously unlisted role alive after the others.
+                    const last=incoming.find(enemy=>enemy.type==='weyland_security_taser')||incoming.at(-1);
+                    for(const enemy of incoming){observedRoyalActors.add(enemy);if(enemy!==last)enemy.incapacitate();}
+                    const singleThreatBlocks=!royal.canComplete()&&adult.getActiveThreats().length===1&&adult.getActiveThreats()[0]===last;
+                    last.incapacitate();
+                    const members=incoming.map(h=>({id:h.id,type:h.type,active:active.has(h),incapacitated:h.isIncapacitated}));
+                    preparedDefense.push({members,deployments,progress:royal.progress,guardBefore,guardAfter:royal.canComplete(),singleThreatBlocks,lastType:last.type,waves:{...adult.spawnedWaves}});
                 }
                 return false;
             });
-            const afterRoyal=royalSnapshot(),royalDiagnostic={fixture:'Actual reinforcement waves spawn unchanged; harness incapacitates each incoming actor after appearance, not a human combat victory',before:beforeRoyal,after:afterRoyal,preparedDefense,frames:royalFrames,seconds:royalFrames/60,frameBudget,minimumSeconds};
+            const afterRoyal=royalSnapshot(),royalDiagnostic={fixture:'Production reinforcement rules with prepared defense: actors are incapacitated only after they appear',before:beforeRoyal,after:afterRoyal,preparedDefense,initialOccupants,royalDefenseTeam,frames:royalFrames,seconds:royalFrames/60,frameBudget,minimumSeconds};
             window.__qaRoyalDiagnostic=royalDiagnostic;console.info('HIVE_QA_ROYAL '+JSON.stringify({when:'after',...royalDiagnostic}));
+            check('nursery guard follows hostile roles and excludes civilian or permanently neutralized actors',
+                ['hazmat','recoverable','armedSynthetic'].every(key=>royalProbes[key].active&&!royalProbes[key].canFound)&&
+                ['civilian','serviceAnimal','infected','docile'].every(key=>!royalProbes[key].active&&royalProbes[key].canFound),royalProbes);
             check('real reinforcement waves close the royal gate until their prepared neutralization',preparedDefense.length>0&&preparedDefense.every(w=>w.guardBefore===false&&w.guardAfter===true&&w.members.every(h=>h.incapacitated))&&Object.values(adult.spawnedWaves).every(Boolean),royalDiagnostic);
+            check('every actual reinforcement counts and the last Taser guard alone blocks maturation',
+                preparedDefense.flatMap(w=>w.members).length===13&&preparedDefense.every(w=>w.singleThreatBlocks&&w.members.every(h=>h.active))&&
+                preparedDefense.some(w=>w.lastType==='weyland_security_taser'),royalDiagnostic);
+            check('initial occupants and royal reinforcements deploy on walkable floor',
+                initialOccupants.length===4&&royalDefenseTeam.length===2&&[...initialOccupants,...royalDefenseTeam,
+                    ...preparedDefense.flatMap(w=>w.deployments)].every(actor=>!actor.blocked),royalDiagnostic);
+            check('royal reinforcements have an approach in the prepared station layout',
+                [...royalDefenseTeam,...preparedDefense.flatMap(w=>w.deployments)].every(actor=>!actor.navigationBlocked&&actor.routeReady&&actor.rallyReady),royalDiagnostic);
             check('royal maturation never skips its duration at the fastest resin rate',!royal.isComplete||royalFrames/60>=minimumSeconds-1/60,royalDiagnostic);
             check('defended royal maturation advances to RTS',g.currentStageIndex===5&&g.royalCycleRecord?.completed&&g.currentStage.queen.attachedToOvipositor,royalDiagnostic);
+            if (royalOnly) return tests;
             g.startCampaign(5); g.setSystemPaused(true);
             const stage=g.currentStage; stage.relayCount=3; stage.purgeRemaining=.1; stage.update(.2);
             check('third relay interrupts purge',stage.purgeRemaining===.1&&g.isRunning,{remaining:stage.purgeRemaining,running:g.isRunning});
             stage.relayCount=2; stage.purgeRemaining=.1; stage.update(.2);
             check('uninterrupted purge still defeats player',stage.purgeRemaining===0&&!g.isRunning);
             return tests;
-        }""")
+        }""", royal_only)
         print(json.dumps({"checks": results, "uncaught_errors": errors}, ensure_ascii=False, indent=2))
         assert not errors, f"Uncaught browser errors: {errors}"
         print(f"PASS: {len(results)} gameplay regressions")

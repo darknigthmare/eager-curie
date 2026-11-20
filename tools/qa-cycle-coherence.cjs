@@ -32,6 +32,7 @@ function fixture(){
     getAnimationModel:()=>null,animateProceduralModel(){},appendSensorLog(){},setHudBar(){},showToast(){},alarmSystem:{setLevel(){}},Math,Number,Set,console});
   const loadMethod=(a,b)=>vm.runInContext('({'+pick(a,b)+'})',ctx);
   Object.assign(player,loadMethod('    setAdultCaste(caste,','    clearMesh() {'));
+  Object.assign(player,loadMethod('    clearProwlLeap(','    poseProwlLanding('));
   Object.assign(player,loadMethod('    clearMesh() {','    createMesh() {'));
   Object.assign(player,loadMethod('    setForm(form) {','    takeDamage(amount,'));
   player.createMesh();

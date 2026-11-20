@@ -5,6 +5,7 @@ No production logic is replaced. Prepared positions/HP and fixed subsystem ticks
 are not a human playthrough, complete QA or cinema1:1/performance certification.
 """
 import argparse
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -38,7 +39,7 @@ def main():
     report['resinRepositionContract'] = {
         'retainedFailure': '.tools/coherence-fix-20261109/creature-native-1/results.json',
         'disprovedInitialHypothesis': 'A13x1x13 barrier at the originally selected support was assumed to leave a real along-beam descent. The retained native failure and subsequent real-geometry preflights show that this exit is not guaranteed.',
-        'currentContract': 'Anchor identity/render/ownership/restart must pass. Positive DESCEND_POSITION requires a real live3D landing preflight; otherwise native evidence must verify clear refusal and no teleportation, not claim a successful detour.'}
+        'currentContract': 'Anchor identity, rendering, ownership and restart are checked with the large floor barrier. A separate small solid blocker verifies the along-beam detour with the authored support and the installed Q command.'}
 
     def save():
         (out / 'results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
@@ -87,24 +88,57 @@ def main():
             print('PASS', name, flush=True)
             return value
 
-        def capture(file, label):
+        def press(key):
+            page.evaluate('''()=>{
+              gameInstance.setSystemPaused(false);
+              __creatureQA.inputManager.canvas.focus();
+            }''')
+            try:
+                page.keyboard.press(key)
+            finally:
+                page.evaluate('()=>gameInstance.setSystemPaused(true)')
+
+        def capture(file, label, *, gameplay=False):
             if args.no_captures:
                 return
-            detail = page.evaluate('(label)=>__creatureNative.draw(label)', label)
+            draw = 'drawGameplay' if gameplay else 'draw'
+            detail = page.evaluate(f'(label)=>__creatureNative.{draw}(label)', label)
             page.screenshot(path=str(out / file), timeout=120000)
-            report['captures'].append({'file': file, **detail})
+            report['captures'].append({'file': file, 'mode': 'diagnostic', **detail})
             save()
+            return detail
+
+        def assert_capture_legible(detail):
+            beam = next(item for item in detail['beams'] if item['id'] == detail['activeSupport'])
+            assert beam['opacity'] <= .18 and not beam['depthWrite'], beam
+            for actor in detail['actors']:
+                assert any(sample['inFrame'] and not sample['hudOverlap'] and not sample['occluder']
+                           for sample in actor['samples']), actor
+            assert all(other['opacity'] == 1 and other['depthWrite'] for other in detail['beams'] if other != beam)
 
         try:
             save()
             page.goto(args.url, wait_until='domcontentloaded')
             page.wait_for_function('()=>!!(window.__creatureQA&&window.HiveSystems?.ui?.game)', timeout=180000)
+            page.locator('.origin-card[data-origin="starship"]').click()
             page.locator('#btn-new-campaign').click()
             page.locator('#btn-start-act-one').click()
             page.evaluate('()=>gameInstance.setSystemPaused(true)')
             report['prepare'] = page.evaluate(probe.read_text())
+            # Suspend automatic animation frames while Chromium sends genuine
+            # key events. Subsystem ticks below retain deterministic timing.
+            page.clock.install()
+            page.clock.pause_at(datetime.now(timezone.utc) + timedelta(seconds=1))
             save()
-            check('Installed Q begins a real wall/support approach without instantaneous altitude', 'return f.climb();')
+            approach_fixture = page.evaluate('()=>__creatureNative.findSupport()')
+            press('q')
+            check('Chromium Q begins a real wall/support approach without instantaneous altitude', r"""
+              const after=f.snapshot();
+              need(after.locomotionPhase==='APPROACH','Installed Q did not start approach');
+              need(Math.abs(after.position[1]-.015)<.035&&!after.hanging,'Q caused instant ascent');
+              return {prepared:f.supportFixture,start:f.fixtureStart,after};
+            """)
+            report['approachFixture'] = approach_fixture
             capture('01-creature-approach.png', 'Approche de la jonction mur/poutre réelle')
             check('Climbing and rolling use simulation time with actual deck/support contacts', r"""
               f.until('CLIMB');f.ticks(10);const climbing=f.snapshot();
@@ -123,24 +157,35 @@ def main():
               need(controls.state.hanging&&!controls.state.busy,'Native HUD locomotion contract disagrees');return {hang,controls,samples:f.samples};
             """)
             capture('04-creature-hang.png', 'Appui au plafond : pose suspendue et commandes cohérentes')
-            check('T starts a native140 capture without switching the M314 tracker', r"""
-              const fixture=f.makeVictim(300),tracker=g.motionTracker.focusedMode;f.key('t');const state=f.snapshot(),controls=f.controls();
+            fixture = page.evaluate('()=>__creatureNative.makeVictim(300)')
+            tracker_before = page.evaluate('()=>gameInstance.motionTracker.focusedMode')
+            report['captureTargetFixture'] = fixture
+            press('t')
+            check('Chromium T starts a native140 capture without switching the M314 tracker', r"""
+              const state=f.snapshot(),controls=f.controls();
               need(state.actionPhase==='WINDUP'&&f.hits.length===0,'T did not start an uncommitted capture windup');
-              need(g.motionTracker.focusedMode===tracker,'Tail command stole tracker shortcut');
               need(controls.state.busy&&controls.buttons.filter(button=>button.id!=='btn-drone-ceiling').every(button=>button.disabled),'Busy capture failed to lock physical UI');
               const before=JSON.stringify({phase:state.actionPhase,elapsed:state.elapsed,position:state.position});
               for(const key of ['e',' ','t'])f.key(key);const after=f.snapshot();
               need(before===JSON.stringify({phase:after.actionPhase,elapsed:after.elapsed,position:after.position}),'Busy physical key interrupted/restarted capture');
-              return {fixture,state,controls};
+              return {state,controls};
             """)
+            assert page.evaluate('()=>gameInstance.motionTracker.focusedMode') == tracker_before, 'Tail command stole tracker shortcut'
+            capture('05-t140-windup-gameplay.png', 'T140 · préparation', gameplay=True)
             capture('05-t140-windup.png', 'T140 : préparation du dard, aucune blessure immédiate')
             check('T140 raw140 is applied once at contact, then the same native actor is hoisted', r"""
               f.ticks(18);need(f.hits.length===0,'Native windup hit before0.32s');
+              const before=new Set(HiveSystems.vfx.effects);
               f.ticks(3);need(f.hits.length===1&&f.hits[0].amount===140,'Native contact did not commit exactly140 once');
               need(p.ceilingAction?.phase==='HOIST'&&f.victim.ceilingActionOwner===p.ceilingAction,'Native capture ownership missing');
+              const impactLabels=HiveSystems.vfx.effects.filter(effect=>effect.sprite&&!before.has(effect)).length;
+              need(impactLabels===1,'T140 contact emitted stacked damage labels');
               f.ticks(22,{humanFirst:true});need(f.hits.length===1,'Mixed observer update order delivered duplicate contact');
-              return {state:f.snapshot(),scope:'Actual takeDamage forwarded, imported/procedural actor, real checked root trajectory; fixed relevant ticks'};
+              return {state:f.snapshot(),impactLabels,scope:'Actual takeDamage forwarded, imported/procedural actor, real checked root trajectory; fixed relevant ticks'};
             """)
+            view = capture('06-t140-hoist-gameplay.png', 'T140 · hissage', gameplay=True)
+            if view:
+                assert_capture_legible(view)
             capture('06-t140-hoist.png', 'T140 : hissage progressif du même hôte')
             check('Pause freezes a native hoist and no wall-clock callback commits another wound', r"""
               const before=f.snapshot();g.setSystemPaused(true);for(let i=0;i<60;i++)f.frame();const after=f.snapshot();
@@ -152,12 +197,18 @@ def main():
               need(f.hits.length===1&&hold.victim.hp===160&&hold.victim.owner&&hold.victim.isCocooned,'Native hold changed owner/health');
               need(hold.victim.bounds.min[1]>=-.035&&hold.victim.bounds.max[1]<=hold.ceiling+.04,'Native hold clipped deck/support');return {hold,samples:f.samples};
             """)
+            view = capture('07-t140-hold-gameplay.png', 'T140 · maintien', gameplay=True)
+            if view:
+                assert_capture_legible(view)
             capture('07-t140-hold.png', 'T140 : prise maintenue, réaction humaine et propriété unique')
-            check('Q releases a native victim with gravity before descending the creature', r"""
-              const before=f.snapshot();f.key('q');need(p.ceilingAction?.phase==='RELEASE','Installed Q did not release held actor');
+            page.evaluate('()=>{__creatureNative.beforeRelease=__creatureNative.snapshot()}')
+            press('q')
+            check('Chromium Q releases a native victim with gravity before descending the creature', r"""
+              const before=f.beforeRelease;need(p.ceilingAction?.phase==='RELEASE','Installed Q did not release held actor');
               need(f.victim.mesh.position.y===before.victim.position[1],'Q teleported victim to deck');f.ticks(10);
               need(f.victim.mesh.position.y<before.victim.position[1]&&f.hits.length===1,'Release is not falling/created extra wound');return {before,after:f.snapshot()};
             """)
+            capture('08-t140-release-gameplay.png', 'T140 · libération', gameplay=True)
             capture('08-t140-release.png', 'Libération gravitaire avant retour au sol')
             check('Released victim ownership clears and both native actors land without a second140 wound', r"""
               f.until('GROUND');f.ticks(10);const landed=f.snapshot();
@@ -165,6 +216,9 @@ def main():
               need(!f.victim.ceilingActionOwner&&!f.victim.isRestrained&&!f.victim.isCocooned,'Released living actor retained capture flags');
               need(f.hits.length===1&&landed.victim.bounds.min[1]>=-.035,'Landing caused duplicate damage or actor sank');return landed;
             """)
+            landed_view = capture('09-t140-landed-gameplay.png', 'T140 · retour au pont', gameplay=True)
+            if landed_view:
+                assert all(beam['opacity'] == 1 and beam['depthWrite'] for beam in landed_view['beams']), landed_view['beams']
             capture('09-t140-landed.png', 'Retour au pont : acteurs libérés et contacts conservés')
             check('A lethal140 hauls a corpse without certifying a new viable implantation host', r"""
               f.climb();f.until('HANG');const fixture=f.makeVictim(100);f.key('t');f.until('HOLD');const corpse=f.snapshot();
@@ -195,11 +249,7 @@ def main():
               const ascent=f.climb({x:-60,z:15});f.until('HANG');const victimFixture=f.makeVictim(300);f.key('t');f.until('HOLD');
               need(f.hits.length===1&&f.hits[0].amount===140,'Prepared anchor scenario requires one committed140');
               const action=p.ceilingAction,victim=f.victim,captivePosition=victim.mesh.position.clone(),center=action.startPosition.clone();
-              const barrier=new T.Mesh(new T.BoxGeometry(13,1,13),new T.MeshStandardMaterial({color:0xb45309,roughness:.8,metalness:.35}));
-              barrier.name='qa_prepared_floor_barrier';barrier.position.set(center.x,.5,center.z);
-              (q.rendererEngine.propsGroup||q.rendererEngine.scene).add(barrier);barrier.updateMatrixWorld(true);
-              const bounds=new T.Box3().setFromObject(barrier),collider={mesh:barrier,minX:bounds.min.x,maxX:bounds.max.x,minZ:bounds.min.z,maxZ:bounds.max.z};
-              map.colliders.push(collider);f.barrierFixture={mesh:barrier,collider};
+              const barrier=f.addFloorBlocker(center.x,center.z,13,13,1);
               need(map.checkCollision(p.x,p.z,p.creatureEnvelope.radius),'Prepared barrier did not obstruct the creature floor point');
               need(map.isCreaturePoseClear(p.getCeilingVictimBounds(victim)),'Prepared low barrier also obstructed the actual held captive');
               const landingPreflight=p.findCeilingLanding(p.ceilingSupport,false),playerPosition=p.mesh.position.clone();
@@ -217,7 +267,7 @@ def main():
               let resinMeshes=0;record.group.traverse(child=>{if(child.isMesh){resinMeshes++;need(child.geometry&&child.material&&child.visible,'Resin strand has no rendered geometry/material');}});
               need(resinMeshes>=8,'Native support anchor has incomplete strands/bands');
               f.anchorFixture={record,victim,captivePosition,mesh:victim.mesh,landingPreflight,playerPosition,refusal};
-              return {ascent,victimFixture,barrier:{min:bounds.min.toArray(),max:bounds.max.toArray(),center:center.toArray()},
+              return {ascent,victimFixture,barrier,
                 landingPreflight,branch:landingPreflight?'PREFLIGHT_CERTIFIED_DETOUR':'REFUS_CLAIR',refusal,
                 resin:{name:record.group.name,meshes:resinMeshes,bounds:(()=>{const box=new T.Box3().setFromObject(record.group);return {min:box.min.toArray(),max:box.max.toArray()};})()},
                 state:f.snapshot(),scope:'Prepared13x1x13 real visible mesh+solid collider after native HOLD; current authored support/props untouched, installed Q and actual anchor methods'};
@@ -258,6 +308,55 @@ def main():
               return {campaignRestart:true,disposed:record.disposed,oldActorRemoved:true,barrierRestored:!f.barrierFixture,
                 scope:'Actual GameMaster.startCampaign→resetWorldState→clearHumans cleanup; no page reload or direct registry erasure'};
             """)
+            report['floorDetourFixture'] = page.evaluate(r"""()=>{
+              const f=__creatureNative,p=f.p,map=f.map;
+              const ascent=f.climb();f.until('HANG');
+              const start=f.snapshot(),barrier=f.addFloorBlocker(p.x,p.z,.6,.6,.8);
+              f.need(map.checkCollision(p.x,p.z,p.creatureEnvelope.radius),'The blocker did not obstruct the current floor');
+              f.need(map.isCreaturePoseClear(f.bounds()),'The blocker also occupied the hanging pose');
+              const landing=p.findCeilingLanding(p.ceilingSupport,false);
+              f.need(landing?.distance>.05,'No along-beam landing near the authored support');
+              f.floorDetour={start,landing,samplesStart:f.samples.length};
+              return {ascent,barrier,start,landing};
+            }""")
+            press('q')
+            check('Chromium Q starts a continuous detour under the actual beam', r"""
+              const {start,landing}=f.floorDetour;
+              need(p.ceilingTransition?.phase==='DESCEND_POSITION','Positive detour did not start through Q');
+              need(p.mesh.position.distanceTo(new T.Vector3(...start.position))<1e-7,'Q teleported under the beam');
+              f.ticks(4);const moving=f.snapshot();
+              need(moving.locomotionPhase==='DESCEND_POSITION'&&p.mesh.position.distanceTo(new T.Vector3(...start.position))>.02,'No continuous movement under the beam');
+              return {start,landing,moving};
+            """)
+            capture('11-q-descend-position.png', 'Q : trajet sous la poutre vers le passage libre')
+            check('The alternate descent lands with clear rendered sub-mesh volumes', r"""
+              const {landing,samplesStart}=f.floorDetour;
+              f.until('DESCEND');const falling=f.snapshot();
+              f.until('GROUND');const landed=f.snapshot(),samples=f.samples.slice(samplesStart);
+              need(Math.hypot(p.x-landing.x,p.z-landing.z)<.15,'Landed away from the preflight-certified floor point');
+              const bounds=f.bounds(),blocker=new T.Box3().setFromObject(f.barrierFixture.mesh),overlappingMeshes=[];
+              let checkedMeshes=0;
+              p.detailedModel.traverse(child=>{
+                if(!child.isMesh||!child.geometry)return;
+                for(let node=child;node&&node!==p.mesh;node=node.parent)if(!node.visible)return;
+                child.geometry.computeBoundingBox();
+                const world=child.geometry.boundingBox.clone().applyMatrix4(child.matrixWorld);
+                checkedMeshes++;
+                if(!map.isCreaturePoseClear(world))overlappingMeshes.push(child.name||child.id);
+              });
+              // The aggregate Box3 combines high tail and low foot extents.
+              // Each visible mesh remains subject to the actual station test.
+              need(checkedMeshes>0&&!overlappingMeshes.length&&!map.checkCollision(p.x,p.z,p.creatureEnvelope.radius),
+                'Alternate landing overlaps a solid: '+JSON.stringify({bounds:{min:bounds.min.toArray(),max:bounds.max.toArray()},
+                  blocker:{min:blocker.min.toArray(),max:blocker.max.toArray()},overlappingMeshes}));
+              need(!p.isLocomotionBusy()&&!p.isCeilingProwling&&!f.hits.length,'Detour left stale ownership or damage');
+              return {positiveFloorRepositionCertified:true,landing,falling,landed,samples,checkedMeshes,
+                aggregateBoundsIntersectBlocker:bounds.intersectsBox(blocker),overlappingMeshes,
+                scope:'Actual authored support, current station solids, prepared small floor blocker and a Chromium Q command. No captive in this positive detour fixture.'};
+            """)
+            report['positiveFloorRepositionCertified'] = True
+            capture('12-q-alternate-landing.png', 'Q : atterrissage à côté de la barrière, dans le passage libre')
+            page.evaluate('()=>__creatureNative.removeBarrierFixture()')
             check('Shift+T remains an explicit tracker command outside the biological action', r"""
               const before=g.motionTracker.focusedMode;f.key('t',{shift:true});const after=g.motionTracker.focusedMode;
               need(after!==before,'Installed Shift+T did not switch actual tracker');return {before,after};

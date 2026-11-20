@@ -70,6 +70,15 @@
     climb(preferred=null){const prepared=this.findSupport(preferred),before=this.snapshot();this.key('q');need(p.ceilingTransition&&p.ceilingTransition.phase==='APPROACH','Installed Q did not start approach');
       need(Math.abs(p.mesh.position.y-before.position[1])<1e-8&&!p.isCeilingProwling,'Q teleported altitude/instantaneously hung');
       return {prepared,before,after:this.snapshot()};},
+    addFloorBlocker(x,z,width,depth,height=.8){
+      this.removeBarrierFixture();
+      const mesh=new T.Mesh(new T.BoxGeometry(width,height,depth),new T.MeshStandardMaterial({color:0xb45309,roughness:.8,metalness:.35}));
+      mesh.name='qa_prepared_floor_barrier';mesh.position.set(x,height/2,z);
+      (q.rendererEngine.propsGroup||q.rendererEngine.scene).add(mesh);mesh.updateMatrixWorld(true);
+      const bounds=new T.Box3().setFromObject(mesh),collider={mesh,minX:bounds.min.x,maxX:bounds.max.x,minZ:bounds.min.z,maxZ:bounds.max.z};
+      map.colliders.push(collider);this.barrierFixture={mesh,collider};
+      return {min:bounds.min.toArray(),max:bounds.max.toArray(),center:mesh.position.toArray()};
+    },
     makeVictim(hp=300){need(p.isCeilingProwling&&!p.isLocomotionBusy(),'Victim setup requires actual stable hanging');
       g.clearHumans();const h=new q.HumanAI(9201,'scientist',p.x,p.z);h.createMesh();g.humans.push(h);
       h.hp=h.maxHp=hp;h.isDocileCatatonic=true;h.catatonicTimer=999;h.shootCooldown=h.motionPingCooldown=999;
@@ -87,7 +96,59 @@
     controls(){HiveSystems.ui.syncLocomotionActions?.();const state=g.getLocomotionState();return {state,
       buttons:[...document.querySelectorAll('#action-buttons-container .act-btn')].map(button=>({id:button.id,disabled:button.disabled,locked:button.dataset.locomotionLocked||null,
         ariaDisabled:button.getAttribute('aria-disabled'),label:button.textContent.trim()})),trackerFocused:g.motionTracker.focusedMode};},
+    drawGameplay(label){
+      g.setSystemPaused(true);
+      document.getElementById('app-container').classList.remove('game-paused');
+      this.caption.hidden=true;
+      const r=q.rendererEngine,camera=r.camera;
+      const target=g.currentStage?.getCameraTarget?.()||p;
+      camera.clearViewOffset();
+      // Let the installed camera and wall-fade controllers settle on the
+      // observed phase. The HUD, actors, and collision geometry stay visible.
+      for(let i=0;i<30;i++){
+        r.setCameraTarget(target.x,target.z,0,false,1/60);
+        r.updateWallVisibility({x:p.x,y:1.4,z:p.z},1/60);
+      }
+      r.updatePropVisibility(p,false);
+      r.render();r.renderer.getContext().finish();
+      const canvas=q.inputManager.canvas.getBoundingClientRect();
+      const hud=['hud-header','hud-sidebar','m314-tracker','narrative-banner','toast-message'].flatMap(id=>{
+        const element=document.getElementById(id);
+        if(!element||element.classList.contains('hidden'))return [];
+        const rect=element.getBoundingClientRect(),style=getComputedStyle(element);
+        if(style.visibility==='hidden'||style.display==='none'||Number(style.opacity)===0||!rect.width||!rect.height)return [];
+        return [{id,left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom}];
+      });
+      const occluders=[];
+      r.scene.traverse(object=>{
+        if(!object.isMesh)return;
+        for(let node=object;node;node=node.parent)if(!node.visible||node===p.mesh||node===this.victim?.mesh)return;
+        const materials=Array.isArray(object.material)?object.material:[object.material];
+        if(materials.some(material=>material&&material.visible!==false&&(!material.transparent||material.opacity>.18)))occluders.push(object);
+      });
+      const actors=[['player',this.bounds()],['victim',this.victimBounds()]].flatMap(([id,bounds])=>{
+        if(!bounds)return [];
+        const center=bounds.getCenter(new T.Vector3()),ray=new T.Raycaster();
+        const samples=[.22,.5,.78].map(height=>{
+          const point=center.clone();point.y=T.MathUtils.lerp(bounds.min.y,bounds.max.y,height);
+          const offset=point.clone().sub(camera.position),distance=offset.length();
+          ray.set(camera.position,offset.normalize());ray.far=Math.max(0,distance-.08);
+          const blocking=ray.intersectObjects(occluders,false)[0];
+          const ndc=point.clone().project(camera),x=canvas.left+(ndc.x+1)*canvas.width/2,y=canvas.top+(1-ndc.y)*canvas.height/2;
+          return {x,y,inFrame:Math.abs(ndc.x)<=1&&Math.abs(ndc.y)<=1&&Math.abs(ndc.z)<=1,
+            hudOverlap:hud.filter(rect=>x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom).map(rect=>rect.id),
+            occluder:blocking?(blocking.object.name||blocking.object.parent?.name||blocking.object.type):null};
+        });
+        return [{id,samples}];
+      });
+      const beams=(map.ceilingSupports||[]).map(({id,mesh})=>({id,opacity:mesh.material.opacity,depthWrite:mesh.material.depthWrite}));
+      need(hud.some(rect=>rect.id==='hud-header')&&hud.some(rect=>rect.id==='hud-sidebar'),'Standard view is missing the desktop HUD');
+      return {label,mode:'gameplay-camera',camera:camera.position.toArray(),fov:camera.fov,hud,actors,beams,
+        activeSupport:p.ceilingAction?.support.id||null,state:this.snapshot(),
+        scope:'Prepared actors and fixed phase ticks, rendered by the settled standard camera and HUD. Three samples per actor record world geometry and HUD coverage.'};
+    },
     draw(label){g.setSystemPaused(true);document.getElementById('app-container').classList.remove('game-paused');caption.textContent='DIAGNOSTIC PRÉPARÉ — '+label;
+      caption.hidden=false;
       const r=q.rendererEngine,body=this.bounds(),victim=this.victimBounds(),combined=body.clone();if(victim)combined.union(victim);
       const center=combined.getCenter(new T.Vector3()),targets=[body.getCenter(new T.Vector3())];if(victim)targets.push(victim.getCenter(new T.Vector3()));
       r.updatePropVisibility(p,false);for(let i=0;i<30;i++)r.updateWallVisibility({x:p.x,y:center.y,z:p.z},1/60);r.scene.updateMatrixWorld(true);

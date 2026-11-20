@@ -52,6 +52,7 @@ function fixture(compact = true, withObservers = false) {
       const all = this.descendants();
       if (selector === '.panel-section') return all.filter(e => e.classList.contains('panel-section'));
       if (selector === '.act-btn') return all.filter(e => e.classList.contains('act-btn'));
+      if (selector === '.action-label') return all.filter(e => e.classList.contains('action-label'));
       if (selector === '#action-buttons-container .act-btn') return all.filter(e => e.classList.contains('act-btn') && e.parentElement?.id === 'action-buttons-container');
       if (selector === '#action-buttons-container button:not(:disabled)') return all.filter(e => e.tagName === 'BUTTON' && !e.disabled && e.parentElement?.id === 'action-buttons-container');
       return [];
@@ -72,7 +73,8 @@ function fixture(compact = true, withObservers = false) {
     addEventListener: (name, fn, capture) => events.push({ name, fn, capture }) };
   const game = { currentStage: { id: 4 }, currentStageIndex: 4, campaignActive: true, isSystemPaused: false, isRunning: true, busy: false,
     isLocomotionBusy() { return this.busy; },
-    getLocomotionState() { return { busy: this.busy, hanging: !!this.hanging, ceilingActionPhase: this.capturePhase || null }; },
+    getLocomotionState() { return { busy: this.busy, hanging: !!this.hanging, ceilingActionPhase: this.capturePhase || null,
+      disposalPhase: this.disposalPhase || null, prowlLeaping: Boolean(this.prowlLeaping) }; },
     motionTracker: { isCollapsed: false, deviceEl: tracker }, setHudExpanded(expanded) {
       sidebar.classList.toggle('mobile-collapsed', !expanded); sidebar.inert = !expanded;
       toggle.setAttribute('aria-expanded', String(expanded)); if (!expanded) canvas.focus();
@@ -207,6 +209,26 @@ test('Q explains capture/hoist and held-host release without inventing an escala
   f.game.capturePhase = 'HOLD'; f.ui.syncLocomotionActions();
   assert.equal(alias.textContent, 'PRISE MAINTENUE — Q : LIBÉRER PUIS DESCENDRE');
 });
+test('Q describes the current incinerator loading phase in both layouts and restores the ceiling action', () => {
+  const f = fixture(), q = f.action('btn-drone-ceiling', 'PAROI & PLAFOND');
+  const label = f.make('ceiling-label', q, 'span', 'action-label');
+  const quick = () => f.document.getElementById('hud-quick-actions').children[0];
+  f.ui.bindCompactHud();
+  f.ui.bindLocomotionGuard();
+  f.game.busy = true;
+  for (const [phase, text] of [['OPEN', 'OUVERTURE'], ['LIFT', 'LEVAGE'], ['LOAD', 'CHARGEMENT'],
+    ['LOWER', 'DÉPOSE'], ['CLOSE', 'FERMETURE']]) {
+    f.game.disposalPhase = phase;
+    f.ui.syncLocomotionActions();
+    assert.equal(label.textContent, `${text} — ANNULER`);
+    assert.equal(quick().textContent, `${text} — ANNULER [Q]`);
+    assert.equal(q.disabled, false);
+  }
+  f.game.disposalPhase = null;
+  f.game.busy = false;
+  f.ui.syncLocomotionActions();
+  assert.equal(label.textContent, 'PAROI & PLAFOND');
+});
 test('Capture guard blocks direct dispatched actions during transit while Q remains cancellable', () => {
   const f = fixture(), a = f.action('jaw', 'Mâchoire'), q = f.action('btn-drone-ceiling', 'Plafond'); f.ui.bindLocomotionGuard();
   f.game.busy = true;
@@ -215,6 +237,18 @@ test('Capture guard blocks direct dispatched actions during transit while Q rema
   guard({ target: a, preventDefault() { prevented = true; }, stopImmediatePropagation() { stopped = true; } });
   assert(stopped && prevented);
   guard({ target: q, preventDefault() { throw Error('Q cancellation blocked'); }, stopImmediatePropagation() { throw Error('Q cancellation blocked'); } });
+});
+test('Ground leap does not advertise a ceiling cancellation while the actor is airborne', () => {
+  const f = fixture(), q = f.action('btn-drone-ceiling', 'PAROI & PLAFOND');
+  const label = f.make('ceiling-label', q, 'span', 'action-label');
+  f.ui.bindCompactHud(); f.ui.bindLocomotionGuard();
+  f.game.busy = true; f.game.prowlLeaping = true; f.ui.syncLocomotionActions();
+  assert(q.disabled);
+  assert.equal(label.textContent, 'BOND EN COURS');
+  assert.equal(f.document.getElementById('hud-quick-actions').children.length, 0);
+  f.game.busy = false; f.game.prowlLeaping = false; f.ui.syncLocomotionActions();
+  assert(!q.disabled);
+  assert.equal(label.textContent, 'PAROI & PLAFOND');
 });
 test('Changing viewport opens desktop controls and closes the drawer on returning to compact layout', () => {
   const f = fixture(); f.ui.bindCompactHud(); f.toggle.click(); f.media.matches = false;

@@ -125,6 +125,17 @@ def main():
               f.require(!q.stationMap.checkCollision(p.x,p.z,p.creatureEnvelope.radius)&&p.mesh.position.y===0,'Juvenile landed inside geometry');return {state:f.snapshot(),samples:f.extractionSamples};
             ''')
             check('Missing food cannot bypass the cocoon', '''f.require(g.currentStage.emergeAdultForm()===false,'Unfed juvenile emerged');g.currentStage.biomassHunted=3;g.currentStage.updateHUD();return {fixture:'Only biomass=3 is prepared; real cocoon button, maturation and emergence methods are tested next',state:f.snapshot()};''')
+            check('Click-to-move completes a short juvenile route without dropping its last half unit', '''
+              const map=q.stationMap,start={x:p.x,z:p.z},padding=p.creatureEnvelope.radius;
+              const site=Array.from({length:16},(_,i)=>({x:start.x+Math.cos(i*Math.PI/8)*.35,z:start.z+Math.sin(i*Math.PI/8)*.35}))
+                .find(({x,z})=>Math.abs(x)<=70&&Math.abs(z)<=70&&!map.checkCollision(x,z,padding)&&map.hasLineOfSight(start.x,start.z,x,z,padding));
+              f.require(site,'No clear authored .35-unit approach at the extraction site');
+              p.setMoveTarget(site.x,site.z);
+              f.until(()=>!p.moveTarget,90);
+              const remaining=Math.hypot(p.x-site.x,p.z-site.z);
+              f.require(remaining<=.03,`Short click route was dropped before arrival (${remaining})`);
+              return {start,site,remaining};
+            ''')
             check('Juvenile reaches a real floor site with full adult clearance', '''
               const radius=p.getAdultClearance().radius;let site=null;
               const candidates=[...(q.stationMap.recoveryRoomAnchors||[])];
@@ -134,14 +145,14 @@ def main():
                 if(q.stationMap.checkCollision(x,z,radius))continue;
                 if(![0,Math.PI/2,Math.PI,Math.PI*1.5].some(angle=>Array.from({length:13},(_,i)=>i/12*2.4).every(distance=>!q.stationMap.checkCollision(x+Math.sin(angle)*distance,z+Math.cos(angle)*distance,radius))))continue;
                 const route=q.stationMap.findPath(p.x,p.z,x,z,{padding:p.creatureEnvelope.radius});
-                if(Math.hypot(p.x-x,p.z-z)<.05||route.length&&Math.hypot(route.at(-1).x-x,route.at(-1).z-z)<1.5)site={x,z};
+                if(Math.hypot(p.x-x,p.z-z)<.03||route.length&&Math.hypot(route.at(-1).x-x,route.at(-1).z-z)<=.03)site={x,z};
               }
               f.require(site,'No reachable adult-clearance molt site');
               const navigation=()=>({actual:{x:p.x,z:p.z},destination:{...site},distance:Math.hypot(p.x-site.x,p.z-site.z),
                 moveTarget:p.moveTarget?{x:p.moveTarget.x,z:p.moveTarget.z}:null,waypoints:(p.moveWaypoints||[]).map(point=>({x:point.x,z:point.z}))});
-              f.moltNavigation={radius,arrivalTolerance:.5,before:navigation()};
+              f.moltNavigation={radius,arrivalTolerance:.03,before:navigation()};
               p.setMoveTarget(site.x,site.z);f.moltNavigation.planned=navigation();
-              f.until(()=>{const current=navigation();f.moltNavigation.latest=current;return current.distance<=.5+1e-7&&!current.moveTarget&&!current.waypoints.length;},1200);
+              f.until(()=>{const current=navigation();f.moltNavigation.latest=current;return current.distance<=.03&&!current.moveTarget&&!current.waypoints.length;},1200);
               f.moltNavigation.after=navigation();
               f.require(!q.stationMap.checkCollision(p.x,p.z,radius),'Arrival lacks adult clearance');
               const exit=Array.from({length:12},(_,i)=>i*Math.PI/6).find(angle=>Array.from({length:9},(_,i)=>i*.3)

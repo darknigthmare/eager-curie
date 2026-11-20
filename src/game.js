@@ -9113,6 +9113,48 @@
         if (Math.abs(wall.material.opacity - targetOpacity) < 0.005) wall.material.opacity = targetOpacity;
         wall.material.depthWrite = wall.material.opacity >= 0.99;
       }
+      this.updateCeilingCaptureVisibility(blend);
+    }
+
+    updateCeilingCaptureVisibility(blend) {
+      const action = playerCreature.ceilingAction;
+      const support = action?.support.mesh;
+      let blocker = null;
+      if (support?.visible && action.targetMesh?.parent) {
+        action.targetMesh.updateWorldMatrix(true, false);
+        const bounds = action.localBounds.clone().applyMatrix4(action.targetMesh.matrixWorld);
+        const point = bounds.getCenter(new THREE.Vector3());
+        for (const height of [.25, .5, .75]) {
+          point.y = THREE.MathUtils.lerp(bounds.min.y, bounds.max.y, height);
+          const direction = point.clone().sub(this.camera.position);
+          this.wallVisibilityRay.far = Math.max(0, direction.length() - .08);
+          this.wallVisibilityRay.set(this.camera.position, direction.normalize());
+          if (this.wallVisibilityRay.intersectObject(support, false).length) {
+            blocker = support;
+            break;
+          }
+        }
+      }
+
+      for (const entry of stationMap.ceilingSupports || []) {
+        const mesh = entry.mesh;
+        const targetOpacity = mesh === blocker ? .14 : 1;
+        if (!mesh.userData.ceilingCaptureMaterial) {
+          if (targetOpacity === 1) continue;
+          // The station shares its base metal material with other props.
+          mesh.material = mesh.material.clone();
+          mesh.userData.ceilingCaptureMaterial = true;
+        }
+        const material = mesh.material;
+        material.opacity += (targetOpacity - material.opacity) * blend;
+        if (Math.abs(material.opacity - targetOpacity) < .005) material.opacity = targetOpacity;
+        const transparent = material.opacity < 1;
+        if (material.transparent !== transparent) {
+          material.transparent = transparent;
+          material.needsUpdate = true;
+        }
+        material.depthWrite = !transparent;
+      }
     }
 
     updatePropVisibility(target, strategicView = false) {
@@ -25780,7 +25822,7 @@
       return true;
     }
 
-    isLocomotionBusy() { return !!(this.ceilingTransition || this.ceilingAction || this.disposalTransfer); }
+    isLocomotionBusy() { return !!(this.ceilingTransition || this.ceilingAction || this.disposalTransfer || this.prowlLeap); }
 
     findCeilingSupport() {
       return this.creatureEnvelope && stationMap.findCreatureCeilingSupport?.(this.x, this.z, {
@@ -26315,7 +26357,6 @@
         victim.stress = 100;
         audioManager.playWetImpact?.(victim.x, victim.z);
         window.HiveSystems?.vfx?.beam?.(this.x, this.mesh.position.y - this.creatureEnvelope.height * .45, this.z, victim.x, 2.7, victim.z, 0x0c121e);
-        window.HiveSystems?.vfx?.floatingText?.(victim.x, 3, victim.z, '-140 DARD DE QUEUE', '#ef4444', true);
       }
       const progress = action.phase === 'HOIST' ? Math.min(1, action.elapsed / 1.05)
         : (action.phase === 'RELEASE' ? Math.min(1, action.elapsed / action.releaseDuration) : 1);
@@ -28552,51 +28593,168 @@
       }
     }
 
-    executeProwlLeap(target = null) {
-      if (this.form !== 'drone') return false;
+    getProwlLeapRange() {
       const isRunner = this.adultCaste === 'runner';
       const isWarrior = this.adultCaste === 'warrior';
       const isProwler = this.adultCaste === 'prowler';
-
-      // Audit QA #74 : Bonus de franchissement et d'agilité verticale (Wall-run, treillis, catwalks, gaines)
       const nearCatwalkOrTruss = (stationMap.maintenanceGondolas || []).some((g) => Math.hypot(g.x - this.x, g.z - this.z) <= 7.0) ||
-        (stationMap.sevastopolDuctSplitters || []).some((s) => Math.hypot(s.x - this.x, s.z - this.z) <= 7.0) ||
-        this.isInVent || this.isCeilingProwling;
-      const agilityBonus = nearCatwalkOrTruss ? 1.35 : 1.0;
+        (stationMap.sevastopolDuctSplitters || []).some((s) => Math.hypot(s.x - this.x, s.z - this.z) <= 7.0);
+      const base = isRunner ? 10.5 : (isProwler ? 9.0 : (isWarrior ? 6.5 : 7.5));
+      return base * (nearCatwalkOrTruss ? 1.35 : 1);
+    }
 
-      const leapDist = (isRunner ? 10.5 : (isProwler ? 9.0 : (isWarrior ? 6.5 : 7.5))) * agilityBonus;
-      const angle = this.mesh ? this.mesh.rotation.y : 0;
-      const destX = target ? target.x : (this.x + Math.sin(angle) * leapDist);
-      const destZ = target ? target.z : (this.z + Math.cos(angle) * leapDist);
-      if (stationMap.checkCollision(destX, destZ)) {
+    getProwlLeapPose(state, progress) {
+      const eased = progress * progress * (3 - 2 * progress);
+      return {
+        x: state.start.x + (state.dest.x - state.start.x) * eased,
+        y: state.start.y * (1 - eased) + Math.sin(progress * Math.PI) * state.arcHeight,
+        z: state.start.z + (state.dest.z - state.start.z) * eased
+      };
+    }
+
+    executeProwlLeap(target = null) {
+      const game = window.gameInstance;
+      if (!game?.campaignActive || !game.isRunning || game.isSystemPaused || game.currentStageIndex !== 4 ||
+          this.form !== 'drone' || !this.mesh || !this.detailedModel || !this.creatureEnvelope ||
+          this.isDefeated || this.health <= 0 || this.isLeaping || this.isLocomotionBusy() || this.isEmerging ||
+          this.isBiologicalTransition || this.isInVent || this.isCeilingProwling || this.isSubfloorProwling ||
+          this.draggedHost || this.attachedHost) return false;
+
+      const leapRange = this.getProwlLeapRange();
+      const angle = target ? Math.atan2(target.x - this.x, target.z - this.z) : this.mesh.rotation.y;
+      const distance = target ? Math.hypot(target.x - this.x, target.z - this.z) : leapRange;
+      if (!Number.isFinite(distance) || !Number.isFinite(angle) || distance < .4 || distance > leapRange + 1e-6) return false;
+      const travel = target ? Math.max(.4, distance - Math.min(1.25, distance * .25)) : distance;
+      const dest = { x: this.x + Math.sin(angle) * travel, z: this.z + Math.cos(angle) * travel };
+      const isRunner = this.adultCaste === 'runner';
+      const isWarrior = this.adultCaste === 'warrior';
+      const arcHeight = isWarrior ? .85 : (isRunner ? 1.35 : 1.15);
+      const start = { x: this.x, y: this.mesh.position.y, z: this.z };
+      const state = { ...this.captureLocomotionContext(), start, dest, yaw: angle, arcHeight, isRunner, isWarrior };
+      if (!this.canFitProwlLeap(state)) {
         showToast('Trajectoire de bond bloquée par un obstacle.');
         return false;
       }
-      if (agilityBonus > 1.0) {
-        window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, 'WALL-RUN & CATWALK LEAP +35% !', '#38bdf8', true);
-      }
+
+      const duration = Math.max(.36, Math.min(.66, .28 + travel * .034));
+      if (!this.startLeapTo(dest, null, { duration, arcHeight, useFaceAnchor: false })) return false;
+      this.prowlLeap = state;
+      this.moveWaypoints = [];
       audioManager.playXenoRoar?.();
-      rendererEngine.addScreenShake?.(isWarrior ? 0.42 : 0.28, 0.2);
       window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x39ff14, 16, 0.12, 1.2);
       this.triggerAttack('leap');
+      return true;
+    }
 
-      const startPos = { x: this.x, z: this.z };
-      this.x = destX;
-      this.z = destZ;
-      this.mesh?.position.set(destX, 0, destZ);
+    canFitProwlLeap(state) {
+      const {start, dest, yaw} = state;
+      if (!stationMap.hasClearSegment(start.x, start.z, dest.x, dest.z, this.creatureEnvelope.radius)) return false;
+      const count = Math.max(10, Math.ceil(Math.hypot(dest.x - start.x, dest.z - start.z) / .48));
+      const originalPosition = this.mesh.position.clone();
+      const originalRotation = this.mesh.quaternion.clone();
+      let lastBounds = null;
+      try {
+        for (let step = 0; step <= count; step++) {
+          const progress = step / count;
+          const point = this.getProwlLeapPose(state, progress);
+          const ground = this.poseProwlLanding(point.x, point.z, yaw);
+          if (!stationMap.isCreaturePoseClear(ground)) return false;
+          const bounds = step === 0 || step === count ? ground : this.poseProwlFlight(point, progress, yaw);
+          if (!stationMap.isCreaturePoseClear(lastBounds ? bounds.clone().union(lastBounds) : bounds)) return false;
+          lastBounds = bounds;
+        }
+        return true;
+      } finally {
+        this.mesh.position.copy(originalPosition);
+        this.mesh.quaternion.copy(originalRotation);
+        animateProceduralModel(this.mesh, { phase: this.creatureAnimationTime * 9, movement: .08, attack: this.actionAnimation });
+        this.applyGroundContact();
+      }
+    }
 
-      window.HiveSystems?.vfx?.organicTrail?.(startPos.x, 1.5, startPos.z, destX, 1.5, destZ, isRunner ? 0xf59e0b : 0x39ff14);
-      window.HiveSystems?.vfx?.burst?.(destX, destZ, 0xef4444, 24, 0.18, 1.8);
+    clearProwlLeap({ ground = true } = {}) {
+      const state = this.prowlLeap;
+      if (!state) return;
+      this.prowlLeap = null;
+      this.isLeaping = false;
+      this.leapHost = null;
+      this.leapComplete = null;
+      if (ground && this.mesh === state.mesh) this.poseProwlLanding(this.x, this.z, state.yaw);
+    }
+
+    poseProwlLanding(x, z, yaw) {
+      this.mesh.rotation.set(0, yaw, 0, 'YXZ');
+      this.mesh.position.set(x, 0, z);
+      animateProceduralModel(this.mesh, { movement: .08 });
+      this.constrainCreatureContacts();
+      this.mesh.updateMatrixWorld(true);
+      return new THREE.Box3().setFromObject(this.detailedModel);
+    }
+
+    poseProwlFlight(point, progress, yaw) {
+      const envelope = Math.sin(progress * Math.PI);
+      this.mesh.position.set(point.x, point.y, point.z);
+      this.mesh.rotation.set(envelope * -.14, yaw, 0, 'YXZ');
+      animateProceduralModel(this.mesh, { phase: progress * Math.PI * 2, movement: .25 * envelope, attack: .22 * envelope });
+      this.constrainCreatureContacts();
+      this.mesh.updateMatrixWorld(true);
+      return new THREE.Box3().setFromObject(this.detailedModel);
+    }
+
+    updateProwlLeap(delta) {
+      const state = this.prowlLeap;
+      if (!this.isLocomotionContextCurrent(state)) { this.clearProwlLeap(); return; }
+      this.leapElapsed = Math.min(this.leapDuration, this.leapElapsed + delta);
+      const progress = this.leapElapsed / this.leapDuration;
+      const point = this.getProwlLeapPose(state, progress);
+      const radius = this.creatureEnvelope.radius;
+      const ground = this.poseProwlLanding(point.x, point.z, state.yaw);
+      if (!stationMap.hasClearSegment(this.x, this.z, point.x, point.z, radius) || !stationMap.isCreaturePoseClear(ground)) {
+        this.clearProwlLeap();
+        showToast('Bond interrompu par un obstacle sur la trajectoire.');
+        return;
+      }
+
+      const bounds = progress < 1 ? this.poseProwlFlight(point, progress, state.yaw) : ground;
+      const sweep = state.lastAirBounds ? bounds.clone().union(state.lastAirBounds) : bounds;
+      if (!stationMap.isCreaturePoseClear(sweep)) {
+        this.clearProwlLeap();
+        showToast('Bond interrompu : le gabarit rencontre un obstacle.');
+        return;
+      }
+      state.lastAirBounds = bounds;
+
+      this.leapTrailCooldown -= delta;
+      if (this.leapTrailCooldown <= 0) {
+        this.leapTrailCooldown = .09;
+        window.HiveSystems?.vfx?.organicTrail?.(this.x, point.y + .4, this.z, point.x, point.y + .4, point.z,
+          state.isRunner ? 0xf59e0b : 0x39ff14);
+      }
+      this.x = point.x;
+      this.z = point.z;
+      if (progress < 1) return;
+
+      this.clearProwlLeap();
+      this.resolveProwlLanding(state);
+    }
+
+    resolveProwlLanding({ isRunner, isWarrior, caste }) {
+      const destX = this.x, destZ = this.z;
+      audioManager.playMaterialFootstep?.('metal', destX, destZ, true, isWarrior);
+      rendererEngine.addScreenShake?.(isWarrior ? 0.42 : 0.28, 0.2);
       window.HiveSystems?.vfx?.ring?.(destX, destZ, isRunner ? 0xf59e0b : 0x39ff14, 4.2);
 
       const hitHumans = (window.gameInstance?.humans || []).filter((h) => (
-        !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - destX, h.z - destZ) <= (isWarrior ? 4.2 : 3.4)
+        !h.isIncapacitated && !h.isCocooned && !h.isDisposed &&
+        Math.hypot(h.x - destX, h.z - destZ) <= (isWarrior ? 4.2 : 3.4) &&
+        stationMap.hasClearSegment(destX, destZ, h.x, h.z)
       ));
       if (hitHumans.length > 0) {
         audioManager.playBoneCrunch?.();
         audioManager.playWetImpact?.(destX, destZ);
+        window.HiveSystems?.vfx?.burst?.(destX, destZ, 0xef4444, 24, 0.18, 1.8);
         hitHumans.forEach((victim) => {
-          const pDmg = isWarrior ? 130 : (isRunner ? 110 : (isProwler ? 100 : 85));
+          const pDmg = isWarrior ? 130 : (isRunner ? 110 : (caste === 'prowler' ? 100 : 85));
           victim.takeDamage(pDmg, this);
           victim.staggerTimer = isWarrior ? 2.0 : (isRunner ? 1.5 : 1.25);
           const leapLabel = isRunner ? 'BOND QUADRUPÈDE' : (isWarrior ? 'CHARGE BRUTALE' : 'BOND PRÉDATEUR');
@@ -28611,7 +28769,6 @@
       } else {
         showToast(isRunner ? 'Bond quadrupède longue portée réussi [K].' : 'Bond de traque réussi [K].');
       }
-      return true;
     }
 
     getAdultProfile() {
@@ -28713,6 +28870,7 @@
     }
 
     clearMesh() {
+      this.clearProwlLeap({ ground: false });
       this.cancelDragHost?.();
       if (this.disposalTransfer) stationMap.cancelIncineratorTransfer?.(this.disposalTransfer);
       this.cancelCeilingTransition({ land: false });
@@ -29363,6 +29521,7 @@
 
     update(deltaSeconds = 1 / 60) {
       if (!this.mesh) return;
+      if (this.prowlLeap && !this.isLocomotionContextCurrent(this.prowlLeap)) this.clearProwlLeap();
       const locomotionOwner = this.ceilingTransition || this.ceilingSupport;
       for (const anchor of [...this.ceilingAnchors]) if (!anchor.isCurrent()) anchor.dispose();
       if (locomotionOwner && !this.isLocomotionContextCurrent(locomotionOwner)) this.cancelCeilingTransition({ land: false });
@@ -29453,6 +29612,7 @@
       }
 
       if (this.isLeaping && this.leapHost) {
+        if (this.prowlLeap) { this.updateProwlLeap(safeDelta); return; }
         this.leapElapsed = Math.min(this.leapDuration, this.leapElapsed + safeDelta);
         const progress = Math.min(1, this.leapElapsed / this.leapDuration);
         const eased = progress * progress * (3 - 2 * progress);
@@ -29522,14 +29682,17 @@
           this.moveTarget = null;
           this.moveWaypoints = [];
         } else if (this.moveTarget) {
+          // Finish each checked path segment before turning. Half a world unit
+          // of early arrival can leave a juvenile outside adult clearance.
+          const waypointTolerance = 0.02;
           let targetDistance = Math.hypot(this.moveTarget.x - this.x, this.moveTarget.z - this.z);
-          if (targetDistance <= 0.5) {
+          while (this.moveTarget && targetDistance <= waypointTolerance) {
             this.moveTarget = this.moveWaypoints.shift() || null;
             if (this.moveTarget) {
               targetDistance = Math.hypot(this.moveTarget.x - this.x, this.moveTarget.z - this.z);
             }
           }
-          if (this.moveTarget && targetDistance > 0.5) {
+          if (this.moveTarget) {
             remainingDistance = targetDistance;
             dx = (this.moveTarget.x - this.x) / targetDistance;
             dy = (this.moveTarget.z - this.z) / targetDistance;
@@ -29670,6 +29833,29 @@
   const playerCreature = new PlayerCreature();
 
   class HumanAI {
+    static combatantTypes = new Set([
+      'guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator',
+      'commando', 'android', 'synthetic', 'powerloader', 'exosuit', 'weyland_commando_mk2',
+      'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid',
+      'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'uscm_sniper',
+      'weyland_containment_squad', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_smartgun_flamer', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_sadar_operator', 'uscm_recon_scout', 'reconscout', 'recon', 'uscm_combat_medic', 'combatmedic', 'medic', 'combat_medic', 'uscm_recon_sniper', 'reconsniper', 'recon_sniper', 'forward_observer',
+      'uscm_tracker_specialist', 'uscm_riot_suppressor', 'weyland_xenoborg_handler', 'weyland_black_ops_assassin',
+      'uscm_cn20_nerve_gas_specialist', 'uscm_colonial_marshal', 'weyland_cyborg_enforcer', 'weyland_hazmat_incinerator',
+      'uscm_cryo_sweeper', 'uscm_orbital_comms_tech', 'weyland_apex_handler', 'weyland_heavy_incinerator_synth',
+      'uscm_heavy_grenadier', 'uscm_cbrn_decon_sweeper', 'weyland_shock_enforcer', 'weyland_neomorph_researcher',
+      'uscm_pulse_lance_gunner', 'uscm_drop_pod_pathfinder', 'weyland_synth_overseer', 'weyland_mutagen_flamer_specialist',
+      'uscm_railgun_marksman', 'uscm_exo_rig_loader', 'weyland_android_infiltrator', 'weyland_cryo_containment_ward',
+      'uscm_command_apc_gunner', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'weyland_praetorian_droid',
+      'uscm_smart_missile_spotter', 'uscm_breach_torch_sapper', 'weyland_xeno_tamer_commando', 'weyland_combat_medic_synth',
+      'uscm_heavy_plasma_gunner', 'uscm_orbital_drop_medic', 'weyland_black_goo_specialist', 'weyland_exec_security_synth',
+      'uscm_combat_cyberneticist', 'uscm_recon_drone_handler', 'weyland_subzero_cryo_trooper', 'weyland_nano_repair_synth',
+      'uscm_combat_synapse_operator', 'uscm_orbital_defense_gunner', 'weyland_apex_containment_specialist', 'weyland_sublevel_heavy_sentry_synth',
+      'uscm_point_defense_technician', 'uscm_heavy_mortar_spotter', 'weyland_genetic_security_enforcer', 'weyland_cryo_containment_mech_suit', 'uscm_forward_sensor_operator', 'uscm_heavy_anti_armor_gunner', 'weyland_sublevel_containment_marshal', 'weyland_elite_combat_synth_centurion',
+      'atarax_controller', 'colonial_raider', 'seegson_security', 'upp_vanguard', 'weyland_yutani_commando', 'capture_commando', 'gyro_gunner', 'orbital_rifleman', 'security_agent', 'thermal_operator',
+      'automaton_bombardier', 'automaton_bulwark', 'automaton_huntsman', 'automaton_igniter', 'automaton_peacekeeper', 'automaton_spider', 'argos_synthetic', 'security_drone',
+      'synthetic_trooper', 'automaton_worker', 'automaton_shock_warden', 'automaton_miner', 'working_joe', 'working_joe_hazmat', 'working_joe_electric', 'seegson_security_synth', 'combat_synth'
+    ]);
+
     constructor(id, type, x, z, name = '') {
       this.id = id;
       this.type = type;
@@ -30015,6 +30201,14 @@
         if (!primary && child.isMesh && child.material) primary = child;
       });
       return primary;
+    }
+
+    usesStunBaton() {
+      return this.type === 'weyland_security_taser' || this.type === 'taser_guard';
+    }
+
+    canEngageHostiles() {
+      return !this.isInfected && (this.isSynthetic() || this.usesStunBaton() || HumanAI.combatantTypes.has(this.type));
     }
 
     isSynthetic() {
@@ -30797,28 +30991,8 @@
       );
 
       const isSyntheticEntity = this.isSynthetic();
-      const isCombatant = !this.isInfected && (isSyntheticEntity || [
-        'guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator',
-        'commando', 'android', 'synthetic', 'powerloader', 'exosuit', 'weyland_commando_mk2',
-        'weyland_steel_team_synth', 'steelteam', 'steelteamsynth', 'steelteamandroid',
-        'weyland_cyber_hound', 'cyberhound', 'cyber_hound', 'uscm_sniper',
-        'weyland_containment_squad', 'uscm_hazmat_tech', 'weyland_drone_operator', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_smartgun_flamer', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_sadar_operator', 'uscm_recon_scout', 'reconscout', 'recon', 'uscm_combat_medic', 'combatmedic', 'medic', 'combat_medic', 'uscm_recon_sniper', 'reconsniper', 'recon_sniper', 'forward_observer',
-        'uscm_tracker_specialist', 'uscm_riot_suppressor', 'weyland_xenoborg_handler', 'weyland_black_ops_assassin',
-        'uscm_cn20_nerve_gas_specialist', 'uscm_colonial_marshal', 'weyland_cyborg_enforcer', 'weyland_hazmat_incinerator',
-        'uscm_cryo_sweeper', 'uscm_orbital_comms_tech', 'weyland_apex_handler', 'weyland_heavy_incinerator_synth',
-        'uscm_heavy_grenadier', 'uscm_cbrn_decon_sweeper', 'weyland_shock_enforcer', 'weyland_neomorph_researcher',
-        'uscm_pulse_lance_gunner', 'uscm_drop_pod_pathfinder', 'weyland_synth_overseer', 'weyland_mutagen_flamer_specialist',
-        'uscm_railgun_marksman', 'uscm_exo_rig_loader', 'weyland_android_infiltrator', 'weyland_cryo_containment_ward',
-        'uscm_command_apc_gunner', 'uscm_chemical_recon_scout', 'weyland_royal_jelly_harvester', 'weyland_praetorian_droid',
-        'uscm_smart_missile_spotter', 'uscm_breach_torch_sapper', 'weyland_xeno_tamer_commando', 'weyland_combat_medic_synth',
-        'uscm_heavy_plasma_gunner', 'uscm_orbital_drop_medic', 'weyland_black_goo_specialist', 'weyland_exec_security_synth',
-        'uscm_combat_cyberneticist', 'uscm_recon_drone_handler', 'weyland_subzero_cryo_trooper', 'weyland_nano_repair_synth',
-        'uscm_combat_synapse_operator', 'uscm_orbital_defense_gunner', 'weyland_apex_containment_specialist', 'weyland_sublevel_heavy_sentry_synth',
-        'uscm_point_defense_technician', 'uscm_heavy_mortar_spotter', 'weyland_genetic_security_enforcer', 'weyland_cryo_containment_mech_suit', 'uscm_forward_sensor_operator', 'uscm_heavy_anti_armor_gunner', 'weyland_sublevel_containment_marshal', 'weyland_elite_combat_synth_centurion',
-        'atarax_controller', 'colonial_raider', 'seegson_security', 'upp_vanguard', 'weyland_yutani_commando', 'capture_commando', 'gyro_gunner', 'orbital_rifleman', 'security_agent', 'thermal_operator',
-        'automaton_bombardier', 'automaton_bulwark', 'automaton_huntsman', 'automaton_igniter', 'automaton_peacekeeper', 'automaton_spider', 'argos_synthetic', 'security_drone',
-        'synthetic_trooper', 'automaton_worker', 'automaton_shock_warden', 'automaton_miner', 'working_joe', 'working_joe_hazmat', 'working_joe_electric', 'seegson_security_synth', 'combat_synth'
-      ].includes(this.type));
+      const isCombatant = this.canEngageHostiles();
+      const usesStunBaton = this.usesStunBaton();
       const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
       const currentStageStep = window.gameInstance?.currentStage?.step;
       const inVentStealth = combatTarget === playerCreature && playerCreature.isInVent;
@@ -30890,6 +31064,9 @@
       const maxDetectionDist = inDarkness ? (isPlayerProwling ? 8 : 14) : (isPlayerProwling ? 14 : 26);
       const attackRangeDist = inDarkness ? (isPlayerProwling ? 5.5 : 9) : (isPlayerProwling ? 7.5 : 12);
       const shootDist = inDarkness ? (isPlayerProwling ? 6.5 : 10) : (isPlayerProwling ? 9.5 : 14);
+      const attackApproachRange = this.isCyberHound ? 2.1
+        : usesStunBaton ? 2.8
+        : ['powerloader', 'exosuit'].includes(this.type) ? 3.5 : attackRangeDist + 1.5;
 
       // Fuite eperdue et supplications diegetiques des civils et scientifiques vers les sas et capsules EEV
       if (!this.isLured && !isCombatant && biologicalTargetDetectable && targetInVisualField && distToPlayer <= 18) {
@@ -30948,8 +31125,7 @@
         this.rememberThreat(combatTarget);
         const holdAttack = this.aiState === 'ATTACK' && distToPlayer <= attackRangeDist + 1.5;
         this.aiState = distToPlayer <= attackRangeDist || holdAttack ? 'ATTACK' : 'CHASE';
-        const approachRange = this.isCyberHound ? 2.1 : (['powerloader', 'exosuit'].includes(this.type) ? 3.5 : attackRangeDist + 1.5);
-        if (this.aiState === 'CHASE' || distToPlayer > approachRange) this.planNavigation(combatTarget.x, combatTarget.z);
+        if (this.aiState === 'CHASE' || distToPlayer > attackApproachRange) this.planNavigation(combatTarget.x, combatTarget.z);
         else {
           if (!this.navigationGoal) this.targetPos = { x: this.x, z: this.z };
           const angle = Math.atan2(combatTarget.x - this.x, combatTarget.z - this.z);
@@ -31351,6 +31527,7 @@
         biologicalTargetDetectable &&
         targetInVisualField &&
         distToPlayer < shootDist &&
+        (!usesStunBaton || distToPlayer <= 3) &&
         hasLineOfSight &&
         this.shootCooldown <= 0
       ) {
@@ -31476,7 +31653,7 @@
             this.shootCooldown = 0.9;
             audioManager.playPowerloaderBeep?.(this.x, this.z);
             window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'CHARGE HYDRAULIQUE P-5000 !', '#eab308', false);
-          } else if (['weyland_security_taser', 'taser_guard'].includes(this.type) && distToPlayer <= 3.0) {
+          } else if (usesStunBaton) {
             // Chantier 45 : Bâton à choc 100kV Weyland-Yutani (Alien 3 / Isolation)
             this.shootCooldown = 2.2;
             audioManager.playStunBatonZap?.(this.x, this.z);
@@ -31861,8 +32038,7 @@
 
       let movedThisTick = false;
       const dist = Math.hypot(this.targetPos.x - this.x, this.targetPos.z - this.z);
-      const holdMaxDist = this.isCyberHound ? 2.1 : (['powerloader', 'exosuit'].includes(this.type) ? 3.5 : attackRangeDist + 1.5);
-      const shouldHoldAttackPosition = this.aiState === 'ATTACK' && hasLineOfSight && distToPlayer <= holdMaxDist;
+      const shouldHoldAttackPosition = this.aiState === 'ATTACK' && hasLineOfSight && distToPlayer <= attackApproachRange;
       const followingNavigation = !!this.navigationGoal;
       if (dist > (followingNavigation ? .001 : .5) && !shouldHoldAttackPosition) {
         const baseSpeed = this.isLured ? 0.12 : (this.type === 'powerloader' ? (this.aiState === 'ATTACK' ? 0.078 : 0.06) : (this.isCyberHound ? 0.16 : 0.08));
@@ -34536,8 +34712,7 @@
           new HumanAI(94, 'labhound', 36, -22, 'Animal de service Q-4')
         ];
         initialOccupants[3].hp = initialOccupants[3].maxHp = 80;
-        initialOccupants.forEach((occupant) => occupant.createMesh());
-        window.gameInstance.humans.push(...initialOccupants);
+        this.deployReinforcements(initialOccupants);
         this.spawnedWaves = { wave1Security: false, wave2USCM: false, wave3HeavyPurge: false };
         this.waveTimer = 0;
       }
@@ -34680,7 +34855,7 @@
         <button type="button" id="btn-interact-environment" class="act-btn" data-tab-cat="environment" style="border-color: #06b6d4; background: rgba(6,182,212,0.18);"><span class="key-badge">ESPACE</span>PIÈGES ENVIRONNEMENT (COOLANT / DÉCON / SAS / PURGE)</button>
         <button type="button" id="btn-drone-hiss" class="act-btn" data-tab-cat="stealth" style="border-color: #39ff14;"><span class="key-badge">H/5</span>SIFFLEMENT TERRIFIANT</button>
         <button type="button" id="btn-acid-spit" class="act-btn" data-tab-cat="predation" style="border-color: #84cc16; background: rgba(132,204,22,0.18);"><span class="key-badge">X</span>CRACHAT ACIDE BALISTIQUE</button>
-        <button type="button" id="btn-drone-ceiling" class="act-btn" data-tab-cat="stealth" style="border-color: #38bdf8;"><span class="key-badge">Q</span>PAROI & PLAFOND</button>
+        <button type="button" id="btn-drone-ceiling" class="act-btn" data-tab-cat="stealth" style="border-color: #38bdf8;"><span class="key-badge">Q</span><span class="action-label">PAROI & PLAFOND</span></button>
         <button type="button" id="btn-drone-prowl" class="act-btn" data-tab-cat="stealth"><span class="key-badge">Z</span>POSTURE BASSE TRAQUE</button>
         <button type="button" id="btn-wall-mimicry" class="act-btn" data-tab-cat="stealth" style="border-color: #22c55e; background: rgba(34,197,94,0.18);"><span class="key-badge">Z</span>CAMOUFLAGE MURAL DE RÉSINE</button>
         <button type="button" id="btn-crusher-charge" class="act-btn" data-tab-cat="predation" data-caste-only="crusher" style="border-color: #f97316; background: rgba(249,115,22,0.22); display: ${activeCaste === 'crusher' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>CHARGE BÉLIER CRUSHER</button>
@@ -36589,11 +36764,17 @@
     }
 
     executeProwlLeap() {
-      if (!this.canUseAbility('prowlLeap', 1200)) return;
-      const { human: target } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated && Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= 9.0);
-      playerCreature.executeProwlLeap(target);
+      if (window.gameInstance?.currentStage !== this || playerCreature.isLocomotionBusy()) return false;
+      if (Date.now() < (this.abilityReadyAt.prowlLeap || 0)) return this.canUseAbility('prowlLeap', 1200);
+      const range = Math.min(9, playerCreature.getProwlLeapRange());
+      const { human: target } = this.findClosestHuman((human) => !human.isCocooned && !human.isIncapacitated &&
+        !human.isDisposed && Math.hypot(human.x - playerCreature.x, human.z - playerCreature.z) <= range &&
+        stationMap.hasClearSegment(playerCreature.x, playerCreature.z, human.x, human.z));
+      if (!playerCreature.executeProwlLeap(target)) return false;
+      this.canUseAbility('prowlLeap', 1200);
       this.updateCooldownBadges();
       this.updateRoyalButton();
+      return true;
     }
 
     handleKeyDown(key) {
@@ -36640,7 +36821,7 @@
         const hacked = playerCreature.executeHackTerminal();
         if (!hacked) this.executeProwlLeap();
       }
-      if (key === 'q') this.toggleCeilingProwl();
+      if (key === 'q' && !playerCreature.prowlLeap) this.toggleCeilingProwl();
       if (key === 'x') {
         if (playerCreature.caste === 'boiler' || playerCreature.adultCaste === 'boiler') {
           playerCreature.executeBoilerThermalDetonation();
@@ -37287,15 +37468,71 @@
     }
 
     getActiveThreats() {
-      const combatantTypes = [
-        'guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator',
-        'commando', 'android', 'synthetic', 'powerloader', 'exosuit'
-      ];
       return (window.gameInstance?.humans || []).filter((human) => (
-        combatantTypes.includes(human.type) &&
-        !human.isCocooned &&
-        !human.isIncapacitated
+        human.hp > 0 && human.mesh?.parent && human.canEngageHostiles?.() &&
+        !human.isCocooned && !human.isIncapacitated && !human.isDestroyed && !human.isDisposed &&
+        !human.isConsumedByCycle &&
+        // Synthetic panic flags clear on update. A timed human shock can
+        // also wear off, unlike permanent psychic submission.
+        (!human.isDocileCatatonic || human.isSynthetic() || human.catatonicTimer > 0)
       ));
+    }
+
+    deployReinforcements(wave, objective = null) {
+      const humans = window.gameInstance.humans;
+      const objectiveExposed = objective && stationMap.hasClearSegment(
+        objective.x, objective.z, objective.x, objective.z, .12
+      );
+      // Prefer the assigned entry and move it only when the current station
+      // layout or occupants make it unusable. The AI routes with .72 clearance.
+      const available = (x, z) => !stationMap.checkCollision(x, z, .72) &&
+        Math.hypot(x - playerCreature.x, z - playerCreature.z) >= 3.5 &&
+        !humans.some(actor => !actor.isIncapacitated && Math.hypot(x - actor.x, z - actor.z) < 2.5);
+      const searchAround = (anchor, accepts, initialRadius = 0, maximumRadius = 16) => {
+        if (initialRadius === 0 && accepts(anchor.x, anchor.z)) return anchor;
+        for (let radius = Math.max(1, initialRadius); radius <= maximumRadius; radius++) {
+          for (let sector = 0; sector < 12; sector++) {
+            const angle = sector * Math.PI / 6;
+            const x = anchor.x + Math.cos(angle) * radius;
+            const z = anchor.z + Math.sin(angle) * radius;
+            if (accepts(x, z)) return { x, z };
+          }
+        }
+        return null;
+      };
+      for (const enemy of wave) {
+        let spawn = null;
+        const anchors = [enemy, ...(stationMap.recoveryRoomAnchors || []), playerCreature];
+        for (const anchor of anchors) {
+          spawn = searchAround(anchor, available);
+          if (spawn) break;
+        }
+        if (!spawn) { this.log(`[RENFORT] Aucun accès libre pour ${enemy.name}.`); continue; }
+        const assign = ({ x, z }, destination = objective) => {
+          enemy.x = x;
+          enemy.z = z;
+          enemy.patrolOrigin = { x, z };
+          if (destination) enemy.lureTowards(destination.x, destination.z);
+          else enemy.choosePatrolWaypoint();
+        };
+        assign(spawn);
+        if (objective && enemy.navigationBlocked) {
+          // The player or cocoon may fit where the human path cannot finish.
+          // Choose nearby walkable rally ground and a clear lane into it.
+          let approach = null;
+          const rally = searchAround(objective, (x, z) => {
+            if (Math.abs(x) > 70 || Math.abs(z) > 70 || stationMap.checkCollision(x, z, .72)) return false;
+            if (objectiveExposed && !stationMap.hasClearSegment(x, z, objective.x, objective.z, .12)) return false;
+            const clearLane = (entryX, entryZ) => available(entryX, entryZ) &&
+              stationMap.hasLineOfSight(entryX, entryZ, x, z, .72);
+            approach = searchAround({ x, z }, clearLane, 9) || searchAround({ x, z }, clearLane, 4, 8);
+            return approach !== null;
+          }, 0, 6);
+          if (rally) assign(approach, rally);
+        }
+        enemy.createMesh();
+        humans.push(enemy);
+      }
     }
 
     spawnRoyalDefenseWave() {
@@ -37307,11 +37544,7 @@
         new HumanAI(151, 'commando', rx - 18, rz + 14, 'Commando KAPPA Ilya Moor'),
         new HumanAI(152, 'incinerator', rx + 16, rz - 14, 'Opératrice thermique KAPPA Veda Sol')
       ];
-      wave.forEach((enemy) => {
-        enemy.createMesh();
-        enemy.lureTowards(rx, rz);
-      });
-      window.gameInstance.humans.push(...wave);
+      this.deployReinforcements(wave, { x: rx, z: rz });
       this.log('[DÉFENSE] Une équipe KAPPA converge directement sur la chambre royale !');
     }
 
@@ -37323,12 +37556,8 @@
         new HumanAI(160, 'guard', x, z, 'Patrouilleur IRISE Miller'),
         new HumanAI(161, 'guard', x + 3, z + 2, 'Patrouilleur IRISE Vance')
       ];
-      wave.forEach((h) => {
-        h.hostEligibility = 'viable';
-        h.createMesh();
-        h.lureTowards(playerCreature.x, playerCreature.z);
-      });
-      window.gameInstance.humans.push(...wave);
+      for (const human of wave) human.hostEligibility = 'viable';
+      this.deployReinforcements(wave, playerCreature);
       showToast('Une patrouille de renfort IRISE entre dans le secteur.');
       this.log('[IRISE] Renforts envoyés suite à la perte de liaison. Nouveaux hôtes détectés.');
     }
@@ -37458,11 +37687,7 @@
           new HumanAI(86, 'weyland_drone_operator', 16, -10, 'Opérateur Drones Weyland Giger - Scan Sonar Skimmer & EMP'),
           new HumanAI(88, 'weyland_cyber_hound', -22, -30, 'Molosse Cybernétique Weyland-Yutani Cerberus-1')
         ];
-        wave1.forEach((e) => {
-          e.createMesh();
-          e.lureTowards?.(playerCreature.x, playerCreature.z);
-        });
-        window.gameInstance.humans.push(...wave1);
+        this.deployReinforcements(wave1, playerCreature);
         audioManager.playRadioChatter?.();
         audioManager.playSecurityAlarmBeep?.();
         showToast('ALERTE SÉCURITÉ : Équipe de contention et filets cryogéniques Weyland-Yutani déployée !');
@@ -37480,11 +37705,7 @@
           new HumanAI(85, 'uscm_sniper', 35, 25, 'Tireur d\'Élite USCM Dietrich - Fusil Sniper M42A Laser'),
           new HumanAI(82, 'uscm_combat_engineer', -6, 16, 'Caporal-Chef Vance - Ingénieur de Combat USCM')
         ];
-        wave2.forEach((e) => {
-          e.createMesh();
-          e.lureTowards?.(playerCreature.x, playerCreature.z);
-        });
-        window.gameInstance.humans.push(...wave2);
+        this.deployReinforcements(wave2, playerCreature);
         audioManager.playAlarmSiren?.();
         audioManager.playSmartgunServo?.(playerCreature.x, playerCreature.z);
         showToast('SECTION DE COMBAT USCM : Déploiement tactique M56 Smartgun & M240 Incinerator !');
@@ -37503,11 +37724,7 @@
           new HumanAI(90, 'weyland_steel_team_synth', -40, 40, 'Synthétique Steel Team T-01 - Lame Plasma & Concussion'),
           new HumanAI(89, 'weyland_steel_team_synth', 38, -32, 'Synthétique Steel Team T-02 - Lame Plasma & Concussion')
         ];
-        wave3.forEach((e) => {
-          e.createMesh();
-          e.lureTowards?.(playerCreature.x, playerCreature.z);
-        });
-        window.gameInstance.humans.push(...wave3);
+        this.deployReinforcements(wave3, playerCreature);
         audioManager.playPowerloaderBeep?.(-45, 35);
         audioManager.playKlaxonAlarm?.();
         showToast('PROTOCOLE PURGE TOTALE : Déploiement Power Loader P-5000 et escouade Steel Team !');
@@ -38769,7 +38986,9 @@
 
     getLocomotionState() {
       return { busy: this.isLocomotionBusy(), hanging: this.currentStageIndex === 4 && Boolean(playerCreature.isCeilingProwling),
-        ceilingActionPhase: this.currentStageIndex === 4 ? playerCreature.ceilingAction?.phase || null : null };
+        ceilingActionPhase: this.currentStageIndex === 4 ? playerCreature.ceilingAction?.phase || null : null,
+        disposalPhase: this.currentStageIndex === 4 ? playerCreature.disposalTransfer?.phase || null : null,
+        prowlLeaping: this.currentStageIndex === 4 && Boolean(playerCreature.prowlLeap) };
     }
 
     loadStage(index) {

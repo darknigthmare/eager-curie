@@ -92,7 +92,8 @@ const methods = [
   ['playTurretSwivel', 18, .16, 1], ['playTurretLock', 20, .14, 2],
   ['playTerminalKeyboardClick', 10, .035, 1], ['playHighVoltageHum', 16, .45, 2],
   ['playHydraulicServo', 15, .32, 1], ['playAutomatonFootstep', 16, .16, 2],
-  ['playSyntheticFluidLeak', 14, .32, 1]
+  ['playSyntheticFluidLeak', 14, .32, 1], ['playIndustrialFluorescentBuzz', 28, 1.2, 1],
+  ['playMedBayMonitorBeep', 24, .22, 1]
 ];
 const results = [];
 function check(name, run) {
@@ -101,10 +102,12 @@ function check(name, run) {
 }
 check('The repaired sound methods are actual AudioManager methods with real routing', () => {
   const {audio} = fixture(false, false);
-  for (const [name] of methods) assert.equal(typeof audio[name], 'function', name);
-  const moved = source.slice(source.indexOf('    playBrineEvaporatorSteamHiss('), end);
-  assert(!moved.includes('_calcSpatialPan') && !moved.includes('this.sfxGain') &&
-    !moved.includes('this.audioCtx') && !moved.includes('this._createPanner'), 'No phantom audio context, spatial or bus API');
+  for (const [name] of methods) {
+    assert.equal(typeof audio[name], 'function', name);
+    const implementation = audio[name].toString();
+    assert(!/\b(?:_calcSpatialPan|sfxGain|audioCtx|_createPanner|computePanner)\b/.test(implementation),
+      `${name} must use the shared audio routing`);
+  }
   return {methods: methods.map(row => row[0])};
 });
 for (const stereo of [true, false]) for (const [method, radius, duration, sourceCount] of methods) {

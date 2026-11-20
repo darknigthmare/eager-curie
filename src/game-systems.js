@@ -267,7 +267,10 @@
       }
       const audioButton = document.getElementById('btn-audio-toggle');
       audioButton?.setAttribute('aria-pressed', String(this.values.muted));
-      if (audioButton) audioButton.textContent = this.values.muted ? 'SON COUPÉ' : 'SON';
+      if (audioButton) {
+        const audioSvg = `<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><path d="M4 7 L7 7 L12 3 L12 17 L7 13 L4 13 Z" stroke-width="1.5" stroke-linejoin="round"/>${this.values.muted ? '<line x1="14" y1="6" x2="18" y2="14" stroke-width="1.5"/><line x1="18" y1="6" x2="14" y2="14" stroke-width="1.5"/>' : '<path d="M15 7 A4 4 0 0 1 15 13 M17 4 A8 8 0 0 1 17 16" stroke-width="1.5" stroke-linecap="round"/>'}</svg>`;
+        audioButton.innerHTML = `${audioSvg}<span>${this.values.muted ? 'SON COUPÉ' : 'SON'}</span>`;
+      }
       this.game?.setMasterVolume?.(this.values.volume / 100);
       this.game?.setReducedMotion?.(this.values.reducedMotion);
       this.game?.setGraphicsQuality?.(this.values.graphicsQuality);
@@ -895,16 +898,21 @@
         group.add(b);
       }
 
-      for (let i = 0; i < (this.reducedMotion ? 0 : 3); i++) {
-        const sGeo = new THREE.SphereGeometry(0.12, 5, 5);
+      const smokeWisps = [];
+      for (let i = 0; i < (this.reducedMotion ? 0 : 4); i++) {
+        const sGeo = new THREE.SphereGeometry(0.14 + Math.random() * 0.06, 6, 6);
         const sMat = new THREE.MeshBasicMaterial({
-          color: 0x84cc16,
+          color: 0xa3e635,
           transparent: true,
-          opacity: 0.42,
+          opacity: 0.44,
           depthWrite: false
         });
         const s = new THREE.Mesh(sGeo, sMat);
-        s.position.set((Math.random() - 0.5) * radius * 0.8, 0.2 + Math.random() * 0.25, (Math.random() - 0.5) * radius * 0.8);
+        s.position.set((Math.random() - 0.5) * radius * 0.85, 0.12 + Math.random() * 0.35, (Math.random() - 0.5) * radius * 0.85);
+        s.userData.vy = 0.55 + Math.random() * 0.45;
+        s.userData.driftX = (Math.random() - 0.5) * 0.25;
+        s.userData.driftZ = (Math.random() - 0.5) * 0.25;
+        smokeWisps.push(s);
         group.add(s);
       }
 
@@ -915,7 +923,9 @@
         age: 0,
         lifetime: duration,
         acidPool: true,
-        bubbles
+        radius,
+        bubbles,
+        smokeWisps
       };
       this.effects.push(effect);
       return {
@@ -927,6 +937,93 @@
           else group.parent?.remove(group);
         }
       };
+    }
+
+    // Wave 20 : Faisceau lumineux / laser / tir de tourelle UA 571-C & armes d'escouade
+    beam(x1, y1, z1, x2, y2, z2, color = 0xf59e0b, duration = 0.16) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const start = new THREE.Vector3(x1, y1, z1);
+      const end = new THREE.Vector3(x2, y2, z2);
+      const dir = end.clone().sub(start);
+      const len = dir.length();
+      if (len < 0.05) return;
+      const group = new THREE.Group();
+      const geo = new THREE.CylinderGeometry(0.032, 0.032, len, 6, 1, true);
+      const mat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.92,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(start).addScaledVector(dir, 0.5);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+      group.add(mesh);
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: duration, beamFade: true });
+    }
+
+    // Wave 20 : Traceur balistique USCM M41A / M56 Smartgun
+    tracer(x1, y1, z1, x2, y2, z2, color = 0xfde047) {
+      this.beam(x1, y1, z1, x2, y2, z2, color, 0.09);
+    }
+
+    // Wave 20 : Flaque de givre / azote liquide LN2 persistante
+    spawnFrostGroundPool(x, z, radius = 2.4, duration = 10.0) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const poolMesh = new THREE.Mesh(
+        new THREE.CircleGeometry(radius, 24),
+        new THREE.MeshBasicMaterial({
+          color: 0x7dd3fc,
+          transparent: true,
+          opacity: 0.58,
+          depthWrite: false
+        })
+      );
+      poolMesh.rotation.x = -Math.PI / 2;
+      poolMesh.position.y = 0.034;
+      group.add(poolMesh);
+      const rimMesh = new THREE.Mesh(
+        new THREE.RingGeometry(radius * 0.78, radius * 1.06, 24),
+        new THREE.MeshBasicMaterial({
+          color: 0xe0f2fe,
+          transparent: true,
+          opacity: 0.72,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        })
+      );
+      rimMesh.rotation.x = -Math.PI / 2;
+      rimMesh.position.y = 0.038;
+      group.add(rimMesh);
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: duration, frostPool: true });
+    }
+
+    // Wave 20 : Flash chromé du piston de mâchoire pharyngienne (Headbite 1:1)
+    innerJawFlash(x, y, z, yaw = 0) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const piston = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.055, 0.04, 0.95, 8),
+        new THREE.MeshBasicMaterial({
+          color: 0xe2e8f0,
+          transparent: true,
+          opacity: 0.95,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false
+        })
+      );
+      piston.rotation.x = Math.PI / 2;
+      piston.position.z = 0.45;
+      group.add(piston);
+      group.position.set(x, y, z);
+      group.rotation.y = yaw;
+      this.scene.add(group);
+      this.effects.push({ group, age: 0, lifetime: 0.22, beamFade: true });
     }
 
     // Persistance de fumees acides corrosives rongeant le metal avec bulles caustiques montantes
@@ -1094,6 +1191,297 @@
       window.setTimeout(() => app?.classList.remove('transformation-flash'), 750);
     }
 
+    // Mission Wave 4 : Onde de Choc Sismique au Sol pour Castes Lourdes (Reine, Crusher, Titan, Predalien)
+    groundSlamShockwave(x, z, radius = 5.5, color = 0x39ff14) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const ringGeo = new THREE.RingGeometry(0.18, 0.42, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      group.add(ring);
+      group.position.set(x, 0.04, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        groundShockwave: true,
+        ringMesh: ring,
+        maxRadius: radius,
+        age: 0,
+        lifetime: 0.55
+      });
+      this.burst(x, z, 0x64748b, 20, 0.12, 0.5);
+    }
+
+    // Mission Wave 4 : Rupture de Flexibles Hydrauliques Haute Pression (MANTIS-4 & Exosuit P-5000)
+    hydraulicSpurt(x, y = 1.4, z, count = 18) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const darkMat = this.getMaterial(0x0f172a);
+      const sparkMat = this.getMaterial(0xf59e0b);
+      for (let i = 0; i < count; i++) {
+        const isSpark = Math.random() < 0.25;
+        const mat = isSpark ? sparkMat : darkMat;
+        const p = this.getParticle(isSpark ? 0.06 : 0.12, isSpark ? 0xf59e0b : 0x0f172a);
+        p.position.set(0, 0, 0);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2.0 + Math.random() * 3.5;
+        p.userData.velocity = new THREE.Vector3(
+          Math.cos(angle) * speed,
+          1.5 + Math.random() * 2.5,
+          Math.sin(angle) * speed
+        );
+        group.add(p);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        burst: true,
+        age: 0,
+        lifetime: 0.65
+      });
+    }
+
+    // Mission Wave 4 : Fumée Thermique de Surchauffe Canon UA 571-C
+    barrelHeatSmoke(x, y = 1.0, z, count = 8) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const smokeMat = new THREE.MeshBasicMaterial({
+        color: 0x94a3b8,
+        transparent: true,
+        opacity: 0.45,
+        depthWrite: false
+      });
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), smokeMat);
+        p.position.set((Math.random() - 0.5) * 0.12, (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.12);
+        p.userData.vy = 0.65 + Math.random() * 0.55;
+        p.userData.vx = (Math.random() - 0.5) * 0.18;
+        p.userData.vz = (Math.random() - 0.5) * 0.18;
+        group.add(p);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        barrelSmoke: true,
+        age: 0,
+        lifetime: 0.85
+      });
+    }
+
+    // Mission Wave 5 : Chute de Gouttelettes de Spores et Sève de Résine (Ruche Primaire)
+    sporeDrip(x, z, count = 6, { height = 3.5, spread = 3.5, color = 0xa855f7 } = {}) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const dripMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.75,
+        depthWrite: false
+      });
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.04, 0.16, 6), dripMat);
+        p.position.set(
+          (Math.random() - 0.5) * spread,
+          height + Math.random() * 0.25,
+          (Math.random() - 0.5) * spread
+        );
+        p.userData.vy = -(2.0 + Math.random() * 1.5);
+        group.add(p);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        sporeDrip: true,
+        age: 0,
+        lifetime: 1.6
+      });
+    }
+
+    // Mission Wave 5 : Brume Bleutée Volumétrique Basse du Derelict / Space Jockey
+    derelictMist(x, z, count = 12) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const mistMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.28,
+        depthWrite: false
+      });
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.35 + Math.random() * 0.3, 8, 8), mistMat);
+        p.position.set(
+          (Math.random() - 0.5) * 6.0,
+          0.15 + Math.random() * 0.2,
+          (Math.random() - 0.5) * 6.0
+        );
+        p.userData.vx = (Math.random() - 0.5) * 0.35;
+        p.userData.vz = (Math.random() - 0.5) * 0.35;
+        group.add(p);
+      }
+      group.position.set(x, 0, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        derelictMist: true,
+        age: 0,
+        lifetime: 2.2
+      });
+    }
+
+    // Mission Wave 5 : Échappement de Vapeur Cryogénique Caissons MU/TH/UR Nostromo
+    cryoVaporPlume(x, y = 1.0, z, count = 8) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const vaporMat = new THREE.MeshBasicMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.42,
+        depthWrite: false
+      });
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.12 + Math.random() * 0.1, 6, 6), vaporMat);
+        p.position.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.3);
+        p.userData.vy = 0.55 + Math.random() * 0.65;
+        p.userData.vx = (Math.random() - 0.5) * 0.25;
+        p.userData.vz = (Math.random() - 0.5) * 0.25;
+        group.add(p);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        cryoVapor: true,
+        age: 0,
+        lifetime: 1.4
+      });
+    }
+
+    // Mission Wave 5 : Étincelles de Boîtier Électrique Sinistré Hadley's Hope
+    electricalJunctionSpark(x, y = 1.6, z, count = 8) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      for (let i = 0; i < count; i++) {
+        const isArc = Math.random() < 0.35;
+        const p = this.getParticle(isArc ? 0.05 : 0.08, isArc ? 0x38bdf8 : 0xf59e0b);
+        p.position.set(0, 0, 0);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.8 + Math.random() * 2.8;
+        p.userData.velocity = new THREE.Vector3(
+          Math.cos(angle) * speed,
+          -0.8 + Math.random() * 1.8,
+          Math.sin(angle) * speed
+        );
+        group.add(p);
+      }
+      group.position.set(x, y, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        burst: true,
+        age: 0,
+        lifetime: 0.45
+      });
+    }
+
+    // Mission Wave 6 : Onde d'Impulsion Synaptique Télépathique de la Ruche
+    hiveSynapticRipple(x, z, color = 0x39ff14, maxRadius = 14) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const ringGeo = new THREE.RingGeometry(0.25, 0.65, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      group.add(ring);
+      group.position.set(x, 0.03, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        synapticRipple: true,
+        ringMesh: ring,
+        maxRadius,
+        age: 0,
+        lifetime: 0.75
+      });
+    }
+
+    // Mission Wave 7 : Onde Expansive de Cristallisation Cryogénique
+    cryoFrostFlash(x, z, maxRadius = 3.8) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const group = new THREE.Group();
+      const ringGeo = new THREE.RingGeometry(0.3, 0.7, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xbae6fd,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      group.add(ring);
+      group.position.set(x, 0.04, z);
+      this.scene.add(group);
+      this.effects.push({
+        group,
+        cryoFrostFlash: true,
+        ringMesh: ring,
+        maxRadius,
+        age: 0,
+        lifetime: 0.85
+      });
+    }
+
+    // Mission Wave 8 : Éjection Diégétique d'Étuis en Laiton M41A & Armes USCM
+    ejectBulletCasing(x, y = 1.25, z, facingAngle = 0) {
+      if (this.reducedMotion || !this.scene || typeof THREE === 'undefined') return;
+      const casingGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.05, 6);
+      const casingMat = new THREE.MeshStandardMaterial({
+        color: 0xd97706,
+        roughness: 0.35,
+        metalness: 0.85
+      });
+      const casingMesh = new THREE.Mesh(casingGeo, casingMat);
+      const ejectAngle = facingAngle + Math.PI / 2 + (Math.random() - 0.5) * 0.45;
+      const speed = 1.6 + Math.random() * 1.2;
+      const vx = Math.cos(ejectAngle) * speed;
+      const vz = Math.sin(ejectAngle) * speed;
+      const vy = 1.2 + Math.random() * 0.8;
+
+      casingMesh.position.set(x, y, z);
+      casingMesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      this.scene.add(casingMesh);
+
+      this.effects.push({
+        group: casingMesh,
+        bulletCasing: true,
+        vx,
+        vy,
+        vz,
+        rotSpeedX: (Math.random() - 0.5) * 22,
+        rotSpeedZ: (Math.random() - 0.5) * 22,
+        hasPinged: false,
+        groundY: 0.02,
+        age: 0,
+        lifetime: 3.5
+      });
+    }
+
     update(deltaSeconds) {
       for (let index = this.effects.length - 1; index >= 0; index--) {
         const effect = this.effects[index];
@@ -1150,6 +1538,60 @@
               particle.scale.setScalar(1 + progress * 0.7);
             }
           });
+        } else if (effect.groundShockwave) {
+          effect.group.scale.setScalar(0.2 + progress * (effect.maxRadius * 2.4));
+          if (effect.ringMesh?.material) effect.ringMesh.material.opacity = Math.max(0, 0.85 * (1 - progress));
+        } else if (effect.synapticRipple) {
+          effect.group.scale.setScalar(0.2 + progress * (effect.maxRadius * 1.8));
+          if (effect.ringMesh?.material) effect.ringMesh.material.opacity = Math.max(0, 0.85 * (1 - progress));
+        } else if (effect.cryoFrostFlash) {
+          effect.group.scale.setScalar(0.25 + progress * (effect.maxRadius * 1.6));
+          if (effect.ringMesh?.material) effect.ringMesh.material.opacity = Math.max(0, 0.9 * (1 - progress));
+        } else if (effect.bulletCasing) {
+          effect.group.position.x += effect.vx * deltaSeconds;
+          effect.group.position.z += effect.vz * deltaSeconds;
+          if (effect.group.position.y > effect.groundY) {
+            effect.vy -= 9.8 * deltaSeconds;
+            effect.group.position.y += effect.vy * deltaSeconds;
+            effect.group.rotation.x += effect.rotSpeedX * deltaSeconds;
+            effect.group.rotation.z += effect.rotSpeedZ * deltaSeconds;
+          } else {
+            effect.group.position.y = effect.groundY;
+            effect.vx *= 0.25;
+            effect.vz *= 0.25;
+            if (!effect.hasPinged) {
+              effect.hasPinged = true;
+              audioManager.playBrassCasingPing?.(effect.group.position.x, effect.group.position.z);
+            }
+          }
+        } else if (effect.barrelSmoke) {
+          effect.group.children.forEach((p) => {
+            p.position.y += p.userData.vy * deltaSeconds;
+            p.position.x += p.userData.vx * deltaSeconds;
+            p.position.z += p.userData.vz * deltaSeconds;
+            p.scale.addScalar(deltaSeconds * 0.45);
+            if (p.material) p.material.opacity = Math.max(0, 0.45 * (1 - progress));
+          });
+        } else if (effect.sporeDrip) {
+          effect.group.children.forEach((p) => {
+            p.position.y += p.userData.vy * deltaSeconds;
+            if (p.material) p.material.opacity = Math.max(0, 0.75 * (1 - progress));
+          });
+        } else if (effect.derelictMist) {
+          effect.group.children.forEach((p) => {
+            p.position.x += p.userData.vx * deltaSeconds;
+            p.position.z += p.userData.vz * deltaSeconds;
+            p.scale.addScalar(deltaSeconds * 0.25);
+            if (p.material) p.material.opacity = Math.max(0, 0.28 * (1 - progress));
+          });
+        } else if (effect.cryoVapor) {
+          effect.group.children.forEach((p) => {
+            p.position.y += p.userData.vy * deltaSeconds;
+            p.position.x += p.userData.vx * deltaSeconds;
+            p.position.z += p.userData.vz * deltaSeconds;
+            p.scale.addScalar(deltaSeconds * 0.35);
+            if (p.material) p.material.opacity = Math.max(0, 0.42 * (1 - progress));
+          });
         } else if (effect.steamCloud) {
           if (!this.reducedMotion) {
             effect.group.children.forEach((p) => {
@@ -1160,12 +1602,23 @@
               if (p.material) p.material.opacity = Math.max(0, 0.38 * (1 - progress));
             });
           }
+        } else if (effect.beamFade) {
+          effect.group.children.forEach((m) => {
+            if (m.material) m.material.opacity = Math.max(0, 0.92 * (1 - progress));
+          });
+        } else if (effect.frostPool) {
+          effect.group.children.forEach((m, i) => {
+            if (m.material) m.material.opacity = Math.max(0, (i === 0 ? 0.58 : 0.72) * (1 - Math.pow(progress, 2)));
+          });
         } else if (effect.drip) {
           effect.group.children.forEach((drop) => {
             drop.position.y += drop.userData.vy * deltaSeconds;
             if (drop.position.y <= 0.04) {
               drop.position.y = 0.04;
-              drop.scale.set(1.6, 0.08, 1.6);
+              drop.scale.set(1.75, 0.08, 1.75);
+            } else {
+              const stretch = Math.min(5.2, 2.2 + (effect.startY - drop.position.y) * 1.4);
+              drop.scale.set(0.45, stretch, 0.45);
             }
             if (drop.material) drop.material.opacity = 0.82 * (1 - progress);
           });
@@ -1175,6 +1628,21 @@
               b.userData.phase += deltaSeconds * 6;
               const scaleY = 0.8 + Math.sin(b.userData.phase) * 0.5;
               b.scale.set(1, Math.max(0.2, scaleY), 1);
+            });
+          }
+          if (!this.reducedMotion) {
+            effect.smokeWisps.forEach((s) => {
+              s.position.y += (s.userData.vy || 0.65) * deltaSeconds;
+              s.position.x += (s.userData.driftX || 0) * deltaSeconds;
+              s.position.z += (s.userData.driftZ || 0) * deltaSeconds;
+              s.scale.addScalar(deltaSeconds * 0.45);
+              if (s.position.y > 1.35) {
+                s.position.y = 0.08;
+                s.position.x = (Math.random() - 0.5) * effect.radius * 0.85;
+                s.position.z = (Math.random() - 0.5) * effect.radius * 0.85;
+                s.scale.set(1, 1, 1);
+              }
+              if (s.material) s.material.opacity = Math.max(0, 0.42 * (1 - progress) * (1 - s.position.y / 1.55));
             });
           }
           if (effect.group.children[0]?.material) {
@@ -1283,14 +1751,24 @@
       this.settingsManager.init(game);
       this.bindFrontEnd();
       this.bindUtilityControls();
+      this.bindBioScan();
       this.bindCodex();
       this.bindPauseAndSettings();
       this.bindCompactHud();
+      const rtsBar = document.getElementById('rts-control-bar');
+      const app = document.getElementById('app-container');
+      if (rtsBar && app && typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => {
+          const height = rtsBar.getBoundingClientRect().height;
+          if (height > 0) app.style.setProperty('--rts-bar-clearance', `${Math.ceil(height)}px`);
+          else app.style.removeProperty('--rts-bar-clearance');
+        }).observe(rtsBar);
+      }
       this.bindLocomotionGuard();
       this.refreshContinueButton();
       this.setMission(1, 0);
       this.renderCodex('castes');
-      const campaignMeta = document.querySelector('.front-meta');
+      const campaignMeta = document.querySelector('.boot-card .front-meta:not(#boot-loading-status)');
       if (campaignMeta) {
         campaignMeta.textContent = 'Campagne solo tactique · 5 actes · sauvegarde au début de chaque acte · 3 conclusions';
       }
@@ -1305,6 +1783,7 @@
       let newCampaignOptions = null;
 
       this.bindCardSelectors();
+      this.initDiegeticMainMenu();
 
       document.getElementById('btn-new-campaign')?.addEventListener('click', () => {
         this.clearBiologicalTransition();
@@ -1343,6 +1822,140 @@
 
       document.getElementById('btn-open-codex-menu')?.addEventListener('click', () => {
         this.openCodex(true);
+      });
+    }
+
+    initDiegeticMainMenu() {
+      const fanScreen = document.getElementById('fan-disclaimer-screen');
+      const apolloIntro = document.getElementById('apollo-intro-screen');
+      const boot = document.getElementById('boot-screen');
+      const enterBtn = document.getElementById('btn-enter-terminal');
+      const skipBtn = document.getElementById('btn-skip-intro');
+      const replayBtn = document.getElementById('btn-replay-intro');
+
+      if (!fanScreen || !apolloIntro || !boot) return;
+      const logLines = apolloIntro.querySelectorAll('.apollo-log-line');
+      const introTimers = [];
+
+      const clearIntroTimers = () => {
+        for (const timer of introTimers.splice(0)) clearTimeout(timer);
+      };
+
+      const proceedToMainMenu = () => {
+        if (!this.isVisible(apolloIntro)) return;
+        clearIntroTimers();
+        window.audioManager?.playTerminalKeystroke?.();
+        this.hideLayer(apolloIntro, false);
+        this.showLayer(boot, false);
+        const resume = document.getElementById('btn-continue-campaign');
+        const primary = resume && !resume.disabled ? resume : document.getElementById('btn-new-campaign');
+        primary?.focus({ preventScroll: true });
+      };
+
+      const showIntro = (from) => {
+        if (!this.isVisible(from)) return;
+        clearIntroTimers();
+        window.audioManager?.playApolloBootChime?.();
+        this.hideLayer(from, false);
+        this.showLayer(apolloIntro, false);
+        skipBtn?.focus({ preventScroll: true });
+        const reducedMotion = this.settingsManager.values.reducedMotion;
+        logLines.forEach((line, index) => {
+          line.style.opacity = reducedMotion ? '' : '0';
+          if (reducedMotion) return;
+          introTimers.push(setTimeout(() => {
+            line.style.opacity = '';
+            if (index % 2 === 0) window.audioManager?.playTerminalKeystroke?.();
+          }, index * 260));
+        });
+        if (!reducedMotion) introTimers.push(setTimeout(proceedToMainMenu, 3400));
+      };
+
+      enterBtn?.addEventListener('click', () => showIntro(fanScreen));
+      skipBtn?.addEventListener('click', proceedToMainMenu);
+      replayBtn?.addEventListener('click', () => showIntro(boot));
+
+      window.addEventListener('keydown', (event) => {
+        const front = this.isVisible(fanScreen) ? fanScreen : (this.isVisible(apolloIntro) ? apolloIntro : null);
+        if (!front || event.defaultPrevented) return;
+        if (event.key === 'Tab') {
+          this.trapFocus(event, front);
+        } else if (event.key === ' ' || event.key === 'Enter') {
+          event.preventDefault();
+          if (!event.repeat) {
+            if (front === fanScreen) showIntro(fanScreen);
+            else proceedToMainMenu();
+          }
+        } else if (event.key.toLowerCase() === 'c' || event.key === 'Escape') {
+          event.preventDefault();
+        }
+      });
+
+      this.hideLayer(boot, false);
+      this.showLayer(fanScreen, false);
+      enterBtn?.focus({ preventScroll: true });
+      this.bindDiegeticPreview();
+    }
+
+    bindDiegeticPreview() {
+      const artContainer = document.getElementById('diegetic-preview-art');
+      const sectorVal = document.getElementById('preview-sector-val');
+      const statusVal = document.getElementById('preview-status-val');
+      const containVal = document.getElementById('preview-containment-val');
+      if (!artContainer) return;
+
+      const previews = {
+        newCampaign: {
+          svg: '<svg viewBox="0 0 400 140" class="preview-svg-render"><defs><linearGradient id="pncGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#022c22"/><stop offset="100%" stop-color="#020617"/></linearGradient></defs><rect width="400" height="140" fill="url(#pncGrad)"/><circle cx="200" cy="70" r="50" fill="none" stroke="#22c55e" stroke-width="1.2" stroke-dasharray="3 2"/><circle cx="200" cy="70" r="30" fill="rgba(34,197,94,0.15)" stroke="#4ade80" stroke-width="1.5"/><circle cx="200" cy="70" r="4" fill="#86efac"/><path d="M160 70 L240 70 M200 30 L200 110" stroke="#22c55e" stroke-width="0.8" stroke-opacity="0.6"/><text x="215" y="65" fill="#86efac" font-family="\'Share Tech Mono\', monospace" font-size="9" font-weight="bold">ACTE I : L\'ÉVEIL</text><text x="215" y="78" fill="#4ade80" font-family="\'Share Tech Mono\', monospace" font-size="7.5">INCUBATION CONFINÉE</text><text x="215" y="90" fill="#22c55e" font-family="\'Share Tech Mono\', monospace" font-size="7">MENACE : ACTIVE</text></svg>',
+          sector: "STATION ORBITALE CURIE-07",
+          status: "SPÉCIMEN XX121 DORMANT",
+          containment: "GAZ HALON 1301 ARMÉ · 20.9% O2"
+        },
+        continueCampaign: {
+          svg: '<svg viewBox="0 0 400 140" class="preview-svg-render"><defs><linearGradient id="pccGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#020617"/></linearGradient></defs><rect width="400" height="140" fill="url(#pccGrad)"/><rect x="60" y="25" width="280" height="90" rx="6" fill="#0f172a" stroke="#818cf8" stroke-width="1.2"/><text x="80" y="50" fill="#a5b4fc" font-family="\'Share Tech Mono\', monospace" font-size="9" font-weight="bold">REPRISE CAMPAGNE // ORPHEUS RELAY</text><text x="80" y="70" fill="#c7d2fe" font-family="\'Share Tech Mono\', monospace" font-size="8">SAUVEGARDE TACTIQUE RESTAURABLE</text><path d="M80 88 L320 88" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 2"/><circle cx="290" cy="55" r="14" fill="rgba(99,102,241,0.2)" stroke="#818cf8" stroke-width="1.5"/><polygon points="286,49 296,55 286,61" fill="#a5b4fc"/></svg>',
+          sector: "ARCHIVES ORPHEUS AUTOMATIQUES",
+          status: "CYCLE RESTAURABLE",
+          containment: "DERNIER CHECKPOINT SÉCURISÉ"
+        },
+        codex: {
+          svg: '<svg viewBox="0 0 400 140" class="preview-svg-render"><defs><linearGradient id="pcxGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#042f2e"/><stop offset="100%" stop-color="#020617"/></linearGradient></defs><rect width="400" height="140" fill="url(#pcxGrad)"/><path d="M120 70 C120 40 160 30 200 30 C240 30 280 40 280 70 C280 95 240 110 200 110 C160 110 120 95 120 70 Z" fill="rgba(20,184,166,0.15)" stroke="#14b8a6" stroke-width="1.4"/><path d="M150 50 L170 80 M180 45 L200 75 M210 45 L230 75" stroke="#2dd4bf" stroke-width="1" stroke-dasharray="2 2"/><text x="140" y="125" fill="#5eead4" font-family="\'Share Tech Mono\', monospace" font-size="8.5" font-weight="bold">XX121 // XÉNOMORPHE ARCHIVAL DATA</text></svg>',
+          sector: "ARCHIVES BIO-MÉDICALES W-Y",
+          status: "DIRECTIVE SPÉCIALE 937 ACTIVE",
+          containment: "CLASSIFICATION CONFIDENTIELLE"
+        }
+      };
+
+      const setPreview = (key) => {
+        const data = previews[key];
+        if (!data) return;
+        artContainer.innerHTML = data.svg;
+        if (sectorVal) sectorVal.textContent = data.sector;
+        if (statusVal) statusVal.textContent = data.status;
+        if (containVal) containVal.textContent = data.containment;
+      };
+
+      const bindHover = (id, key) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('mouseenter', () => {
+          window.audioManager?.playMenuHoverBeep?.();
+          setPreview(key);
+        });
+        el.addEventListener('focus', () => {
+          window.audioManager?.playMenuHoverBeep?.();
+          setPreview(key);
+        });
+      };
+
+      bindHover('btn-new-campaign', 'newCampaign');
+      bindHover('btn-continue-campaign', 'continueCampaign');
+      bindHover('btn-open-codex-menu', 'codex');
+
+      ['btn-start-act-one', 'btn-resume-game', 'btn-open-settings', 'btn-return-menu', 'btn-close-codex', 'btn-close-settings', 'btn-close-bioscan'].forEach((btnId) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        btn.addEventListener('mouseenter', () => window.audioManager?.playMenuHoverBeep?.());
+        btn.addEventListener('click', () => window.audioManager?.playTerminalKeystroke?.());
       });
     }
 
@@ -1429,19 +2042,28 @@
         }
 
         if (key === 'c') {
+          const codex = document.getElementById('codex-overlay');
+          if (activeSystemLayer?.id === 'muthur-bioscan-modal') {
+            event.preventDefault();
+            this.closeBioScan();
+            return;
+          }
           if (activeSystemLayer && activeSystemLayer.id !== 'codex-overlay') {
             event.preventDefault();
             return;
           }
+          // The tactical stage handles the Royal Cry when no dialog owns C.
+          if (!activeSystemLayer && this.campaignActive && this.game?.currentStageIndex === 5) return;
           event.preventDefault();
-          const codex = document.getElementById('codex-overlay');
           if (codex?.classList.contains('hidden')) this.openCodex(false);
           else this.closeCodex();
         }
         if (event.key === 'Escape') {
+          const bioscan = document.getElementById('muthur-bioscan-modal');
           const settings = document.getElementById('settings-overlay');
           const codex = document.getElementById('codex-overlay');
-          if (!settings?.classList.contains('hidden')) this.closeSettings();
+          if (!bioscan?.classList.contains('hidden')) this.closeBioScan();
+          else if (!settings?.classList.contains('hidden')) this.closeSettings();
           else if (!codex?.classList.contains('hidden')) this.closeCodex();
           else if (activeSystemLayer?.id === 'pause-overlay') this.closePause();
           else if (!activeSystemLayer && this.campaignActive) this.openPause();
@@ -2001,6 +2623,114 @@
       }
     }
 
+    bindBioScan() {
+      document.getElementById('btn-close-bioscan')?.addEventListener('click', () => this.closeBioScan());
+    }
+
+    closeBioScan() {
+      const modal = document.getElementById('muthur-bioscan-modal');
+      if (modal) {
+        this.hideLayer(modal, true);
+      }
+    }
+
+    showBioScanDiagnostic(humans = []) {
+      const modal = document.getElementById('muthur-bioscan-modal');
+      const container = document.getElementById('bioscan-crew-list');
+      if (!modal || !container) return;
+
+      const crewData = (humans && humans.length > 0) ? humans : [
+        { name: 'Arthur Dallas', role: 'Capitaine · USCSS Nostromo', bpm: 84, status: 'living', viability: 'HÔTE VIABLE (88%)' },
+        { name: 'Ellen Ripley', role: 'Officier en second · USCSS Nostromo', bpm: 72, status: 'living', viability: 'HÔTE VIABLE (95%)' },
+        { name: 'Joan Lambert', role: 'Navigateur · USCSS Nostromo', bpm: 126, status: 'living', viability: 'HÔTE VIABLE (91%)' },
+        { name: 'Dennis Parker', role: 'Ingénieur en chef · USCSS Nostromo', bpm: 92, status: 'living', viability: 'HÔTE VIABLE (85%)' },
+        { name: 'Thomas Kane', role: 'Officier exécutif · Incubé Chestburster', bpm: 168, status: 'incubated', viability: 'HÔTE ENGAGÉ (100%)' },
+        { name: 'Samuel Brett', role: 'Technicien cale · Éliminé coursive', bpm: 0, status: 'deceased', viability: 'INUTILISABLE' },
+        { name: 'Ash', role: 'Officier scientifique · Synthétique Hyperdyne', bpm: 0, status: 'deceased', viability: 'ORGANISME SYNTHÉTIQUE' }
+      ];
+
+      let livingCount = 0;
+      let incubatedCount = 0;
+      let deceasedCount = 0;
+
+      container.innerHTML = '';
+      crewData.forEach((member, idx) => {
+        let status = 'living';
+        let statusLabel = 'VIVANT';
+        let bpm = 75;
+        let viability = 'HÔTE VIABLE (85%)';
+
+        if (member.isCocooned || member.isIncapacitated || (member.hp !== undefined && member.hp <= 0)) {
+          status = 'deceased';
+          statusLabel = member.isCocooned ? 'ENGAGÉ COCON' : 'SIGNAL ZÉRO';
+          bpm = 0;
+          viability = member.isCocooned ? 'BIOMASSE MATRICE' : 'INUTILISABLE';
+          deceasedCount++;
+        } else if (member.isInfected || member.infectionState === 'INCUBATING' || member.hostEligibility === 'impregnated' || member.status === 'incubated') {
+          status = 'incubated';
+          statusLabel = 'GESTATION PARASITAIRE';
+          bpm = member.bpm || Math.floor(145 + Math.random() * 30);
+          viability = 'HÔTE ENGAGÉ (100%)';
+          incubatedCount++;
+        } else if (member.status === 'deceased') {
+          status = 'deceased';
+          statusLabel = 'SIGNAL ZÉRO';
+          bpm = 0;
+          viability = member.viability || 'INUTILISABLE';
+          deceasedCount++;
+        } else {
+          status = 'living';
+          statusLabel = 'BIO-STABLE';
+          bpm = member.bpm || Math.floor(68 + (member.stress || 0) * 0.5);
+          viability = member.viability || 'HÔTE VIABLE (90%)';
+          livingCount++;
+        }
+
+        const name = member.name || (member.type ? member.type.replace(/_/g, ' ').toUpperCase() : `SUJET #${idx + 1}`);
+        const role = member.role || (member.isSynthetic?.() ? 'SYNTHÉTIQUE SEEGSON' : 'ÉQUIPAGE DE BORD');
+
+        let iconSvg = '';
+        if (status === 'living') {
+          iconSvg = '<svg class="bio-sq-icon living" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="M3 12h4l2-6 4 12 3-8 2 4h6" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        } else if (status === 'incubated') {
+          iconSvg = '<svg class="bio-sq-icon incubated" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="8" stroke="#a855f7" stroke-width="2"/><path d="M12 7c-2 2-2 4 0 6s2 4 0 6" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="2.5" fill="#a855f7"/></svg>';
+        } else {
+          iconSvg = '<svg class="bio-sq-icon deceased" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><path d="M9 3h6v3H9zM7 6h10v6c0 3-2 5-5 5s-5-2-5-5V6z" stroke="#ef4444" stroke-width="1.8" fill="none"/><circle cx="10" cy="10" r="1.5" fill="#ef4444"/><circle cx="14" cy="10" r="1.5" fill="#ef4444"/><path d="M10 17l-3 4M14 17l3 4" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/></svg>';
+        }
+
+        const card = document.createElement('div');
+        card.className = `bioscan-crew-card ${status}`;
+        card.setAttribute('role', 'listitem');
+        card.innerHTML = `
+          <div class="crew-card-header">
+            <span class="bio-sq-icon ${status}">${iconSvg}</span>
+            <div class="crew-id-info">
+              <span class="crew-name">${name}</span>
+              <span class="crew-role">${role}</span>
+            </div>
+            <span class="crew-status-badge ${status}">${statusLabel}</span>
+          </div>
+          <div class="crew-vital-row">
+            <span>RYTHME CARDIAQUE : <span class="crew-vital-val">${bpm > 0 ? bpm + ' BPM' : 'INACTIF (0 BPM)'}</span></span>
+            <span class="crew-host-viability">${viability}</span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      const totalEl = document.getElementById('bioscan-total-count');
+      if (totalEl) totalEl.textContent = String(crewData.length);
+      const aliveEl = document.getElementById('bioscan-alive-count');
+      if (aliveEl) aliveEl.textContent = String(livingCount);
+      const incubatedEl = document.getElementById('bioscan-incubated-count');
+      if (incubatedEl) incubatedEl.textContent = String(incubatedCount);
+      const deceasedEl = document.getElementById('bioscan-deceased-count');
+      if (deceasedEl) deceasedEl.textContent = String(deceasedCount);
+
+      this.showLayer(modal, true);
+      document.getElementById('btn-close-bioscan')?.focus({ preventScroll: true });
+    }
+
     setMission(stage, completed = 0, explicitObjective = null) {
       const act = this.getAct(stage);
       const objectives = this.objectivesForAct(act);
@@ -2008,6 +2738,7 @@
       const missionTitle = document.getElementById('mission-title');
       const missionObjective = document.getElementById('mission-objective');
       const missionProgress = document.getElementById('mission-progress');
+      const missionProgressFill = document.getElementById('mission-progress-fill');
       const playableTotals = [3, 2, 3, 4, 5];
       const playableTotal = playableTotals[Math.max(0, Math.min(4, stage - 1))];
       if (missionAct) missionAct.textContent = `ACTE ${this.roman(stage)}`;
@@ -2016,6 +2747,10 @@
         missionObjective.textContent = explicitObjective || objectives[Math.min(completed, Math.max(0, objectives.length - 1))] || 'Adapter la ruche à la menace.';
       }
       if (missionProgress) missionProgress.textContent = `${Math.min(completed, playableTotal)} / ${playableTotal}`;
+      if (missionProgressFill) {
+        const pct = Math.min(100, Math.max(0, (completed / Math.max(1, playableTotal)) * 100));
+        missionProgressFill.style.width = `${pct.toFixed(1)}%`;
+      }
     }
 
     checkpoint(stage, unlockIds = [], additions = {}) {
@@ -2037,6 +2772,16 @@
       speakerElement.textContent = speaker;
       lineElement.textContent = line;
       banner.classList.remove('hidden');
+
+      // Modulation diégétique de l'oscilloscope CRT vert phosphorique Wave 12
+      const oscWave = document.getElementById('oscilloscope-wave-path');
+      if (oscWave) {
+        const h1 = 5 + Math.floor(Math.random() * 8);
+        const h2 = 4 + Math.floor(Math.random() * 9);
+        const h3 = 6 + Math.floor(Math.random() * 7);
+        oscWave.setAttribute('d', `M0 12 Q10 ${12 - h1} 20 12 T40 12 T60 ${12 + h2} T80 12 T100 ${12 - h3} T120 12 T140 12`);
+      }
+
       window.clearTimeout(this.narrativeTimer);
       this.narrativeTimer = window.setTimeout(() => banner.classList.add('hidden'), duration);
       window.audioManager?.playMotherChime?.();
@@ -2061,7 +2806,27 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = `codex-entry${isUnlocked ? '' : ' locked'}`;
-        button.textContent = isUnlocked ? (entry.name || entry.title || id).toUpperCase() : `DONNÉE ${String(index + 1).padStart(2, '0')} — VERROUILLÉE`;
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'codex-entry-icon';
+        iconSpan.setAttribute('aria-hidden', 'true');
+        let iconSvg = '';
+        if (!isUnlocked) {
+          iconSvg = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="5" y="8" width="10" height="9" rx="2" stroke-width="1.5"/><path d="M7 8 V5 C7 3.3 8.3 2 10 2 C11.7 2 13 3.3 13 5 V8" stroke-width="1.5"/><circle cx="10" cy="12.5" r="1" fill="currentColor"/></svg>';
+        } else if (category === 'castes') {
+          iconSvg = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 11 C4 7 7 4 10 4 C13 4 16 7 16 11 C16 14 14 16 12 16 L12 18 L8 18 L8 16 C6 16 4 14 4 11 Z" stroke="#39ff14" stroke-width="1.4"/><circle cx="8" cy="11" r="1.2" fill="#39ff14"/><circle cx="12" cy="11" r="1.2" fill="#39ff14"/></svg>';
+        } else if (category === 'threats') {
+          iconSvg = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><circle cx="10" cy="10" r="7" stroke="#ef4444" stroke-width="1.4"/><path d="M10 3 L10 6 M10 14 L10 17 M3 10 L6 10 M14 10 L17 10" stroke="#ef4444" stroke-width="1.4"/><circle cx="10" cy="10" r="2" fill="#ef4444"/></svg>';
+        } else {
+          iconSvg = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><rect x="3" y="4" width="14" height="12" rx="2" stroke="#38bdf8" stroke-width="1.4"/><circle cx="7" cy="10" r="2" stroke="#38bdf8" stroke-width="1.2"/><circle cx="13" cy="10" r="2" stroke="#38bdf8" stroke-width="1.2"/><line x1="7" y1="13" x2="13" y2="13" stroke="#38bdf8" stroke-width="1.2"/></svg>';
+        }
+        iconSpan.innerHTML = iconSvg;
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'codex-entry-label';
+        labelSpan.textContent = isUnlocked ? (entry.name || entry.title || id).toUpperCase() : `DONNÉE ${String(index + 1).padStart(2, '0')} — VERROUILLÉE`;
+
+        button.append(iconSpan, labelSpan);
         button.addEventListener('click', () => {
           document.querySelectorAll('.codex-entry').forEach((node) => {
             node.classList.remove('active');
@@ -2087,7 +2852,20 @@
 
     renderCodexDetail(container, entry, unlocked) {
       if (!unlocked) {
-        container.innerHTML = '<span class="codex-status">DONNÉE VERROUILLÉE</span><h3>OBSERVATION INCOMPLÈTE</h3><p>Progressez dans la campagne ou rencontrez cette forme pour restaurer le dossier.</p>';
+        container.innerHTML = `
+          <div class="codex-detail-thumb codex-thumb-locked" aria-hidden="true">
+            <svg viewBox="0 0 320 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+              <rect width="320" height="90" fill="#080306"/>
+              <line x1="0" y1="45" x2="320" y2="45" stroke="#ef4444" stroke-width="1" stroke-dasharray="6 4" stroke-opacity="0.4"/>
+              <path d="M150 22 L170 22 L175 36 L165 36 L165 65 L155 65 L155 36 L145 36 Z" fill="#ef4444" fill-opacity="0.25"/>
+              <text x="160" y="48" fill="#ef4444" font-family="'Orbitron', sans-serif" font-size="10" text-anchor="middle" letter-spacing="2">ACCÈS VERROUILLÉ</text>
+              <text x="160" y="66" fill="#94a3b8" font-family="'Share Tech Mono', monospace" font-size="7.5" text-anchor="middle">SÉCURITÉ W-Y NIVEAU 4 EXIGÉE</text>
+            </svg>
+          </div>
+          <span class="codex-status">DONNÉE VERROUILLÉE</span>
+          <h3>OBSERVATION INCOMPLÈTE</h3>
+          <p>Progressez dans la campagne ou rencontrez cette forme pour restaurer le dossier.</p>
+        `;
         return;
       }
       const name = entry.name || entry.title || entry.id || 'ENTRÉE';
@@ -2105,6 +2883,36 @@
           return value.description || value.label || value.name || value.id || 'Donnée restaurée';
         });
       container.replaceChildren();
+
+      const detailThumb = document.createElement('div');
+      detailThumb.className = 'codex-detail-thumb';
+      detailThumb.setAttribute('aria-hidden', 'true');
+      detailThumb.innerHTML = `
+        <svg viewBox="0 0 320 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="detailThumbGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#04101e"/>
+              <stop offset="60%" stop-color="#082038"/>
+              <stop offset="100%" stop-color="#020812"/>
+            </linearGradient>
+          </defs>
+          <rect width="320" height="90" fill="url(#detailThumbGrad)"/>
+          <line x1="0" y1="22" x2="320" y2="22" stroke="rgba(56,189,248,0.12)" stroke-width="1"/>
+          <line x1="0" y1="45" x2="320" y2="45" stroke="rgba(56,189,248,0.18)" stroke-width="1"/>
+          <line x1="0" y1="68" x2="320" y2="68" stroke="rgba(56,189,248,0.12)" stroke-width="1"/>
+          <line x1="80" y1="0" x2="80" y2="90" stroke="rgba(56,189,248,0.08)" stroke-width="1"/>
+          <line x1="160" y1="0" x2="160" y2="90" stroke="rgba(56,189,248,0.14)" stroke-width="1"/>
+          <line x1="240" y1="0" x2="240" y2="90" stroke="rgba(56,189,248,0.08)" stroke-width="1"/>
+          <path d="M10 45 L50 45 L55 30 L60 60 L65 38 L70 45 L130 45 L135 25 L140 65 L145 35 L150 45 L210 45 L215 32 L220 58 L225 45 L310 45" fill="none" stroke="#38bdf8" stroke-width="1.3" stroke-opacity="0.8"/>
+          <circle cx="275" cy="45" r="28" fill="none" stroke="#0284c7" stroke-width="1" stroke-dasharray="3 2"/>
+          <circle cx="275" cy="45" r="16" fill="none" stroke="#38bdf8" stroke-width="1"/>
+          <circle cx="275" cy="45" r="3" fill="#39ff14"/>
+          <line x1="275" y1="45" x2="295" y2="30" stroke="#39ff14" stroke-width="1.2"/>
+          <text x="14" y="16" fill="#7dd3fc" font-family="'Share Tech Mono', monospace" font-size="8">ARCHIVE BIOMÉTRIQUE // DOSSIER ACTIF</text>
+          <text x="14" y="80" fill="#64748b" font-family="'Share Tech Mono', monospace" font-size="7.5">SPECTRE: ÉTALONNÉ // ANALYSE ORPHEUS OK</text>
+        </svg>
+      `;
+
       const status = document.createElement('span');
       status.className = 'codex-status';
       status.textContent = 'DOSSIER RESTAURÉ';
@@ -2121,7 +2929,40 @@
       tag.textContent = loreLabels[String(lore).toUpperCase()] || String(lore).toUpperCase();
       const paragraph = document.createElement('p');
       paragraph.textContent = description;
-      container.append(status, heading, tag, paragraph);
+      container.append(detailThumb, status, heading, tag);
+
+      if (entry.author || entry.timestamp || entry.location) {
+        const tapeBar = document.createElement('div');
+        tapeBar.className = 'codex-audio-tape-bar';
+        tapeBar.innerHTML = `
+          <div class="codex-tape-meta">
+            <span>ARCHIVE AUDIO // ${String(entry.author || 'OPÉRATEUR INCONNU').toUpperCase()}</span>
+            <small>${String(entry.location || 'CURIE-07')} · ${String(entry.timestamp || 'CYCLE 01')}</small>
+          </div>
+          <button type="button" class="codex-tape-btn">
+            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+              <polygon points="6,4 15,10 6,16" fill="currentColor"/>
+            </svg>
+            <span>LIRE BANDE AUDIO</span>
+          </button>
+          <div class="codex-tape-wave" aria-hidden="true"><div class="codex-tape-wave-fill"></div></div>
+        `;
+        const playBtn = tapeBar.querySelector('.codex-tape-btn');
+        playBtn?.addEventListener('click', () => {
+          window.audioManager?.playApolloBootChime?.();
+          window.audioManager?.playTerminalKeystroke?.();
+          tapeBar.classList.add('playing');
+          const label = playBtn.querySelector('span');
+          if (label) label.textContent = 'LECTURE EN COURS…';
+          setTimeout(() => {
+            tapeBar.classList.remove('playing');
+            if (label) label.textContent = 'REJOUER BANDE AUDIO';
+          }, 3600);
+        });
+        container.appendChild(tapeBar);
+      }
+
+      container.appendChild(paragraph);
       if (items.length) {
         const list = document.createElement('ul');
         items.forEach((value) => {
@@ -2167,6 +3008,30 @@
         return map;
       }, {});
       container.innerHTML = '<span class="codex-status">ROUTES BIOLOGIQUES</span><h3>ÉVOLUTION DE LA RUCHE</h3><p>Le cycle reproductif reste obligatoire. Les groupes suivants décrivent des branches possibles selon l’hôte et les sources étendues compatibles, pas une succession certaine de mues.</p>';
+      const casteIcons = {
+        ovomorphe: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><ellipse cx="10" cy="11" rx="6" ry="7" stroke-width="1.4"/><path d="M7 6 Q10 2 13 6" stroke-width="1.2"/><path d="M10 6 L10 11" stroke-width="1.2" stroke-dasharray="2 2"/></svg>',
+        facehugger: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><ellipse cx="10" cy="10" rx="3.5" ry="4.5" fill="rgba(57, 255, 20, 0.2)" stroke-width="1.4"/><path d="M6 7 Q2 5 2 9 M14 7 Q18 5 18 9 M6 11 Q2 12 3 15 M14 11 Q18 12 17 15" stroke-width="1.2"/><path d="M10 15 Q10 19 13 18" stroke-width="1.3"/></svg>',
+        royal_facehugger: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><ellipse cx="10" cy="10" rx="4" ry="5" fill="rgba(234, 179, 8, 0.2)" stroke="#eab308" stroke-width="1.4"/><path d="M5 6 Q1 4 1 9 M15 6 Q19 4 19 9 M5 11 Q1 12 2 16 M15 11 Q19 12 18 16" stroke="#facc15" stroke-width="1.2"/><path d="M10 5 L8 2 L10 3 L12 2 Z" fill="#eab308"/></svg>',
+        chestburster: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M7 17 Q8 12 11 10 Q13 8 13 5 Q13 3 10 3 Q8 4 8 6" stroke-width="1.4"/><circle cx="10" cy="4" r="1.5" fill="#ef4444"/><path d="M10 17 L12 19" stroke-width="1.3"/></svg>',
+        drone: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 11 C4 6 7 3 12 3 C16 3 17 6 17 10 C17 13 14 15 11 15 L8 15 Z" fill="rgba(56, 189, 248, 0.15)" stroke-width="1.4"/><line x1="6" y1="14" x2="8" y2="16" stroke-width="1.4"/></svg>',
+        runner: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M3 12 C4 8 8 5 15 4 C17 4 18 6 17 9 C15 12 12 14 8 14 Z" fill="rgba(245, 158, 11, 0.18)" stroke="#f59e0b" stroke-width="1.4"/><circle cx="6" cy="14" r="1" fill="#f59e0b"/></svg>',
+        prowler: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M3 13 C5 7 9 4 16 5 C17 7 16 11 13 13 C9 15 6 15 3 13 Z" fill="rgba(168, 85, 247, 0.2)" stroke="#c084fc" stroke-width="1.4"/><path d="M12 5 L14 3" stroke="#e879f9" stroke-width="1.2"/></svg>',
+        worker: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M5 12 C5 7 8 4 13 4 C16 4 17 7 16 11 C15 14 12 15 9 15 Z" stroke-width="1.4"/><line x1="9" y1="8" x2="13" y2="8" stroke-width="1.2"/><line x1="8" y1="11" x2="12" y2="11" stroke-width="1.2"/></svg>',
+        warrior: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 11 C4 6 7 3 13 3 C16 3 17 6 17 10 C17 13 14 15 11 15 L7 15 Z" stroke-width="1.4"/><path d="M7 5 L9 8 M10 4 L12 7 M13 4 L15 7" stroke="currentColor" stroke-width="1.2"/></svg>',
+        spitter: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 11 C4 6 8 3 13 3 C16 3 17 6 17 10 C16 13 13 15 10 15 Z" stroke="#39ff14" stroke-width="1.4"/><circle cx="8" cy="12" r="2" fill="rgba(57, 255, 20, 0.4)" stroke="#39ff14" stroke-width="1"/></svg>',
+        burster: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M5 12 C5 6 8 3 13 3 C16 3 17 6 16 11 C15 14 12 16 9 16 Z" stroke="#ef4444" stroke-width="1.4"/><circle cx="11" cy="7" r="1.5" fill="#ef4444"/><circle cx="8" cy="11" r="1.5" fill="#f97316"/><circle cx="13" cy="12" r="1.5" fill="#eab308"/></svg>',
+        crusher: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M2 14 L7 3 L16 3 L18 8 L13 15 Z" fill="rgba(148, 163, 184, 0.2)" stroke-width="1.5"/><path d="M7 3 L10 10 L13 15" stroke-width="1.2"/></svg>',
+        praetorian: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M5 15 L3 8 L6 4 L10 2 L14 4 L17 8 L15 15 Z" fill="rgba(56, 189, 248, 0.2)" stroke="#38bdf8" stroke-width="1.4"/><line x1="10" y1="2" x2="10" y2="15" stroke="#38bdf8" stroke-width="1.2"/></svg>',
+        palatine: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M4 16 L2 7 L6 3 L10 1 L14 3 L18 7 L16 16 Z" fill="rgba(168, 85, 247, 0.25)" stroke="#a855f7" stroke-width="1.4"/><polygon points="10,4 12,9 8,9" fill="#c084fc"/></svg>',
+        queen: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><path d="M2 15 L1 7 L5 2 L10 5 L15 2 L19 7 L18 15 Z" fill="rgba(236, 72, 153, 0.25)" stroke="#ec4899" stroke-width="1.5"/><line x1="10" y1="5" x2="10" y2="15" stroke="#f472b6" stroke-width="1.4"/><circle cx="7" cy="10" r="1" fill="#ec4899"/><circle cx="13" cy="10" r="1" fill="#ec4899"/></svg>',
+        offspring: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor"><ellipse cx="10" cy="9" rx="6" ry="7" fill="rgba(248, 250, 252, 0.2)" stroke="#e2e8f0" stroke-width="1.4"/><circle cx="8" cy="8" r="1.5" fill="#020617"/><circle cx="12" cy="8" r="1.5" fill="#020617"/><path d="M8 13 Q10 15 12 13" stroke="#e2e8f0" stroke-width="1.2"/></svg>'
+      };
+      const dnaTags = {
+        ovomorphe: 'XX121-OVO', facehugger: 'XX121-FHG', royal_facehugger: 'XX121-RFH', chestburster: 'XX121-BUR',
+        drone: 'XX121-DRN', runner: 'XX121-RUN', prowler: 'XX121-PRW',
+        worker: 'XX121-WRK', warrior: 'XX121-WAR', spitter: 'XX121-SPT', burster: 'XX121-BST', crusher: 'XX121-CRU',
+        praetorian: 'XX121-PRA', palatine: 'XX121-PAL', queen: 'XX121-QEN', offspring: 'XX121-OFF'
+      };
       const tree = document.createElement('div');
       tree.className = 'evolution-tree';
       branches.forEach((branch) => {
@@ -2176,12 +3041,25 @@
         branchLabel.className = 'evolution-branch-label';
         branchLabel.textContent = branch.label;
         row.appendChild(branchLabel);
+        const nodesGrid = document.createElement('div');
+        nodesGrid.className = 'evolution-nodes-grid';
         branch.ids.forEach((id) => {
-          const node = document.createElement('span');
-          node.className = `evolution-node${unlocked.has(id) ? ' unlocked' : ''}`;
-          node.textContent = String(names[id] || id).toUpperCase();
-          row.appendChild(node);
+          const isUnlocked = unlocked.has(id);
+          const node = document.createElement('div');
+          node.className = `evolution-node${isUnlocked ? ' unlocked' : ' locked'}`;
+          node.innerHTML = `
+            <div class="evolution-node-header">
+              <div class="evolution-node-icon" aria-hidden="true">${casteIcons[id] || casteIcons.drone}</div>
+              <span class="evolution-node-tag">${dnaTags[id] || 'XX121'}</span>
+            </div>
+            <div class="evolution-node-body">
+              <span class="evolution-node-name">${String(names[id] || id).toUpperCase()}</span>
+              <span class="evolution-node-status">${isUnlocked ? 'ACTIF / DÉCOUVERT' : 'GÉNOTYPE REQUIS'}</span>
+            </div>
+          `;
+          nodesGrid.appendChild(node);
         });
+        row.appendChild(nodesGrid);
         tree.appendChild(row);
       });
       container.appendChild(tree);
@@ -2198,17 +3076,113 @@
       ];
       const endings = Array.isArray(rawEndings) ? rawEndings : Object.values(rawEndings);
       container.replaceChildren();
+
+      const endingThumbnails = {
+        ENDING_DOMINION: null,
+        ENDING_EXODUS: null,
+        ENDING_ASHES: null,
+        dominion: `
+          <div class="ending-card-thumb" aria-hidden="true">
+            <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="endDominionGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#19042b"/>
+                  <stop offset="60%" stop-color="#3b0764"/>
+                  <stop offset="100%" stop-color="#0a0112"/>
+                </linearGradient>
+              </defs>
+              <rect width="160" height="90" fill="url(#endDominionGrad)"/>
+              <circle cx="80" cy="45" r="22" fill="#0c1220" stroke="#a855f7" stroke-width="1.2"/>
+              <ellipse cx="80" cy="45" rx="42" ry="8" fill="none" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="4 2"/>
+              <path d="M40 75 Q60 55 80 45 Q100 35 120 15 M30 20 Q55 35 80 45 Q105 55 130 70" stroke="#7e22ce" stroke-width="3" fill="none"/>
+              <path d="M40 75 Q60 55 80 45 Q100 35 120 15 M30 20 Q55 35 80 45 Q105 55 130 70" stroke="#e879f9" stroke-width="1" stroke-opacity="0.8" fill="none"/>
+              <path d="M68 28 L80 18 L92 28 L86 34 L80 32 L74 34 Z" fill="#2e1065" stroke="#f472b6" stroke-width="1.2"/>
+              <circle cx="77" cy="28" r="1" fill="#39ff14"/>
+              <circle cx="83" cy="28" r="1" fill="#39ff14"/>
+            </svg>
+          </div>
+        `,
+        exodus: `
+          <div class="ending-card-thumb" aria-hidden="true">
+            <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="endExodusGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#041226"/>
+                  <stop offset="60%" stop-color="#082f49"/>
+                  <stop offset="100%" stop-color="#020617"/>
+                </linearGradient>
+              </defs>
+              <rect width="160" height="90" fill="url(#endExodusGrad)"/>
+              <circle cx="25" cy="18" r="0.8" fill="#e0f2fe"/>
+              <circle cx="65" cy="28" r="0.6" fill="#bae6fd"/>
+              <circle cx="110" cy="15" r="1" fill="#e0f2fe"/>
+              <circle cx="128" cy="55" r="26" fill="#0f172a" stroke="#38bdf8" stroke-width="1.4"/>
+              <path d="M112 45 Q122 42 126 52 M120 65 Q130 60 138 68" stroke="#0284c7" stroke-width="1" fill="none"/>
+              <path d="M15 65 L45 52 L52 54 L38 68 Z" fill="#0f172a" stroke="#7dd3fc" stroke-width="1.2"/>
+              <line x1="5" y1="70" x2="35" y2="58" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="2" y1="72" x2="25" y2="63" stroke="#39ff14" stroke-width="1.2"/>
+            </svg>
+          </div>
+        `,
+        seed: `
+          <div class="ending-card-thumb" aria-hidden="true">
+            <svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="endSeedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#141c0a"/>
+                  <stop offset="60%" stop-color="#243310"/>
+                  <stop offset="100%" stop-color="#060903"/>
+                </linearGradient>
+              </defs>
+              <rect width="160" height="90" fill="url(#endSeedGrad)"/>
+              <rect x="15" y="15" width="130" height="60" rx="3" fill="#0a0f05" stroke="#4d7c0f" stroke-width="1.2"/>
+              <line x1="15" y1="35" x2="145" y2="35" stroke="#365314" stroke-width="1"/>
+              <line x1="45" y1="15" x2="45" y2="75" stroke="#365314" stroke-width="1"/>
+              <line x1="115" y1="15" x2="115" y2="75" stroke="#365314" stroke-width="1"/>
+              <ellipse cx="80" cy="52" rx="14" ry="18" fill="#17250b" stroke="#84cc16" stroke-width="1.5"/>
+              <path d="M76 40 L72 35 M84 40 L88 35 M74 42 L68 40 M86 42 L92 40" stroke="#a3e635" stroke-width="1.4" stroke-linecap="round"/>
+              <circle cx="80" cy="42" r="2" fill="#39ff14"/>
+              <circle cx="80" cy="68" r="1.8" fill="#84cc16"/>
+            </svg>
+          </div>
+        `
+      };
+
+      endingThumbnails.ENDING_DOMINION = endingThumbnails.dominion;
+      endingThumbnails.ENDING_EXODUS = endingThumbnails.exodus;
+      endingThumbnails.ENDING_ASHES = endingThumbnails.seed;
+
+      const endingIcons = {
+        dominion: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 18 L12 4 L20 18 L16 18 L12 11 L8 18 Z" stroke="#c084fc" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="18" r="3" fill="#a855f7"/></svg>',
+        exodus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke="#38bdf8" stroke-width="1.5"/><path d="M12 3 A9 9 0 0 1 21 12" stroke="#7dd3fc" stroke-width="2.2"/><path d="M8 12 L16 12 L13 8 M16 12 L13 16" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round"/></svg>',
+        seed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="13" rx="6" ry="8" stroke="#84cc16" stroke-width="1.6"/><circle cx="12" cy="13" r="2.5" fill="#84cc16"/><path d="M12 2 L12 5 M8 4 L10 6 M16 4 L14 6" stroke="#a3e635" stroke-width="1.4" stroke-linecap="round"/></svg>'
+      };
+      endingIcons.ENDING_DOMINION = endingIcons.dominion;
+      endingIcons.ENDING_EXODUS = endingIcons.exodus;
+      endingIcons.ENDING_ASHES = endingIcons.seed;
+
       endings.forEach((ending) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'ending-card';
+
+        const thumbWrapper = document.createElement('div');
+        thumbWrapper.innerHTML = endingThumbnails[ending.id] || endingThumbnails.dominion;
+        const thumbNode = thumbWrapper.firstElementChild;
+
+        const iconBadge = document.createElement('span');
+        iconBadge.className = 'ending-card-icon';
+        iconBadge.setAttribute('aria-hidden', 'true');
+        iconBadge.innerHTML = endingIcons[ending.id] || endingIcons.dominion;
+
         const title = document.createElement('strong');
         title.textContent = ending.title || ending.name || ending.id;
         const description = document.createElement('span');
         const labelPart = ending.choiceLabel || ending.description || ending.summary || '';
         const tonePart = ending.tone ? ` [${ending.tone}]` : '';
         description.textContent = `${labelPart}${tonePart}`;
-        button.append(title, description);
+
+        button.append(thumbNode, iconBadge, title, description);
         if (ending.epilogue) {
           const epilogueNode = document.createElement('small');
           epilogueNode.style.display = 'block';
@@ -2219,6 +3193,7 @@
         }
         button.addEventListener('click', () => {
           this.saveManager.completeEnding(ending.id);
+          this.saveManager.unlock(['codex_archives_complete']);
           this.hideLayer(overlay, false);
           onChoice?.(ending);
         });

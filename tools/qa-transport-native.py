@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--url',default='http://127.0.0.1:8098/');parser.add_argument('--output',required=True);args=parser.parse_args()
@@ -39,6 +40,7 @@ def main():
             assert state['cameraDiagnostic']['clear'],'The actual intake view is blocked by opaque scenery: '+json.dumps(state['cameraDiagnostic'])
         try:
             save();page.goto(args.url,wait_until='domcontentloaded');page.wait_for_function('()=>!!(window.__transportQA&&window.HiveSystems?.ui?.game)',timeout=120000)
+            open_campaign_menu(page)
             page.locator('#btn-new-campaign').click();page.locator('#btn-start-act-one').click();page.evaluate('()=>gameInstance.setSystemPaused(true)')
             page.evaluate('async()=>{await HiveModelFactory.loadTextures?.();await __transportQA.rendererEngine.renderQuality?.environmentReady;}')
             page.evaluate('''()=>{

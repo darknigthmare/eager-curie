@@ -14,6 +14,7 @@ import shutil
 from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 
 def main():
@@ -98,6 +99,7 @@ def main():
         try:
             page.goto(args.url, wait_until='domcontentloaded')
             page.wait_for_function('()=>!!(window.__mortarQA&&window.HiveSystems?.ui?.game)', timeout=120000)
+            open_campaign_menu(page)
             page.locator('#btn-new-campaign').click()
             page.locator('#btn-start-act-one').click()
             page.evaluate('()=>gameInstance.setSystemPaused(true)')

@@ -11,6 +11,7 @@ import re
 import shutil
 
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 SAVE_KEY = "hive-ascension-campaign-v2"
 
@@ -39,6 +40,7 @@ def run(url, chromium):
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.goto(url, wait_until="domcontentloaded")
             page.wait_for_function("() => !!window.HiveSystems?.ui.game", timeout=120000)
+            open_campaign_menu(page)
             return context, page, errors
 
         def return_to_menu(page):
@@ -62,6 +64,7 @@ def run(url, chromium):
         assert page.evaluate("key => localStorage.getItem(key)", SAVE_KEY) == checkpoint, "Opening the prologue replaced an existing checkpoint"
         page.reload(wait_until="domcontentloaded")
         page.wait_for_function("() => !!window.HiveSystems?.ui.game", timeout=120000)
+        open_campaign_menu(page)
         page.click("#btn-continue-campaign")
         assert page.evaluate("gameInstance.currentStageIndex") == 4
         assert stored_origin(page) == "colony"
@@ -133,6 +136,7 @@ def run(url, chromium):
         assert page.evaluate("gameInstance.activeOrigin?.id") == resolved
         page.reload(wait_until="domcontentloaded")
         page.wait_for_function("() => !!window.HiveSystems?.ui.game", timeout=120000)
+        open_campaign_menu(page)
         page.click("#btn-continue-campaign")
         assert page.evaluate("gameInstance.activeOrigin?.id") == resolved
         assert stored_origin(page) == resolved

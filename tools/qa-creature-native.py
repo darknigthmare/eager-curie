@@ -13,6 +13,7 @@ import shutil
 from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 
 def main():
@@ -120,6 +121,7 @@ def main():
             save()
             page.goto(args.url, wait_until='domcontentloaded')
             page.wait_for_function('()=>!!(window.__creatureQA&&window.HiveSystems?.ui?.game)', timeout=180000)
+            open_campaign_menu(page)
             page.locator('.origin-card[data-origin="starship"]').click()
             page.locator('#btn-new-campaign').click()
             page.locator('#btn-start-act-one').click()

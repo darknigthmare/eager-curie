@@ -8,14 +8,15 @@ const begin=source.indexOf('  class StageHiveRTS {'),end=source.indexOf('  class
 assert(begin>0&&end>begin);
 const results=[];
 function fixture(hosts=[]){
-  const cycles=[],logs=[],toasts=[],window={gameInstance:{humans:hosts},HiveSystems:{vfx:{ring(){}}}};
+  const cycles=[],logs=[],toasts=[],sounds=[],window={gameInstance:{humans:hosts},HiveSystems:{vfx:{ring(){},burst(){}}}};
   class CycleFixture{constructor(config){Object.assign(this,config);cycles.push(this);}createMesh(){}}
   const Native=vm.runInNewContext(source.slice(begin,end)+'\nStageHiveRTS;',
-    {window,console,Math,Date,BiologicalCycleEntity:CycleFixture,showToast:t=>toasts.push(t)});
+    {window,console,Math,Date,BiologicalCycleEntity:CycleFixture,showToast:t=>toasts.push(t),
+      audioManager:{playOvipositorLay:(x,z)=>sounds.push({x,z})}});
   const stage=Object.create(Native.prototype);
-  Object.assign(stage,{biomass:120,queen:{attachedToOvipositor:true,isDestroyed:false},rtsUnits:[],incubationCycles:[],
+  Object.assign(stage,{biomass:120,queen:{x:1,z:2,attachedToOvipositor:true,isDestroyed:false},rtsUnits:[],incubationCycles:[],
     log:t=>logs.push(t),updateStats(){}});
-  return {stage,hosts,cycles,logs,toasts};
+  return {stage,hosts,cycles,logs,toasts,sounds};
 }
 function check(name,run){try{const detail=run();results.push({name,passed:true,detail});console.log('PASS '+name);}catch(error){results.push({name,passed:false,error:error.stack});console.error('FAIL '+name+': '+error.message);}}
 const host=type=>({id:7,name:'prepared host',type,x:0,z:0,isCocooned:true,usedAsHost:false,hostEligibility:'viable',collapseForBurst(){}});
@@ -40,6 +41,7 @@ check('Actual Warrior request consumes its precursor and authored45 biomass exac
   assert.equal(f.cycles.length,1);assert.equal(f.cycles[0].duration,17);assert.equal(f.cycles[0].maxIntegrity,190);
   assert.equal(f.cycles[0].states[0],'COCON DE SPÉCIALISATION');
   f.stage.spawnUnit('warrior',45);assert.equal(f.cycles.length,1);assert.equal(f.stage.biomass,75);
+  assert.deepEqual(f.sounds,[{x:1,z:2}]);
 });
 check('Invalid or free cycle requests cannot spend or allocate anything',()=>{
   for(const [caste,cost] of [['warrior',0],['warrior',-1],['drone',NaN],['not-a-caste',10]]){

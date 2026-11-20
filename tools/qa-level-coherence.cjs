@@ -118,15 +118,20 @@ check('Every local access origin connects to a real station room at adult cleara
 });
 check('Door leaves, frames and collision states match the widened openings',()=>{
   for(const door of map.blastDoors){
-    assert.equal(door.width,8.8);
+    const sideOpening=door.id==='door_airlock_est';
+    assert.equal(door.width,sideOpening?2:8.8);
+    if(sideOpening)assert.equal(door.depth,6.4);
     const jambs=map.colliders.filter(c=>c.isDoorFrame&&c.mesh?.name.startsWith(door.id+'_jamb'));
     assert.equal(jambs.length,2,door.id+' physical jambs missing');
-    const old={x:player.x,z:player.z};player.x=door.x+4;player.z=door.z;
+    const old={x:player.x,z:player.z};player.x=door.x+(sideOpening?0:4);player.z=door.z+(sideOpening?3.6:0);
     assert.equal(map.setBlastDoorState(door,false,true),false,'Door closes on actor outside old3.4m check');
     player.x=0;player.z=0;game.humans=[];
     assert.equal(map.setBlastDoorState(door,false,true),true);
-    assert.equal(map.hasLineOfSight(door.x,door.z-4,door.x,door.z+4),false);
+    const dx=sideOpening?4:0,dz=sideOpening?0:4;
+    assert.equal(map.hasLineOfSight(door.x-dx,door.z-dz,door.x+dx,door.z+dz),false);
+    assert(map.colliders.includes(door.collider));
     assert.equal(map.setBlastDoorState(door,true,true),true);
+    assert(!map.colliders.includes(door.collider));
     player.x=old.x;player.z=old.z;
   }
 });

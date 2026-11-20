@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
@@ -58,6 +59,7 @@ def main():
         try:
             save();page.goto(args.url,wait_until='domcontentloaded')
             page.wait_for_function('()=>!!(window.__cycleQA&&window.HiveSystems?.ui?.game)',timeout=120000)
+            open_campaign_menu(page)
             click('#btn-new-campaign');click('#btn-start-act-one');page.evaluate('()=>gameInstance.setSystemPaused(true)')
             page.evaluate('async()=>{await HiveModelFactory.loadTextures?.();await __cycleQA.rendererEngine.renderQuality?.environmentReady;}')
             probe=root/'tools/qa-cycle-native-probe.js';report['probeSha256']=sha(probe.read_bytes());page.evaluate(probe.read_text())
@@ -94,8 +96,22 @@ def main():
             check('Resume retains recovery ownership', '''document.getElementById('btn-resume-game').click();f.require(!g.isSystemPaused,'Resume handler failed');g.setSystemPaused(true);return f.snapshot();''')
             check('Corpse falls and human wake is not an immediate stage advance', '''f.until(()=>f.face.postImplantPhase==='WAKE',400);f.step(70);f.require(g.currentStageIndex===2&&f.face.deadHusk.parent,'Wake skipped or corpse missing');return f.snapshot();''')
             capture('02-host-waking.png')
+            check('Completed host recovery opens a single owned evolution modal', '''
+              f.until(()=>g.pendingEvolution===f.face,7000);const elapsed=f.face.phaseElapsed;
+              f.require(g.currentStageIndex===2&&document.getElementById('game-canvas').inert,'Modal did not own the stage and input');
+              f.pendingRecoveryElapsed=elapsed;
+              g.setSystemPaused(false);
+              return {elapsed,stage:g.currentStageIndex};
+            ''')
+            page.wait_for_timeout(500)
+            check('Native game loop stays frozen until the evolution confirmation', '''
+              f.require(!g.isSystemPaused&&g.pendingEvolution===f.face&&f.face.phaseElapsed===f.pendingRecoveryElapsed,
+                  'Evolution modal let the simulation repeat its completed recovery');
+              return f.snapshot();
+            ''')
+            click('#modal-btn-continue')
             check('Same host discovers corpse flees through real colliders then relocates under fade', '''
-              const host=f.host;f.until(()=>g.currentStageIndex===3,7000);
+              const host=f.host;f.require(g.currentStageIndex===3&&!g.pendingEvolution&&!document.getElementById('game-canvas').inert,'Continue did not release the old scene and load gestation');
               const order=['ATTACHED_HOLD','COLLAPSE','HUSK_FALL','UNCONSCIOUS','WAKE','DISCOVER','PANIC_FLEE','FADE_OUT','RELOCATING','FADE_IN'];
               f.require(order.every((name,i)=>f.phases[i]===name),'Recovery phase order changed '+JSON.stringify(f.phases));
               f.require(g.currentStage.infectedHost===host&&g.hostRecoveryRecord.host===host,'Gestation replaced the host');
@@ -170,7 +186,9 @@ def main():
               p.mesh.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(p.mesh);f.require(box.min.y>=-.03,'Emerging adult penetrated floor');return {state:f.snapshot(),adultMinY:box.min.y};
             ''')
             capture('05-cocoon-emerging.png')
-            check('Extraction finishes once and leaves the real exuvia', '''f.until(()=>g.currentStageIndex===4,180);f.require([...g.biologicalRemains].some(o=>o.name==='discarded_chrysalis_exuvia'&&o.parent),'Exuvia missing');return f.snapshot();''')
+            page.evaluate('()=>__cycleNative.until(()=>Boolean(gameInstance.pendingEvolution),180)')
+            click('#modal-btn-continue')
+            check('Extraction finishes once and leaves the real exuvia', '''f.require(g.currentStageIndex===4&&!g.pendingEvolution,'Completion did not advance once');f.require([...g.biologicalRemains].some(o=>o.name==='discarded_chrysalis_exuvia'&&o.parent),'Exuvia missing');return f.snapshot();''')
             capture('06-emerged-adult.png')
             check('Restart clears all remains and old phase ownership', '''const old=f.face,remains=[...g.biologicalRemains];g.startCampaign(1);g.setSystemPaused(true);f.require(g.biologicalRemains.size===0&&remains.every(o=>!o.parent),'Restart retained prior remains');const stage=g.currentStage;old.update(.05);f.require(g.currentStage===stage,'Stale cycle advanced new game');return {remaining:g.biologicalRemains.size};''')
             report['royalFixture']=page.evaluate('()=>__cycleNative.prepare("hive")');save();click('#btn-action-leap')

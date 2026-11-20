@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +63,7 @@ def main():
         try:
             page.goto(args.url, wait_until='domcontentloaded', timeout=120_000)
             page.wait_for_function('() => Boolean(window.gameInstance?.currentStage && window.__prowlWorld)', timeout=120_000)
+            open_campaign_menu(page)
             page.evaluate('''() => {
               const g = window.gameInstance;
               const {playerCreature: p, stationMap: map, HumanAI, rendererEngine: renderer} = window.__prowlWorld;

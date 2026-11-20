@@ -16,6 +16,7 @@ import shutil
 from urllib.parse import unquote, urljoin, urlparse
 
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 
 def classify_resource_url(resource_url, base_url):
@@ -151,6 +152,7 @@ def main():
         def boot(page):
             page.goto(args.url, wait_until='domcontentloaded')
             page.wait_for_function('()=>!!(window.gameInstance&&window.HiveSystems?.ui?.game&&document.getElementById("btn-open-alien-base-menu"))', timeout=120000)
+            open_campaign_menu(page)
 
         def start(page):
             require(page.locator('#btn-new-campaign').is_visible(), 'New campaign control unavailable')

@@ -36,6 +36,7 @@ function fixture(){
   Object.assign(player,loadMethod('    clearMesh() {','    createMesh() {'));
   Object.assign(player,loadMethod('    setForm(form) {','    takeDamage(amount,'));
   player.createMesh();
+  vm.runInContext(pick('  const ACTION_SVG_ICONS = {','  // MULTI-ORIGIN CAMPAIGN START'),ctx);
   vm.runInContext(pick('  class StageFacehugger {','  class StageChestburster {')+';globalThis.Face=StageFacehugger;',ctx);
   vm.runInContext(pick('  class StageChestburster {','  // STAGE 4 — DRONE:')+';globalThis.Chest=StageChestburster;',ctx);
   const face=new ctx.Face();face.ownerGame=game;face.updateHUD=()=>{};game.currentStage=face;

@@ -12,6 +12,7 @@ import shutil
 from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 
 def main():
@@ -79,10 +80,11 @@ def main():
                 report['observationErrors'].append(name + ': ' + str(error))
         page.on('response', response_seen)
 
-    def boot(page):
+    def boot(page, *, touch=False):
         watch(page)
         page.goto(args.url, wait_until='domcontentloaded')
         page.wait_for_function('()=>!!(window.gameInstance&&window.HiveSystems?.ui?.game&&document.getElementById("btn-open-alien-base-menu"))', timeout=120000)
+        open_campaign_menu(page, touch=touch)
         require(page.locator('#boot-screen').is_visible(), 'Boot menu is not visible')
 
     def states(page):

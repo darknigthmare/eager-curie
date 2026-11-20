@@ -12,6 +12,7 @@ from pathlib import Path
 import shutil
 
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 
 def main():
@@ -42,6 +43,7 @@ def main():
         page.route("**/src/game.js*", expose_internals)
         page.goto(args.url.rstrip("/") + "/", wait_until="domcontentloaded")
         page.wait_for_function("() => !!(window.gameInstance && window.HiveSystems.ui.game)", timeout=120000)
+        open_campaign_menu(page)
         page.click("#btn-new-campaign")
         page.click("#btn-start-act-one")
         results = page.evaluate("""(royalOnly) => {
@@ -51,6 +53,10 @@ def main():
             const check=(name,pass,detail)=>{
                 tests.push({name,pass,detail});
                 if(!pass) throw Error(name+': '+JSON.stringify(detail));
+            };
+            const confirmEvolution=(owner)=>{
+                if(g.pendingEvolution!==owner) return;
+                document.getElementById('modal-btn-continue').click();
             };
             let parasite=null;
             const fixedTicks=(frames,done=()=>false)=>{
@@ -122,8 +128,15 @@ def main():
             check('facehugger attaches to viable face',parasite.isAttacking&&q.playerCreature.attachedHost===scientist);
             for(let i=0;i<8&&g.currentStageIndex===2;i++) parasite.tightenGrip();
             check('grip clicks do not skip minimum attachment residence',g.currentStageIndex===2&&!parasite.isCompleted);
-            fixedTicks(7000,()=>g.currentStageIndex===3);
-            check('recovery relocates the same host before gestation',g.currentStageIndex===3&&scientist.isInfected&&scientist.usedAsHost&&g.currentStage.infectedHost===scientist&&g.hostRecoveryRecord?.completed);
+            fixedTicks(7000,()=>g.pendingEvolution===parasite);
+            confirmEvolution(parasite);
+            check('recovery relocates the same host before gestation',
+                g.currentStageIndex===3&&scientist.isInfected&&scientist.usedAsHost&&g.currentStage.infectedHost===scientist&&g.hostRecoveryRecord?.completed,
+                {stage:g.currentStageIndex,running:g.isRunning,phase:parasite.postImplantPhase,elapsed:parasite.phaseElapsed,
+                    destination:parasite.recoveryDestination,remainingRoute:parasite.recoveryRoute,attempts:parasite.recoverySearchAttempts,
+                    failedDestinations:[...parasite.failedRecoveryDestinations||[]],aborted:parasite.recoveryAborted,
+                    host:{x:scientist.x,z:scientist.z,hp:scientist.hp,infected:scientist.isInfected,usedAsHost:scientist.usedAsHost},
+                    hostPoint,modal:document.getElementById('stage-modal')?.innerText});
             const juvenile=g.currentStage;
             fixedTicks(500,()=>juvenile.step==='READY_TO_BURST');
             check('gestation enables sternum rupture',juvenile.step==='READY_TO_BURST');
@@ -158,7 +171,8 @@ def main():
             fixedTicks(250,()=>juvenile.chrysalisTimer>=100);
             juvenile.emergeAdultForm();
             check('mature cocoon begins a progressive extraction',g.currentStageIndex===3&&juvenile.step==='EMERGING');
-            fixedTicks(180,()=>g.currentStageIndex===4);
+            fixedTicks(180,()=>g.pendingEvolution===juvenile);
+            confirmEvolution(juvenile);
             check('mature cocoon advances to adult hunt',g.currentStageIndex===4&&q.playerCreature.form==='drone');
             } else {
                 g.startCampaign(4);g.setSystemPaused(true);
@@ -221,7 +235,7 @@ def main():
             console.info('HIVE_QA_ROYAL '+JSON.stringify({when:'before',minimumSeconds,frameBudget,snapshot:beforeRoyal}));
             const preparedDefense=[],observedRoyalActors=new Set(g.humans);
             const royalFrames=fixedTicks(frameBudget,()=>{
-                if(g.currentStageIndex===5||!g.isRunning||royal.isDestroyed||(!royal.isActive&&!royal.isComplete))return true;
+                if(g.pendingEvolution===adult||!g.isRunning||royal.isDestroyed||(!royal.isActive&&!royal.isComplete))return true;
                 // Explicit continuous defense fixture, NOT a combat playthrough:
                 // reinforcement logic runs unchanged; neutralize enemies only
                 // AFTER their actual appearance, using their real actor method.
@@ -239,6 +253,7 @@ def main():
                 }
                 return false;
             });
+            confirmEvolution(adult);
             const afterRoyal=royalSnapshot(),royalDiagnostic={fixture:'Production reinforcement rules with prepared defense: actors are incapacitated only after they appear',before:beforeRoyal,after:afterRoyal,preparedDefense,initialOccupants,royalDefenseTeam,frames:royalFrames,seconds:royalFrames/60,frameBudget,minimumSeconds};
             window.__qaRoyalDiagnostic=royalDiagnostic;console.info('HIVE_QA_ROYAL '+JSON.stringify({when:'after',...royalDiagnostic}));
             check('nursery guard follows hostile roles and excludes civilian or permanently neutralized actors',

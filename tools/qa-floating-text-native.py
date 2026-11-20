@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 
 def main():
@@ -83,6 +84,7 @@ def main():
                 window.__labelRender = {renderer, world, camera};
               };
             }''')
+            open_campaign_menu(page)
             page.locator('.origin-card[data-origin="starship"]').click(timeout=120000)
             page.locator('#btn-new-campaign').click(timeout=120000)
             page.locator('#btn-start-act-one').click(timeout=120000)

@@ -15,6 +15,7 @@ from urllib.request import urlopen
 from urllib.error import HTTPError
 
 from playwright.sync_api import sync_playwright
+from qa_boot_flow import open_campaign_menu
 
 
 def main():
@@ -51,6 +52,7 @@ def main():
     def boot(page):
         page.goto(args.url, wait_until='domcontentloaded')
         page.wait_for_function('() => !!(window.gameInstance && window.HiveSystems?.ui?.game)', timeout=120000)
+        open_campaign_menu(page)
 
     def start(page):
         # This smoke path has one reproducible authored origin. The dedicated
@@ -127,6 +129,7 @@ def main():
                 require(navigation['arrived'], f'Actual host AI reaches egg within 30 simulated seconds: {navigation}')
                 page.click('#btn-open-egg')
                 page.click('#btn-expel-facehugger')
+                page.locator('#modal-btn-continue').click()
                 page.wait_for_function('() => gameInstance.currentStageIndex === 2')
                 require(page.evaluate('HiveSystems.save.read().stage === 2'), 'Act-two checkpoint persisted')
                 return dict(ui='Three calibrations, lure, egg opening, expulsion and stage-two checkpoint',
@@ -212,10 +215,45 @@ def main():
                 return state
             check('RTS queen, relays and resource guard', rts_guard)
 
+            def rts_inputs():
+                canvas = page.locator('#game-canvas')
+                canvas.focus()
+                observed = []
+                for key, order in enumerate(('HUNT', 'CAPTURE', 'DEFEND', 'INFEST', 'RUSH'), 1):
+                    page.keyboard.press(str(key))
+                    active = page.locator('.rts-cmd-btn[data-cmd][aria-pressed="true"]')
+                    require(active.count() == 1 and active.get_attribute('data-cmd') == order,
+                            f'RTS key {key} must select {order} in the real command palette')
+                    observed.append(order)
+                page.keyboard.press('p')
+                require(page.locator('#btn-possess-mode').get_attribute('aria-pressed') == 'true',
+                        'P owns possession in act 5')
+                page.locator('.rts-cmd-btn[data-cmd="DEFEND"]').click()
+                require(page.evaluate('pheromoneSystem.activeCommand === "DEFEND" && !pheromoneSystem.possessionMode'),
+                        'Visible order button drives the same command and leaves possession')
+                canvas.focus()
+                page.keyboard.press('h')
+                require(page.evaluate('gameInstance.currentStage.selectedUnit === gameInstance.currentStage.queen'),
+                        'H selects the live queen for camera focus')
+                page.keyboard.press('c')
+                require(page.locator('#codex-overlay').is_hidden() and
+                        page.evaluate('gameInstance.currentStage.royalCryCooldown > 0'),
+                        'C triggers the act 5 royal cry without opening the Codex')
+                page.keyboard.press('n')
+                scent = page.evaluate('''() => {
+                    const trail=pheromoneSystem.scentTrails.at(-1), queen=gameInstance.currentStage.queen;
+                    return trail && {distance:Math.hypot(trail.x-queen.x,trail.z-queen.z),timer:trail.timer};
+                }''')
+                require(scent and scent['distance'] < .05 and scent['timer'] > 0,
+                        'N lays active scent at the RTS queen position')
+                return {'orders': observed, 'scent': scent}
+            check('RTS native keyboard, command palette and queen shortcuts', rts_inputs)
+
             def resume():
                 page.evaluate('HiveSystems.save.write({stage:4,campaignStarted:true,difficulty:"story",adultCaste:"runner",hostProfile:"labhound"})')
                 page.reload(wait_until='domcontentloaded')
                 page.wait_for_function('() => !!window.HiveSystems?.ui?.game', timeout=120000)
+                open_campaign_menu(page)
                 require(not page.locator('#btn-continue-campaign').is_disabled(), 'Continue offered after reload')
                 page.click('#btn-continue-campaign')
                 require(page.evaluate('gameInstance.currentStageIndex===4 && gameInstance.campaignConfig.difficulty==="story" && gameInstance.campaignConfig.adultCaste==="runner" && gameInstance.hostProfile==="labhound"'), 'Saved act, difficulty, caste and host restored')

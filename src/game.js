@@ -12680,6 +12680,21 @@
         rendererEngine.propsGroup.add(parkedLoader);
         this.parkedPowerLoader = { x: 48, z: -14, mesh: parkedLoader };
       }
+      // Wave 26 : Véhicules In-Lore supplémentaires (Tracteur Orbital Daihotai Aliens 1986 & Chariot Weyland Cargo Loader)
+      const daihotaiMesh = window.HiveModelFactory?.createDaihotaiTractor?.();
+      if (daihotaiMesh) {
+        daihotaiMesh.position.set(-46, 0, -12);
+        daihotaiMesh.rotation.y = Math.PI * 0.15;
+        rendererEngine.propsGroup.add(daihotaiMesh);
+        this.daihotaiTractor = { x: -46, z: -12, mesh: daihotaiMesh };
+      }
+      const cargoLoaderMesh = window.HiveModelFactory?.createWeylandCargoLoader?.();
+      if (cargoLoaderMesh) {
+        cargoLoaderMesh.position.set(36, 0, 14);
+        cargoLoaderMesh.rotation.y = -Math.PI * 0.35;
+        rendererEngine.propsGroup.add(cargoLoaderMesh);
+        this.weylandCargoLoader = { x: 36, z: 14, mesh: cargoLoaderMesh };
+      }
 
       // Chantier 49 : Éventration de Planchers & Grilles de Sol (Aliens 1986 / Alien 3)
       this.subfloorGrates = [
@@ -14562,7 +14577,7 @@
 
       // Chantier 236 : USCM Armory & Fortified Munitions Bunker (Aliens: Dark Descent)
       this.uscmMunitionsBunkers = [
-        { id: 'uscm_bunker_1', name: "Bunker Fortifié de Munitions USCM", x: -15, z: -60, isBreached: false, ammoStock: 10, mesh: null }
+        { id: 'uscm_bunker_1', name: "Bunker Fortifié de Munitions USCM", x: -22, z: -60, isBreached: false, ammoStock: 10, mesh: null }
       ];
       this.uscmMunitionsBunkers.forEach((b) => {
         const mesh = window.HiveModelFactory?.createUscmMunitionsBunker?.();
@@ -14590,7 +14605,7 @@
 
       // Chantier 238 : Hive Central Bio-Spire Catwalk Anchor (Aliens 1986 / AvP)
       this.hiveBioSpires = [
-        { id: 'bio_spire_1', name: "Flèche Centrale de Bio-Résine Organique", x: 0, z: -35, mesh: null }
+        { id: 'bio_spire_1', name: "Flèche Centrale de Bio-Résine Organique", x: 38, z: 42, mesh: null }
       ];
       this.hiveBioSpires.forEach((sp) => {
         const mesh = window.HiveModelFactory?.createHiveBioSpire?.();
@@ -14630,11 +14645,15 @@
         this.colliders.push({ minX: lc.x - 2.9, maxX: lc.x + 2.9, minZ: lc.z - 1.2, maxZ: lc.z + 1.2, isLeadChannel: true, channelRef: lc });
       });
 
-      // Audit QA #69 : Grilles de Sol Destructibles & Embuscade Verticale
+      // Audit QA #69 & Wave 26 : Grilles de Sol Destructibles & Embuscade Verticale (7 nœuds couvrant toute la station)
       this.grateAmbushNodes = [
         { id: 'grate_ambush_1', name: 'Grille Caillebotis Sol Puisard Nord', x: -25, z: 0, isShattered: false },
         { id: 'grate_ambush_2', name: 'Grille Caillebotis Sol Couloir Sud', x: 10, z: 30, isShattered: false },
-        { id: 'grate_ambush_3', name: 'Grille Caillebotis Sol Entrée Armurerie', x: -15, z: -15, isShattered: false }
+        { id: 'grate_ambush_3', name: 'Grille Caillebotis Sol Entrée Armurerie', x: -15, z: -15, isShattered: false },
+        { id: 'grate_ambush_4', name: 'Grille Caillebotis Sol Baie Cryo-Médicale', x: -34, z: -42, isShattered: false },
+        { id: 'grate_ambush_5', name: 'Grille Caillebotis Sol Armurerie Est', x: 34, z: -42, isShattered: false },
+        { id: 'grate_ambush_6', name: 'Grille Caillebotis Sol Réacteur Sud-Ouest', x: -34, z: 42, isShattered: false },
+        { id: 'grate_ambush_7', name: 'Grille Caillebotis Sol Nurserie Sud-Est', x: 34, z: 42, isShattered: false }
       ];
 
       // Audit QA #67 : Ombres Portées Procédurales de Caillebotis
@@ -16090,6 +16109,9 @@
         { id: 'fiorina_foundry_quench_weir_1', factory: 'createFiorinaFoundryQuenchWeir', name: 'Déversoir Trop-Plein Cuve Trempe Fiorina 161', x: -18, z: 92, hx: 1.1, hz: 0.8, radius: 8.5, damage: 250, color: 0xf97316, label: 'DÉBORDEMENT DÉVERSOIR CUVE FIORINA (CAP 300 PROPS)', toast: 'SEUIL DÉVERSANT OBSTRUÉ : Vague de boues de plomb et vapeur d\'eau brûlante !', log: '[QUENCH WEIR - CAP 300 PROPS] Rupture d\'évacuation du trop-plein de trempe Fiorina.', fx: { type: 'sawtooth', f0: 460, f1: 55, dur: 1.25, cutoff: 2100, vol: 0.76 }, anim: 'quench_effluent_steam_layer', slag: true }
       ];
       [...wave31Defs, ...wave32Defs, ...wave33Defs, ...wave34Defs, ...wave35Defs, ...wave36Defs, ...wave37Defs, ...wave38Defs, ...wave39Defs, ...wave40Defs, ...wave41Defs, ...wave42Defs, ...wave43Defs, ...wave44Defs, ...wave45Defs, ...wave46Defs, ...wave47Defs, ...wave48Defs, ...wave49Defs, ...wave50Defs, ...wave51Defs, ...wave52Defs, ...wave53Defs, ...wave54Defs, ...wave55Defs, ...wave56Defs, ...wave57Defs, ...wave58Defs, ...wave59Defs, ...wave60Defs].forEach((def) => {
+        // Wave 26 : Verrouillage périmétrique (clamp ±71m) pour qu'aucun prop industriel ne soit généré hors des murs extérieurs (±75m)
+        def.x = Math.max(-71, Math.min(71, def.x));
+        def.z = Math.max(-71, Math.min(71, def.z));
         const prop = Object.assign({ isTriggered: false, resetTimer: 0, mesh: null }, def);
         const mesh = window.HiveModelFactory?.[def.factory]?.();
         if (mesh) {
@@ -32363,8 +32385,8 @@
         });
       }, 160);
 
-      // 2. Recul physique et interruption (stagger)
-      this.staggerTimer = 0.28;
+      // 2. Recul physique et interruption (stagger) — Wave 26 : résistance au perma-stagger pour les Boss (BRIAREOS-7 / MANTIS-4)
+      this.staggerTimer = this.bossId ? 0.07 : 0.28;
       const fromX = attacker ? attacker.x : playerCreature.x;
       const fromZ = attacker ? attacker.z : playerCreature.z;
       const pushAngle = Math.atan2(this.z - fromZ, this.x - fromX);
@@ -33488,6 +33510,11 @@
         }
       }
 
+      // Wave 26 : Décrémentation par frame des cooldowns de grenades spéciales (EMP, U1 30mm, Phosphore Blanc)
+      if (this.empGrenadeCooldown > 0) this.empGrenadeCooldown = Math.max(0, this.empGrenadeCooldown - safeDelta);
+      if (this.u1GrenadeCooldown > 0) this.u1GrenadeCooldown = Math.max(0, this.u1GrenadeCooldown - safeDelta);
+      if (this.whitePhosphorusCooldown > 0) this.whitePhosphorusCooldown = Math.max(0, this.whitePhosphorusCooldown - safeDelta);
+
       if (
         isCombatant &&
         biologicalTargetDetectable &&
@@ -34132,20 +34159,39 @@
             audioManager.playPistolShot?.(this.x, this.z);
             window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.65, this.z, 0x38bdf8, 0.2);
             applyWeaponDamage(0.85);
+          } else if (this.type === 'uscm_dropship_pilot') {
+            // Wave 26 : Pilote UD-4L Cheyenne — Pistolet M4A3 & Balise de Frappe Orbitale Cheyenne
+            this.shootCooldown = 1.45;
+            audioManager.playPistolShot?.(this.x, this.z);
+            window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.65, this.z, 0x38bdf8, 0.25);
+            window.HiveSystems?.vfx?.beam?.(this.x, 2.65, this.z, combatTarget.x, 1.3, combatTarget.z, 0x38bdf8, 0.16);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'FRAPPE GUIDÉE UD-4L CHEYENNE !', '#38bdf8', true);
+            applyWeaponDamage(1.3);
+          } else if (this.type === 'colonial_raider') {
+            // Wave 26 : Pillard Colonial — Calibre 12 scié & Cocktail Molotov improvisé
+            this.shootCooldown = 1.75;
+            audioManager.playShotgunBlast?.(this.x, this.z);
+            window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.6, this.z, 0xf97316, 0.34);
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 18, 0.15, 1.4);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.05, this.z, 'CALIBRE 12 & MOLOTOV !', '#f97316', false);
+            applyWeaponDamage(1.4, 'fire');
           } else {
             // Chantier 133 : Fusil à impulsion M41A avec Lance-Grenades 30mm U1 Intégré (Aliens 1986)
-            this.u1GrenadeCooldown = (this.u1GrenadeCooldown || 0) - safeDelta;
-            if (['marine', 'guard', 'commando'].includes(this.type) && distToPlayer >= 6.5 && distToPlayer <= 22 && this.u1GrenadeCooldown <= 0) {
+            if (['marine', 'guard', 'commando'].includes(this.type) && distToPlayer >= 6.5 && distToPlayer <= 22 && (this.u1GrenadeCooldown || 0) <= 0) {
               this.u1GrenadeCooldown = 8.5;
               this.shootCooldown = 2.4;
               audioManager.playM40GrenadePumpLaunch?.(this.x, this.z);
               audioManager.playPulseRifleU1Grenade?.(this.x, this.z);
               window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf97316, 0.35);
-              // Recul cinétique sur le tireur
+              // Recul cinétique sur le tireur avec vérification de collision murale (Wave 26)
               const recoilAngle = Math.atan2(this.z - combatTarget.z, this.x - combatTarget.x);
-              this.x += Math.cos(recoilAngle) * 0.45;
-              this.z += Math.sin(recoilAngle) * 0.45;
-              this.mesh?.position.set(this.x, 0, this.z);
+              const rx = this.x + Math.cos(recoilAngle) * 0.45;
+              const rz = this.z + Math.sin(recoilAngle) * 0.45;
+              if (!stationMap.checkCollision(rx, rz)) {
+                this.x = rx;
+                this.z = rz;
+                this.mesh?.position.set(this.x, 0, this.z);
+              }
 
               const onU1Impact = () => {
                 audioManager.playPulseRifleU1Grenade?.(combatTarget.x, combatTarget.z);
@@ -34396,6 +34442,7 @@
         neomorph: { hp: 210, speed: 0.56, damage: 54, range: 1.9 },
         deacon: { hp: 260, speed: 0.48, damage: 64, range: 2.0 },
         lurker: { hp: 195, speed: 0.54, damage: 52, range: 1.9 },
+        stalker: { hp: 200, speed: 0.56, damage: 56, range: 2.0 },
         alpha: { hp: 450, speed: 0.44, damage: 88, range: 2.2 },
         raven: { hp: 540, speed: 0.38, damage: 96, range: 2.3 },
         king: { hp: 680, speed: 0.35, damage: 115, range: 2.6 },
@@ -36855,7 +36902,10 @@
             <option value="offspring" ${activeCaste === 'offspring' ? 'selected' : ''}>Offspring — Hybride Z-01 (Alien: Romulus)</option>
             <option value="ravager" ${activeCaste === 'ravager' ? 'selected' : ''}>Ravager — Faucheur à Lames Brachiales (AvP Extinction)</option>
             <option value="lurker" ${activeCaste === 'lurker' ? 'selected' : ''}>Lurker — Rôdeur Silencieux (Colonial Marines)</option>
+            <option value="stalker" ${activeCaste === 'stalker' ? 'selected' : ''}>Stalker — Traqueur Furtif d'Ombre (AvP / Dark Descent)</option>
             <option value="burster" ${activeCaste === 'burster' ? 'selected' : ''}>Burster — Sapeur Caustique (Fireteam Elite)</option>
+            <option value="boiler" ${activeCaste === 'boiler' ? 'selected' : ''}>Boiler — Pustuleux Thermochimique Aveugle (Colonial Marines)</option>
+            <option value="carrier" ${activeCaste === 'carrier' ? 'selected' : ''}>Carrier — Porteur Dorsal d'Essaim (AvP Extinction)</option>
             <option value="empress" ${activeCaste === 'empress' ? 'selected' : ''}>Impératrice — Reine Mère Suprême (5.8m)</option>
             <option value="matriarch_queen" ${activeCaste === 'matriarch_queen' ? 'selected' : ''}>Matriarche Souveraine de la Ruche</option>
           </select>
@@ -39074,8 +39124,12 @@
       }
       if (key === '2' || key === 'r') {
         const caste = playerCreature.adultCaste || playerCreature.caste;
-        if (key === 'r' && caste === 'king') {
+        if (key === 'r' && (caste === 'king' || caste === 'empress' || caste === 'matriarch_queen')) {
           playerCreature.executeKingRoyalDominance();
+        } else if (key === 'r' && caste === 'deaconess') {
+          playerCreature.executeDeaconessSonicRoar?.();
+        } else if (key === 'r' && caste === 'red_drone') {
+          playerCreature.executeRedDroneCrimsonFrenzy?.();
         } else if (key === 'r' && caste === 'deacon_adult') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.2);
           if (target) playerCreature.executeDeaconArchonPredation(target);
@@ -39093,10 +39147,12 @@
           playerCreature.executeRavenSeismicCharge();
         } else if (key === 'r' && caste === 'crusher') {
           playerCreature.executeCrusherCharge?.();
-        } else if (key === 'r' && (caste === 'praetorian' || caste === 'palatine')) {
+        } else if (key === 'r' && (caste === 'praetorian' || caste === 'palatine' || caste === 'ravager' || caste === 'carrier')) {
           playerCreature.executePraetorianRoar();
-        } else if (key === 'r' && caste === 'prowler') {
+        } else if (key === 'r' && (caste === 'prowler' || caste === 'lurker' || caste === 'stalker')) {
           playerCreature.executeProwlerAmbush();
+        } else if (key === 'r' && (caste === 'burster' || caste === 'boiler')) {
+          this.executeAcidSpray?.();
         } else if (key === 'r' && caste === 'offspring') {
           playerCreature.executeOffspringZ01Siphon();
         } else if (key === 'r' && caste === 'abomination') {
@@ -40239,7 +40295,7 @@
       const humans = window.gameInstance?.humans || [];
       const unit = this.possessedUnit;
       if ((unit.attackCooldown || 0) > 0) return;
-      const isQueen = unit.caste === 'queen';
+      const isQueen = ['queen', 'empress', 'matriarch_queen'].includes(unit.caste);
       const maxReach = isQueen ? 7.5 : (unit.attackRange + 2.5);
 
       let target = targetEnemy;
@@ -40309,7 +40365,7 @@
           window.HiveSystems?.vfx?.floatingText?.(ct.x, 2.2, ct.z, `-${unit.damage} CHARGE BÉLIER`, '#ef4444', true);
         });
         showToast('IMPACT DE CHARGE DU CRUSHER !');
-      } else if (unit.caste === 'praetorian' || unit.caste === 'palatine') {
+      } else if (unit.caste === 'praetorian' || unit.caste === 'palatine' || unit.caste === 'carrier') {
         audioManager.playBoneCrunch?.();
         audioManager.playWetImpact?.(unit.x, unit.z);
         rendererEngine.addScreenShake?.(0.28, 0.18);
@@ -40319,6 +40375,51 @@
         window.HiveSystems?.vfx?.burst(target.x, target.z, 0xa855f7, 20, 0.15, 1.6);
         window.HiveSystems?.vfx?.floatingText?.(target.x, 2.6, target.z, `-${unit.damage} CHOC ROYAL`, '#a855f7', true);
         showToast(`FRAPPE ROYALE DE ${unit.caste.toUpperCase()} !`);
+      } else if (unit.caste === 'ravager') {
+        audioManager.playBoneCrunch?.();
+        audioManager.playWetImpact?.(unit.x, unit.z);
+        rendererEngine.addScreenShake?.(0.34, 0.22);
+        const scytheTargets = humans.filter((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - unit.x, h.z - unit.z) <= 3.8);
+        scytheTargets.forEach((st) => {
+          const dmg = Math.round(unit.damage * 1.35);
+          st.takeDamage(dmg, unit);
+          st.staggerTimer = 0.9;
+          window.HiveSystems?.vfx?.burst(st.x, st.z, 0xef4444, 22, 0.16, 1.7);
+          window.HiveSystems?.vfx?.floatingText?.(st.x, 2.5, st.z, `-${dmg} LAMES BRACHIALES`, '#ef4444', true);
+        });
+        showToast('FAUCHAGE AUX LAMES BRACHIALES DU RAVAGER !');
+      } else if (['prowler', 'lurker', 'stalker'].includes(unit.caste)) {
+        audioManager.playXenomorphHiss?.();
+        audioManager.playWetImpact?.(target.x, target.z);
+        const dmg = Math.round(unit.damage * 1.4);
+        target.takeDamage(dmg, unit);
+        target.staggerTimer = 0.95;
+        window.HiveSystems?.vfx?.burst(target.x, target.z, 0x39ff14, 18, 0.14, 1.6);
+        window.HiveSystems?.vfx?.floatingText?.(target.x, 2.5, target.z, `-${dmg} BOND D'EMBUSCADE`, '#39ff14', true);
+        showToast(`BOND PRÉDATEUR DU ${unit.caste.toUpperCase()} !`);
+      } else if (['burster', 'boiler'].includes(unit.caste)) {
+        audioManager.playAcidSizzle?.();
+        const acidTargets = humans.filter((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - target.x, h.z - target.z) <= 4.2);
+        acidTargets.forEach((at) => {
+          at.takeDamage(unit.damage, unit, 'acid');
+          window.HiveSystems?.vfx?.burst(at.x, at.z, 0xa3e635, 16, 0.15, 1.5);
+        });
+        window.HiveSystems?.vfx?.ring?.(target.x, target.z, 0xa3e635, 4.2);
+        showToast(`RUPTURE CAUSTIQUE DU ${unit.caste.toUpperCase()} !`);
+      } else if (unit.caste === 'offspring') {
+        audioManager.playWetImpact?.(target.x, target.z);
+        target.takeDamage(unit.damage, unit);
+        unit.hp = Math.min(unit.maxHp, unit.hp + 35);
+        window.HiveSystems?.vfx?.burst(target.x, target.z, 0xa855f7, 18, 0.14, 1.5);
+        window.HiveSystems?.vfx?.floatingText?.(unit.x, 2.6, unit.z, '+35 SIPHON Z-01', '#a855f7', true);
+        showToast('SIPHON MUTAGÈNE Z-01 DE L\'OFFSPRING !');
+      } else if (unit.caste === 'worker') {
+        audioManager.playAcidSizzle?.();
+        target.takeDamage(unit.damage, unit);
+        target.staggerTimer = 2.2;
+        window.HiveSystems?.vfx?.burst(target.x, target.z, 0x39ff14, 14, 0.12, 1.2);
+        window.HiveSystems?.vfx?.floatingText?.(target.x, 2.3, target.z, 'ENTRAAVÉ PAR LA RÉSINE !', '#39ff14', true);
+        showToast('JET DE RÉSINE ENTRAPANTE DE L\'OUVRIÈRE !');
       } else {
         audioManager.playBoneCrunch?.();
         audioManager.playWetImpact?.(target.x, target.z);
@@ -40539,10 +40640,14 @@
         <button type="button" id="btn-spawn-prowler" class="act-btn">SPÉCIALISER DRONE EN PROWLER (40 Bio)</button>
         <button type="button" id="btn-spawn-spitter" class="act-btn">SPÉCIALISER DRONE EN SPITTER (50 Bio)</button>
         <button type="button" id="btn-spawn-burster" class="act-btn">MUTER RUNNER/DRONE EN BURSTER ACIDE (35 Bio)</button>
+        <button type="button" id="btn-spawn-boiler" class="act-btn">MUTER SPITTER/BURSTER EN BOILER (55 Bio)</button>
         <button type="button" id="btn-spawn-crusher" class="act-btn">MUTER RUNNER/WARRIOR EN CRUSHER (75 Bio)</button>
+        <button type="button" id="btn-spawn-ravager" class="act-btn">MUE D’UN WARRIOR EN RAVAGER (85 Bio)</button>
         <button type="button" id="btn-spawn-praetorian" class="act-btn">MUE D’UN WARRIOR EN PRAETORIAN (80 Bio)</button>
+        <button type="button" id="btn-spawn-carrier" class="act-btn">MUE D’UN PRAETORIAN EN CARRIER (95 Bio)</button>
         <button type="button" id="btn-spawn-palatine" class="act-btn">GÉLÉE ROYALE : ÉLITE PALATINE (110 Bio)</button>
         <button type="button" id="btn-spawn-offspring" class="act-btn">MUTAGÈNE Z-01 : OFFSPRING (95 Bio)</button>
+        <button type="button" id="btn-evolve-empress" class="act-btn" style="border-color: #a855f7; background: rgba(168,85,247,0.18);">ASCENSION IMPÉRATRICE SUPRÊME (140 Bio)</button>
         <button type="button" id="btn-final-conquest" class="act-btn" disabled style="border-color: #39ff14; background: rgba(57,255,20,0.24);">ISOLER PALIMPSESTE ET CHOISIR UNE FIN</button>
       `;
 
@@ -40554,12 +40659,45 @@
       document.getElementById('btn-spawn-prowler').onclick = () => this.spawnUnit('prowler', 40);
       document.getElementById('btn-spawn-spitter').onclick = () => this.spawnUnit('spitter', 50);
       document.getElementById('btn-spawn-burster').onclick = () => this.spawnUnit('burster', 35);
+      document.getElementById('btn-spawn-boiler').onclick = () => this.spawnUnit('boiler', 55);
       document.getElementById('btn-spawn-crusher').onclick = () => this.spawnUnit('crusher', 75);
+      document.getElementById('btn-spawn-ravager').onclick = () => this.spawnUnit('ravager', 85);
       document.getElementById('btn-spawn-praetorian').onclick = () => this.spawnUnit('praetorian', 80);
+      document.getElementById('btn-spawn-carrier').onclick = () => this.spawnUnit('carrier', 95);
       document.getElementById('btn-spawn-palatine').onclick = () => this.spawnUnit('palatine', 110);
       document.getElementById('btn-spawn-offspring').onclick = () => this.spawnUnit('offspring', 95);
+      document.getElementById('btn-evolve-empress').onclick = () => this.evolveQueenToEmpress();
       document.getElementById('btn-final-conquest').onclick = () => this.completeConquest();
       enrichActionButtonsWithSquareIcons(actionsContainer);
+    }
+
+    evolveQueenToEmpress() {
+      if (!this.queen || this.queen.isDestroyed) return;
+      if (this.queen.caste === 'empress') {
+        showToast('La Reine a déjà atteint l’Ascension d’Impératrice Suprême (5.8m).');
+        return;
+      }
+      if (this.biomass < 140) {
+        showToast('Biomasse insuffisante : 140 Bio requise pour l’Ascension Impératrice.');
+        return;
+      }
+      this.biomass -= 140;
+      this.queen.caste = 'empress';
+      this.queen.maxHp = 1850;
+      this.queen.hp = Math.min(1850, this.queen.hp + 650);
+      this.queen.damage = 195;
+      if (this.queen.mesh) {
+        rendererEngine.entitiesGroup.remove(this.queen.mesh);
+      }
+      this.queen.createMesh();
+      audioManager.playQueenRoar?.();
+      rendererEngine.addScreenShake?.(0.45, 0.35);
+      window.HiveSystems?.vfx?.ring?.(this.queen.x, this.queen.z, 0xa855f7, 7.5);
+      window.HiveSystems?.vfx?.burst?.(this.queen.x, this.queen.z, 0xa855f7, 36, 0.22, 2.4);
+      window.HiveSystems?.unlockEntry?.('codex_empress_matriarch');
+      this.log('[ASCENSION IMPÉRATRICE] La Reine Mère mute en Impératrice Suprême (5.8m, 1850 PV).');
+      showToast('ASCENSION ACCOMPLIE : REINE MÈRE -> IMPÉRATRICE SUPRÊME (5.8m) !');
+      this.updateStats();
     }
 
     isArmoredHost(host) {
@@ -40644,8 +40782,11 @@
           prowler: 'DRONE',
           spitter: 'DRONE',
           burster: 'RUNNER ou DRONE',
+          boiler: 'SPITTER ou BURSTER',
           crusher: 'WARRIOR ou RUNNER',
+          ravager: 'WARRIOR',
           praetorian: 'WARRIOR',
+          carrier: 'PRAETORIAN',
           palatine: 'PRAETORIAN'
         };
         showToast(`Spécialisation impossible : précurseur mature (${precursorReq[caste] || 'DRONE'}) requis.`);
@@ -40682,13 +40823,13 @@
 
       const durations = {
         drone: 14, runner: 12, warrior: 17, worker: 10,
-        prowler: 12, spitter: 14, burster: 11, crusher: 20,
-        praetorian: 20, palatine: 24, offspring: 22
+        prowler: 12, spitter: 14, burster: 11, boiler: 15, crusher: 20,
+        ravager: 19, praetorian: 20, carrier: 22, palatine: 24, offspring: 22
       };
       const maxIntegrities = {
         drone: 150, runner: 140, warrior: 190, worker: 120,
-        prowler: 160, spitter: 150, burster: 130, crusher: 260,
-        praetorian: 240, palatine: 300, offspring: 250
+        prowler: 160, spitter: 150, burster: 130, boiler: 165, crusher: 260,
+        ravager: 250, praetorian: 240, carrier: 270, palatine: 300, offspring: 250
       };
 
       const cycle = new BiologicalCycleEntity({
@@ -40743,9 +40884,13 @@
       const praetorianButton = document.getElementById('btn-spawn-praetorian');
       const prowlerButton = document.getElementById('btn-spawn-prowler');
       const bursterButton = document.getElementById('btn-spawn-burster');
+      const boilerButton = document.getElementById('btn-spawn-boiler');
       const crusherButton = document.getElementById('btn-spawn-crusher');
+      const ravagerButton = document.getElementById('btn-spawn-ravager');
+      const carrierButton = document.getElementById('btn-spawn-carrier');
       const palatineButton = document.getElementById('btn-spawn-palatine');
       const offspringButton = document.getElementById('btn-spawn-offspring');
+      const empressButton = document.getElementById('btn-evolve-empress');
       const conquestButton = document.getElementById('btn-final-conquest');
       const oviButton = document.getElementById('btn-toggle-ovipositor');
       if (oviButton) {
@@ -40766,10 +40911,14 @@
       if (prowlerButton) prowlerButton.disabled = !this.canBeginCycle('prowler', 40);
       if (spitterButton) spitterButton.disabled = !this.canBeginCycle('spitter', 50);
       if (bursterButton) bursterButton.disabled = !this.canBeginCycle('burster', 35);
+      if (boilerButton) boilerButton.disabled = !this.canBeginCycle('boiler', 55);
       if (crusherButton) crusherButton.disabled = !this.canBeginCycle('crusher', 75);
+      if (ravagerButton) ravagerButton.disabled = !this.canBeginCycle('ravager', 85);
       if (praetorianButton) praetorianButton.disabled = !this.canBeginCycle('praetorian', 80);
+      if (carrierButton) carrierButton.disabled = !this.canBeginCycle('carrier', 95);
       if (palatineButton) palatineButton.disabled = !this.canBeginCycle('palatine', 110);
       if (offspringButton) offspringButton.disabled = !this.canBeginCycle('offspring', 95);
+      if (empressButton) empressButton.disabled = Boolean(this.queen?.isDestroyed || this.queen?.caste === 'empress' || this.biomass < 140);
       if (conquestButton) {
         conquestButton.disabled = !this.canCompleteConquest();
         const activeThreats = (window.gameInstance?.humans || []).filter((human) => !human.isCocooned && !human.isIncapacitated).length;
@@ -41664,10 +41813,10 @@
       if (completedStage !== this.currentStage || !completedStage.isCompleted || this.currentStageIndex >= 5) return;
       const nextStage = this.currentStageIndex + 1;
       const unlocksByStage = {
-        2: ['facehugger', 'codex_ovomorphe', 'codex_sens_biologique', 'codex_facehugger', 'codex_confinement', 'journal_01', 'journal_02'],
-        3: ['chestburster', 'codex_empreinte_hote', 'codex_chestburster', 'codex_mue', 'journal_03', 'journal_04'],
-        4: ['drone', 'runner', 'codex_drone', 'codex_runner', 'security_agent', 'thermal_operator', 'gyro_gunner', 'journal_05'],
-        5: ['worker', 'warrior', 'spitter', 'praetorian', 'queen', 'codex_worker', 'codex_warrior', 'codex_spitter', 'codex_praetorian', 'codex_queen', 'argos_synthetic', 'capture_commando', 'journal_06', 'journal_07', 'journal_08']
+        2: ['facehugger', 'codex_ovomorphe', 'codex_sens_biologique', 'codex_facehugger', 'codex_confinement', 'codex_daihotai_tractor', 'journal_01', 'journal_02', 'journal_kade_origin'],
+        3: ['chestburster', 'codex_empreinte_hote', 'codex_chestburster', 'codex_mue', 'codex_seegson_boltgun', 'journal_03', 'journal_04', 'journal_aster_quarantine'],
+        4: ['drone', 'runner', 'codex_drone', 'codex_runner', 'codex_stalker_lurker', 'codex_colonial_marshals', 'codex_f44aa_storm_rifle', 'security_agent', 'thermal_operator', 'gyro_gunner', 'journal_05'],
+        5: ['worker', 'warrior', 'spitter', 'praetorian', 'queen', 'codex_worker', 'codex_warrior', 'codex_spitter', 'codex_praetorian', 'codex_queen', 'codex_boiler_carrier', 'argos_synthetic', 'capture_commando', 'journal_06', 'journal_07', 'journal_08', 'journal_torv_palimpseste']
       };
       window.HiveSystems?.checkpoint(nextStage, unlocksByStage[nextStage] || [], {
         adultCaste: playerCreature.adultCaste,

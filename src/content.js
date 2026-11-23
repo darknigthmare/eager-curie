@@ -537,7 +537,7 @@
         actId: "ACT_5",
         title: "Lignée royale",
         description: "Achever un cycle royal au lieu de faire apparaître une Reine par une dépense de biomasse.",
-        playableCaste: "praetorian",
+        playableCaste: "queen",
         objectives: [
           {
             id: "secure_royal_host",
@@ -611,6 +611,13 @@
         description: "Vaincre la dernière force de confinement puis choisir le destin de la ruche.",
         playableCaste: "queen",
         objectives: [
+          {
+            id: "defeat_briareos",
+            eventId: "boss.briareos.defeated",
+            type: "primary",
+            label: "Détruire le synthétique de siège BRIAREOS-7",
+            required: true
+          },
           {
             id: "defeat_exosuit",
             eventId: "boss.mantis.defeated",
@@ -1849,6 +1856,66 @@
           unlock: { type: "event", targetId: "empress" }
         },
         {
+          id: "codex_stalker_lurker",
+          category: "biology",
+          title: "Traqueurs d'Ombre (Stalker & Lurker)",
+          body:
+            "Phénotypes d'embuscade spécialisés dans la traque silencieuse en conduits et plafonds sombres. " +
+            "Leur carapace mate absorbe les faisceaux de lampes-torches et leur bond foudroyant brise les lignes arrière.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_boiler_carrier",
+          category: "biology",
+          title: "Castes de Ruche Spécialisées (Boiler & Carrier)",
+          body:
+            "Le Boiler accumule un acide instable sous haute pression qui détone au contact thermique ou à la mort. " +
+            "Le Carrier porte des essaims parasites sur ses crêtes dorsales pour submerger les barricades.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_daihotai_tractor",
+          category: "vehicles",
+          title: "Tracteur Orbital Daihotai & Chargeur Logistique",
+          body:
+            "Véhicules utilitaires lourds à six roues motrices utilisés dans les baies de fret de Hadley's Hope et " +
+            "MNEMOSYNE pour le remorquage des conteneurs cryogéniques et le chargement des navettes.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_colonial_marshals",
+          category: "opposition",
+          title: "Bureau des Colonial Marshals (M37A2)",
+          body:
+            "Autorité fédérale de maintien de l'ordre dans les stations frontalières. Équipés du fusil à pompe M37A2 " +
+            "calibre 12, ils excellent en combat de coursive à bout portant mais s'exposent aux projections d'acide.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_seegson_boltgun",
+          category: "arsenal",
+          title: "Boulonneuse Industrielle Seegson (Maintenance Jack)",
+          body:
+            "Outil de rivetage haute pression détourné en arme de fortune par les survivants de la station. " +
+            "Capable de perforer une carapace à courte portée après mise sous tension pneumatique.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_f44aa_storm_rifle",
+          category: "arsenal",
+          title: "Fusil d'Assaut F44AA & Carabine de Pilote",
+          body:
+            "Fusil à impulsion léger doté d'un système de visée assistée par suivi thermique, déployé par les équipages " +
+            "orbitaux et les pilotes de navette UD-4L Cheyenne capables de coordonner un appui-feu.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
           id: "codex_specimen_xx121_respiration",
           category: "biology",
           title: "Spécimen XX121 — Métabolisme & Anoxie",
@@ -2102,6 +2169,45 @@
           "Les armes légères ne suffisent plus face aux castes blindées qui gardent la Reine. J'ai démarré l'exosquelette " +
           "Caterpillar P-5000 et soudé la passerelle d'évacuation au chalumeau industriel. Si la créature approche à moins de trois mètres, " +
           "les pinces hydrauliques peuvent encore la broyer... à condition qu'elle ne tranche pas les flexibles avec sa queue.",
+        unlockedByDefault: true,
+        unlock: { type: "default" }
+      },
+      {
+        id: "journal_kade_origin",
+        title: "Rapport d'Autopsie Préliminaire — Spécimen ÉCHO-12",
+        author: "Dr Imani Kade (Xénobiologiste en chef)",
+        location: "Laboratoire Médical Cryo-Nord",
+        timestamp: "Cycle 01 — 08:12",
+        text:
+          "L'ovomorphe transféré depuis la soute d'ÉCHO-12 présente une activité bio-électrique malgré trente ans de vide spatial. " +
+          "La Directrice Elian Torv m'a interdit d'activer le protocole de stérilisation thermique. Elle veut un hôte vivant " +
+          "pour observer la transcription du réflexe ADN. La membrane apicale vient de frémir...",
+        unlockedByDefault: true,
+        unlock: { type: "default" }
+      },
+      {
+        id: "journal_aster_quarantine",
+        title: "Verrouillage Tactique KAPPA & Masque Respiratoire",
+        author: "Surveillante Aster Rho (Commandement KAPPA)",
+        location: "Armurerie Nord-Est",
+        timestamp: "Cycle 01 — 11:40",
+        text:
+          "Le signal biométrique du Dr Kade s'est éteint dans l'aile médicale. J'ai ordonné le bouclage immédiat des cloisons " +
+          "étanches et fait doubler les attaches de nos masques respiratoires. Ce parasite vise directement les voies aériennes. " +
+          "Si Torv croit que mes hommes serviront d'incubateurs pour le Consortium IRISE, elle se trompe.",
+        unlockedByDefault: true,
+        unlock: { type: "default" }
+      },
+      {
+        id: "journal_torv_palimpseste",
+        title: "Directive PALIMPSESTE // Accord Secret IRISE–Weyland",
+        author: "Directrice Elian Torv",
+        location: "Noyau Central PALIMPSESTE",
+        timestamp: "Cycle 02 — 02:55",
+        text:
+          "L'organisme a engendré une Matriarche dans le secteur Sud-Est. J'ai transféré l'autorité complète au noyau PALIMPSESTE : " +
+          "déploiement du synthétique de siège BRIAREOS-7 et de l'exosquelette MANTIS-4. Si les trois relais de refroidissement " +
+          "tombent aux mains de la Ruche, la purge thermonucléaire sera neutralisée et MNEMOSYNE appartiendra à l'espèce XX121.",
         unlockedByDefault: true,
         unlock: { type: "default" }
       }

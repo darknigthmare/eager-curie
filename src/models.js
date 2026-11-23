@@ -4969,6 +4969,7 @@
       if (normalizedCaste === 'crab_drone' || normalizedCaste === 'crab') return this.createCrabDrone();
       if (normalizedCaste === 'charger') return this._createUprightAdult('charger');
       if (normalizedCaste === 'infiltrator') return this._createUprightAdult('infiltrator');
+      if (normalizedCaste === 'stalker') return this._createUprightAdult('pathogen_stalker');
       if (normalizedCaste === 'pathogen_stalker' || normalizedCaste === 'pathogen') return this._createUprightAdult('pathogen_stalker');
       if (normalizedCaste === 'protomorph') return this.createCovenantXenomorph();
       if (normalizedCaste === 'snake_alien' || normalizedCaste === 'snake') return this._createUprightAdult('snake_alien');
@@ -13262,6 +13263,40 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       root.add(this._box(darkMat, { x: 2.35, y: 0.45, z: 4.6 }, { x: 0, y: 0.28, z: 0 }, 'eev_heat_shield'));
       root.add(this._box(portMat, { x: 0.9, y: 0.42, z: 0.14 }, { x: 0, y: 1.4, z: 2.22 }, 'eev_viewport'));
       return this._finalize(root, { modelType: 'vehicle', subtype: 'eev_escape_pod', height: 2.0 });
+    }
+
+    // Wave 26 : Tracteur Orbital Lourd Daihotai (Aliens 1986 Hadley's Hope) & Chargeur Logistique Weyland
+    createDaihotaiTractor() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'daihotai_orbital_tractor';
+      const bodyMat = this._material('industrial', { color: 0xd97706, roughness: 0.48, metalness: 0.55 });
+      const darkMat = this._material('darkMetal', { color: 0x1e293b, roughness: 0.4, metalness: 0.82 });
+      const glassMat = this._material('emissiveAmber', { color: 0x38bdf8, emissiveIntensity: 0.65 });
+
+      root.add(this._box(bodyMat, { x: 2.8, y: 1.5, z: 5.4 }, { x: 0, y: 1.15, z: 0 }, 'daihotai_chassis', true));
+      root.add(this._box(bodyMat, { x: 2.4, y: 1.25, z: 2.2 }, { x: 0, y: 2.35, z: 0.9 }, 'daihotai_cab', true));
+      root.add(this._box(glassMat, { x: 2.1, y: 0.65, z: 0.14 }, { x: 0, y: 2.42, z: 2.02 }, 'daihotai_windshield'));
+      for (const side of [-1, 1]) {
+        for (const zW of [-1.8, 0, 1.8]) {
+          root.add(this._ellipsoid(darkMat, { x: 0.34, y: 0.58, z: 0.58 }, { x: side * 1.55, y: 0.58, z: zW }, `daihotai_wheel_${side}_${zW}`, 10));
+        }
+      }
+      return this._finalize(root, { modelType: 'vehicle', subtype: 'daihotai_tractor', height: 3.0 });
+    }
+
+    createWeylandCargoLoader() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'weyland_cargo_loader';
+      const frameMat = this._material('industrial', { color: 0x475569, roughness: 0.44, metalness: 0.72 });
+      const darkMat = this._material('darkMetal', { color: 0x0f172a, roughness: 0.38, metalness: 0.85 });
+      const accentMat = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 1.2 });
+
+      root.add(this._box(frameMat, { x: 2.6, y: 0.9, z: 4.2 }, { x: 0, y: 0.65, z: 0 }, 'loader_bed', true));
+      root.add(this._box(darkMat, { x: 2.2, y: 2.4, z: 0.45 }, { x: 0, y: 1.85, z: 1.9 }, 'loader_mast', true));
+      root.add(this._box(accentMat, { x: 0.35, y: 0.22, z: 0.35 }, { x: 0, y: 3.12, z: 1.9 }, 'loader_strobe'));
+      return this._finalize(root, { modelType: 'vehicle', subtype: 'weyland_cargo_loader', height: 3.2 });
     }
 
     // -------------------------------------------------------------------------

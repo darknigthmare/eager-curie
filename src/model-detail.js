@@ -156,8 +156,8 @@
   }
 
   function refitHumanSilhouette(root, profile, type, T) {
-    const combat = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando'].includes(type);
-    const bareHead = ['civilian', 'scientist'].includes(type);
+    const combat = ['guard', 'marine', 'smartgunner', 'incinerator', 'commando', 'uscm_combat_medic', 'uscm_field_commander', 'uscm_recon_sniper', 'uscm_sniper', 'uscm_heavy_flamer'].includes(type);
+    const bareHead = ['civilian', 'scientist', 'civilian_medic', 'maintenance_technician', 'xenobiologist', 'colonist', 'weyland_director_officer', 'weyland_research_director', 'working_joe', 'seegson_hazmat_joe', 'uscm_synthetic_bishop', 'weyland_combat_medic_synth'].includes(type);
     const removedMaterials = new Set();
     const discard = object => {
       if (!object) return;
@@ -336,7 +336,7 @@
     const synthetic = type === 'synthetic';
     if (!uniform || !armor || !dark || !skin) return null;
     const suitColors = { civilian: 0x687476, scientist: 0xaebdbe, guard: 0x46535d, marine: 0x56614b, smartgunner: 0x47533f, incinerator: 0x846249, synthetic: 0xbac1c0, commando: 0x29363c };
-    uniform.color.set(suitColors[type] || 0x687476);
+    uniform.color.set(suitColors[type] ?? profile.uniformColor ?? 0x687476);
     uniform.roughness = 0.88;
     armor.roughness = Math.max(armor.roughness, 0.48);
     skin.roughness = synthetic ? 0.55 : 0.7;

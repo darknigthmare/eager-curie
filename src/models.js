@@ -314,10 +314,17 @@
     mantis_4: 'powerloader',
     securitydrone: 'skimmer_scan_drone',
     security_drone: 'skimmer_scan_drone',
-    sentryturret: 'sentryTurret',
-    sentry_turret: 'sentryTurret',
+    sentryturret: 'sentry_turret',
+    sentry_turret: 'sentry_turret',
     palimpseste: 'palimpseste'
   });
+
+  // Wave 24 : Index compact sans underscores pour préserver tous les alias détaillés
+  const HUMAN_TYPE_ALIASES_COMPACT = Object.freeze(
+    Object.fromEntries(
+      Object.entries(HUMAN_TYPE_ALIASES).map(([k, v]) => [k.replace(/[^a-z0-9]+/g, ''), v])
+    )
+  );
 
   // ---------------------------------------------------------------------------
   // 1. FACTORY BOOTSTRAP & SHARED CONSTANTS
@@ -355,8 +362,9 @@
       const withoutAccents = typeof raw.normalize === 'function'
         ? raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         : raw;
+      if (HUMAN_TYPE_ALIASES[withoutAccents]) return HUMAN_TYPE_ALIASES[withoutAccents];
       const compact = withoutAccents.replace(/[^a-z0-9]+/g, '');
-      return HUMAN_TYPE_ALIASES[compact] || compact || 'civilian';
+      return HUMAN_TYPE_ALIASES[compact] || HUMAN_TYPE_ALIASES_COMPACT[compact] || withoutAccents || 'civilian';
     }
 
     // -------------------------------------------------------------------------
@@ -1456,6 +1464,32 @@
         return weapon;
       }
 
+      // Wave 24 : Équipements dédiés 1:1 (Exécutif WY/IRISE, Médecin, Technicien/Working Joe, Xénobiologiste)
+      if (['weyland_director_officer', 'weyland_research_director', 'irise_executive'].includes(type)) {
+        weapon.add(this._box(dark, { x: 0.14, y: 0.42, z: 0.56 }, { x: 0, y: -0.22, z: 0.08 }, 'exec_briefcase', true));
+        weapon.add(this._box(accent, { x: 0.16, y: 0.04, z: 0.12 }, { x: 0, y: -0.02, z: 0.08 }, 'exec_briefcase_latch', false));
+        weapon.userData.equipmentType = 'corporateBriefcase';
+        return weapon;
+      }
+      if (['civilian_medic', 'uscm_synthetic_bishop', 'weyland_combat_medic_synth'].includes(type)) {
+        weapon.add(this._box(metal, { x: 0.16, y: 0.24, z: 0.34 }, { x: 0, y: 0.05, z: 0.12 }, 'med_scanner_body', true));
+        weapon.add(this._box(accent, { x: 0.12, y: 0.03, z: 0.2 }, { x: 0, y: 0.18, z: 0.14 }, 'med_scanner_screen', false));
+        weapon.userData.equipmentType = 'medicalScanner';
+        return weapon;
+      }
+      if (['maintenance_technician', 'working_joe', 'seegson_hazmat_joe', 'seegson_industrial_joe'].includes(type)) {
+        weapon.add(this._segment(metal, new T.Vector3(0, -0.32, 0), new T.Vector3(0, 0.48, 0), 0.055, 0.065, 'pipe_wrench_shaft', 8));
+        weapon.add(this._box(dark, { x: 0.22, y: 0.14, z: 0.12 }, { x: 0.06, y: 0.52, z: 0 }, 'pipe_wrench_jaw', true));
+        weapon.userData.equipmentType = 'pipeWrench';
+        return weapon;
+      }
+      if (['xenobiologist', 'bio_researcher'].includes(type)) {
+        weapon.add(this._segment(metal, new T.Vector3(0, -0.2, 0), new T.Vector3(0, 0.28, 0), 0.12, 0.12, 'specimen_canister', 10));
+        weapon.add(this._ellipsoid(accent, { x: 0.09, y: 0.16, z: 0.09 }, { x: 0, y: 0.04, z: 0 }, 'specimen_canister_core', 8));
+        weapon.userData.equipmentType = 'specimenCanister';
+        return weapon;
+      }
+
       const weaponProfiles = {
         guard: {
           receiverWidth: 0.26,
@@ -1858,6 +1892,106 @@
           shoulderX: 0.58,
           hipX: 0.3,
           helmetScale: 0.96
+        },
+        // Wave 24 : Profils visuels 1:1 Civils spécialisés, Exécutifs WY/IRISE & Synthétiques
+        civilian_medic: {
+          uniformColor: 0x0d9488,
+          armorColor: 0xf8fafc,
+          torso: { x: 0.55, y: 0.82, z: 0.34 },
+          pelvis: { x: 0.44, y: 0.29, z: 0.3 },
+          chest: { x: 0.78, y: 0.5, z: 0.11 },
+          pack: { x: 0.52, y: 0.58, z: 0.2 },
+          shoulderX: 0.57,
+          hipX: 0.29,
+          helmetScale: 0.94
+        },
+        maintenance_technician: {
+          uniformColor: 0xd97706,
+          armorColor: 0x334155,
+          torso: { x: 0.6, y: 0.85, z: 0.36 },
+          pelvis: { x: 0.47, y: 0.3, z: 0.31 },
+          chest: { x: 0.86, y: 0.62, z: 0.14 },
+          pack: { x: 0.56, y: 0.64, z: 0.22 },
+          shoulderX: 0.6,
+          hipX: 0.31,
+          helmetScale: 0.98
+        },
+        xenobiologist: {
+          uniformColor: 0xe2e8f0,
+          armorColor: 0x0284c7,
+          torso: { x: 0.56, y: 0.85, z: 0.35 },
+          pelvis: { x: 0.45, y: 0.3, z: 0.31 },
+          chest: { x: 0.82, y: 0.58, z: 0.12 },
+          pack: { x: 0.54, y: 0.66, z: 0.2 },
+          shoulderX: 0.58,
+          hipX: 0.3,
+          helmetScale: 0.96
+        },
+        weyland_director_officer: {
+          uniformColor: 0x18181b,
+          armorColor: 0xb91c1c,
+          torso: { x: 0.57, y: 0.85, z: 0.34 },
+          pelvis: { x: 0.45, y: 0.3, z: 0.3 },
+          chest: { x: 0.78, y: 0.54, z: 0.1 },
+          pack: { x: 0.3, y: 0.3, z: 0.08 },
+          shoulderX: 0.59,
+          hipX: 0.3,
+          helmetScale: 0.92
+        },
+        weyland_research_director: {
+          uniformColor: 0x1e293b,
+          armorColor: 0xd97706,
+          torso: { x: 0.56, y: 0.84, z: 0.34 },
+          pelvis: { x: 0.45, y: 0.3, z: 0.3 },
+          chest: { x: 0.78, y: 0.54, z: 0.1 },
+          pack: { x: 0.32, y: 0.32, z: 0.08 },
+          shoulderX: 0.58,
+          hipX: 0.3,
+          helmetScale: 0.92
+        },
+        working_joe: {
+          uniformColor: 0x334155,
+          armorColor: 0x1e293b,
+          torso: { x: 0.6, y: 0.88, z: 0.36 },
+          pelvis: { x: 0.47, y: 0.31, z: 0.31 },
+          chest: { x: 0.84, y: 0.62, z: 0.12 },
+          pack: { x: 0.4, y: 0.46, z: 0.14 },
+          shoulderX: 0.61,
+          hipX: 0.31,
+          helmetScale: 0.96
+        },
+        seegson_hazmat_joe: {
+          uniformColor: 0xea580c,
+          armorColor: 0x7c2d12,
+          torso: { x: 0.64, y: 0.9, z: 0.38 },
+          pelvis: { x: 0.5, y: 0.32, z: 0.33 },
+          chest: { x: 0.92, y: 0.68, z: 0.16 },
+          pack: { x: 0.6, y: 0.72, z: 0.24 },
+          shoulderX: 0.64,
+          hipX: 0.32,
+          helmetScale: 1.02
+        },
+        uscm_synthetic_bishop: {
+          uniformColor: 0x3b82f6,
+          armorColor: 0xf1f5f9,
+          torso: { x: 0.57, y: 0.86, z: 0.34 },
+          pelvis: { x: 0.45, y: 0.3, z: 0.3 },
+          chest: { x: 0.8, y: 0.56, z: 0.11 },
+          pack: { x: 0.44, y: 0.5, z: 0.16 },
+          shoulderX: 0.58,
+          hipX: 0.3,
+          helmetScale: 0.94
+        },
+        weyland_combat_medic_synth: {
+          uniformColor: 0xf1f5f9,
+          armorColor: 0x0284c7,
+          torso: { x: 0.58, y: 0.86, z: 0.35 },
+          pelvis: { x: 0.46, y: 0.3, z: 0.31 },
+          chest: { x: 0.84, y: 0.6, z: 0.13 },
+          pack: { x: 0.56, y: 0.64, z: 0.2 },
+          shoulderX: 0.59,
+          hipX: 0.3,
+          helmetScale: 0.95
         },
         guard: {
           uniformColor: 0x475569,
@@ -3010,7 +3144,7 @@
         // Technicien Synthétique USCM type Bishop 341-B (Aliens 1986) : combinaison bleue Sulaco et scanner médical
         const sulacoBlue = this._material('fabric', { color: 0x1e3a8a, roughness: 0.65 });
         const scannerGlow = this._material('emissiveDisplay', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.0 });
-        root.add(this._box(sulacoBlue, { x: profile.torsoWidth * 1.04, y: 0.9, z: 0.48 }, { x: 0, y: torsoY + 0.05, z: 0 }, 'bishop_tech_jumpsuit', true));
+        root.add(this._box(sulacoBlue, { x: ((profile.torso?.x || 0.56) * 2) * 1.04, y: 0.9, z: 0.48 }, { x: 0, y: torsoY + 0.05, z: 0 }, 'bishop_tech_jumpsuit', true));
         root.add(this._box(dark, { x: 0.18, y: 0.12, z: 0.26 }, { x: -profile.shoulderX - 0.12, y: torsoY - 0.65, z: 0.36 }, 'bishop_biomedical_scanner'));
         root.add(this._box(scannerGlow, { x: 0.14, y: 0.04, z: 0.18 }, { x: -profile.shoulderX - 0.12, y: torsoY - 0.58, z: 0.36 }, 'bishop_scanner_screen'));
       } else if (type === 'weyland_ape_suit_specialist') {
@@ -3018,7 +3152,7 @@
         const apeRed = this._material('industrial', { color: 0xdc2626, roughness: 0.4, metalness: 0.45 });
         const apeWhite = this._material('lightMetal', { color: 0xf8fafc, roughness: 0.35, metalness: 0.5 });
         const goldGlass = this._material('emissiveAmber', { color: 0xfbbf24, emissive: 0xd97706, emissiveIntensity: 1.4 });
-        root.add(this._box(apeWhite, { x: profile.torsoWidth * 1.22, y: 1.05, z: 0.62 }, { x: 0, y: torsoY + 0.08, z: 0 }, 'ape_suit_heavy_plastron', true));
+        root.add(this._box(apeWhite, { x: ((profile.torso?.x || 0.56) * 2) * 1.22, y: 1.05, z: 0.62 }, { x: 0, y: torsoY + 0.08, z: 0 }, 'ape_suit_heavy_plastron', true));
         root.add(this._ellipsoid(apeRed, { x: 0.42, y: 0.44, z: 0.42 }, { x: 0, y: torsoY + 1.3, z: 0.04 }, 'ape_suit_sealed_hood', 14));
         root.add(this._box(goldGlass, { x: 0.28, y: 0.16, z: 0.1 }, { x: 0, y: torsoY + 1.28, z: 0.42 }, 'ape_suit_thermal_visor'));
         root.add(this._box(dark, { x: 0.14, y: 0.24, z: 0.88 }, { x: profile.shoulderX + 0.18, y: torsoY - 0.65, z: 0.48 }, 'ape_suit_capture_rifle', true));
@@ -3026,7 +3160,7 @@
         // Garde Synthétique Corporatif Weyland-Yutani (Alien: Romulus / Isolation)
         const corpGrey = this._material('industrial', { color: 0x334155, roughness: 0.45, metalness: 0.7 });
         const amberEye = this._material('emissiveAmber', { color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 2.2 });
-        root.add(this._box(corpGrey, { x: profile.torsoWidth * 1.1, y: 0.95, z: 0.52 }, { x: 0, y: torsoY + 0.06, z: 0 }, 'corp_synth_ballistic_vest', true));
+        root.add(this._box(corpGrey, { x: ((profile.torso?.x || 0.56) * 2) * 1.1, y: 0.95, z: 0.52 }, { x: 0, y: torsoY + 0.06, z: 0 }, 'corp_synth_ballistic_vest', true));
         root.add(this._box(amberEye, { x: 0.26, y: 0.07, z: 0.06 }, { x: 0, y: torsoY + 1.28, z: 0.36 }, 'corp_synth_optic_bar'));
         root.add(this._box(dark, { x: 0.11, y: 0.22, z: 0.78 }, { x: profile.shoulderX + 0.15, y: torsoY - 0.68, z: 0.46 }, 'corp_synth_f44aa_rifle', true));
       } else if (type === 'uscm_veteran_smartgunner') {
@@ -3036,7 +3170,7 @@
         const irLens = this._material('emissiveRed', { color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 2.2 });
         root.add(this._box(redBand, { x: 0.36, y: 0.09, z: 0.36 }, { x: 0, y: torsoY + 1.4, z: 0.04 }, 'vasquez_red_headband'));
         root.add(this._box(irLens, { x: 0.08, y: 0.06, z: 0.08 }, { x: 0.14, y: torsoY + 1.28, z: 0.36 }, 'vasquez_ir_monocle'));
-        root.add(this._box(oliveArmor, { x: profile.torsoWidth * 1.15, y: 0.85, z: 0.52 }, { x: 0, y: torsoY + 0.05, z: 0 }, 'vasquez_harness_rig', true));
+        root.add(this._box(oliveArmor, { x: ((profile.torso?.x || 0.56) * 2) * 1.15, y: 0.85, z: 0.52 }, { x: 0, y: torsoY + 0.05, z: 0 }, 'vasquez_harness_rig', true));
         root.add(this._cylinder(dark, 0.08, 0.08, 1.15, { x: profile.shoulderX + 0.2, y: torsoY - 0.55, z: 0.55 }, { x: Math.PI / 2, y: 0, z: 0 }, 'vasquez_m56_heavy_barrel', true));
       } else if (type === 'uscm_mortar_trooper') {
         // Artilleur Mortier Léger M402 USCM (Aliens: Dark Descent / Colonial Marines)
@@ -3049,14 +3183,14 @@
         // Directeur Scientifique Militaire type Dr. Wren / Gediman (Alien Resurrection) : blouse blanche et badge Oméga
         const labWhite = this._material('fabric', { color: 0xf8fafc, roughness: 0.45 });
         const omegaBadge = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.0 });
-        root.add(this._box(labWhite, { x: profile.torsoWidth * 1.12, y: 1.15, z: 0.5 }, { x: 0, y: torsoY - 0.05, z: 0 }, 'director_lab_trenchcoat', true));
+        root.add(this._box(labWhite, { x: ((profile.torso?.x || 0.56) * 2) * 1.12, y: 1.15, z: 0.5 }, { x: 0, y: torsoY - 0.05, z: 0 }, 'director_lab_trenchcoat', true));
         root.add(this._box(omegaBadge, { x: 0.1, y: 0.14, z: 0.04 }, { x: -0.2, y: torsoY + 0.3, z: 0.27 }, 'director_omega_clearance_badge'));
         root.add(this._box(dark, { x: 0.08, y: 0.16, z: 0.38 }, { x: profile.shoulderX + 0.12, y: torsoY - 0.68, z: 0.38 }, 'director_laser_pistol', true));
       } else if (type === 'weyland_bio_containment_synth') {
         // Synthétique de Confinement Biologique Lourd en scaphandre jaune anti-acide (Alien: Romulus / Isolation)
         const bioYellow = this._material('hazardYellow', { color: 0xeab308, roughness: 0.35, metalness: 0.45 });
         const visorCyan = this._material('emissiveDisplay', { color: 0x22d3ee, emissive: 0x0891b2, emissiveIntensity: 1.9 });
-        root.add(this._box(bioYellow, { x: profile.torsoWidth * 1.2, y: 1.05, z: 0.6 }, { x: 0, y: torsoY + 0.08, z: 0 }, 'bio_synth_sealed_suit', true));
+        root.add(this._box(bioYellow, { x: ((profile.torso?.x || 0.56) * 2) * 1.2, y: 1.05, z: 0.6 }, { x: 0, y: torsoY + 0.08, z: 0 }, 'bio_synth_sealed_suit', true));
         root.add(this._ellipsoid(bioYellow, { x: 0.4, y: 0.42, z: 0.4 }, { x: 0, y: torsoY + 1.3, z: 0.04 }, 'bio_synth_helmet_dome', 14));
         root.add(this._box(visorCyan, { x: 0.28, y: 0.14, z: 0.08 }, { x: 0, y: torsoY + 1.28, z: 0.4 }, 'bio_synth_hud_visor'));
         root.add(this._cylinder(dark, 0.08, 0.1, 0.9, { x: profile.shoulderX + 0.18, y: torsoY - 0.65, z: 0.5 }, { x: Math.PI / 2, y: 0, z: 0 }, 'bio_synth_foam_cannon', true));
@@ -3071,7 +3205,7 @@
         // Unité Anti-Émeute Coloniale USCM (Colonial Marines / Dark Descent) : visière polycarbonate et bâton électrique
         const navyArmor = this._material('darkMetal', { color: 0x1e293b, roughness: 0.5, metalness: 0.75 });
         const arcBlue = this._material('emissiveBlue', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 2.6 });
-        root.add(this._box(navyArmor, { x: profile.torsoWidth * 1.18, y: 0.95, z: 0.54 }, { x: 0, y: torsoY + 0.05, z: 0 }, 'riot_heavy_chestplate', true));
+        root.add(this._box(navyArmor, { x: ((profile.torso?.x || 0.56) * 2) * 1.18, y: 0.95, z: 0.54 }, { x: 0, y: torsoY + 0.05, z: 0 }, 'riot_heavy_chestplate', true));
         root.add(this._cylinder(dark, 0.045, 0.045, 0.85, { x: profile.shoulderX + 0.16, y: torsoY - 0.55, z: 0.48 }, { x: Math.PI / 4, y: 0, z: 0 }, 'riot_stun_baton_shaft', true));
         root.add(this._ellipsoid(arcBlue, { x: 0.07, y: 0.07, z: 0.07 }, { x: profile.shoulderX + 0.16, y: torsoY - 0.25, z: 0.78 }, 'riot_stun_baton_tip'));
       } else if (type === 'weyland_xenoborg_handler') {
@@ -3085,7 +3219,7 @@
         // Opérateur Fantôme Black Ops Weyland-Yutani (Dark Descent / Fireteam Elite) : NVG tri-focale et carabine silencieuse
         const stealthBlack = this._material('darkMetal', { color: 0x09090b, roughness: 0.35, metalness: 0.8 });
         const nvgGreen = this._material('emissiveGreen', { color: 0x22c55e, emissive: 0x15803d, emissiveIntensity: 2.8 });
-        root.add(this._box(stealthBlack, { x: profile.torsoWidth * 1.08, y: 0.9, z: 0.48 }, { x: 0, y: torsoY + 0.05, z: 0 }, 'black_ops_stealth_rig', true));
+        root.add(this._box(stealthBlack, { x: ((profile.torso?.x || 0.56) * 2) * 1.08, y: 0.9, z: 0.48 }, { x: 0, y: torsoY + 0.05, z: 0 }, 'black_ops_stealth_rig', true));
         for (let g = -1; g <= 1; g++) {
           root.add(this._cylinder(nvgGreen, 0.035, 0.035, 0.1, { x: g * 0.09, y: torsoY + 1.28 + (g === 0 ? 0.05 : 0), z: 0.38 }, { x: Math.PI / 2, y: 0, z: 0 }, `black_ops_trifocal_nvg_${g + 1}`));
         }
@@ -3103,7 +3237,7 @@
         // Marshal Colonial type Waits (Alien: Isolation / Hadley's Hope) : veste cuir, étoile dorée et fusil à pompe M37A2
         const leather = this._material('fabric', { color: 0x451a03, roughness: 0.68 });
         const badgeGold = this._material('emissiveAmber', { color: 0xfacc15, emissive: 0xca8a04, emissiveIntensity: 1.8 });
-        root.add(this._box(leather, { x: profile.torsoWidth * 1.12, y: 0.92, z: 0.46 }, { x: 0, y: torsoY + 0.04, z: 0 }, 'marshal_leather_duster', true));
+        root.add(this._box(leather, { x: ((profile.torso?.x || 0.56) * 2) * 1.12, y: 0.92, z: 0.46 }, { x: 0, y: torsoY + 0.04, z: 0 }, 'marshal_leather_duster', true));
         root.add(this._cylinder(badgeGold, 0.055, 0.055, 0.02, { x: -0.18, y: torsoY + 0.28, z: 0.26 }, { x: Math.PI / 2, y: 0, z: 0 }, 'marshal_star_badge'));
         root.add(this._box(dark, { x: 0.09, y: 0.16, z: 0.82 }, { x: profile.shoulderX + 0.15, y: torsoY - 0.66, z: 0.48 }, 'marshal_m37a2_shotgun', true));
       } else if (type === 'weyland_cyborg_enforcer') {
@@ -3116,7 +3250,7 @@
         // Incinérateur Biologique Weyland-Yutani en scaphandre aluminisé ignifugé (Alien 3 / Romulus)
         const silverSuit = this._material('lightMetal', { color: 0xe2e8f0, roughness: 0.22, metalness: 0.88 });
         const goldVisor = this._material('emissiveAmber', { color: 0xfbbf24, emissive: 0xd97706, emissiveIntensity: 1.6 });
-        root.add(this._box(silverSuit, { x: profile.torsoWidth * 1.22, y: 1.02, z: 0.58 }, { x: 0, y: torsoY + 0.06, z: 0 }, 'hazmat_aluminized_suit', true));
+        root.add(this._box(silverSuit, { x: ((profile.torso?.x || 0.56) * 2) * 1.22, y: 1.02, z: 0.58 }, { x: 0, y: torsoY + 0.06, z: 0 }, 'hazmat_aluminized_suit', true));
         root.add(this._box(goldVisor, { x: 0.3, y: 0.16, z: 0.08 }, { x: 0, y: torsoY + 1.28, z: 0.4 }, 'hazmat_gold_heat_visor'));
         root.add(this._cylinder(dark, 0.075, 0.095, 0.92, { x: profile.shoulderX + 0.18, y: torsoY - 0.65, z: 0.52 }, { x: Math.PI / 2, y: 0, z: 0 }, 'hazmat_bio_incinerator_nozzle', true));
       } else if (type === 'uscm_cryo_sweeper') {
@@ -3138,7 +3272,7 @@
       } else if (type === 'weyland_heavy_incinerator_synth') {
         // Synthétique Incinérateur Lourd Weyland-Yutani (Isolation / Fireteam Elite) : châssis or/noir et double brûleur
         const flameOrange = this._material('emissiveFlame', { color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 2.5 });
-        root.add(this._box(armor, { x: profile.torsoWidth * 1.25, y: 1.06, z: 0.62 }, { x: 0, y: torsoY + 0.08, z: 0 }, 'heavy_pyro_synth_chassis', true));
+        root.add(this._box(armor, { x: ((profile.torso?.x || 0.56) * 2) * 1.25, y: 1.06, z: 0.62 }, { x: 0, y: torsoY + 0.08, z: 0 }, 'heavy_pyro_synth_chassis', true));
         for (let b = -1; b <= 1; b += 2) {
           root.add(this._cylinder(flameOrange, 0.065, 0.08, 0.88, { x: b * (profile.shoulderX + 0.16), y: torsoY - 0.64, z: 0.5 }, { x: Math.PI / 2, y: 0, z: 0 }, `heavy_pyro_twin_flamer_${b}`, true));
         }
@@ -3178,7 +3312,7 @@
       } else if (type === 'weyland_synth_overseer') {
         // Superviseur Synthétique Exécutif Weyland-Yutani (Isolation / Romulus) : col doré corporate et oeil ambre
         const execGold = this._material('emissiveAmber', { color: 0xfacc15, emissive: 0xca8a04, emissiveIntensity: 2.2 });
-        root.add(this._box(execGold, { x: profile.torsoWidth * 1.15, y: 0.22, z: 0.48 }, { x: 0, y: torsoY + 0.42, z: 0 }, 'synth_overseer_gold_mantle', true));
+        root.add(this._box(execGold, { x: ((profile.torso?.x || 0.56) * 2) * 1.15, y: 0.22, z: 0.48 }, { x: 0, y: torsoY + 0.42, z: 0 }, 'synth_overseer_gold_mantle', true));
         root.add(this._box(execGold, { x: 0.24, y: 0.1, z: 0.08 }, { x: 0, y: torsoY + 1.28, z: 0.38 }, 'synth_overseer_optic_bar'));
       } else if (type === 'weyland_mutagen_flamer_specialist') {
         // Spécialiste Incinérateur Mutagène Weyland-Yutani (Prometheus / Fireteam) : cuves dorsales vertes et lanceur
@@ -3229,7 +3363,7 @@
       } else if (type === 'weyland_praetorian_droid') {
         // Droïde de Garde Prétorien Weyland-Yutani (AvP / Dark Descent)
         const royalGold = this._material('emissiveAmber', { color: 0xfacc15, emissive: 0xca8a04, emissiveIntensity: 2.4 });
-        root.add(this._box(royalGold, { x: profile.torsoWidth * 1.24, y: 0.28, z: 0.54 }, { x: 0, y: torsoY + 0.45, z: 0 }, 'praetorian_droid_gold_crest_mantle', true));
+        root.add(this._box(royalGold, { x: ((profile.torso?.x || 0.56) * 2) * 1.24, y: 0.28, z: 0.54 }, { x: 0, y: torsoY + 0.45, z: 0 }, 'praetorian_droid_gold_crest_mantle', true));
         root.add(this._cylinder(royalGold, 0.08, 0.08, 1.08, { x: profile.shoulderX + 0.18, y: torsoY - 0.64, z: 0.56 }, { x: Math.PI / 2, y: 0, z: 0 }, 'praetorian_droid_twin_plasma', true));
       } else if (type === 'uscm_smart_missile_spotter') {
         // Observateur de Guidage Missiles Intelligents USCM (Aliens / Dark Descent)
@@ -3271,7 +3405,7 @@
       } else if (type === 'weyland_exec_security_synth') {
         // Synthétique Garde du Corps Exécutif Weyland-Yutani (Alien 3 / Isolation)
         const chromeGold = this._material('emissiveAmber', { color: 0xfde047, emissive: 0xca8a04, emissiveIntensity: 2.3 });
-        root.add(this._box(chromeGold, { x: profile.torsoWidth * 1.18, y: 0.94, z: 0.52 }, { x: 0, y: torsoY + 0.06, z: 0 }, 'exec_synth_gold_chrome_cuirass', true));
+        root.add(this._box(chromeGold, { x: ((profile.torso?.x || 0.56) * 2) * 1.18, y: 0.94, z: 0.52 }, { x: 0, y: torsoY + 0.06, z: 0 }, 'exec_synth_gold_chrome_cuirass', true));
         root.add(this._cylinder(dark, 0.06, 0.06, 0.96, { x: profile.shoulderX + 0.16, y: torsoY - 0.64, z: 0.52 }, { x: Math.PI / 2, y: 0, z: 0 }, 'exec_synth_mag_rifle', true));
       } else if (type === 'uscm_combat_cyberneticist') {
         // Cyber-Ingénieur de Guerre Électronique USCM (Aliens: Defiance / Dark Descent)
@@ -3316,7 +3450,7 @@
       } else if (type === 'weyland_sublevel_heavy_sentry_synth') {
         // Synthétique Sentinelle Blindé des Sous-Sols Weyland-Yutani (Alien: Isolation / Romulus)
         const sentryRed = this._material('emissiveRed', { color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 2.4 });
-        root.add(this._box(sentryRed, { x: profile.torsoWidth * 1.2, y: 0.96, z: 0.55 }, { x: 0, y: torsoY + 0.08, z: 0 }, 'sentry_heavy_ballistic_chestplate', true));
+        root.add(this._box(sentryRed, { x: ((profile.torso?.x || 0.56) * 2) * 1.2, y: 0.96, z: 0.55 }, { x: 0, y: torsoY + 0.08, z: 0 }, 'sentry_heavy_ballistic_chestplate', true));
         root.add(this._cylinder(dark, 0.08, 0.12, 1.1, { x: profile.shoulderX + 0.18, y: torsoY - 0.62, z: 0.52 }, { x: Math.PI / 2, y: 0, z: 0 }, 'sentry_shock_suppression_maul', true));
       } else if (type === 'uscm_point_defense_technician') {
         // Technicien de Défense Rapprochée USCM (Aliens: Dark Descent)
@@ -3337,7 +3471,7 @@
         // Armure Mécanisée Cryo-Confinement Weyland-Yutani (Aliens vs Predator / Isolation)
         const cryoCyan = this._material('emissiveCyan', { color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 2.6 });
         const exoMetal = this._material('darkMetal', { color: 0x1e293b, roughness: 0.45, metalness: 0.88 });
-        root.add(this._box(exoMetal, { x: profile.torsoWidth * 1.35, y: 1.05, z: 0.6 }, { x: 0, y: torsoY + 0.1, z: 0 }, 'cryo_mech_heavy_carapace', true));
+        root.add(this._box(exoMetal, { x: ((profile.torso?.x || 0.56) * 2) * 1.35, y: 1.05, z: 0.6 }, { x: 0, y: torsoY + 0.1, z: 0 }, 'cryo_mech_heavy_carapace', true));
         root.add(this._cylinder(cryoCyan, 0.12, 0.12, 0.95, { x: profile.shoulderX + 0.22, y: torsoY - 0.6, z: 0.5 }, { x: Math.PI / 2, y: 0, z: 0 }, 'cryo_vapor_cannon_arm', true));
       } else if (type === 'uscm_forward_sensor_operator') {
         // Opérateur Détecteur Avancé & Relais Radar USCM (Aliens: Fireteam Elite / Colonial Marines)

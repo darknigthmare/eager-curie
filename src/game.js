@@ -32120,9 +32120,15 @@
         'weyland_elite_infiltrator_centurion'
       ].includes(this.type);
     }
-    takeDamage(dmg, attacker = null) {
+    takeDamage(dmg, attacker = null, damageType = 'ballistic') {
       if (this.isCocooned || this.isIncapacitated) return false;
       let appliedDamage = Math.max(0, dmg);
+
+      // Wave 24 : Immunité thermique complète du Hazmat Working Joe Seegson (Alien: Isolation)
+      if (this.type === 'seegson_hazmat_joe' && (damageType === 'fire' || ['cleaner', 'incinerator', 'uscm_heavy_flamer'].includes(attacker?.type))) {
+        window.HiveSystems?.vfx?.floatingText?.(this.x, 2.7, this.z, 'COMBINAISON IGNIFUGÉE SEEGSON !', '#f97316', false);
+        return false;
+      }
 
       // Bouclier cinétique anti-émeute Phalanx : -65% dégâts frontaux
       if (this.type === 'uscm_phalanx_shield' && attacker) {
@@ -32672,17 +32678,91 @@
         this.aimDisruptTimer -= safeDelta;
       }
 
-      // Aura de Commandement USCM Field Commander
+      // Aura de Commandement USCM Field Commander (Wave 24 : barks tactiques d'escouade)
       if (this.type === 'uscm_field_commander') {
         this.commanderBuffTimer = (this.commanderBuffTimer || 0) - safeDelta;
         if (this.commanderBuffTimer <= 0) {
           this.commanderBuffTimer = 2.5;
+          let buffed = 0;
           (window.gameInstance?.humans || []).forEach((h) => {
             if (h !== this && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 12) {
               h.stress = Math.max(0, (h.stress || 0) - 15);
               h.aimDisruptTimer = 0;
+              buffed++;
             }
           });
+          if (buffed > 0 && Math.random() < 0.35) {
+            const cmdBarks = ['TENEZ LA LIGNE ! FEU CONCENTRÉ !', 'SECTION KAPPA, NE ROMPEZ PAS LA FORMATION !', 'COUVREZ LES FLANCS ! GARDEZ VOTRE SANG-FROID !'];
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, cmdBarks[Math.floor(Math.random() * cmdBarks.length)], '#38bdf8', false);
+          }
+        }
+      }
+
+      // Wave 24 : Rôles PNJ spécialisés 1:1 (Médecin civil, Androïde médical, Technicien maintenance, Exécutif WY/IRISE "Burke" & Drone autonome)
+      if (['civilian_medic', 'weyland_combat_medic_synth', 'uscm_synthetic_bishop'].includes(this.type)) {
+        this.medicHealCooldown = Math.max(0, (this.medicHealCooldown || 0) - safeDelta);
+        if (this.medicHealCooldown <= 0) {
+          const patient = (window.gameInstance?.humans || []).find((h) => (
+            h !== this && !h.isIncapacitated && !h.isCocooned && h.hp < (h.maxHp || 100) && Math.hypot(h.x - this.x, h.z - this.z) <= 9.0
+          ));
+          if (patient) {
+            this.medicHealCooldown = 5.5;
+            const healAmt = this.isSynthetic?.() ? 30 : 25;
+            patient.hp = Math.min(patient.maxHp || 100, patient.hp + healAmt);
+            patient.stress = Math.max(0, (patient.stress || 0) - 25);
+            window.HiveSystems?.vfx?.ring?.(patient.x, patient.z, 0x22c55e, 2.2);
+            const medBark = this.isSynthetic?.() ? 'Intégrité organique restaurée. Reprise du protocole.' : 'JE VOUS STABILISE ! TENEZ BON !';
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.0, this.z, medBark, '#22c55e', false);
+          }
+        }
+      }
+
+      if (this.type === 'maintenance_technician') {
+        this.techSealCooldown = Math.max(0, (this.techSealCooldown || 0) - safeDelta);
+        if (this.techSealCooldown <= 0 && (this.stress || 0) > 25) {
+          const openDoor = (stationMap.blastDoors || []).find((d) => d.isOpen && !d.isWelded && Math.hypot(d.x - this.x, d.z - this.z) <= 6.0);
+          if (openDoor) {
+            this.techSealCooldown = 12.0;
+            stationMap.setBlastDoorState?.(openDoor, false);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 2.9, this.z, 'JE VERROUILLE LA CLOISON !', '#f59e0b', false);
+          }
+        }
+      }
+
+      if (['weyland_director_officer', 'weyland_research_director', 'irise_executive'].includes(this.type)) {
+        this.execProtocolCooldown = Math.max(0, (this.execProtocolCooldown || 0) - safeDelta);
+        const threatDist = Math.hypot(playerCreature.x - this.x, playerCreature.z - this.z);
+        if (threatDist <= 15 && this.execProtocolCooldown <= 0) {
+          this.execProtocolCooldown = 9.0;
+          // Archétype "Burke" : ferme les portes blindées derrière lui (même sur ses alliés) et alerte les gardes/synthétiques
+          const nearDoor = (stationMap.blastDoors || []).find((d) => d.isOpen && Math.hypot(d.x - this.x, d.z - this.z) <= 8.5);
+          if (nearDoor) {
+            stationMap.setBlastDoorState?.(nearDoor, false);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'PROTOCOLE DE QUARANTAINE ! FERMEZ CETTE PORTE !', '#fbbf24', true);
+          } else {
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'SÉCURITÉ ! PROTÉGEZ LES ACTIFS DE LA COMPAGNIE !', '#fbbf24', true);
+          }
+          (window.gameInstance?.humans || []).forEach((ally) => {
+            if (ally !== this && !ally.isIncapacitated && !ally.isCocooned && Math.hypot(ally.x - this.x, ally.z - this.z) <= 22) {
+              ally.aiState = 'CHASE';
+              ally.targetPos = { x: playerCreature.x, z: playerCreature.z };
+            }
+          });
+          this.aiState = 'FLEE';
+        }
+      }
+
+      if (this.type === 'security_drone') {
+        if (this.mesh) this.mesh.position.y = 2.6 + Math.sin(performance.now() * 0.004 + (this.id || 0)) * 0.25;
+        this.droneScanTimer = (this.droneScanTimer || 0) - safeDelta;
+        if (this.droneScanTimer <= 0) {
+          this.droneScanTimer = 3.2;
+          audioManager.playDroneScannerBeep?.(this.x, this.z);
+          window.HiveSystems?.vfx?.ring?.(this.x, this.z, 0x06b6d4, 6.5);
+          if (Math.hypot(playerCreature.x - this.x, playerCreature.z - this.z) <= 8.5 && playerCreature.isCamouflaged) {
+            playerCreature.isCamouflaged = false;
+            window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 3.1, playerCreature.z, 'CAMOUFLAGE RÉVÉLÉ PAR DRONE !', '#06b6d4', true);
+          }
         }
       }
 
@@ -33916,6 +33996,7 @@
             humans.forEach((h) => {
               if (h !== this && !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 15) {
                 h.accuracyBoost = 1.3;
+                h.accuracyBoostTimer = 6.0;
               }
             });
 
@@ -34033,7 +34114,8 @@
       const isWorkingJoeUnit = this.type.includes('seegson') || this.type.includes('working_joe');
       const holdMaxDist = this.type === 'powerloader' ? 3.5 : (isWorkingJoeUnit ? 2.4 : 12);
       const shouldHoldAttackPosition = !this.isCyberHound && this.aiState === 'ATTACK' && hasLineOfSight && distToPlayer <= holdMaxDist;
-      if (dist > 0.5 && !shouldHoldAttackPosition) {
+      const isStationaryTurret = ['sentry_turret', 'turret', 'sentry_gun'].includes(this.type);
+      if (dist > 0.5 && !shouldHoldAttackPosition && !isStationaryTurret) {
         const baseSpeed = isWorkingJoeUnit
           ? 0.055
           : (this.isLured ? 0.12 : (this.type === 'powerloader' ? (this.aiState === 'ATTACK' ? 0.078 : 0.06) : (this.isCyberHound ? 0.16 : 0.08)));
@@ -35459,6 +35541,18 @@
         serviceAnimal.createMesh();
         window.gameInstance.humans.push(serviceAnimal);
       }
+      // Wave 24 : Civils spécialisés en patrouille dans les secteurs techniques (Acte II)
+      if (window.gameInstance && !window.gameInstance.humans.some((human) => human.type === 'maintenance_technician')) {
+        const eng = new HumanAI(13, 'maintenance_technician', 24, 16, 'Ingénieur Maintenance O. Vance');
+        eng.hp = eng.maxHp = 85;
+        eng.hostEligibility = 'viable';
+        eng.createMesh();
+        const xenoBio = new HumanAI(14, 'xenobiologist', -16, 26, 'Xénobiologiste Dr M. Vance-Sato');
+        xenoBio.hp = xenoBio.maxHp = 80;
+        xenoBio.hostEligibility = 'viable';
+        xenoBio.createMesh();
+        window.gameInstance.humans.push(eng, xenoBio);
+      }
       this.updateHUD();
       appendSensorLog('[FACEHUGGER] Rejoignez une cible viable, bondissez puis maintenez l’agrippement.', 'bio');
       window.HiveSystems?.setMission(2, 0, 'Approcher un hôte viable sans toucher les équipes de capture.');
@@ -36349,8 +36443,13 @@
       tech.patrolOrigin = { x: spawnX, z: spawnZ };
       tech.createMesh();
       tech.lureTowards(playerCreature.x, playerCreature.z);
+      const med = new HumanAI(341, 'civilian_medic', spawnX + 3.2, spawnZ - 2.4, 'Médecin MedBay Dr Clara Solis');
+      med.hp = med.maxHp = 65;
+      med.hostEligibility = 'viable';
+      med.patrolOrigin = { x: spawnX + 3.2, z: spawnZ - 2.4 };
+      med.createMesh();
       this.investigator = tech;
-      window.gameInstance.humans.push(tech);
+      window.gameInstance.humans.push(tech, med);
       audioManager.playRadioChatter?.();
       showToast('INTRUSION AUDITIVE : Un technicien s\'approche du laboratoire médical !');
       appendSensorLog('[ÉCOUTEURS] Pas précipités dans le couloir d\'accès. Un membre d\'équipage investigue les bruits.', 'bio');
@@ -36524,7 +36623,9 @@
           new HumanAI(96, 'guard', -30, 18, 'Agent Arden Cole'),
           new HumanAI(95, 'synthetic', 28, 25, 'Synthétique de sécurité Rook-7'),
           new HumanAI(87, 'uscm_hazmat_tech', -18, 15, 'Technicien Hazmat USCM Perez - Mousse Ignifuge & Neutralisante'),
-          new HumanAI(94, 'labhound', 36, -22, 'Animal de service Q-4')
+          new HumanAI(94, 'labhound', 36, -22, 'Animal de service Q-4'),
+          new HumanAI(101, 'working_joe', 10, 28, 'Automate Seegson Working Joe #412'),
+          new HumanAI(102, 'weyland_director_officer', -12, -24, 'Représentant Exécutif C. Burke-IRISE')
         ];
         initialOccupants[3].hp = initialOccupants[3].maxHp = 80;
         initialOccupants.forEach((occupant) => occupant.createMesh());
@@ -39633,7 +39734,9 @@
           new HumanAI(93, 'weyland_security_taser', 12, -26, 'Garde Taser Weyland-Yutani Briggs'),
           new HumanAI(84, 'weyland_containment_squad', -25, -15, 'Commando Confinement Miller - Filets Cryogéniques Weyland'),
           new HumanAI(86, 'weyland_drone_operator', 16, -10, 'Opérateur Drones Weyland Giger - Scan Sonar Skimmer & EMP'),
-          new HumanAI(88, 'weyland_cyber_hound', -22, -30, 'Molosse Cybernétique Weyland-Yutani Cerberus-1')
+          new HumanAI(88, 'weyland_cyber_hound', -22, -30, 'Molosse Cybernétique Weyland-Yutani Cerberus-1'),
+          new HumanAI(103, 'seegson_hazmat_joe', 4, -22, 'Working Joe Hazmat Seegson #88 (Ignifugé)'),
+          new HumanAI(104, 'security_drone', 20, -18, 'Drone Skimmer Autonome SK-09')
         ];
         wave1.forEach((e) => {
           e.createMesh();
@@ -39642,20 +39745,22 @@
         window.gameInstance.humans.push(...wave1);
         audioManager.playRadioChatter?.();
         audioManager.playSecurityAlarmBeep?.();
-        showToast('ALERTE SÉCURITÉ : Équipe de contention et filets cryogéniques Weyland-Yutani déployée !');
-        appendSensorLog('[RENFORTS SÉCURITÉ] Miller, Briggs et l\'opérateur Giger entrent par le sas de quarantaine.', 'alert');
+        showToast('ALERTE SÉCURITÉ : Équipe de contention, Hazmat Working Joe & Drone Skimmer déployés !');
+        appendSensorLog('[RENFORTS SÉCURITÉ] Miller, Briggs, Working Joe Hazmat et Drone Skimmer entrent par le sas de quarantaine.', 'alert');
         window.HiveSystems?.narrative('WEYLAND SÉCURITÉ', 'Miller à toutes les unités. Organisme hostile repéré. Préparez les filets, Ordre 937 en vigueur !');
       }
 
-      // VAGUE 2 : Section de choc USCM (Smartgunner, Incinérateur, Sniper & Génie)
+      // VAGUE 2 : Section de choc USCM (Smartgunner, Incinérateur, Sniper Recon, Medic, Commander & Génie)
       // Se déclenche si : 3 ennemis neutralisés OU 1 cocon établi OU Alarme >= 4 OU après 90s
       if (!this.spawnedWaves.wave2USCM && (neutralized >= 3 || this.capturedHosts >= 1 || alarmLvl >= 4 || this.waveTimer >= 90)) {
         this.spawnedWaves.wave2USCM = true;
         const wave2 = [
           new HumanAI(98, 'smartgunner', -14, -12, 'Artilleuse Lena Ortiz'),
           new HumanAI(97, 'incinerator', 24, -2, 'Opérateur thermique Juno Pike'),
-          new HumanAI(85, 'uscm_sniper', 35, 25, 'Tireur d\'Élite USCM Dietrich - Fusil Sniper M42A Laser'),
-          new HumanAI(82, 'uscm_combat_engineer', -6, 16, 'Caporal-Chef Vance - Ingénieur de Combat USCM')
+          new HumanAI(85, 'uscm_recon_sniper', 35, 25, 'Tireur d\'Élite Recon Dietrich - Désignation Laser M42A'),
+          new HumanAI(82, 'uscm_combat_engineer', -6, 16, 'Caporal-Chef Vance - Ingénieur de Combat USCM'),
+          new HumanAI(105, 'uscm_combat_medic', -18, -6, 'Infirmier Tactique USCM Hollis'),
+          new HumanAI(106, 'uscm_field_commander', -10, -16, 'Lieutenant Gorman — Commandant de Section')
         ];
         wave2.forEach((e) => {
           e.createMesh();
@@ -39664,8 +39769,8 @@
         window.gameInstance.humans.push(...wave2);
         audioManager.playAlarmSiren?.();
         audioManager.playSmartgunServo?.(playerCreature.x, playerCreature.z);
-        showToast('SECTION DE COMBAT USCM : Déploiement tactique M56 Smartgun & M240 Incinerator !');
-        appendSensorLog('[SECTION USCM] Ortiz, Pike, Dietrich et Vance prennent position dans les coursives.', 'alert');
+        showToast('SECTION DE COMBAT USCM : Déploiement tactique complet (Commander, Medic, Recon Sniper, M56 & M240) !');
+        appendSensorLog('[SECTION USCM] Lt Gorman, Ortiz, Pike, Dietrich, Hollis et Vance prennent position dans les coursives.', 'alert');
         window.HiveSystems?.narrative('LENA ORTIZ', 'Contact radar confirmé sur le tracker M56 ! Pike, sécurise les angles au lance-flammes !');
       }
 
@@ -39678,7 +39783,9 @@
           new HumanAI(91, 'weyland_commando_mk2', -35, -20, 'Commando Lourd Weyland-Yutani Vance - Armure MK-II & XM99'),
           new HumanAI(83, 'uscm_heavy_flamer', -10, 20, 'Sergent-Chef Ferro - Heavy Flamer M240A1'),
           new HumanAI(90, 'weyland_steel_team_synth', -40, 40, 'Synthétique Steel Team T-01 - Lame Plasma & Concussion'),
-          new HumanAI(89, 'weyland_steel_team_synth', 38, -32, 'Synthétique Steel Team T-02 - Lame Plasma & Concussion')
+          new HumanAI(89, 'weyland_steel_team_synth', 38, -32, 'Synthétique Steel Team T-02 - Lame Plasma & Concussion'),
+          new HumanAI(107, 'weyland_combat_medic_synth', -32, -16, 'Androïde Médical Bishop-M4'),
+          new HumanAI(108, 'weyland_research_director', -38, -24, 'Directeur Bio-Armes Dr E. Torv')
         ];
         wave3.forEach((e) => {
           e.createMesh();
@@ -40216,7 +40323,9 @@
           new HumanAI(202, 'incinerator', -24, 34, 'Opératrice thermique Sava Rhee'),
           new HumanAI(204, 'smartgunner', 38, -26, 'Artilleur gyro Kade Mercer'),
           new HumanAI(205, 'marine', -6, 18, 'Fusilier orbital Niko Vale'),
-          new HumanAI(208, 'marine', 12, -28, 'Tourelle autonome KAPPA-7 (Opérateur Novak)')
+          new HumanAI(208, 'sentry_turret', 12, -28, 'Tourelle autonome KAPPA-7 (Secteur Nord)'),
+          new HumanAI(209, 'uscm_combat_medic', -14, 24, 'Infirmier Tactique KAPPA Morales'),
+          new HumanAI(210, 'weyland_director_officer', -36, -24, 'Directeur IRISE Elian Torv')
         ];
         this.mantisBoss = null;
         this.heavyBossForceSpawned = false;

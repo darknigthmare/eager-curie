@@ -1993,6 +1993,28 @@
           hipX: 0.3,
           helmetScale: 0.95
         },
+        seegson_survivor_jack: {
+          uniformColor: 0x475569,
+          armorColor: 0xeab308,
+          torso: { x: 0.57, y: 0.84, z: 0.35 },
+          pelvis: { x: 0.45, y: 0.3, z: 0.3 },
+          chest: { x: 0.8, y: 0.54, z: 0.12 },
+          pack: { x: 0.52, y: 0.6, z: 0.2 },
+          shoulderX: 0.58,
+          hipX: 0.3,
+          helmetScale: 0.94
+        },
+        upp_vanguard: {
+          uniformColor: 0x365314,
+          armorColor: 0x1c1917,
+          torso: { x: 0.63, y: 0.88, z: 0.37 },
+          pelvis: { x: 0.48, y: 0.31, z: 0.32 },
+          chest: { x: 1.02, y: 0.8, z: 0.18 },
+          pack: { x: 0.72, y: 0.8, z: 0.28 },
+          shoulderX: 0.63,
+          hipX: 0.32,
+          helmetScale: 1.04
+        },
         guard: {
           uniformColor: 0x475569,
           armorColor: 0x374151,
@@ -4913,11 +4935,11 @@
         ));
       }
       this._addCarapaceSpines(root, chitin, 0.94, 7, 0.65, 0.52, -1);
-      // Canon 1:1 biometrics: serpentine vermiform body ~0.45m
+      // Canon 1:1 biometrics: serpentine vermiform body ~0.45m (Wave 25 : échelle 1:1 corrigée 0.09 -> 0.38)
       const scaledAssembly = new T.Group();
       scaledAssembly.name = 'chestburster_scaled_assembly';
       while (root.children.length) scaledAssembly.add(root.children[0]);
-      scaledAssembly.scale.setScalar(0.09);
+      scaledAssembly.scale.setScalar(0.38);
       root.add(scaledAssembly);
       this.placeOnGround(root, 0);
       return this._finalize(root, {
@@ -5202,8 +5224,9 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       // Predalien: 2.60m (0.5159), Newborn: 2.70m (0.5357), Praetorian: 3.20m (0.5424), Queen: 4.50m (0.7009)
       const canonScale = royal ? 0.7009 : (guardian ? 0.5424 : (predalien ? 0.5159 : (newborn ? 0.5357 : (neomorph ? 0.4067 : (warrior ? 0.4563 : 0.4266)))));
       const relativeModifier = pathogenPopper ? 0.28 : (ripperQueen ? 1.68 : (foundryCrusher ? 1.42 : (siegeRoyal ? 1.38 : (engineerHybrid ? 1.35 : (monicaLine ? 1.32 : (warden ? 1.30 : (salvageHiveBrute ? 1.28 : (ravager ? 1.26 : (ataraxRipper ? 1.22 : (harbinger ? 1.18 : (kSeriesYellow ? 1.08 : (specimenSixLine ? 1.08 : (pathogenMimic ? 1.08 : (caravanStalker ? 1.06 : (paleCrucibleHunter ? 1.06 : (reefStalker ? 1.06 : (foundryDrone ? 1.05 : (pathogenBlight ? 1.05 : (reefSpitter ? 1.05 : (arcologyLurker ? 1.04 : (neuroXenoDrone ? 1.02 : (exploder ? 1.02 : (dustRunner ? 0.95 : acidQueenMatriarchOmega ? 1.74 : (magmaCrusherBehemothPrime ? 1.69 : (chitinShieldCrusherJuggernaut ? 1.41 : (shadowStalkerPhantomApex ? 1.15 : (acidBlisterBroodmother ? 1.73 : (obsidianSlagTitan ? 1.68 : (chitinArmoredCrusher ? 1.40 : (stalkerPhantomInfiltrator ? 1.15 : (corrosiveBileQueen ? 1.72 : (magmaCrustBehemoth ? 1.67 : (armoredSiegeStrider ? 1.39 : (stalkerShadowLurker ? 1.16 : (sporeBlisterMatriarch ? 1.70 : (obsidianMantleGoliath ? 1.66 : (chitinPlatedVanguard ? 1.38 : (spectralChameleonWraith ? 1.15 : (acidSporeCarrierQueen ? 1.71 : (pyroSlagJuggernaut ? 1.57 : (biomechDuneStrider ? 1.33 : (shadowCrawlerAmbusher ? 1.14 : (queenMother ? 1.75 : (ancientProgenitorQueen ? 1.74 : (myceliumQueenBroodmother ? 1.73 : (omegaPrimeEmpress ? 1.72 : (matriarchQueen ? 1.68 : (empress ? 1.65 : (primordialEngineerDeaconApex ? 1.55 : (synthChitinHybridXeno ? 1.35 : (radioactiveChernobylXeno ? 1.29 : (wingedNightStalker ? 1.25 : (titanCrusherBerserker ? 1.64 : (flyingQueen ? 1.58 : (king ? 1.62 : (ultramorph ? 1.56 : (deaconess ? 1.55 : (magmaCrustCrusher ? 1.55 : (wingedHarpyQueen ? 1.54 : (titanBoneBehemoth ? 1.53 : (goliathSiegeCrusher ? 1.52 : (cyberImplantRavager ? 1.49 : (chitinShieldPhalanx ? 1.48 : (raven ? 1.48 : (abomination ? 1.48 : (tungstenRibRavager ? 1.47 : (armoredJuggernaut ? 1.46 : (empressPraetorianVanguard ? 1.45 : (boneCrusherRavager ? 1.45 : (royalChestbursterAdult ? 1.44 : (pathogenBrute ? 1.44 : (obsidienneEmpressGuard ? 1.43 : (acidBoilerMatriarch ? 1.41 : (berserkerAlien ? 1.4 : (praetorianExecutioner ? 1.39 : (alpha ? 1.38 : (pyroSlagXenomorph ? 1.37 : (gorillaAlien ? 1.36 : (irradiatedReactorXeno ? 1.34 : (plasmaFusedXeno ? 1.34 : (deaconAdult ? 1.34 : (royalGuard ? 1.33 : (parasiticCarrier ? 1.32 : (charger ? 1.32 : (corrosiveOvomorphCarrier ? 1.31 : (xenoborg ? 1.3 : (fungalMyceliumHost ? 1.29 : (anubiteXeno ? 1.28 : (bioMechanicalDefianceStalker ? 1.28 : (abyssalTrenchXeno ? 1.28 : (bullSpitter ? 1.28 : (palatine ? 1.28 : (voidVacuumStalker ? 1.27 : (razorWingGliderXeno ? 1.26 : (neomorphApex ? 1.26 : (causticBileBursterAdult ? 1.25 : (mutagenicSporeBurster ? 1.25 : (neomorphBloodbursterAlpha ? 1.25 : (cryoStalkerXeno ? 1.24 : (arachnidAlien ? 1.24 : (tarkatanStalker ? 1.23 : (neuroToxinWaspXeno ? 1.22 : (arachnoSpitter ? 1.22 : (carrier ? 1.22 : (bioElectricEelXeno ? 1.21 : (scorpionSpitter ? 1.21 : (chrysalisWarrior ? 1.25 : (defender ? 1.18 : (spiderAlien ? 1.2 : (snakeAlien ? 1.18 : (chameleonOpticStalker ? 1.16 : (pathogenStalker ? 1.16 : (gridAlien ? 1.15 : (deacon ? 1.12 : (flyingDrone ? 1.12 : (redDrone ? 1.08 : (phantomLurker ? 1.07 : (infiltrator ? 1.05 : (lurker ? 1.04 : (boiler ? 1.04 : (offspring ? 1.15 : (burster ? 0.96 : (bodyburster ? 0.92 : 1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))));
-      const isCanonSpecific = royal || guardian || predalien || newborn || neomorph || warrior || caste === 'drone';
-      const scale = isCanonSpecific ? canonScale : (canonScale * relativeModifier);
+      const isSuperRoyal = empress || matriarchQueen || queenMother;
+      const isCanonSpecific = (royal && !isSuperRoyal) || guardian || predalien || newborn || neomorph || warrior || caste === 'drone';
+      const scale = isSuperRoyal ? (canonScale * 1.28) : (isCanonSpecific ? canonScale : (canonScale * relativeModifier));
       let chitinColor = 0x0b1518;
       if (pathogenPopper) chitinColor = 0x4d7c0f; // Popper PathogÃ¨ne (Aliens: Fireteam Elite)
       else if (pathogenBlight) chitinColor = 0x365314; // Blight PathogÃ¨ne Brume Acide (Aliens: Fireteam Elite)
@@ -13181,6 +13204,64 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
     // -------------------------------------------------------------------------
     createNarcissusShuttle() {
       return this.createIndustrialProp('narcissus_shuttle');
+    }
+
+    // Wave 25 : Véhicules In-Lore 1:1 (UD-4L Cheyenne Dropship, Sevastopol Transit Car & EEV Type 37 Escape Pod)
+    createUD4LCheyenne() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'ud4l_cheyenne_dropship';
+      const hullMat = this._material('industrial', { color: 0x3b4738, roughness: 0.46, metalness: 0.72 });
+      const darkMat = this._material('darkMetal', { color: 0x1e2428, roughness: 0.35, metalness: 0.85 });
+      const glassMat = this._material('emissiveGreen', { color: 0x22c55e, emissiveIntensity: 0.85 });
+      const beaconMat = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 1.6 });
+
+      // Fuselage central blindé + nez incliné
+      root.add(this._box(hullMat, { x: 4.4, y: 2.2, z: 10.5 }, { x: 0, y: 2.1, z: 0 }, 'cheyenne_fuselage', true));
+      root.add(this._box(hullMat, { x: 3.4, y: 1.5, z: 3.6 }, { x: 0, y: 1.85, z: 6.4 }, 'cheyenne_nose', true));
+      root.add(this._box(glassMat, { x: 2.5, y: 0.75, z: 1.8 }, { x: 0, y: 2.55, z: 5.5 }, 'cheyenne_cockpit'));
+      // Nacelles de missiles latérales déployées & tuyères VTOL
+      for (const side of [-1, 1]) {
+        root.add(this._box(hullMat, { x: 2.8, y: 0.42, z: 3.2 }, { x: side * 3.4, y: 2.2, z: -0.6 }, `cheyenne_wing_${side}`, true));
+        root.add(this._box(darkMat, { x: 1.1, y: 1.1, z: 3.8 }, { x: side * 4.7, y: 2.1, z: -0.2 }, `cheyenne_missile_pod_${side}`, true));
+        root.add(this._box(darkMat, { x: 1.2, y: 1.1, z: 2.4 }, { x: side * 1.5, y: 2.3, z: -5.8 }, `cheyenne_vtol_${side}`, true));
+        root.add(this._box(darkMat, { x: 0.45, y: 1.1, z: 1.6 }, { x: side * 2.1, y: 0.55, z: 2.6 }, `cheyenne_skid_f_${side}`));
+        root.add(this._box(darkMat, { x: 0.45, y: 1.1, z: 1.6 }, { x: side * 2.1, y: 0.55, z: -3.2 }, `cheyenne_skid_r_${side}`));
+      }
+      root.add(this._ellipsoid(beaconMat, { x: 0.22, y: 0.16, z: 0.22 }, { x: 0, y: 3.35, z: -2.0 }, 'cheyenne_beacon', 10));
+      return this._finalize(root, { modelType: 'vehicle', subtype: 'ud4l_cheyenne', height: 3.5 });
+    }
+
+    createSevastopolTransitCar() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'sevastopol_transit_car';
+      const bodyMat = this._material('industrial', { color: 0x94a3b8, roughness: 0.44, metalness: 0.65 });
+      const stripeMat = this._material('industrial', { color: 0xeab308, roughness: 0.5, metalness: 0.35 });
+      const darkMat = this._material('darkMetal', { color: 0x1e293b, roughness: 0.38, metalness: 0.85 });
+      const winMat = this._material('emissiveAmber', { color: 0xfde68a, emissiveIntensity: 0.9 });
+
+      root.add(this._box(bodyMat, { x: 3.2, y: 2.8, z: 8.4 }, { x: 0, y: 1.9, z: 0 }, 'transit_hull', true));
+      root.add(this._box(stripeMat, { x: 3.28, y: 0.38, z: 8.48 }, { x: 0, y: 0.92, z: 0 }, 'transit_hazard_band'));
+      root.add(this._box(darkMat, { x: 2.6, y: 0.55, z: 7.4 }, { x: 0, y: 0.35, z: 0 }, 'transit_mag_bogie'));
+      for (const zOff of [-2.4, 0, 2.4]) {
+        root.add(this._box(winMat, { x: 3.26, y: 0.85, z: 1.55 }, { x: 0, y: 2.15, z: zOff }, `transit_window_${zOff}`));
+      }
+      return this._finalize(root, { modelType: 'vehicle', subtype: 'sevastopol_transit_car', height: 3.3 });
+    }
+
+    createEEVEscapePod() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'eev_type37_pod';
+      const hullMat = this._material('industrial', { color: 0xe2e8f0, roughness: 0.38, metalness: 0.6 });
+      const darkMat = this._material('darkMetal', { color: 0x1e293b, roughness: 0.42, metalness: 0.85 });
+      const portMat = this._material('emissiveAmber', { color: 0xf59e0b, emissiveIntensity: 1.2 });
+
+      root.add(this._box(hullMat, { x: 2.2, y: 1.8, z: 4.4 }, { x: 0, y: 1.05, z: 0 }, 'eev_pressure_hull', true));
+      root.add(this._box(darkMat, { x: 2.35, y: 0.45, z: 4.6 }, { x: 0, y: 0.28, z: 0 }, 'eev_heat_shield'));
+      root.add(this._box(portMat, { x: 0.9, y: 0.42, z: 0.14 }, { x: 0, y: 1.4, z: 2.22 }, 'eev_viewport'));
+      return this._finalize(root, { modelType: 'vehicle', subtype: 'eev_escape_pod', height: 2.0 });
     }
 
     // -------------------------------------------------------------------------

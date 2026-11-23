@@ -500,7 +500,7 @@
         actId: "ACT_4",
         title: "La nursery",
         description: "Transformer les niveaux de raffinage en site d'incubation défendable.",
-        playableCaste: "drone",
+        playableCaste: "adult_branch",
         objectives: [
           {
             id: "weave_first_resin",
@@ -1710,13 +1710,143 @@
         {
           id: "codex_weyland_curie07",
           category: "station",
-          title: "Station Curie-07 (Mnemosyne)",
+          title: "Station Curie-07 / MNEMOSYNE (Division IRISE–Weyland)",
           body:
-            "Station de recherche orbitale clandestine de la division Biomatériaux et Armement Spécial Weyland-Yutani. " +
-            "Placée en orbite haute du géant gazeux KG-348, Curie-07 opère sous couverture de raffinerie civile " +
-            "pour étudier des souches xénomorphiques hautement agressives loin de toute surveillance coloniale.",
+            "Station orbitale clandestine codée MNEMOSYNE (registre civil : Curie-07), co-exploitée par la filiale IRISE et la " +
+            "division Bio-Armement Weyland-Yutani en orbite du secteur LV-X91 / KG-348. Son noyau IA PALIMPSESTE opère sur " +
+            "architecture APOLLO / M.U.T.H.U.R. pour effacer toute trace biologique dès que le confinement échoue.",
           unlockedByDefault: true,
           unlock: { type: "default" }
+        },
+        {
+          id: "imani_kade",
+          category: "archives",
+          title: "Dr Imani Kade — Xénobiologiste (ÉCHO-12)",
+          body:
+            "Spécialiste en confinement biologique affectée au remorqueur ÉCHO-12. Première victime de l'ouverture du caisson " +
+            "cryo-ovomorphe dans la baie médicale, son génome a servi de matrice initiale au spécimen XX121 sur MNEMOSYNE.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "aster_rho",
+          category: "archives",
+          title: "Surveillante Aster Rho — Détachement KAPPA",
+          body:
+            "Commandante tactique de sécurité sur MNEMOSYNE. Équipée d'un masque respiratoire blindé à double attache et d'un " +
+            "protocole d'isolement thermique, elle tente d'empêcher la colonisation de la station avant la purge terminale.",
+          unlock: { type: "bossSeen", targetId: "ASTER_RHO" }
+        },
+        {
+          id: "elian_torv",
+          category: "archives",
+          title: "Directrice Elian Torv — Consortium IRISE",
+          body:
+            "Responsable exécutive du programme bio-armes sur MNEMOSYNE. Fidèle à la Directive 937, elle ordonne le verrouillage " +
+            "des cloisons sur son propre personnel et le déploiement de BRIAREOS-7 et MANTIS-4 pour préserver l'échantillon.",
+          unlock: { type: "event", targetId: "elian_torv" }
+        },
+        {
+          id: "codex_m41a_pulse_rifle",
+          category: "arsenal",
+          title: "Fusil à Impulsion M41A (10×24mm Sans Douille)",
+          body:
+            "Arme réglementaire des Colonial Marines et du détachement KAPPA. Doté d'un compteur digital de 95 cartouches " +
+            "explosives et d'un lance-grenades 30mm U1 sous le canon, sa fenêtre de rechargement reste sa principale vulnérabilité.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_m56_smartgun",
+          category: "arsenal",
+          title: "Mitrailleuse Gyro-Stabilisée M56 Smartgun",
+          body:
+            "Arme lourde à harnais articulé et viseur infrarouge auto-traquant. Sa cadence saturante cloue les xénomorphes " +
+            "en couloir ouvert, mais son encombrement limite la mobilité de l'artilleur en combat rapproché.",
+          unlock: { type: "event", targetId: "smartgun" }
+        },
+        {
+          id: "codex_m240_incinerator",
+          category: "arsenal",
+          title: "Incinérateur M240 & Combinaisons Ignifugées",
+          body:
+            "Lance-flammes au napalm gélifié utilisé pour déloger les spécimens des conduits et brûler la bio-résine. " +
+            "La chaleur extrême déclenche une aversion thermique réflexe chez la plupart des castes, hors Reine et Crusher.",
+          unlock: { type: "event", targetId: "incinerator" }
+        },
+        {
+          id: "codex_ua571c_sentry",
+          category: "arsenal",
+          title: "Tourelle Automatique UA 571-C / KAPPA-7",
+          body:
+            "Système de défense autonome à détection de mouvement (arc 70°, tambour 500 cartouches 10mm). Ses lentilles " +
+            "optiques peuvent être vitrifiées par un jet d'acide, et ses canons surchauffent sous feu prolongé.",
+          unlock: { type: "event", targetId: "sentry_turret" }
+        },
+        {
+          id: "codex_m314_tracker",
+          category: "arsenal",
+          title: "Détecteur de Mouvement M314 (Doppler)",
+          body:
+            "Radar à ultrasons à écran phosphore vert détectant tout déplacement jusqu'à 30m avec différentiel altimétrique. " +
+            "Ses bips sonores peuvent trahir son porteur à courte distance et son signal est brouillé lors des blackouts EMP.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_m577_apc",
+          category: "vehicles",
+          title: "Transport Blindé M577 APC (USCM)",
+          body:
+            "Véhicule de transport blindé tout-terrain à tourelle dorsale rétractable déployé dans les baies de fret. " +
+            "Son châssis en alliage léger résiste aux armes légères mais reste vulnérable à l'acide moléculaire.",
+          unlock: { type: "event", targetId: "m577_apc" }
+        },
+        {
+          id: "codex_ud4l_cheyenne",
+          category: "vehicles",
+          title: "Vaisseau de Largage UD-4L Cheyenne",
+          body:
+            "Navette tactique VTOL capable de transporter un M577 APC et une section complète de Marines depuis l'orbite. " +
+            "Stationnée sur le pad Est de MNEMOSYNE avec ses nacelles de missiles air-sol verrouillées.",
+          unlock: { type: "event", targetId: "ud4l_cheyenne" }
+        },
+        {
+          id: "codex_narcissus_eev",
+          category: "vehicles",
+          title: "Navette Narcissus & Capsules EEV Type 37",
+          body:
+            "Embarcations de sauvetage orbital pressurisées équipées de caissons cryogéniques. Cibles prioritaires pour " +
+            "les survivants en fuite — ou vecteurs idéaux de dissémination pour un œuf ou un embryon clandestin.",
+          unlock: { type: "event", targetId: "narcissus" }
+        },
+        {
+          id: "codex_echo12_tug",
+          category: "vehicles",
+          title: "Remorqueur ÉCHO-12 & Rame de Transit Seegson",
+          body:
+            "Le remorqueur orbital ÉCHO-12 a remorqué la cargaison contaminée jusqu'au dock de MNEMOSYNE. Le réseau interne " +
+            "de la station est desservi par des rames de transit pressurisées Seegson à rail magnétique.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_upp_factions",
+          category: "station",
+          title: "Factions Orbitales (USCM, UPP, Marshals & Seegson)",
+          body:
+            "Au-delà du consortium IRISE / Weyland-Yutani, la frontière est disputée entre l'USCM, les commandos de l'UPP " +
+            "(armés de fusils AK-4047), les Colonial Marshals (M37A2) et les automates industriels Seegson (Working Joes).",
+          unlock: { type: "event", targetId: "factions" }
+        },
+        {
+          id: "codex_empress_ravager",
+          category: "biology",
+          title: "Castes Ultimes (Impératrice, Ravager, Predalien & Néomorphe)",
+          body:
+            "Au sommet de la hiérarchie biomécanique trône l'Impératrice (Queen Mother, >5.8m), entourée de Ravagers " +
+            "à lames brachiales, de Boilers acides, de Carriers et d'hybrides apocryphes (Predalien, Néomorphe, Deacon).",
+          unlock: { type: "event", targetId: "empress" }
         },
         {
           id: "codex_specimen_xx121_respiration",

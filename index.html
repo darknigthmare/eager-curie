@@ -986,7 +986,7 @@
       </div>
     </header>
 
-    <!-- Bandeau Télémétrie Boss Diégétique MANTIS-4 & BRIAREOS-7 (Wave 18) -->
+    <!-- Bandeau Télémétrie Boss Diégétique MANTIS-4 & BRIAREOS-7 (Wave 18 / Wave 28 Dual-Boss) -->
     <section id="boss-telemetry-hud" class="boss-telemetry-hud hidden" aria-label="Télémétrie du Boss actif">
       <div class="boss-hud-header">
         <span id="boss-hud-name" class="boss-hud-name">MANTIS-4 // EXOSQUELETTE KAPPA</span>
@@ -999,6 +999,18 @@
         </div>
         <div class="boss-bar-track hp-track" title="Intégrité Châssis Boss">
           <div id="boss-hud-hp-fill" class="boss-bar-fill hp-fill" style="width: 100%;"></div>
+        </div>
+      </div>
+      <div id="boss-telemetry-secondary" class="boss-telemetry-secondary hidden">
+        <div class="boss-hud-header">
+          <span id="boss-hud-name-2" class="boss-hud-name">BRIAREOS-7 // SYNTHÉTIQUE DE SIÈGE</span>
+          <span id="boss-hud-phase-2" class="boss-hud-phase">PHASE 1</span>
+          <span id="boss-hud-hp-val-2" class="boss-hud-hp-val">320/320 PV</span>
+        </div>
+        <div class="boss-hud-bars">
+          <div class="boss-bar-track hp-track" title="Intégrité Second Boss">
+            <div id="boss-hud-hp-fill-2" class="boss-bar-fill hp-fill" style="width: 100%;"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -1739,7 +1751,7 @@
               <line x1="5" y1="5" x2="15" y2="15" stroke-width="1.8" stroke-linecap="round"/>
               <line x1="15" y1="5" x2="5" y2="15" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
-            <span>FERMER [C]</span>
+            <span>FERMER [ÉCHAP]</span>
           </button>
         </header>
 
@@ -1820,7 +1832,7 @@
             <span class="tracker-label-sub">CIBLE</span>
             <span id="tracker-contacts-val" class="tracker-val">0</span>
           </div>
-          <button type="button" id="btn-toggle-blueprint" class="tracker-toggle-btn" title="Afficher le Schéma Holo-Blueprint des 3 Ponts (Touche L / P)">
+          <button type="button" id="btn-toggle-blueprint" class="tracker-toggle-btn" title="Afficher le Schéma Holo-Blueprint des 3 Ponts (Touche L · Shift+L Agrandir)">
             <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
               <rect x="3" y="3" width="14" height="14" stroke-width="1.4"/>
               <line x1="3" y1="10" x2="17" y2="10" stroke-width="1.2" stroke-dasharray="2 1"/>

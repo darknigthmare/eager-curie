@@ -145,9 +145,16 @@
 
     unlock(ids) {
       const current = this.read() || this.defaultSave;
-      const unlockedCodex = [...new Set([...current.unlockedCodex, ...ids])];
-      this.write({ unlockedCodex });
+      const prevLen = (current.unlockedCodex || []).length;
+      const unlockedCodex = [...new Set([...(current.unlockedCodex || []), ...ids])];
+      if (unlockedCodex.length !== prevLen) {
+        this.write({ unlockedCodex });
+      }
       return unlockedCodex;
+    }
+
+    unlockCodex(ids) {
+      return this.unlock(ids);
     }
 
     completeEnding(id) {
@@ -1383,7 +1390,7 @@
             effect.vz *= 0.25;
             if (!effect.hasPinged) {
               effect.hasPinged = true;
-              audioManager.playBrassCasingPing?.(effect.group.position.x, effect.group.position.z);
+              window.audioManager?.playBrassCasingPing?.(effect.group.position.x, effect.group.position.z);
             }
           }
         } else if (effect.barrelSmoke) {
@@ -1927,6 +1934,12 @@
           if (window.gameInstance?.currentStageIndex === 5 && codex?.classList.contains('hidden')) {
             return;
           }
+          // Wave 28 : En Stages 2–4, [C] priorise l'infiltration/sortie de conduit si proche d'un conduit ou déjà dedans
+          if ([2, 3, 4].includes(window.gameInstance?.currentStageIndex) && codex?.classList.contains('hidden') && !activeSystemLayer) {
+            const pc = window.playerCreature;
+            const nearVent = pc && (pc.isInVent || (window.stationMap?.findClosestVent?.(pc.x, pc.z)?.distance <= 4.5));
+            if (nearVent) return;
+          }
           if (activeSystemLayer?.id === 'muthur-bioscan-modal') {
             event.preventDefault();
             this.closeBioScan();
@@ -2392,6 +2405,8 @@
       const detail = document.getElementById('codex-detail');
       if (!list || !detail) return;
       list.replaceChildren();
+      const layout = list.closest('.codex-layout');
+      layout?.classList.toggle('is-full-width', category === 'evolution');
 
       if (category === 'evolution') {
         this.renderEvolution(detail);
@@ -2399,10 +2414,18 @@
       }
 
       const entries = this.entriesForCategory(category);
-      const unlocked = new Set(this.saveManager.read()?.unlockedCodex || ['ovomorphe']);
+      const rawUnlocked = this.saveManager.read()?.unlockedCodex || ['ovomorphe'];
+      const unlocked = new Set(rawUnlocked);
+      const unlockedLower = new Set(rawUnlocked.map((v) => String(v).toLowerCase()));
+      const isEntryUnlocked = (entryId, entryObj) => (
+        Boolean(entryObj?.unlockedByDefault) ||
+        unlocked.has(entryId) ||
+        unlockedLower.has(String(entryId).toLowerCase())
+      );
+
       entries.forEach((entry, index) => {
         const id = entry.id || entry.key || `entry-${index}`;
-        const isUnlocked = unlocked.has(id) || entry.unlockedByDefault;
+        const isUnlocked = isEntryUnlocked(id, entry);
         const button = document.createElement('button');
         button.type = 'button';
         button.className = `codex-entry${isUnlocked ? '' : ' locked'}`;
@@ -2443,7 +2466,7 @@
         detail.innerHTML = '<span class="codex-status">BASE VIDE</span><h3>AUCUNE DONNÉE</h3><p>Cette section sera alimentée par les observations de campagne.</p>';
         return;
       }
-      const firstUnlockedIndex = entries.findIndex((entry) => unlocked.has(entry.id || entry.key) || entry.unlockedByDefault);
+      const firstUnlockedIndex = entries.findIndex((entry) => isEntryUnlocked(entry.id || entry.key, entry));
       const selectedIndex = firstUnlockedIndex >= 0 ? firstUnlockedIndex : 0;
       list.children[selectedIndex]?.classList.add('active');
       list.children[selectedIndex]?.setAttribute('aria-current', 'true');
@@ -2469,12 +2492,28 @@
         return;
       }
       const name = entry.name || entry.title || entry.id || 'ENTRÉE';
-      const description = entry.description || entry.summary || entry.text || entry.role || entry.defeatCondition || 'Donnée biologique restaurée.';
-      const lore = entry.loreStatus || entry.status || entry.source || 'Archive ORPHEUS';
+      const fallbackDesc = entry.faction
+        ? `Unité ${entry.faction} · Niveau de menace : ${entry.threat || 'Standard'}${entry.hostEligibility ? ` · Hôte : ${entry.hostEligibility}` : ''}.`
+        : (entry.narrativePurpose || entry.title || 'Donnée biologique restaurée.');
+      const description = entry.description || entry.summary || entry.text || entry.role || entry.narrativePurpose || entry.defeatCondition || fallbackDesc;
+      const lore = entry.loreStatus || entry.status || entry.source || entry.faction || 'Archive ORPHEUS';
       const actions = entry.actions || entry.capabilities || entry.counterplay || entry.objectives || [];
+      const phaseNotes = Array.isArray(entry.phases)
+        ? entry.phases.map((p, idx) => `Phase ${idx + 1} (${p.name || p.trigger || 'Combat'}) : ${p.mechanics || p.description || ''}`)
+        : [];
+      const profileNote = entry.profile
+        ? [`Profil tactique — Mobilité ${entry.profile.mobility ?? 0}/5 · Furtivité ${entry.profile.stealth ?? 0}/5 · Résilience ${entry.profile.resilience ?? 0}/5 · Portée ${entry.profile.range ?? 1}/5`]
+        : [];
       const extra = [
+        ...(entry.arena ? [`Secteur d'engagement : ${entry.arena}`] : []),
+        ...(entry.hostEligibility ? [`Éligibilité hôte : ${entry.hostEligibility}`] : []),
+        ...profileNote,
+        ...(entry.equipment || []).map((eq) => `Équipement : ${eq}`),
+        ...(entry.behaviors || []).map((bh) => `Comportement : ${bh}`),
+        ...phaseNotes,
         ...(entry.strengths || []),
-        ...(entry.weaknesses || []).map((value) => `Faiblesse : ${value}`)
+        ...(entry.weaknesses || []).map((value) => `Faiblesse : ${value}`),
+        ...(entry.counters || []).map((value) => `Contre-mesure : ${value}`)
       ];
       const items = [...(Array.isArray(actions) ? actions : [actions]), ...extra]
         .filter(Boolean)
@@ -2524,7 +2563,15 @@
         FILM_CORE: 'SOCLE FILMIQUE',
         EXPANDED_COMPATIBLE: 'UNIVERS ÉTENDU COMPATIBLE',
         INSPIRED_ORIGINAL: 'ADAPTATION ORIGINALE',
-        EXCLUDED_FROM_CORE: 'HORS CAMPAGNE'
+        EXCLUDED_FROM_CORE: 'HORS CAMPAGNE',
+        BIOLOGY: 'BIOLOGIE XÉNOMORPHE',
+        HIVE: 'ÉCOLOGIE DE RUCHE',
+        STATION: 'STATION MNEMOSYNE',
+        OPPOSITION: 'OPPOSITION & FORCES',
+        ARCHIVES: 'ARCHIVES CLASSIFIÉES',
+        ARSENAL: 'ARSENAL & ÉQUIPEMENT',
+        VEHICLES: 'VÉHICULES & NAVETTES',
+        JOURNAL: 'JOURNAL DE BORD'
       };
       tag.textContent = loreLabels[String(lore).toUpperCase()] || String(lore).toUpperCase();
       const paragraph = document.createElement('p');
@@ -2784,7 +2831,7 @@
         }
         button.addEventListener('click', () => {
           this.saveManager.completeEnding(ending.id);
-          this.saveManager.unlockCodex(['codex_archives_complete']);
+          this.saveManager.unlock(['codex_archives_complete']);
           this.hideLayer(overlay, false);
           onChoice?.(ending);
         });
@@ -2806,14 +2853,17 @@
       if (category === 'castes') return toArray(this.content.castes);
       if (category === 'threats') return [...toArray(this.content.enemies), ...toArray(this.content.bosses)];
       if (category === 'archives') {
-        const journals = toArray(this.content.archives || this.content.logs || this.content.journals);
+        const journals = toArray(this.content.archives || this.content.logs || this.content.journals).map((j) => ({
+          ...j,
+          source: j.source || 'JOURNAL'
+        }));
         const codexEntries = toArray(this.content.codex?.entries);
         return [...journals, ...codexEntries].map((entry) => ({
           ...entry,
           id: entry.id,
           title: entry.title || entry.subject || entry.id,
           text: entry.text || entry.body || entry.transcript || entry.summary,
-          source: entry.source || entry.category || 'Archive ORPHEUS'
+          source: entry.source || entry.category || 'ARCHIVES'
         }));
       }
       return [];
@@ -2873,8 +2923,11 @@
     unlockCodex(unlockIds = []) {
       const list = Array.isArray(unlockIds) ? unlockIds : [unlockIds];
       if (!list.length) return [];
+      const prevLen = (saveManager.read()?.unlockedCodex || []).length;
       const unlocked = saveManager.unlock(list.filter(Boolean));
-      ui.renderCodex(ui.activeCodexCategory);
+      if (unlocked.length !== prevLen) {
+        ui.renderCodex(ui.activeCodexCategory);
+      }
       return unlocked;
     },
     narrative(speaker, line, duration) {

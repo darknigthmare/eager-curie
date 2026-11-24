@@ -9961,24 +9961,32 @@
       showToast(this.focusedMode ? 'M314 : Mode Balayage Focalisé 45° Longue Portée 35m [T]' : 'M314 : Mode Balayage Omni 360° Standard 22m [T]');
     }
 
-    // Audit QA #100 : Télémétrie Angulaire 360° du Gyro-Compas de la Station sur le HUD
+    // Audit QA #100 & Wave 28 : Télémétrie Angulaire 360° du Gyro-Compas & Indicateur Sectoriel MNEMOSYNE
     updateGyroCompass(player) {
       if (!player) return;
       if (!this.gyroEl) {
         const el = document.createElement('div');
         el.id = 'hud-gyro-compass';
         el.setAttribute('aria-hidden', 'true');
-        el.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:40;padding:2px 12px;font:700 11px monospace;letter-spacing:2px;color:#39ff14;background:rgba(2,26,8,0.62);border:1px solid rgba(57,255,20,0.45);border-radius:3px;pointer-events:none;text-shadow:0 0 6px #39ff14;';
-        document.body.appendChild(el);
+        el.style.cssText = 'position:fixed;top:68px;left:50%;transform:translateX(-50%);z-index:40;padding:2px 12px;font:700 11px var(--font-mono, monospace);letter-spacing:1.6px;color:#39ff14;background:rgba(2,26,8,0.68);border:1px solid rgba(57,255,20,0.45);border-radius:3px;pointer-events:none;text-shadow:0 0 6px #39ff14;white-space:nowrap;';
+        (document.getElementById('app-container') || document.body).appendChild(el);
         this.gyroEl = el;
       }
+      const isRts = window.gameInstance?.currentStageIndex === 5;
+      const focusPt = isRts ? (window.gameInstance?.currentStage?.getCameraTarget?.() || player) : player;
+      const fx = Number(focusPt?.x) || 0;
+      const fz = Number(focusPt?.z) || 0;
       const yaw = player.mesh ? player.mesh.rotation.y : 0;
-      let heading = Math.round(((yaw * 180 / Math.PI) % 360 + 360) % 360);
-      if (heading === this.lastGyroHeading) return;
-      this.lastGyroHeading = heading;
+      const heading = Math.round(((yaw * 180 / Math.PI) % 360 + 360) % 360);
+      const rx = Math.round(fx);
+      const rz = Math.round(fz);
+      const key = `${heading}|${rx}|${rz}`;
+      if (key === this.lastGyroKey) return;
+      this.lastGyroKey = key;
       const cardinals = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
       const card = cardinals[Math.round(heading / 45) % 8];
-      this.gyroEl.textContent = `◄ ${String(heading).padStart(3, '0')}° ${card} ► | X${Math.round(player.x)} Z${Math.round(player.z)}`;
+      const sector = stationMap?.getSectorInfo?.(fx, fz) || { code: 'SEC-00', name: 'NOYAU PALIMPSESTE', color: '#39ff14' };
+      this.gyroEl.innerHTML = `◄ ${String(heading).padStart(3, '0')}° ${card} ► · X${rx} Z${rz}<span id="hud-sector-badge" class="hud-sector-pill" style="color:${sector.color}">${sector.code} · ${sector.name}</span>`;
     }
 
     update(deltaSeconds, player, humans) {
@@ -10982,12 +10990,29 @@
     }
 
     setCameraTarget(x, z, heightOffset = 0, isRTS = false, deltaSeconds = 1 / 60) {
+      const alarmLevel = window.alarmSystem?.level || 0;
+      const stgRef = window.gameInstance?.currentStage;
+      const isPurgeActive = Boolean(
+        (stgRef && typeof stgRef.purgeRemaining === 'number' && stgRef.purgeRemaining < 180 && (stgRef.relayCount || 0) < 3) ||
+        stationMap?.selfDestructSystem?.active
+      );
       if (this.beaconPivot && this.beaconSpot) {
-        const isAlarmActive = (window.alarmSystem?.level || 0) >= 2;
+        const isAlarmActive = alarmLevel >= 2 || isPurgeActive;
         this.beaconSpot.intensity = isAlarmActive ? 85 : 0;
         if (isAlarmActive) {
-          this.beaconPivot.rotation.y += Math.max(0, deltaSeconds) * 4.2;
+          if (isPurgeActive || alarmLevel >= 4) this.beaconSpot.intensity = 105;
+          this.beaconPivot.position.x += (x - this.beaconPivot.position.x) * 0.08;
+          this.beaconPivot.position.z += (z - this.beaconPivot.position.z) * 0.08;
+          this.beaconSpot.color?.setHex((isPurgeActive || alarmLevel >= 4) ? 0xef4444 : 0xf59e0b);
+          this.beaconPivot.rotation.y += Math.max(0, deltaSeconds) * (isPurgeActive ? 5.6 : 4.2);
         }
+      }
+      const appEl = document.getElementById('app-container');
+      if (appEl) {
+        appEl.classList.toggle('alarm-purge', isPurgeActive || alarmLevel >= 5);
+        appEl.classList.toggle('cryo-freeze', (stationMap?.ambientTemp ?? 18) < -18);
+        const vitalRatio = isRTS && stgRef?.queen ? (stgRef.queen.hp / (stgRef.queen.maxHp || 1000)) : ((window.playerCreature?.health || 100) / (window.playerCreature?.maxHealth || 100));
+        appEl.classList.toggle('low-hp', vitalRatio > 0 && vitalRatio < 0.25);
       }
 
       if (this.powerSabotagedTimer > 0) {
@@ -11021,9 +11046,9 @@
         }
       }
 
-      const desiredFov = isRTS ? 54 : 40;
-      if (this.camera.fov !== desiredFov) {
-        this.camera.fov = desiredFov;
+      const desiredFov = isRTS ? 54 : (40 - (this._stalkFovOffset || 0));
+      if (Math.abs(this.camera.fov - desiredFov) > 0.05) {
+        this.camera.fov += (desiredFov - this.camera.fov) * Math.min(1, Math.max(0.08, deltaSeconds * 6));
         this.camera.updateProjectionMatrix();
       }
       if (this.camera.near !== 0.1) {
@@ -11033,14 +11058,19 @@
       const isInVent = Boolean(window.playerCreature?.isInVent);
       const isProwl = Boolean(window.playerCreature?.isProwling);
       const isCeiling = Boolean(window.playerCreature?.isCeilingProwling);
-      // Wave 21 : Rendu 3D réel Vision Thermique (FLIR) & Vision Acoustique (Écholocation)
+      // Wave 21 & Wave 28 : Rendu 3D réel Vision Thermique (FLIR), Acoustique & Brouillard adaptatif par secteur MNEMOSYNE
       const visionMode = window.visionSystem?.currentMode || 'normal';
       if (this.scene?.fog) {
         this.scene.fog.density = isRTS ? 0.0045 : ((isInVent || isCeiling) ? 0.022 : 0.012);
         if (this.scene.fog.color) {
-          if (visionMode === 'thermal') this.scene.fog.color.setHex(0x07142e);
-          else if (visionMode === 'acoustic') this.scene.fog.color.setHex(0x03110c);
-          else this.scene.fog.color.setHex(0x0a0f18);
+          let targetFogHex = 0x0a0f18;
+          if (visionMode === 'thermal') targetFogHex = 0x07142e;
+          else if (visionMode === 'acoustic') targetFogHex = 0x03110c;
+          else if (isPurgeActive) targetFogHex = 0x1a080b;
+          else targetFogHex = stationMap?.getSectorInfo?.(x, z)?.fogHex || 0x0a0f18;
+          if (!this._tmpFogColor) this._tmpFogColor = new THREE.Color(targetFogHex);
+          else this._tmpFogColor.setHex(targetFogHex);
+          this.scene.fog.color.lerp(this._tmpFogColor, Math.min(1, Math.max(0.05, deltaSeconds * 3.5)));
         }
       }
       if (this._lastVisionRenderMode !== visionMode || visionMode !== 'normal') {
@@ -11485,7 +11515,9 @@
           this._baseAmbientIntensity = undefined;
         }
       }
-      this.stationDetail?.update(Date.now() / 1000);
+      const nowSec = Date.now() / 1000;
+      this.stationDetail?.update(nowSec);
+      if (typeof resinGrid !== 'undefined') resinGrid.update?.(nowSec);
       if (this.renderQuality) this.renderQuality.render();
       else this.renderer.render(this.scene, this.camera);
     }
@@ -25636,17 +25668,25 @@
       }
     }
 
-    // Audit QA #109 : Resserrement Dynamique du FOV Caméra en Traque Furtive
+    // Wave 28 : Identification temps réel du secteur MNEMOSYNE (HUD, brouillard adaptatif & transmissions)
+    getSectorInfo(x, z) {
+      if (x <= -15 && z <= -25) return { id: 'cryo_med', code: 'SEC-01', name: 'BAIE CRYO-MÉDICALE', color: '#38bdf8', fogHex: 0x071522 };
+      if (x >= 15 && z <= -25) return { id: 'armory_kappa', code: 'SEC-02', name: 'ARMURERIE KAPPA', color: '#f59e0b', fogHex: 0x12100a };
+      if (x <= -15 && z >= 25) return { id: 'reactor_core', code: 'SEC-03', name: 'RÉACTEUR THERMIQUE', color: '#f97316', fogHex: 0x160e0a };
+      if (x >= 15 && z >= 25) return { id: 'hive_nursery', code: 'SEC-04', name: 'NURSERIE BIO-RÉSINE', color: '#a855f7', fogHex: 0x11091c };
+      if (x >= 50 && Math.abs(z) <= 20) return { id: 'eva_airlock', code: 'SEC-05', name: 'SAS EVA — PASSERELLE EST', color: '#06b6d4', fogHex: 0x06151c };
+      if (Math.abs(x) < 15 && Math.abs(z) <= 25) return { id: 'palimpseste_core', code: 'SEC-00', name: 'NOYAU PALIMPSESTE', color: '#39ff14', fogHex: 0x08130e };
+      return { id: 'central_corridor', code: 'SEC-C', name: 'COURSIVE CENTRALE', color: '#94a3b8', fogHex: 0x0a0f18 };
+    }
+
+    // Audit QA #109 & Wave 28 : Resserrement Dynamique du FOV Caméra en Traque Furtive (coordonné avec setCameraTarget)
     updateCameraStalkFOV(safeDelta) {
       if (!rendererEngine?.camera) return;
       const humans = window.gameInstance?.humans || [];
       const stalking = humans.some((h) => !h.isIncapacitated && !h.isCocooned && (h.state === 'patrol' || h.state === 'investigate' || !h.alertLevel) && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 9.0);
-      const targetFov = stalking ? 53 : 60;
-      const curFov = rendererEngine.camera.fov || 60;
-      if (Math.abs(curFov - targetFov) > 0.1) {
-        rendererEngine.camera.fov += (targetFov - curFov) * Math.min(1.0, safeDelta * 2.8);
-        rendererEngine.camera.updateProjectionMatrix();
-      }
+      const targetOffset = stalking ? 3.0 : 0.0;
+      const curOffset = rendererEngine._stalkFovOffset || 0;
+      rendererEngine._stalkFovOffset = curOffset + (targetOffset - curOffset) * Math.min(1.0, safeDelta * 2.8);
     }
 
     // Audit QA #112 : Condensation et Gouttes de Suintement Industrielles
@@ -26024,6 +26064,21 @@
       if (el) el.textContent = `${this.totalCoverage}%`;
       window.HiveSystems?.unlockCodex?.(['codex_nursery', 'codex_economie_ruche']);
       return true;
+    }
+    // Wave 28 : Pulsation bioluminescente organique vivante sur les nappes de bio-résine de la Ruche
+    update(time = 0) {
+      if (!this.nodes || this.nodes.length === 0 || rendererEngine?.reduceMotion) return;
+      for (let i = 0; i < this.nodes.length; i++) {
+        const node = this.nodes[i];
+        if (!node?.mesh) continue;
+        const pulse = 0.34 + 0.26 * Math.sin(time * 2.1 + i * 0.9);
+        const firstChild = node.mesh.children[0];
+        if (firstChild?.material && 'emissiveIntensity' in firstChild.material) {
+          firstChild.material.emissiveIntensity = pulse;
+        }
+        const breath = 1 + 0.015 * Math.sin(time * 1.4 + i * 1.3);
+        node.mesh.scale.set(breath, 1, breath);
+      }
     }
     // Chantier 112 : Réseau Synaptique de Bio-Résine — Détection de présence sur nappe organique
     getResin(x, z) {
@@ -26731,6 +26786,18 @@
       huntDamage: 94,
       jawDamage: 162,
       tailDamage: 112
+    }),
+    stalker: Object.freeze({
+      key: 'stalker',
+      label: 'STALKER',
+      maxHealth: 185,
+      speed: 0.56,
+      huntAction: 'EMBUSCADE DE TRAQUEUR',
+      huntCost: 22,
+      huntRange: 78,
+      huntDamage: 96,
+      jawDamage: 158,
+      tailDamage: 118
     }),
     spitter: Object.freeze({
       key: 'spitter',
@@ -30122,7 +30189,7 @@
       rendererEngine.addScreenShake?.(0.55, 0.38);
       window.HiveSystems?.vfx?.organicTrail?.(this.x, 1.6, this.z, target.x, 2.2, target.z, 0x38bdf8);
       window.HiveSystems?.vfx?.burst?.(target.x, target.z, 0xef4444, 40, 0.3, 2.5);
-      window.HiveSystems?.vfx?.floatingText?.(target.x, 3.0, target.z, '-210 SECTION SPINAIL LOMBAIRE !', '#ef4444', true);
+      window.HiveSystems?.vfx?.floatingText?.(target.x, 3.0, target.z, '-210 SECTION SPINALE LOMBAIRE !', '#ef4444', true);
 
       target.takeDamage(210, this);
       target.staggerTimer = 3.5;
@@ -31544,7 +31611,7 @@
       if (this.transgenicSurgeTimer > 0) {
         this.transgenicSurgeTimer -= safeDelta;
         if (Math.random() < 0.22) {
-          window.HiveSystems?.vfx?.organicTrail?.(this.x, 0.4, this.z, 0xa855f7);
+          window.HiveSystems?.vfx?.organicTrail?.(this.x, 0.4, this.z, this.x, 1.8, this.z, 0xa855f7);
         }
       }
 
@@ -32963,17 +33030,21 @@
         'atarax_controller', 'colonial_raider', 'seegson_security', 'upp_vanguard', 'weyland_yutani_commando', 'capture_commando', 'gyro_gunner', 'orbital_rifleman', 'security_agent', 'thermal_operator',
         'automaton_bombardier', 'automaton_bulwark', 'automaton_huntsman', 'automaton_igniter', 'automaton_peacekeeper', 'automaton_spider', 'argos_synthetic', 'security_drone',
         'synthetic_trooper', 'automaton_worker', 'automaton_shock_warden', 'automaton_miner', 'working_joe', 'working_joe_hazmat', 'working_joe_electric', 'seegson_security_synth', 'combat_synth',
-        // Wave 25 (Fix P0) : Combattants précédemment omis de isCombatant + nouvelles armes PNJ in-lore
+        // Wave 25 & Wave 28 (Fix P0) : Tous les combattants armés et variantes in-lore inclus dans isCombatant
         'weyland_security_taser', 'uscm_field_commander', 'uscm_breacher_shotgun', 'uscm_exosuit_commando',
         'uscm_phalanx_shield', 'uscm_demolitionist', 'uscm_sentry_sapper', 'uscm_dropship_pilot',
-        'weyland_specimen_trapper', 'weyland_ape_suit_specialist', 'weyland_heavy_mech', 'weyland_containment_commando',
-        'seegson_survivor_jack', 'sentry_turret'
+        'uscm_mortar_trooper', 'uscm_veteran_smartgunner', 'mercenary_smuggler_pirate', 'combat_synthetic',
+        'uscm_combat_cyber_medic', 'uscm_combat_flamethrower_sapper', 'uscm_combat_support_medic',
+        'uscm_forward_spotter_sniper', 'uscm_heavy_anti_air_gunner', 'uscm_heavy_anti_armor_specialist',
+        'uscm_heavy_siege_engineer', 'uscm_recon_pathfinder_commando', 'weyland_containment_assault_enforcer',
+        'weyland_sublevel_heavy_warden', 'weyland_specimen_trapper', 'weyland_ape_suit_specialist',
+        'weyland_heavy_mech', 'weyland_containment_commando', 'seegson_survivor_jack', 'sentry_turret', 'taser_guard', 'sentry_gun', 'turret'
       ].includes(this.type));
       const currentStageIndex = window.gameInstance?.currentStageIndex || 0;
       const currentStageStep = window.gameInstance?.currentStage?.step;
       const inVentStealth = combatTarget === playerCreature && playerCreature.isInVent;
       const inCeilingStealth = combatTarget === playerCreature && playerCreature.isCeilingProwling;
-      const biologicalTargetDetectable = (currentStageIndex !== 3 ||
+      const biologicalTargetDetectable = currentStageIndex !== 1 && (currentStageIndex !== 3 ||
         currentStageStep === 'HUNT_FAUNA' ||
         currentStageStep === 'CHRYSALIS') && !inVentStealth && !inCeilingStealth;
 
@@ -34310,13 +34381,13 @@
             if (combatTarget === playerCreature) playerCreature.staggerTimer = Math.max(playerCreature.staggerTimer || 0, 1.35);
             applyWeaponDamage(1.3);
           } else if (['uscm_cn20_nerve_gas_specialist', 'uscm_cbrn_decon_sweeper', 'weyland_black_goo_specialist'].includes(this.type)) {
-            // Wave 27 : Lanceur Neurotoxique CN-20 / Décontaminant Alcalin CBRN / Aérosol Pathogène
+            // Wave 27 & 28 : Lanceur Neurotoxique CN-20 / Décontaminant Alcalin CBRN / Aérosol Pathogène
             this.shootCooldown = 2.25;
             audioManager.playHazmatFoamSpray?.(this.x, this.z);
             window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0x84cc16, 24, 0.2, 1.9);
             window.HiveSystems?.vfx?.ring?.(combatTarget.x, combatTarget.z, 0x84cc16, 3.8);
             window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'AÉROSOL NEUROTOXIQUE CN-20 / CBRN !', '#84cc16', true);
-            applyWeaponDamage(1.4);
+            applyWeaponDamage(1.4, 'toxic');
           } else {
             // Chantier 133 : Fusil à impulsion M41A avec Lance-Grenades 30mm U1 Intégré (Aliens 1986)
             if (['marine', 'guard', 'commando'].includes(this.type) && distToPlayer >= 6.5 && distToPlayer <= 22 && (this.u1GrenadeCooldown || 0) <= 0) {
@@ -35013,7 +35084,7 @@
         if (nearbyThreat && this.attackCooldown <= 0) {
           this.attackCooldown = this.attachedToOvipositor ? 1.35 : 0.95;
           this.attackAnimation = 1;
-          const queenDmg = this.attachedToOvipositor ? this.damage : 180;
+          const queenDmg = this.attachedToOvipositor ? this.damage : (this.caste === 'empress' ? 235 : Math.max(180, this.damage));
 
           // Balayage royal dévastateur touchant l'ensemble des cibles proches
           nearbyThreats.forEach((threat) => {
@@ -35763,6 +35834,9 @@
           this.senseCalibrations++;
           audioManager.playMotionTrackerPing(12 - this.senseCalibrations * 2);
           this.log(`[SENS] Signature ${this.senseCalibrations}/3 identifiée.`);
+          if (this.senseCalibrations >= 3) {
+            window.HiveSystems?.narrative?.('M.U.T.H.U.R. 6000 // BIO-SCAN', 'Calibration thermique achevée : signature cardiaque 37.0°C verrouillée dans le couloir.', 4200);
+          }
           window.HiveSystems?.updateObjective(1, this.senseCalibrations >= 3 ? 1 : 0);
           this.updateHUD();
         };
@@ -35773,8 +35847,9 @@
           this.hostArrived = false;
           const origin = this.activeOrigin || window.gameInstance?.activeOrigin || STARTING_CAMPAIGN_ORIGINS.starship;
           this.log(origin.lureLog || '[STIMULUS] L’hôte s’approche de l’incubateur.');
-          if (window.gameInstance && window.gameInstance.humans[0]) {
-            window.gameInstance.humans[0].lureTowards(playerCreature.x, playerCreature.z);
+          const targetHost = window.gameInstance?.humans?.find((h) => (h.type === (origin?.hostType || 'scientist') || h.id === 1) && !h.isIncapacitated) || window.gameInstance?.humans?.[0];
+          if (targetHost) {
+            targetHost.lureTowards(playerCreature.x, playerCreature.z);
           }
           window.HiveSystems?.updateObjective(1, 2, 'Attendre que la cible entre dans la fenêtre d’éclosion.');
           window.HiveSystems?.narrative(origin.lureNarrativeSpeaker || 'HÔTE', origin.lureNarrativeText || 'Le capteur détecte un changement de pression.');
@@ -35794,6 +35869,7 @@
           }
           const ringColor = origin.id === 'juggernaut' ? 0x38bdf8 : (origin.id === 'hive' ? 0xa855f7 : 0xf59e0b);
           window.HiveSystems?.vfx?.ring(playerCreature.x, playerCreature.z, ringColor, 2.5);
+          window.HiveSystems?.narrative?.(origin.lureNarrativeSpeaker || 'HÔTE', '« Attendez… la membrane supérieure vient de s’ouvrir ! Quelque chose bouge à l’intérieur ! »', 4200);
           window.HiveSystems?.updateObjective(1, 2, 'Libérer le Facehugger lorsque l’hôte est à portée.');
           this.log(origin.hatchLog || '[ÉCLOSION] Les pétales s’ouvrent.');
           this.updateHUD();
@@ -35816,6 +35892,20 @@
         };
       }
       enrichActionButtonsWithSquareIcons(actionsContainer);
+    }
+    handleKeyDown(key) {
+      if (key === '1') document.getElementById('btn-calibrate-senses')?.click();
+      else if (key === '2') document.getElementById('btn-lure')?.click();
+      else if (key === '3') document.getElementById('btn-open-egg')?.click();
+      else if (key === '4' || key === ' ') {
+        const expel = document.getElementById('btn-expel-facehugger');
+        if (expel && !expel.disabled) expel.click();
+        else if (this.step === 'CLOSED') {
+          if (this.senseCalibrations < 3) document.getElementById('btn-calibrate-senses')?.click();
+          else if (!this.luredScientist) document.getElementById('btn-lure')?.click();
+          else if (this.hostArrived) document.getElementById('btn-open-egg')?.click();
+        }
+      }
     }
     log(msg) { appendSensorLog(msg, 'bio'); }
     getCameraOverride() {
@@ -35842,9 +35932,9 @@
       const host = window.gameInstance?.humans.find((human) => (human.type === targetType || human.id === 1) && !human.isIncapacitated);
       if (!host) return;
       const distance = Math.hypot(host.x - playerCreature.x, host.z - playerCreature.z);
-      if (distance <= 7.0 && playerCreature.mesh?.userData?.setOpenProgress) {
-        // Frémissement pré-éclosion de l'ovomorphe à l'approche thermique
-        playerCreature.mesh.userData.setOpenProgress(0.14);
+      if (distance <= 7.0 && playerCreature.detailedModel?.userData?.setOpenProgress) {
+        // Wave 28 : Frémissement pré-éclosion de l'ovomorphe sur detailedModel.userData
+        playerCreature.detailedModel.userData.setOpenProgress(0.14);
       }
       if (
         distance <= 4.2 &&
@@ -35969,14 +36059,17 @@
       const royalModel = window.HiveModelFactory?.createRoyalFacehugger?.();
       if (royalModel) {
         playerCreature.mesh = royalModel;
+        playerCreature.detailedModel = royalModel;
         playerCreature.mesh.position.set(playerCreature.x, 0.35, playerCreature.z);
         rendererEngine.scene.add(playerCreature.mesh);
       }
+      window.HiveSystems?.unlockCodex?.(['royal_facehugger']);
       if (!silent) {
         audioManager.playXenoRoar?.();
         audioManager.playAcidSizzle?.();
         window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0x9333ea, 26, 0.16, 1.4);
         window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0xa855f7, 3.2);
+        window.HiveSystems?.narrative?.('PALIMPSESTE // ALERTE BIO', 'Anomalie parasitaire majeure : spécimen Facehugger Royal détecté (lignée Matriarche / double-inoculation).', 4500);
         showToast('MUTATION FACEHUGGER ROYAL (Alien 3) : Palmures chitineuses blindées, portée de bond +35% et inoculation embryonnaire Royale !');
         appendSensorLog('[MUTATION ROYALE] Facehugger surdéveloppé à palmures d\'acier. Porteur de l\'embryon Prétorien/Reine.', 'bio');
       }
@@ -36087,8 +36180,20 @@
         playerCreature.startLeapTo(closestHost, () => {
           const attachmentsMelted = this.isRoyal ? 2 : 1;
           closestHost.maskAttachments = Math.max(0, closestHost.maskAttachments - attachmentsMelted);
-          playerCreature.x = closestHost.x + 2.4;
-          playerCreature.z = closestHost.z + 1.4;
+          let safeX = closestHost.x;
+          let safeZ = closestHost.z;
+          for (let step = 0; step < 8; step++) {
+            const ang = (step / 8) * Math.PI * 2 + 0.5;
+            const cx = closestHost.x + Math.cos(ang) * 2.5;
+            const cz = closestHost.z + Math.sin(ang) * 2.5;
+            if (!stationMap.checkCollision(cx, cz)) {
+              safeX = cx;
+              safeZ = cz;
+              break;
+            }
+          }
+          playerCreature.x = safeX;
+          playerCreature.z = safeZ;
           playerCreature.mesh?.position.set(playerCreature.x, 0.35, playerCreature.z);
           playerCreature.mesh?.rotation.set(0, 0, 0);
           playerCreature.isLeaping = false;
@@ -36099,8 +36204,10 @@
           window.HiveSystems?.vfx?.floatingText?.(closestHost.x, 2.7, closestHost.z, 'FUSION ACIDE DE LA VISIÈRE (ALIEN 1979) !', '#39ff14', true);
           if (closestHost.maskAttachments <= 0) {
             closestHost.hostEligibility = 'viable';
+            window.HiveSystems?.narrative?.('ASTER RHO // CANAL KAPPA', '« Ma visière vient de céder ! L’acide a rongé les attaches du respirateur — reculez ! »', 4200);
             appendSensorLog('[VISIÈRE CORRODÉE] Le casque respiratoire a fondu sous l\'acide moléculaire : l\'hôte est désormais implantable.', 'alert');
           } else {
+            window.HiveSystems?.narrative?.('ASTER RHO // CANAL KAPPA', '« Contact acide sur le masque ! Une sangle vient de lâcher — maintenez le feu ! »', 4000);
             appendSensorLog('[MASQUE] Première attache dissoute à l\'acide : une fixation protège encore Aster.', 'bio');
           }
           window.gameInstance?.syncCampaignCharacter?.(closestHost);
@@ -36112,7 +36219,15 @@
       this.targetHost = closestHost;
       if (window.gameInstance) {
         window.gameInstance.hostProfile = closestHost.type;
-        const armoredHostTypes = ['commando', 'smartgunner', 'gyro', 'marine', 'heavy', 'guard', 'uscm_sniper', 'weyland_commando_mk2', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic', 'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander', 'uscm_breacher_shotgun', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_smartgun_flamer'];
+        const armoredHostTypes = [
+          'commando', 'smartgunner', 'gyro', 'marine', 'heavy', 'guard', 'uscm_sniper', 'weyland_commando_mk2',
+          'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic',
+          'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander',
+          'uscm_breacher_shotgun', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_smartgun_flamer',
+          'uscm_heavy_grenadier', 'uscm_pulse_lance_gunner', 'uscm_railgun_marksman', 'uscm_cryo_sweeper',
+          'uscm_mortar_trooper', 'uscm_veteran_smartgunner', 'uscm_command_apc_gunner', 'uscm_heavy_plasma_gunner',
+          'weyland_shock_enforcer', 'weyland_xeno_tamer_commando', 'weyland_apex_handler'
+        ];
         let adultCaste = closestHost.type === 'labhound'
           ? 'runner'
           : (armoredHostTypes.includes(closestHost.type) ? 'warrior' : 'drone');
@@ -36162,11 +36277,11 @@
       this.targetHost.isRestrained = false;
       window.gameInstance?.syncCampaignCharacter?.(this.targetHost, { alive: true });
 
-      // Double-implantation canonique du Facehugger Royal (Alien 3)
+      // Double-implantation canonique du Facehugger Royal (Alien 3) — Wave 28 Fix NaN (.health/.maxHealth)
       if (this.isRoyal && this.royalImplantCount < 1) {
         this.royalImplantCount++;
         playerCreature.detachFromHost({ releaseHost: true, hide: false });
-        playerCreature.hp = Math.max(40, Math.floor(playerCreature.maxHp * 0.5));
+        playerCreature.health = Math.max(40, Math.floor(playerCreature.maxHealth * 0.5));
         this.isAttacking = false;
         this.implantProgress = 0;
         this.targetHost = null;
@@ -36750,6 +36865,7 @@
       const adultProfile = playerCreature.getAdultProfile();
       appendSensorLog(`[RÉFLEXE ADN 1:1] Métamorphose achevée selon le génome de l'hôte : émergence d'un ${adultProfile.label}.`, 'bio');
       appendSensorLog('[MUE ROMULUS] La chrysalide se déchire le long de la suture centrale. Le prédateur adulte émerge des fluides amniotiques en laissant son exuvie vide.', 'bio');
+      window.HiveSystems?.narrative?.('M.U.T.H.U.R. 6000 // ALERTE BIO', `Rupture de la chrysalide ! Spécimen adulte de phénotype ${adultProfile.label} détecté en liberté dans MNEMOSYNE.`, 4800);
       if (window.gameInstance) window.gameInstance.advanceStage(this);
     }
     handleKeyDown(key) {
@@ -36758,6 +36874,8 @@
         return;
       }
       if (key === 'c') {
+        // Wave 28 : Bloquer l'accès aux conduits pendant la gestation interne, l'éruption ou la chrysalide
+        if (this.step !== 'HUNT_FAUNA') return;
         const closestVent = stationMap?.findClosestVent?.(playerCreature.x, playerCreature.z);
         if (closestVent) {
           const ventObj = closestVent.vent || closestVent;
@@ -36773,8 +36891,13 @@
       }
       if (key !== ' ') return;
       if (this.step === 'READY_TO_BURST') this.pumpSternumPressure();
-      else if (this.step === 'HUNT_FAUNA') this.attackNearbyRodent();
-      else if (this.step === 'CHRYSALIS' && this.chrysalisTimer >= 100) this.emergeAdultForm();
+      else if (this.step === 'HUNT_FAUNA') {
+        if (this.biomassHunted >= 3) {
+          document.getElementById('btn-start-chrysalis')?.click();
+        } else {
+          this.attackNearbyRodent();
+        }
+      } else if (this.step === 'CHRYSALIS' && this.chrysalisTimer >= 100) this.emergeAdultForm();
     }
     log(message) { appendSensorLog(message, 'bio'); }
     getCameraTarget() {
@@ -37035,11 +37158,11 @@
         palatine: { jaw: 'MÂCHOIRE PALATINE', tail: 'FRAPPE ROYALE' },
         offspring: { jaw: 'SIPHON MÉTABOLIQUE Z-01', tail: 'BROYAGE HYBRIDE' },
         deacon: { jaw: 'MÂCHOIRE PRÉMAXILLAIRE', tail: 'COUP DE FOUET' },
-        deacon_adult: { jaw: 'SUCCION ARCHON PRÉMAXILLAIRE', tail: 'SECTION SPINAIL AU FOUET' },
+        deacon_adult: { jaw: 'SUCCION ARCHON PRÉMAXILLAIRE', tail: 'SECTION SPINALE AU FOUET' },
         alpha: { jaw: 'BROYAGE DE CRÂNE', tail: 'FOUET BIFIDE SUPERSONIQUE' },
         spitter: { jaw: 'MORSURE CAUSTIQUE', tail: 'FOUET GLANDULAIRE' },
         crusher: { jaw: 'BROYAGE FRONTAL', tail: 'MASSUE CERVICALE' },
-        boiler: { jaw: 'MORSURE DÉCHELONNÉE', tail: 'PULVÉRISATION ACIDE' },
+        boiler: { jaw: 'MORSURE CAUSTIQUE', tail: 'PULVÉRISATION ACIDE' },
         carrier: { jaw: 'MORSURE MATRICIELLE', tail: 'PINCE CAUDALE' },
         newborn: { jaw: 'ÉTREINTE BROYEUSE', tail: 'FRAPPE BRACHIALE' },
         raven: { jaw: 'CHARGE SISMIQUE', tail: 'MASSUE CAUDALE HÉRISSÉE' },
@@ -37060,7 +37183,7 @@
         praetorian: { jaw: 'RUGISSEMENT PRÉTORIEN', tail: 'LANCE ROYALE' },
         predalien: { jaw: 'IMPLANTATION ORALE YAUTJA', tail: 'FOUET DE PRÉDATEUR' },
         neomorph: { jaw: 'FRÉNÉSIE SANGUINE NÉOMORPHE', tail: 'LACÉRATION SPINALE' },
-        mantis_drone: { jaw: 'FAUCHAGE FALCIFORME', tail: 'ESTACA DE MANTE' },
+        mantis_drone: { jaw: 'FAUCHAGE FALCIFORME', tail: 'ESTOC DE MANTE' },
         bull_drone: { jaw: 'CHARGE CORNE TAUREAU', tail: 'COUP DE BÉLIER' },
         gorilla_drone: { jaw: 'FRAPPE SISMIQUE QUADRUMANE', tail: 'PROJECTION LOURDE' },
         boar_drone: { jaw: 'CHARGE SANGLIER', tail: 'DÉFENSE CAUDALE' },
@@ -37100,7 +37223,7 @@
       const iconAll = '<svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor"><rect x="3" y="3" width="6" height="6" stroke-width="1.5"/><rect x="11" y="3" width="6" height="6" stroke-width="1.5"/><rect x="3" y="11" width="6" height="6" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" stroke-width="1.5"/></svg>';
       actionsContainer.innerHTML = `
         <div class="caste-selector-box" style="margin-bottom: 8px; padding: 6px; background: rgba(15,23,42,0.85); border: 1px solid #38bdf8; border-radius: 4px;">
-          <label for="select-adult-caste" style="font-size: 10px; color: #38bdf8; display: block; margin-bottom: 4px; letter-spacing: 1px;">MORPHOLOGIE XÉNOMORPHE (QA AUDIT #1) :</label>
+          <label for="select-adult-caste" style="font-size: 10px; color: #38bdf8; display: block; margin-bottom: 4px; letter-spacing: 1px;">PHÉNOTYPE XÉNOMORPHE ACTIF :</label>
           <select id="select-adult-caste" style="width: 100%; background: #020617; color: #39ff14; border: 1px solid #22c55e; padding: 4px 6px; font-family: var(--font-hud); font-size: 11px;">
             <option value="drone" ${activeCaste === 'drone' ? 'selected' : ''}>Drone (Alien 1979 / Isolation)</option>
             <option value="warrior" ${activeCaste === 'warrior' ? 'selected' : ''}>Guerrier (Aliens 1986)</option>
@@ -37204,7 +37327,7 @@
         <button type="button" id="btn-tail-decapitation" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);"><span class="key-badge">T</span>DÉCAPITATION AU DARD</button>
         <button type="button" id="btn-deacon-archon" class="act-btn" data-tab-cat="predation" data-caste-only="deacon_adult" style="border-color: #38bdf8; background: rgba(56,189,248,0.22); display: ${activeCaste === 'deacon_adult' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>SUCCION BIOMASSE ARCHON</button>
         <button type="button" id="btn-deaconess-roar" class="act-btn" data-tab-cat="predation" data-caste-only="deaconess" style="border-color: #1e3a8a; background: rgba(30,58,138,0.28); display: ${activeCaste === 'deaconess' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>HURLEMENT INFRASONIQUE PRIMITIF</button>
-        <button type="button" id="btn-spinal-whip" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);"><span class="key-badge">T</span>SECTION SPINAIL AU FOUET</button>
+        <button type="button" id="btn-spinal-whip" class="act-btn" data-tab-cat="predation" style="border-color: #ef4444; background: rgba(239,68,68,0.22);"><span class="key-badge">T</span>SECTION SPINALE AU FOUET</button>
         <button type="button" id="btn-predalien-implant" class="act-btn" data-tab-cat="predation" data-caste-only="predalien" style="border-color: #f59e0b; background: rgba(245,158,11,0.22); display: ${activeCaste === 'predalien' ? 'inline-block' : 'none'};"><span class="key-badge">G/R</span>IMPLANTATION ORALE DIRECTE</button>
         <button type="button" id="btn-abomination-crush" class="act-btn" data-tab-cat="predation" data-caste-only="abomination" style="border-color: #f1f5f9; background: rgba(241,245,249,0.25); display: ${activeCaste === 'abomination' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>BROYAGE STERNAL & PROJECTION</button>
         <button type="button" id="btn-belugamorph-frenzy" class="act-btn" data-tab-cat="predation" data-caste-only="belugamorph" style="border-color: #f8fafc; background: rgba(248,250,252,0.25); display: ${activeCaste === 'belugamorph' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>MORSURES VORACES BELUGAMORPH</button>
@@ -37220,7 +37343,7 @@
         <button type="button" id="btn-drone-prowl" class="act-btn" data-tab-cat="stealth"><span class="key-badge">Z</span>POSTURE BASSE TRAQUE</button>
         <button type="button" id="btn-wall-mimicry" class="act-btn" data-tab-cat="stealth" style="border-color: #22c55e; background: rgba(34,197,94,0.18);"><span class="key-badge">Z</span>CAMOUFLAGE MURAL DE RÉSINE</button>
         <button type="button" id="btn-crusher-charge" class="act-btn" data-tab-cat="predation" data-caste-only="crusher" style="border-color: #f97316; background: rgba(249,115,22,0.22); display: ${activeCaste === 'crusher' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>CHARGE BÉLIER CRUSHER</button>
-        <button type="button" id="btn-hive-submission" class="act-btn" data-tab-cat="predation" style="border-color: #a855f7; background: rgba(168,85,247,0.22); display: ${['alpha', 'queen', 'praetorian', 'palatine'].includes(activeCaste) ? 'inline-block' : 'none'};"><span class="key-badge">H</span>ONDE DE SOUMISSION DE RUCHE</button>
+        <button type="button" id="btn-hive-submission" class="act-btn" data-tab-cat="predation" style="border-color: #a855f7; background: rgba(168,85,247,0.22); display: ${['alpha', 'queen', 'praetorian', 'palatine', 'empress', 'matriarch_queen'].includes(activeCaste) ? 'inline-block' : 'none'};"><span class="key-badge">H</span>ONDE DE SOUMISSION DE RUCHE</button>
         <button type="button" id="btn-prowler-ambush" class="act-btn" data-tab-cat="predation" data-caste-only="prowler" style="border-color: #c084fc; background: rgba(192,132,252,0.25); display: ${activeCaste === 'prowler' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>EMBUSCADE FURTIVE PROWLER</button>
         <button type="button" id="btn-offspring-siphon" class="act-btn" data-tab-cat="predation" data-caste-only="offspring" style="border-color: #a855f7; background: rgba(168,85,247,0.28); display: ${activeCaste === 'offspring' ? 'inline-block' : 'none'};"><span class="key-badge">R</span>SIPHON MÉTABOLIQUE Z-01</button>
         <button type="button" id="btn-drone-prowl-leap" class="act-btn" data-tab-cat="predation" style="border-color: #39ff14; background: rgba(57,255,20,0.18);"><span class="key-badge">K</span>BOND DE TRAQUE</button>
@@ -37329,11 +37452,11 @@
       }
 
       document.getElementById('btn-drone-ambush').onclick = () => this.executeAmbush();
-      document.getElementById('btn-inner-jaw').onclick = () => this.executeInnerJaw();
+      document.getElementById('btn-inner-jaw').onclick = () => this.handleKeyDown('2');
       document.getElementById('btn-tail-impale').onclick = () => this.executeTailImpale();
       document.getElementById('btn-claw-swipe').onclick = () => this.executeClawSwipe();
-      document.getElementById('btn-drone-hiss').onclick = () => this.executeTerrifyingHiss();
-      document.getElementById('btn-acid-spit').onclick = () => this.executeAcidSpit();
+      document.getElementById('btn-drone-hiss').onclick = () => this.handleKeyDown('h');
+      document.getElementById('btn-acid-spit').onclick = () => this.handleKeyDown('x');
       document.getElementById('btn-drone-ceiling').onclick = () => this.toggleCeilingProwl();
       const btnProwlerAmbush = document.getElementById('btn-prowler-ambush');
       if (btnProwlerAmbush) btnProwlerAmbush.onclick = () => playerCreature.executeProwlerAmbush();
@@ -39373,9 +39496,11 @@
         if (caste === 'king' || caste === 'empress' || caste === 'matriarch_queen') {
           playerCreature.executeKingRoyalDominance();
         } else if (caste === 'deaconess') {
-          playerCreature.executeDeaconessSonicRoar?.();
+          playerCreature.executeDeaconessInfrasonicRoar?.();
         } else if (caste === 'red_drone') {
-          playerCreature.executeRedDroneCrimsonFrenzy?.();
+          const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.2);
+          if (target) playerCreature.executeRedDroneFrenzySwipe?.(target);
+          else showToast('Aucune cible à portée de frénésie de griffage (4.2m).');
         } else if (caste === 'deacon_adult' || caste === 'deacon') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.2);
           if (target) playerCreature.executeDeaconArchonPredation(target);
@@ -39421,7 +39546,8 @@
         } else if (caste === 'prowler' || caste === 'lurker' || caste === 'stalker') {
           playerCreature.executeProwlerAmbush();
         } else if (caste === 'burster' || caste === 'boiler') {
-          this.executeAcidSpray?.();
+          if (playerCreature.executeAcidicBackSpray) playerCreature.executeAcidicBackSpray();
+          else this.executeAcidSpit?.();
         } else if (caste === 'offspring') {
           playerCreature.executeOffspringZ01Siphon();
         } else if (caste === 'abomination') {
@@ -40499,6 +40625,9 @@
         this.queen.attachedToOvipositor = true;
         this.queen.speed = 0;
         if (this.possessedUnit === this.queen) this.possessedUnit = null;
+        this.possessedMoveTarget = null;
+        this.queen.navigationGoal = null;
+        this.queen.navigationWaypoints = [];
         if (this.ovipositorMesh) {
           this.ovipositorMesh.traverse((child) => {
             if (child.name?.startsWith('ovipositor-tendon-')) child.visible = true;
@@ -40506,7 +40635,7 @@
           const sac = this.ovipositorMesh.getObjectByName('ovipositor-sac');
           if (sac) sac.scale.set(1.35, 0.8, 2.2);
           const oviLight = this.ovipositorMesh.getObjectByName('ovipositor-light');
-          if (oviLight) oviLight.intensity = 1.4;
+          if (oviLight) oviLight.intensity = 2.2;
         }
         window.HiveSystems?.vfx?.burst(this.queen.x, this.queen.z, 0x7e22ce, 18, 0.14, 2.0);
         window.HiveSystems?.vfx?.floatingText?.(this.queen.x, 3.8, this.queen.z, 'ANCRAGE ROYAL RÉTABLI', '#39ff14', false);
@@ -40587,16 +40716,17 @@
         audioManager.playBoneCrunch?.();
         audioManager.playWetImpact?.(unit.x, unit.z);
         rendererEngine.addScreenShake?.(0.4, 0.28);
+        const royalDmg = unit.caste === 'empress' ? 235 : Math.max(180, unit.damage || 180);
         const cleaveVictims = humans.filter((h) => (
           !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - unit.x, h.z - unit.z) <= 7.0
         ));
         cleaveVictims.forEach((victim) => {
-          victim.takeDamage(180, unit);
+          victim.takeDamage(royalDmg, unit);
           victim.staggerTimer = 0.6;
           window.HiveSystems?.vfx?.burst(victim.x, victim.z, 0xb91c1c, 18, 0.16, 1.6);
-          window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, '-180 BROYAGE ROYAL', '#a855f7', true);
+          window.HiveSystems?.vfx?.floatingText?.(victim.x, 2.5, victim.z, `-${royalDmg} BROYAGE ROYAL`, '#a855f7', true);
         });
-        showToast('BALAYAGE ROYAL DÉVASTATEUR !');
+        showToast(unit.caste === 'empress' ? 'BALAYAGE IMPÉRIAL DÉVASTATEUR !' : 'BALAYAGE ROYAL DÉVASTATEUR !');
       } else if (unit.caste === 'spitter') {
         audioManager.playAcidSizzle?.();
         const applySpitHit = () => {
@@ -40674,7 +40804,7 @@
         });
         showToast('FAUCHAGE AUX LAMES BRACHIALES DU RAVAGER !');
       } else if (['prowler', 'lurker', 'stalker'].includes(unit.caste)) {
-        audioManager.playXenomorphHiss?.();
+        audioManager.playXenoHiss?.(unit.x, unit.z);
         audioManager.playWetImpact?.(target.x, target.z);
         const dmg = Math.round(unit.damage * 1.4);
         target.takeDamage(dmg, unit);
@@ -40972,6 +41102,8 @@
       this.queen.maxHp = 1850;
       this.queen.hp = Math.min(1850, this.queen.hp + 650);
       this.queen.damage = 195;
+      this.queen.attackRange = 6.0;
+      if (!this.queen.attachedToOvipositor) this.queen.speed = 0.42;
       if (this.queen.mesh) {
         rendererEngine.removeObject(this.queen.mesh);
       }
@@ -40984,6 +41116,7 @@
       window.HiveSystems?.narrative?.('IMPÉRATRICE // RÉSONANCE SYNAPTIQUE', 'La Reine Mère franchit le seuil impérial (5.8m) : aura phéromonale maximale activée sur toute la Ruche.', 5000);
       this.log('[ASCENSION IMPÉRATRICE] La Reine Mère mute en Impératrice Suprême (5.8m, 1850 PV).');
       showToast('ASCENSION ACCOMPLIE : REINE MÈRE -> IMPÉRATRICE SUPRÊME (5.8m) !');
+      this.updateHUD();
       this.updateStats();
     }
 
@@ -41137,6 +41270,23 @@
           const unit = new HiveUnit(Date.now() + this.rtsUnits.length, caste, spawn.x, spawn.z);
           unit.createMesh();
           this.rtsUnits.push(unit);
+          const codexByCaste = {
+            drone: ['drone', 'codex_drone'],
+            runner: ['runner', 'codex_runner'],
+            warrior: ['warrior', 'codex_warrior'],
+            worker: ['worker', 'codex_worker'],
+            spitter: ['spitter', 'codex_spitter'],
+            praetorian: ['praetorian', 'codex_praetorian'],
+            prowler: ['prowler', 'codex_castes_etendues'],
+            burster: ['burster', 'codex_castes_etendues'],
+            boiler: ['codex_boiler_carrier', 'codex_castes_etendues'],
+            crusher: ['crusher', 'codex_castes_etendues'],
+            ravager: ['codex_empress_ravager', 'codex_castes_etendues'],
+            carrier: ['codex_boiler_carrier', 'codex_castes_etendues'],
+            palatine: ['palatine', 'codex_castes_etendues'],
+            offspring: ['offspring', 'codex_castes_etendues']
+          };
+          window.HiveSystems?.unlockCodex?.(codexByCaste[caste] || [caste, 'codex_castes_etendues']);
           this.updateStats();
           audioManager.playRtsUnitHatched?.(caste, spawn.x, spawn.z);
           window.HiveSystems?.vfx?.burst(spawn.x, spawn.z, 0x39ff14, 24, 0.14, 1.5);
@@ -41542,7 +41692,7 @@
         }
       }
 
-      // Wave 18 : Bandeau Télémétrie Boss Diégétique (MANTIS-4 & BRIAREOS-7)
+      // Wave 18 & Wave 28 : Bandeau Télémétrie Double-Boss Diégétique (MANTIS-4 & BRIAREOS-7 simultanés)
       const bossHud = document.getElementById('boss-telemetry-hud');
       if (bossHud) {
         const activeBosses = [this.mantisBoss, this.briareosBoss].filter((b) => b && !b.isIncapacitated && !b.isCocooned && b.hp > 0);
@@ -41564,6 +41714,25 @@
           if (shieldFill) shieldFill.style.width = `${shPct.toFixed(1)}%`;
           if (hpFill) hpFill.style.width = `${hpPct.toFixed(1)}%`;
           if (hpVal) hpVal.textContent = `${Math.ceil(primary.hp)}/${primary.maxHp || 460} PV`;
+
+          const secRow = document.getElementById('boss-telemetry-secondary');
+          if (secRow) {
+            if (activeBosses.length >= 2) {
+              const secondary = activeBosses[1];
+              secRow.classList.remove('hidden');
+              const nameEl2 = document.getElementById('boss-hud-name-2');
+              const phaseEl2 = document.getElementById('boss-hud-phase-2');
+              const hpFill2 = document.getElementById('boss-hud-hp-fill-2');
+              const hpVal2 = document.getElementById('boss-hud-hp-val-2');
+              if (nameEl2) nameEl2.textContent = secondary.bossId === 'MANTIS_4' ? 'MANTIS-4 // EXOSQUELETTE KAPPA' : 'BRIAREOS-7 // SYNTHÉTIQUE DE SIÈGE';
+              if (phaseEl2) phaseEl2.textContent = `PHASE ${secondary.bossPhase || 1}`;
+              const hpPct2 = Math.max(0, Math.min(100, (secondary.hp / (secondary.maxHp || 320)) * 100));
+              if (hpFill2) hpFill2.style.width = `${hpPct2.toFixed(1)}%`;
+              if (hpVal2) hpVal2.textContent = `${Math.ceil(secondary.hp)}/${secondary.maxHp || 320} PV`;
+            } else {
+              secRow.classList.add('hidden');
+            }
+          }
         }
       }
     }

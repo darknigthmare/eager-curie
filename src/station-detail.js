@@ -113,6 +113,17 @@
     const coolLamp = material(new T.MeshStandardMaterial({ color: 0xdaf1ef, emissive: 0x7daaa6, emissiveIntensity: 1.8, roughness: 0.31, metalness: 0.08 }));
     const warmLamp = material(new T.MeshStandardMaterial({ color: 0xffe4b5, emissive: 0xdba66a, emissiveIntensity: 1.6, roughness: 0.34, metalness: 0.06 }));
     const indicator = material(new T.MeshBasicMaterial({ color: 0x8bc6b3 }));
+    // Wave 28 : Bandeaux d'identité sectorielle MNEMOSYNE & balises d'urgence pulsantes (0 lumière dynamique supplémentaire)
+    const sectorStripMat = material(new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.72 }));
+    const emergencyBeaconMat = material(new T.MeshStandardMaterial({ color: 0x3b0d0c, emissive: 0xef4444, emissiveIntensity: 0.15, roughness: 0.25, metalness: 0.4 }));
+    function sectorColorFor(x, z) {
+      if (x <= -15 && z <= -25) return 0x38bdf8; // Baie Cryo-Médicale NW
+      if (x >= 15 && z <= -25) return 0xf59e0b;  // Armurerie KAPPA NE
+      if (x <= -15 && z >= 25) return 0xea580c;  // Réacteur Thermique SW
+      if (x >= 15 && z >= 25) return 0xa855f7;   // Nurserie Bio-Résine SE
+      if (x >= 50 && Math.abs(z) <= 20) return 0x06b6d4; // Sas EVA Est
+      return 0x8bc6b3; // Noyau PALIMPSESTE / Coursives Centrales
+    }
 
     function instance(key, geo, mat, position, scale, rotation = [0, 0, 0], wall = null, minTier = 0, color = null) {
       if (!batches.has(key)) batches.set(key, { geo, mat, instances: [], minTier, mesh: null });
@@ -190,9 +201,16 @@
           // Compact service luminaires, grounded by matte housings and end clamps.
           if (index % 2 === 0) {
             const warm = boundary > 20;
+            const wx = wallX + (alongX ? u : faceDepth + face * 0.14);
+            const wz = wallZ + (alongX ? faceDepth + face * 0.14 : u);
+            const sCol = sectorColorFor(wx, wz);
             wallParts('dark-inset', dark, u, 5.6, faceDepth + face * 0.05, Math.min(bay * 0.65, 3.4), 0.5, 0.25);
             wallParts(warm ? 'lamps-warm' : 'lamps-cool', warm ? warmLamp : coolLamp, u, 5.6, faceDepth + face * 0.15, Math.min(bay * 0.57, 2.9), 0.15, 0.12);
             wallParts('indicator', indicator, u + bay * 0.32, 1.25, faceDepth + face * 0.08, 0.08, 0.22, 0.04, 1);
+            instance('sector-strips', box, sectorStripMat, [wx, 4.55, wz], alongX ? [Math.min(bay * 0.62, 3.0), 0.08, 0.04] : [0.04, 0.08, Math.min(bay * 0.62, 3.0)], [0, 0, 0], wall, 1, sCol);
+            if (index % 4 === 0) {
+              instance('emergency-beacons', box, emergencyBeaconMat, [wx, 6.22, wz], [0.22, 0.22, 0.22], [0, 0, 0], wall, 1);
+            }
           }
           // Four recessed fasteners per panel, batched with other polished metal.
           for (const du of [-0.42, 0.42]) for (const y of [1.1, 3.95]) {
@@ -268,21 +286,36 @@
     for (const [x, z, w, d] of [[0, -15, 10, 10], [-24, 6, 10, 6], [25, 13, 9, 8], [-45, 45, 13, 13], [45, 45, 16, 16]]) {
       instance('contact-shadows', plane, contact, [x, 0.016, z], [w, d, 1], [-Math.PI / 2, 0, 0]);
     }
-    for (const [x, z, color] of [[-30, -27, 0x739c9c], [30, -27, 0x6f879c], [-34, 32, 0x947957], [34, 32, 0x998574]]) {
-      instance('floor-light-spill', plane, spill, [x, 0.021, z], [17, 8, 1], [-Math.PI / 2, 0, 0], null, 2, color);
+    for (const [x, z, color] of [[-45, -48, 0x38bdf8], [45, -48, 0xf59e0b], [-45, 45, 0xea580c], [48, 48, 0xa855f7], [0, 0, 0x8bc6b3], [64, 0, 0x06b6d4]]) {
+      instance('floor-light-spill', plane, spill, [x, 0.021, z], [18, 10, 1], [-Math.PI / 2, 0, 0], null, 2, color);
     }
 
-    // Static suspended dust catches the white service lighting without animated noise.
-    // One point draw, disabled in reduced detail; the renderer owns all volumetric fog.
+    // Wave 28 : Particules atmosphériques sectorielles (Givre Cryo, Braises Réacteur, Spores Nurserie, Poussière) — 1 draw call
+    const moteCount = 320;
     const moteGeometry = geometry(new T.BufferGeometry());
-    const motes = new Float32Array(192 * 3);
-    for (let index = 0; index < 192; index++) {
-      motes[index * 3] = ((index * 73.791) % 134) - 67;
-      motes[index * 3 + 1] = 0.5 + ((index * 3.177) % 6.2);
-      motes[index * 3 + 2] = ((index * 39.137) % 134) - 67;
+    const motes = new Float32Array(moteCount * 3);
+    const moteBaseY = new Float32Array(moteCount);
+    const moteColors = new Float32Array(moteCount * 3);
+    const tmpColor = new T.Color();
+    for (let index = 0; index < moteCount; index++) {
+      const mx = ((index * 73.791) % 134) - 67;
+      const my = 0.5 + ((index * 3.177) % 6.2);
+      const mz = ((index * 39.137) % 134) - 67;
+      motes[index * 3] = mx;
+      motes[index * 3 + 1] = my;
+      motes[index * 3 + 2] = mz;
+      moteBaseY[index] = my;
+      if (mx <= -15 && mz <= -25) tmpColor.setHex(0xbae6fd);
+      else if (mx <= -15 && mz >= 25) tmpColor.setHex(0xfbbf24);
+      else if (mx >= 15 && mz >= 25) tmpColor.setHex(index % 2 === 0 ? 0xc084fc : 0x84cc16);
+      else tmpColor.setHex(0xa4b5bd);
+      moteColors[index * 3] = tmpColor.r;
+      moteColors[index * 3 + 1] = tmpColor.g;
+      moteColors[index * 3 + 2] = tmpColor.b;
     }
     moteGeometry.setAttribute('position', new T.BufferAttribute(motes, 3));
-    const moteMaterial = material(new T.PointsMaterial({ color: 0xa4b5bd, size: 0.055, transparent: true, opacity: 0.2, depthWrite: false, sizeAttenuation: true }));
+    moteGeometry.setAttribute('color', new T.BufferAttribute(moteColors, 3));
+    const moteMaterial = material(new T.PointsMaterial({ color: 0xffffff, vertexColors: true, size: 0.07, transparent: true, opacity: 0.28, depthWrite: false, sizeAttenuation: true }));
     const dust = new T.Points(moteGeometry, moteMaterial);
     dust.name = 'Station detail · suspended service dust';
     dust.visible = tier >= 2;
@@ -346,22 +379,48 @@
     function update(time = 0) {
       if (disposed) return;
       refreshSurfaceMaps();
-      // Wave 19 : Éclairage réactif des néons et diodes de station (Alarme / Blackout Alien: Isolation)
+      // Wave 19 & Wave 28 : Éclairage réactif des néons, diodes et balises d'urgence (Alarme / Purge PALIMPSESTE / Blackout)
       const alarmLevel = window.alarmSystem?.level || 0;
       const isBlackout = (window.rendererEngine?.powerSabotagedTimer || 0) > 0;
+      const stg = window.gameInstance?.currentStage;
+      const isPurgeActive = Boolean(
+        (stg && typeof stg.purgeRemaining === 'number' && stg.purgeRemaining < 180 && (stg.relayCount || 0) < 3) ||
+        window.stationMap?.selfDestructSystem?.active
+      );
       if (isBlackout) {
         coolLamp.emissiveIntensity = 0.08;
         warmLamp.emissiveIntensity = 0.06;
         indicator.color.setHex(Math.sin(time * 7.5) > 0 ? 0xef4444 : 0x450a0a);
+        emergencyBeaconMat.emissive.setHex(0xef4444);
+        emergencyBeaconMat.emissiveIntensity = 0.8 + 1.4 * Math.max(0, Math.sin(time * 8.0));
+      } else if (isPurgeActive || alarmLevel >= 4) {
+        const flicker = Math.sin(time * 23.0) * Math.cos(time * 13.0);
+        coolLamp.emissiveIntensity = flicker > 0.72 ? 0.55 : 1.45;
+        warmLamp.emissiveIntensity = 1.3 + Math.sin(time * 5.0) * 0.3;
+        indicator.color.setHex(Math.sin(time * 9.0) > 0 ? 0xef4444 : 0x7f1d1d);
+        emergencyBeaconMat.emissive.setHex(0xef4444);
+        emergencyBeaconMat.emissiveIntensity = 0.4 + 2.2 * Math.max(0, Math.sin(time * 9.5));
       } else if (alarmLevel >= 3) {
         const flicker = Math.sin(time * 23.0) * Math.cos(time * 13.0);
         coolLamp.emissiveIntensity = flicker > 0.72 ? 0.55 : 1.55;
         warmLamp.emissiveIntensity = 1.35 + Math.sin(time * 4.2) * 0.25;
         indicator.color.setHex(Math.sin(time * 6.0) > 0 ? 0xef4444 : 0xf59e0b);
+        emergencyBeaconMat.emissive.setHex(0xf59e0b);
+        emergencyBeaconMat.emissiveIntensity = 0.3 + 1.3 * Math.max(0, Math.sin(time * 5.2));
       } else {
         coolLamp.emissiveIntensity = 1.8;
         warmLamp.emissiveIntensity = 1.6;
         indicator.color.setHex(0x8bc6b3);
+        emergencyBeaconMat.emissiveIntensity = 0.12;
+      }
+      if (dust.visible && !window.rendererEngine?.reduceMotion) {
+        const posAttr = moteGeometry.attributes.position;
+        if (posAttr) {
+          for (let i = 0; i < moteCount; i++) {
+            posAttr.array[i * 3 + 1] = moteBaseY[i] + Math.sin(time * 0.65 + i * 0.7) * 0.22;
+          }
+          posAttr.needsUpdate = true;
+        }
       }
       let changed = false;
       for (const wall of wallStates.keys()) {

@@ -17,7 +17,7 @@ const styleCss = fs.readFileSync('src/css/style.css', 'utf8');
 // 1. Correctifs Critiques Fin de Campagne, Vignettes & Codex Complet
 assert(gameJs.includes('const isWin = isVictory === true || /VICTOIRE|DOMINION|EXODE|GRAINE/i.test(String(title || \'\'));'), 'Correction stricte isWin manquante dans showEndModal');
 assert(gameSystemsJs.includes('endingThumbnails.ENDING_DOMINION = endingThumbnails.dominion;') && gameSystemsJs.includes('endingIcons.ENDING_ASHES = endingIcons.seed;'), 'Mapping ENDING_DOMINION/EXODUS/ASHES manquant dans game-systems.js');
-assert(gameSystemsJs.includes("this.saveManager.unlockCodex(['codex_archives_complete'])"), 'Déblocage codex_archives_complete manquant dans completeEnding');
+assert(gameSystemsJs.includes("this.saveManager.unlock(['codex_archives_complete'])") || gameSystemsJs.includes("this.saveManager.unlockCodex(['codex_archives_complete'])"), 'Déblocage codex_archives_complete manquant dans completeEnding');
 assert(!gameJs.includes('saveManager?.unlock?.('), 'Appel mort saveManager?.unlock encore présent');
 assert(gameJs.includes("'codex_ovomorphe'") && gameJs.includes("'codex_queen'"), 'Entrées codex_* manquantes dans unlocksByStage');
 assert(contentJs.includes('id: "codex_reflexe_adn"') && contentJs.includes('id: "codex_castes_etendues"') && contentJs.includes('id: "codex_protocole_kappa"'), '3 entrées Codex manquantes dans content.js');

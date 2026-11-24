@@ -1492,6 +1492,8 @@
         hive: "Ruche",
         station: "MNEMOSYNE",
         opposition: "Opposition",
+        arsenal: "Arsenal",
+        vehicles: "Véhicules",
         archives: "Archives"
       },
       entries: [

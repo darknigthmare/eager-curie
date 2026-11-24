@@ -1544,6 +1544,60 @@
           receiverLength: 1.15,
           barrelEnd: 1.75,
           barrelRadius: 0.05
+        },
+        uscm_mortar_trooper: {
+          receiverWidth: 0.36,
+          receiverLength: 1.42,
+          barrelEnd: 1.72,
+          barrelRadius: 0.11
+        },
+        uscm_heavy_grenadier: {
+          receiverWidth: 0.38,
+          receiverLength: 1.38,
+          barrelEnd: 1.65,
+          barrelRadius: 0.095
+        },
+        uscm_pulse_lance_gunner: {
+          receiverWidth: 0.34,
+          receiverLength: 1.82,
+          barrelEnd: 2.18,
+          barrelRadius: 0.085
+        },
+        uscm_railgun_marksman: {
+          receiverWidth: 0.32,
+          receiverLength: 1.92,
+          barrelEnd: 2.32,
+          barrelRadius: 0.075
+        },
+        uscm_cryo_sweeper: {
+          receiverWidth: 0.36,
+          receiverLength: 1.48,
+          barrelEnd: 1.84,
+          barrelRadius: 0.12
+        },
+        weyland_shock_enforcer: {
+          receiverWidth: 0.31,
+          receiverLength: 1.44,
+          barrelEnd: 1.76,
+          barrelRadius: 0.08
+        },
+        weyland_apex_handler: {
+          receiverWidth: 0.24,
+          receiverLength: 1.62,
+          barrelEnd: 2.04,
+          barrelRadius: 0.055
+        },
+        uscm_veteran_smartgunner: {
+          receiverWidth: 0.44,
+          receiverLength: 1.82,
+          barrelEnd: 2.1,
+          barrelRadius: 0.105
+        },
+        uscm_heavy_plasma_gunner: {
+          receiverWidth: 0.38,
+          receiverLength: 1.64,
+          barrelEnd: 1.96,
+          barrelRadius: 0.095
         }
       };
       const profile = weaponProfiles[type] || weaponProfiles.guard;
@@ -7749,6 +7803,14 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         // Sas d'accès latéral avec rampe
         root.add(this._box(hullDark, { x: 0.3, y: 2.2, z: 1.8 }, { x: 2.8, y: 1.3, z: 0.5 }, 'airlock_side_door', true));
         root.add(this._box(warning, { x: 0.08, y: 0.25, z: 1.5 }, { x: 2.9, y: 2.3, z: 0.5 }, 'airlock_hazard_stripe'));
+        // Wave 27 : Train d'atterrissage tricycle hydraulique, propulseurs VTOL ventraux, collier d'amarrage dorsal & rampe arrière (Alien 1979 Starcub)
+        const landingCoords = [{ x: 0, z: 4.9, id: 'nose' }, { x: -2.1, z: -2.2, id: 'port' }, { x: 2.1, z: -2.2, id: 'stbd' }];
+        landingCoords.forEach((lg) => {
+          root.add(this._cylinder(hullDark, 0.14, 0.16, 0.72, { x: lg.x, y: 0.36, z: lg.z }, { x: 0, y: 0, z: 0 }, `narcissus_gear_strut_${lg.id}`));
+          root.add(this._box(hullDark, { x: 0.65, y: 0.14, z: 0.85 }, { x: lg.x, y: 0.07, z: lg.z }, `narcissus_gear_pad_${lg.id}`));
+        });
+        root.add(this._cylinder(hullDark, 0.68, 0.76, 0.32, { x: 0, y: 3.12, z: -0.8 }, { x: 0, y: 0, z: 0 }, 'narcissus_dorsal_docking_collar'));
+        root.add(this._box(hullDark, { x: 2.4, y: 0.18, z: 1.8 }, { x: 0, y: 0.45, z: -4.6 }, 'narcissus_aft_boarding_ramp', true));
       } else if (normalizedType === 'ground_cryo_mist' || normalizedType === 'cryo_mist') {
         // Chantier 60 : Nappe de Brume Cryogénique au Ras du Sol (Alien 1979)
         const mistMat = new T.MeshStandardMaterial({
@@ -8614,6 +8676,16 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
         root.add(this._cylinder(cannonMetal, 0.65, 0.7, 0.35, { x: 0.75, y: 2.45, z: -1.5 }, { x: 0, y: 0, z: 0 }, 'apc_turret_base'));
         root.add(this._segment(cannonMetal, new T.Vector3(0.65, 2.55, -1.5), new T.Vector3(0.65, 2.55, 1.8), 0.065, 0.055, 'apc_cannon_barrel_left', 8));
         root.add(this._segment(cannonMetal, new T.Vector3(0.85, 2.55, -1.5), new T.Vector3(0.85, 2.55, 1.8), 0.065, 0.055, 'apc_cannon_barrel_right', 8));
+        // Wave 27 : Rail dorsal Boyars, tourelle frontale GAU-113A, porte latérale coulissante tribord, projecteurs & lance-pots fumigènes
+        root.add(this._box(cannonMetal, { x: 0.42, y: 0.14, z: 5.8 }, { x: 0.75, y: 2.34, z: -1.1 }, 'apc_dorsal_turret_rail'));
+        root.add(this._box(cannonMetal, { x: 0.72, y: 0.42, z: 0.68 }, { x: 0, y: 1.95, z: 4.18 }, 'apc_chin_gau113_turret', true));
+        root.add(this._segment(cannonMetal, new T.Vector3(-0.14, 1.95, 4.45), new T.Vector3(-0.14, 1.95, 5.25), 0.045, 0.04, 'apc_gau113_barrel_l', 8));
+        root.add(this._segment(cannonMetal, new T.Vector3(0.14, 1.95, 4.45), new T.Vector3(0.14, 1.95, 5.25), 0.045, 0.04, 'apc_gau113_barrel_r', 8));
+        root.add(this._box(cannonMetal, { x: 0.14, y: 1.38, z: 1.65 }, { x: 1.72, y: 1.38, z: 0.25 }, 'apc_starboard_troop_door', true));
+        root.add(this._box(warning, { x: 0.16, y: 0.16, z: 1.55 }, { x: 1.73, y: 2.02, z: 0.25 }, 'apc_troop_door_hazard'));
+        const apcHeadlight = this._material('emissiveAmber', { color: 0xfef08a, emissiveIntensity: 1.8 });
+        root.add(this._box(apcHeadlight, { x: 0.36, y: 0.18, z: 0.1 }, { x: -1.15, y: 1.72, z: 4.28 }, 'apc_floodlight_l'));
+        root.add(this._box(apcHeadlight, { x: 0.36, y: 0.18, z: 0.1 }, { x: 1.15, y: 1.72, z: 4.28 }, 'apc_floodlight_r'));
         this.placeOnGround(root, 0);
       } else if (normalizedType === 'water_droplet_vent' || normalizedType === 'droplet_vent') {
         // Chantier 134 : Sas de Condensation & Chutes de Gouttes d'Eau Industrielles (Alien 1979)
@@ -13297,6 +13369,44 @@ const chitinShieldCrusherJuggernaut = caste === 'chitin_shield_crusher_juggernau
       root.add(this._box(darkMat, { x: 2.2, y: 2.4, z: 0.45 }, { x: 0, y: 1.85, z: 1.9 }, 'loader_mast', true));
       root.add(this._box(accentMat, { x: 0.35, y: 0.22, z: 0.35 }, { x: 0, y: 3.12, z: 1.9 }, 'loader_strobe'));
       return this._finalize(root, { modelType: 'vehicle', subtype: 'weyland_cargo_loader', height: 3.2 });
+    }
+
+    // Wave 27 : Remorqueur Orbital ÉCHO-12 (Prologue Acte I) & Chariot de Maintenance Autonome Seegson (Alien: Isolation)
+    createEcho12SalvageTug() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'echo12_orbital_salvage_tug';
+      const hullMat = this._material('industrial', { color: 0x64748b, roughness: 0.52, metalness: 0.62 });
+      const darkMat = this._material('darkMetal', { color: 0x1e293b, roughness: 0.42, metalness: 0.86 });
+      const plasmaMat = this._material('emissiveCyan', { color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.6 });
+
+      root.add(this._box(hullMat, { x: 3.6, y: 2.2, z: 6.4 }, { x: 0, y: 1.45, z: 0 }, 'echo12_tug_hull', true));
+      root.add(this._box(darkMat, { x: 2.8, y: 1.2, z: 2.2 }, { x: 0, y: 2.65, z: 1.2 }, 'echo12_tug_bridge', true));
+      for (const side of [-1, 1]) {
+        root.add(this._cylinder(darkMat, 0.48, 0.56, 1.35, { x: side * 1.4, y: 1.35, z: -3.4 }, { x: Math.PI / 2, y: 0, z: 0 }, `echo12_thruster_bell_${side}`));
+        root.add(this._ellipsoid(plasmaMat, { x: 0.38, y: 0.38, z: 0.16 }, { x: side * 1.4, y: 1.35, z: -4.08 }, `echo12_plasma_core_${side}`, 12));
+        root.add(this._box(darkMat, { x: 0.38, y: 0.42, z: 1.4 }, { x: side * 1.45, y: 1.1, z: 3.6 }, `echo12_grappling_clamp_${side}`, true));
+      }
+      return this._finalize(root, { modelType: 'vehicle', subtype: 'echo12_salvage_tug', height: 3.4 });
+    }
+
+    createSeegsonCargoTug() {
+      const T = this._three();
+      const root = new T.Group();
+      root.name = 'seegson_autonomous_cargo_tug';
+      const orangeMat = this._material('industrial', { color: 0xea580c, roughness: 0.46, metalness: 0.58 });
+      const darkMat = this._material('darkMetal', { color: 0x0f172a, roughness: 0.38, metalness: 0.85 });
+      const opticMat = this._material('emissiveAmber', { color: 0xfacc15, emissiveIntensity: 1.9 });
+
+      root.add(this._box(orangeMat, { x: 2.1, y: 1.1, z: 3.4 }, { x: 0, y: 0.78, z: 0 }, 'seegson_tug_chassis', true));
+      root.add(this._box(darkMat, { x: 1.5, y: 0.85, z: 1.2 }, { x: 0, y: 1.55, z: -0.7 }, 'seegson_tug_battery_cell', true));
+      root.add(this._box(opticMat, { x: 1.1, y: 0.18, z: 0.12 }, { x: 0, y: 1.05, z: 1.72 }, 'seegson_tug_optical_bar'));
+      for (const side of [-1, 1]) {
+        for (const zW of [-1.1, 1.1]) {
+          root.add(this._cylinder(darkMat, 0.38, 0.38, 0.28, { x: side * 1.12, y: 0.38, z: zW }, { x: 0, y: 0, z: Math.PI / 2 }, `seegson_tug_wheel_${side}_${zW}`));
+        }
+      }
+      return this._finalize(root, { modelType: 'vehicle', subtype: 'seegson_cargo_tug', height: 2.1 });
     }
 
     // -------------------------------------------------------------------------

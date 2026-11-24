@@ -1916,6 +1916,39 @@
           unlock: { type: "default" }
         },
         {
+          id: "codex_sadar_xm99_lance",
+          category: "arsenal",
+          title: "Armement Lourd USCM (M83A2 SADAR, Lance M78 & Railgun M90)",
+          body:
+            "Arsenal antichar et anti-apex du Corps des Marines Coloniaux : le lance-roquettes guidé M83A2 SADAR, " +
+            "le mortier léger M402, la lance à impulsions M78 et le railgun électromagnétique M90 capables de percer " +
+            "le blindage frontal d'un Crusher ou d'une Praetorian.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_royal_pheromone_aura",
+          category: "biology",
+          title: "Aura Phéromonale Royale & Dominance Impératrice",
+          body:
+            "La Reine, la Matriarche et l'Impératrice Suprême sécrètent un champ bio-phéromonal dense qui régénère " +
+            "la chitine des castes environnantes, renforce leur résistance aux impacts balistiques (-20%) et décuple " +
+            "leur férocité synaptique (+15% dégâts).",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
+          id: "codex_seegson_cargo_tug",
+          category: "vehicles",
+          title: "Chariot Autonome Seegson & Remorqueur ÉCHO-12",
+          body:
+            "Chariots de manutention automatisés Seegson alimentés par cellules plasma haute capacité et remorqueur " +
+            "orbital de récupération ÉCHO-12 amarré au sas de fret de MNEMOSYNE. Leurs batteries peuvent être " +
+            "surchargées pour provoquer un arc de court-circuit ou un nuage thermique aveuglant.",
+          unlockedByDefault: true,
+          unlock: { type: "default" }
+        },
+        {
           id: "codex_specimen_xx121_respiration",
           category: "biology",
           title: "Spécimen XX121 — Métabolisme & Anoxie",

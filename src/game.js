@@ -12659,42 +12659,75 @@
         }
       });
 
-      // Wave 25 : Véhicules In-Lore 1:1 stationnés dans MNEMOSYNE (UD-4L Cheyenne, Rame Transit Seegson & P-5000 garé)
-      const cheyenneMesh = window.HiveModelFactory?.createUD4LCheyenne?.();
-      if (cheyenneMesh) {
-        cheyenneMesh.position.set(56, 0, -54);
-        cheyenneMesh.rotation.y = -Math.PI * 0.25;
-        rendererEngine.propsGroup.add(cheyenneMesh);
-        this.cheyenneDropship = { x: 56, z: -54, mesh: cheyenneMesh };
-      }
-      const transitCarMesh = window.HiveModelFactory?.createSevastopolTransitCar?.();
-      if (transitCarMesh) {
-        transitCarMesh.position.set(-56, 0, 5);
-        rendererEngine.propsGroup.add(transitCarMesh);
-        this.sevastopolTransitCar = { x: -56, z: 5, mesh: transitCarMesh };
-      }
-      const parkedLoader = window.HiveModelFactory?.createPowerLoader?.();
-      if (parkedLoader) {
-        parkedLoader.position.set(48, 0, -14);
-        parkedLoader.rotation.y = Math.PI * 0.5;
-        rendererEngine.propsGroup.add(parkedLoader);
-        this.parkedPowerLoader = { x: 48, z: -14, mesh: parkedLoader };
-      }
-      // Wave 26 : Véhicules In-Lore supplémentaires (Tracteur Orbital Daihotai Aliens 1986 & Chariot Weyland Cargo Loader)
-      const daihotaiMesh = window.HiveModelFactory?.createDaihotaiTractor?.();
-      if (daihotaiMesh) {
-        daihotaiMesh.position.set(-46, 0, -12);
-        daihotaiMesh.rotation.y = Math.PI * 0.15;
-        rendererEngine.propsGroup.add(daihotaiMesh);
-        this.daihotaiTractor = { x: -46, z: -12, mesh: daihotaiMesh };
-      }
-      const cargoLoaderMesh = window.HiveModelFactory?.createWeylandCargoLoader?.();
-      if (cargoLoaderMesh) {
-        cargoLoaderMesh.position.set(36, 0, 14);
-        cargoLoaderMesh.rotation.y = -Math.PI * 0.35;
-        rendererEngine.propsGroup.add(cargoLoaderMesh);
-        this.weylandCargoLoader = { x: 36, z: 14, mesh: cargoLoaderMesh };
-      }
+      // Wave 25/26/27 : Véhicules In-Lore 1:1 stationnés dans MNEMOSYNE avec collisions AABB et sabotages tactiques
+      this.stationedVehicles = [];
+      const registerStationedVehicle = (id, name, mesh, x, z, rotY, hx, hz, codexIds, toast, log, narrator, transmission, damage, radius, color) => {
+        if (mesh) {
+          mesh.position.set(x, 0, z);
+          if (rotY) mesh.rotation.y = rotY;
+          rendererEngine.propsGroup.add(mesh);
+        }
+        const veh = { id, name, x, z, hx, hz, mesh, isSabotaged: false, codexIds, toast, log, narrator, transmission, damage, radius, color };
+        this.stationedVehicles.push(veh);
+        this.colliders.push({ minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz, isStationedVehicle: true, vehicleRef: veh });
+        return veh;
+      };
+      this.cheyenneDropship = registerStationedVehicle(
+        'cheyenne_dropship', 'Navette Tactique UD-4L Cheyenne USCM', window.HiveModelFactory?.createUD4LCheyenne?.(),
+        54, -52, -Math.PI * 0.25, 2.4, 2.4, ['codex_ud4l_cheyenne', 'codex_f44aa_storm_rifle'],
+        'UD-4L CHEYENNE SABOTÉE : Explosion des pods roquettes VTOL (-140 Zone) !',
+        '[UD-4L CHEYENNE] Rupture des nacelles lance-missiles et court-circuit avionique.',
+        'PILOTE FERRO // UD-4L', '« Spécimen dans la soute avionique ! Perte des pods roquettes de la Cheyenne ! »',
+        140, 7.5, 0xf97316
+      );
+      this.sevastopolTransitCar = registerStationedVehicle(
+        'sevastopol_transit_car', 'Rame Mag-Lev de Transit Seegson', window.HiveModelFactory?.createSevastopolTransitCar?.(),
+        -56, 5, 0, 1.6, 3.2, ['codex_echo12_tug'],
+        'RAME TRANSIT SEEGSON COURT-CIRCUITÉE : Arc 750V sur le rail magnétique (-95 & Choc) !',
+        '[TRANSIT SEEGSON] Court-circuit haute tension sur le rail Mag-Lev de la rame.',
+        'TERMINAL TRANSIT SEEGSON', '« Alerte réseau : perte de confinement électrique sur la ligne de transit principale. »',
+        95, 6.5, 0x38bdf8
+      );
+      this.parkedPowerLoader = registerStationedVehicle(
+        'parked_power_loader', 'Exosquelette Caterpillar P-5000 en Maintenance', window.HiveModelFactory?.createPowerLoader?.(),
+        48, -14, Math.PI * 0.5, 1.3, 1.3, ['journal_dockyard_p5000'],
+        'CATERPILLAR P-5000 ÉVENTRÉ : Rupture hydraulique haute pression & chute du mât (-110) !',
+        '[P-5000 LOADER] Flexibles hydrauliques sectionnés ; effondrement des pinces de levage.',
+        'PALIMPSESTE', '« Exosquelette de manutention P-5000 hors service en baie cargo. »',
+        110, 5.5, 0xf59e0b
+      );
+      this.daihotaiTractor = registerStationedVehicle(
+        'daihotai_tractor', 'Tracteur Orbital 6x6 Daihotai (Hadley)', window.HiveModelFactory?.createDaihotaiTractor?.(),
+        -46, -12, Math.PI * 0.15, 1.5, 2.5, ['codex_daihotai_tractor'],
+        'TRACTEUR DAIHOTAI EN SURPRESSION : Explosion de la pile hydrogène & écran de vapeur (-120) !',
+        '[TRACTEUR DAIHOTAI] Éclatement de la pile à combustible hydrogène du tracteur 6x6.',
+        'CAPITAINE VANCE // KAPPA', '« Le tracteur Daihotai vient d’exploser dans la coursive Ouest ! Visibilité nulle ! »',
+        120, 6.8, 0xf97316
+      );
+      this.weylandCargoLoader = registerStationedVehicle(
+        'weyland_cargo_loader', 'Chargeur Logistique Lourd Weyland-Yutani', window.HiveModelFactory?.createWeylandCargoLoader?.(),
+        36, 14, -Math.PI * 0.35, 1.4, 2.0, ['codex_upp_factions'],
+        'CHARGEUR WEYLAND DÉSENGAGÉ : Largage magnétique du conteneur de fret (-115) !',
+        '[CARGO LOADER] Déverrouillage brutal du mât magnétique Weyland.',
+        'PALIMPSESTE', '« Chute de charge lourde détectée dans l’entrepôt logistique Sud-Est. »',
+        115, 5.8, 0xeab308
+      );
+      this.echo12SalvageTug = registerStationedVehicle(
+        'echo12_salvage_tug', 'Remorqueur Orbital de Récupération ÉCHO-12', window.HiveModelFactory?.createEcho12SalvageTug?.(),
+        -62, -32, Math.PI * 0.2, 1.8, 3.0, ['codex_echo12_tug', 'codex_seegson_cargo_tug'],
+        'REMORQUEUR ÉCHO-12 PURGÉ : Décharge plasma des tuyères ombilicales (-135) !',
+        '[ÉCHO-12 TUG] Purge violente du collecteur plasma du remorqueur orbital.',
+        'DR IMANI KADE // ARCHIVE', '« Les conduites plasma d’ÉCHO-12 cèdent… c’est de cette soute que tout est parti. »',
+        135, 7.0, 0x38bdf8
+      );
+      this.seegsonCargoTug = registerStationedVehicle(
+        'seegson_cargo_tug', 'Chariot Autonome de Manutention Seegson', window.HiveModelFactory?.createSeegsonCargoTug?.(),
+        -28, 22, -Math.PI * 0.15, 1.1, 1.7, ['codex_seegson_cargo_tug'],
+        'CHARIOT AUTONOME SEEGSON SURCHARGÉ : Emballement de la batterie plasma (-100 & Choc) !',
+        '[SEEGSON TUG] Explosion de l’accumulateur lithium-plasma du chariot autonome.',
+        'TERMINAL APOLLO // SEEGSON', '« Anomalie matérielle : unité de manutention autonome détruite en secteur Sud. »',
+        100, 6.0, 0xfacc15
+      );
 
       // Chantier 49 : Éventration de Planchers & Grilles de Sol (Aliens 1986 / Alien 3)
       this.subfloorGrates = [
@@ -20828,6 +20861,42 @@
       });
       showToast('TRANSPORT M577 APC SABOTÉ : Turbine en surchauffe critique, déflagration de zone !');
       appendSensorLog(`[M577 APC] Générateur du blindé USCM surchauffé et détruit. Déflagration d'incinération.`, 'alert');
+      window.HiveSystems?.unlockCodex?.(['codex_m577_apc']);
+      window.HiveSystems?.narrative?.('CAPORAL HICKS // USCM', '« Le blindé M577 est en feu ! Coupez la tourelle Boyars et repliez-vous ! »', 4200);
+      return true;
+    }
+
+    // Wave 27 : Sabotage tactique des 7 véhicules du lore stationnés (Cheyenne, Transit Seegson, P-5000, Daihotai, Weyland Loader, ÉCHO-12, Seegson Tug)
+    sabotageStationedVehicle(veh) {
+      if (!veh || veh.isSabotaged) return false;
+      veh.isSabotaged = true;
+      audioManager.playHeavyImpact?.(veh.x, veh.z);
+      audioManager.playGrenadeExplode?.(veh.x, veh.z);
+      rendererEngine.addScreenShake?.(0.55, 0.38);
+      window.HiveSystems?.vfx?.burst?.(veh.x, veh.z, veh.color || 0xf97316, 42, 0.3, 2.8);
+      window.HiveSystems?.vfx?.ring?.(veh.x, veh.z, veh.color || 0xf97316, veh.radius || 6.5);
+      if (veh.id === 'daihotai_tractor' || veh.id === 'echo12_salvage_tug') {
+        window.HiveSystems?.vfx?.spawnSteamCloud?.(veh.x, 1.8, veh.z, 5.5);
+      }
+      const humans = window.gameInstance?.humans || [];
+      humans.forEach((h) => {
+        if (h.isIncapacitated || h.isCocooned) return;
+        const dist = Math.hypot(h.x - veh.x, h.z - veh.z);
+        if (dist <= (veh.radius || 6.5)) {
+          h.takeDamage(veh.damage || 115, playerCreature);
+          h.staggerTimer = 2.6;
+          h.stress = Math.min(100, (h.stress || 0) + 45);
+          window.HiveSystems?.vfx?.floatingText?.(h.x, 3.0, h.z, `-${veh.damage || 115} ${veh.name.toUpperCase()} !`, '#f97316', true);
+        }
+      });
+      if (Array.isArray(veh.codexIds) && veh.codexIds.length) {
+        window.HiveSystems?.unlockCodex?.(veh.codexIds);
+      }
+      if (veh.narrator && veh.transmission) {
+        window.HiveSystems?.narrative?.(veh.narrator, veh.transmission, 4500);
+      }
+      showToast(veh.toast || `${veh.name} saboté !`);
+      appendSensorLog(veh.log || `[VÉHICULE] ${veh.name} neutralisé.`, 'alert');
       return true;
     }
 
@@ -33686,7 +33755,7 @@
             if (combatTarget === playerCreature) {
               combatTarget.staggerTimer = 1.8;
             }
-          } else if (['cleaner', 'incinerator'].includes(this.type)) {
+          } else if (['cleaner', 'incinerator', 'weyland_hazmat_incinerator', 'weyland_heavy_incinerator_synth', 'weyland_mutagen_flamer_specialist', 'uscm_breach_torch_sapper'].includes(this.type)) {
             // Chantier 34 : Lance-flammes lourd M240 Incinerator & jet de napalm continu (Aliens 1986 / Isolation)
             this.shootCooldown = 2.4;
             audioManager.playNapalmFlameStream?.(this.x, this.z);
@@ -33715,7 +33784,7 @@
             this.takeDamage(12);
             window.HiveSystems?.vfx?.burst?.(this.x, this.z, 0x39ff14, 18, 0.15, 1.4);
             window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, 'RETOUR D’ACIDE -12', '#39ff14', true);
-          } else if (['smartgunner', 'gyro'].includes(this.type)) {
+          } else if (['smartgunner', 'gyro', 'uscm_veteran_smartgunner', 'uscm_command_apc_gunner'].includes(this.type)) {
             // Chantier 4 : M56 Smartgun gyro-stabilisé à haute cadence (Vasquez / Drake)
             this.shootCooldown = 0.85;
             audioManager.playSmartgunBurst?.(this.x, this.z);
@@ -33755,7 +33824,7 @@
               window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'RAFALE LOURDE XM99 !', '#f59e0b', false);
               applyWeaponDamage(1.55);
             }
-          } else if (this.type === 'weyland_plasma_gunner') {
+          } else if (['weyland_plasma_gunner', 'uscm_heavy_plasma_gunner', 'weyland_praetorian_droid'].includes(this.type)) {
             // Chantier 183 & Audit QA #42 / #44 : Canon à Particules Plasma Portatif VP-78 Weyland (Aliens: Fireteam Elite)
             this.shootCooldown = 2.8;
             audioManager.playVP78PlasmaShot?.(this.x, this.z);
@@ -34175,6 +34244,79 @@
             window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 18, 0.15, 1.4);
             window.HiveSystems?.vfx?.floatingText?.(this.x, 3.05, this.z, 'CALIBRE 12 & MOLOTOV !', '#f97316', false);
             applyWeaponDamage(1.4, 'fire');
+          } else if (['uscm_mortar_trooper', 'uscm_heavy_mortar_spotter'].includes(this.type)) {
+            // Wave 27 : Mortier Léger M402 USCM (Dark Descent / Colonial Marines) — tir courbe explosif à éclats
+            this.shootCooldown = 3.1;
+            audioManager.playM40GrenadePumpLaunch?.(this.x, this.z);
+            audioManager.playGrenadeExplode?.(combatTarget.x, combatTarget.z);
+            rendererEngine.addScreenShake?.(0.42, 0.26);
+            window.HiveSystems?.vfx?.ring?.(combatTarget.x, combatTarget.z, 0xf97316, 4.2);
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 28, 0.22, 2.2);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.15, this.z, 'OBUS DE MORTIER M402 !', '#f97316', true);
+            applyWeaponDamage(1.85, 'explosive');
+          } else if (['uscm_heavy_grenadier', 'uscm_demolitionist'].includes(this.type)) {
+            // Wave 27 : Lance-Grenades Rotatif M92 40mm USCM (6 coups à fragmentation)
+            this.shootCooldown = 2.3;
+            audioManager.playM40GrenadePumpLaunch?.(this.x, this.z);
+            audioManager.playPulseRifleU1Grenade?.(combatTarget.x, combatTarget.z);
+            rendererEngine.addScreenShake?.(0.36, 0.22);
+            window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.7, this.z, 0xf59e0b, 0.34);
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf59e0b, 24, 0.18, 1.9);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'BARILLET 40MM M92 !', '#f59e0b', true);
+            applyWeaponDamage(1.65, 'explosive');
+          } else if (this.type === 'uscm_pulse_lance_gunner') {
+            // Wave 27 : Lance à Impulsions Lourde M78 USCM (faisceau perforant haute énergie)
+            this.shootCooldown = 2.2;
+            audioManager.playVP78PlasmaShot?.(this.x, this.z);
+            rendererEngine.addScreenShake?.(0.3, 0.18);
+            window.HiveSystems?.vfx?.muzzleFlash?.(this.x, 2.75, this.z, 0x38bdf8, 0.38);
+            window.HiveSystems?.vfx?.beam?.(this.x, 2.72, this.z, combatTarget.x, 1.35, combatTarget.z, 0x38bdf8, 0.24);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.15, this.z, 'LANCE À IMPULSIONS M78 !', '#38bdf8', true);
+            applyWeaponDamage(1.75);
+          } else if (this.type === 'uscm_railgun_marksman') {
+            // Wave 27 : Railgun Électromagnétique M90 USCM (projectile hyper-véloce)
+            this.shootCooldown = 2.7;
+            audioManager.playSniperPulseRifleShot?.(this.x, this.z);
+            rendererEngine.addScreenShake?.(0.4, 0.24);
+            window.HiveSystems?.vfx?.beam?.(this.x, 2.75, this.z, combatTarget.x, 1.4, combatTarget.z, 0x67e8f9, 0.26);
+            window.HiveSystems?.vfx?.ring?.(combatTarget.x, combatTarget.z, 0x67e8f9, 2.8);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.2, this.z, 'TIR RAILGUN M90 HYPER-VÉLOCE !', '#67e8f9', true);
+            applyWeaponDamage(1.9);
+          } else if (['uscm_cryo_sweeper', 'weyland_subzero_cryo_trooper', 'weyland_cryo_containment_ward', 'weyland_cryo_containment_mech_suit'].includes(this.type)) {
+            // Wave 27 : Lanceur Cryogénique LN2 Sub-Zéro (jet d'azote liquide & engourdissement thermique)
+            this.shootCooldown = 1.9;
+            audioManager.playCryoVentHiss?.(this.x, this.z);
+            window.HiveSystems?.vfx?.beam?.(this.x, 2.6, this.z, combatTarget.x, 1.2, combatTarget.z, 0x67e8f9, 0.28);
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0x67e8f9, 20, 0.16, 1.5);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'JET CRYOGÉNIQUE LN2 SUB-ZÉRO !', '#67e8f9', true);
+            if (combatTarget === playerCreature) playerCreature.staggerTimer = Math.max(playerCreature.staggerTimer || 0, 0.9);
+            applyWeaponDamage(1.25, 'cryo');
+          } else if (['weyland_shock_enforcer', 'automaton_shock_warden'].includes(this.type)) {
+            // Wave 27 : Fusil à Arc Voltaïque & Décharge Électro-Choc Weyland
+            this.shootCooldown = 1.85;
+            audioManager.playStunBatonZap?.(this.x, this.z);
+            window.HiveSystems?.vfx?.beam?.(this.x, 2.65, this.z, combatTarget.x, 1.35, combatTarget.z, 0x38bdf8, 0.22);
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0x38bdf8, 18, 0.16, 1.5);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'DÉCHARGE VOLTAÏQUE HAUTE TENSION !', '#38bdf8', true);
+            if (combatTarget === playerCreature) playerCreature.staggerTimer = Math.max(playerCreature.staggerTimer || 0, 1.25);
+            applyWeaponDamage(1.35);
+          } else if (['weyland_apex_handler', 'weyland_xeno_tamer_commando', 'weyland_xenoborg_handler'].includes(this.type)) {
+            // Wave 27 : Perche à Arc Neural & Brouilleur Phéromonal Ultrasonique Weyland
+            this.shootCooldown = 2.0;
+            audioManager.playStunBatonZap?.(this.x, this.z);
+            window.HiveSystems?.vfx?.ring?.(combatTarget.x, combatTarget.z, 0xa855f7, 3.6);
+            window.HiveSystems?.vfx?.beam?.(this.x, 2.6, this.z, combatTarget.x, 1.3, combatTarget.z, 0xa855f7, 0.2);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'IMPULSION NEURALE ANTI-XÉNO !', '#a855f7', true);
+            if (combatTarget === playerCreature) playerCreature.staggerTimer = Math.max(playerCreature.staggerTimer || 0, 1.35);
+            applyWeaponDamage(1.3);
+          } else if (['uscm_cn20_nerve_gas_specialist', 'uscm_cbrn_decon_sweeper', 'weyland_black_goo_specialist'].includes(this.type)) {
+            // Wave 27 : Lanceur Neurotoxique CN-20 / Décontaminant Alcalin CBRN / Aérosol Pathogène
+            this.shootCooldown = 2.25;
+            audioManager.playHazmatFoamSpray?.(this.x, this.z);
+            window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0x84cc16, 24, 0.2, 1.9);
+            window.HiveSystems?.vfx?.ring?.(combatTarget.x, combatTarget.z, 0x84cc16, 3.8);
+            window.HiveSystems?.vfx?.floatingText?.(this.x, 3.1, this.z, 'AÉROSOL NEUROTOXIQUE CN-20 / CBRN !', '#84cc16', true);
+            applyWeaponDamage(1.4);
           } else {
             // Chantier 133 : Fusil à impulsion M41A avec Lance-Grenades 30mm U1 Intégré (Aliens 1986)
             if (['marine', 'guard', 'commando'].includes(this.type) && distToPlayer >= 6.5 && distToPlayer <= 22 && (this.u1GrenadeCooldown || 0) <= 0) {
@@ -34438,7 +34580,7 @@
         crusher: { hp: 520, speed: 0.36, damage: 95, range: 2.2 },
         predalien: { hp: 480, speed: 0.42, damage: 98, range: 2.3 },
         carrier: { hp: 440, speed: 0.30, damage: 72, range: 2.2 },
-        boiler: { hp: 165, speed: 0.48, damage: 85, range: 2.1 },
+        boiler: { hp: 165, speed: 0.48, damage: 85, range: 8.5 },
         neomorph: { hp: 210, speed: 0.56, damage: 54, range: 1.9 },
         deacon: { hp: 260, speed: 0.48, damage: 64, range: 2.0 },
         lurker: { hp: 195, speed: 0.54, damage: 52, range: 1.9 },
@@ -34549,12 +34691,14 @@
 
     takeDamage(amount, attacker = null, damageType = 'ballistic') {
       if (this.isDestroyed) return;
-      const actualDmg = Math.max(0, amount);
+      const armorMult = (this.royalArmorBuffTimer || 0) > 0 ? 0.8 : 1.0;
+      const actualDmg = Math.max(0, amount * armorMult);
       this.hp = Math.max(0, this.hp - actualDmg);
 
-      // Wave 19 : Aversion thermique 1:1 des unités RTS face aux lance-flammes (hors Reine & Crusher)
+      // Wave 19 : Aversion thermique 1:1 des unités RTS face aux lance-flammes (hors Reine/Impératrice & Crusher)
+      const isQueen = ['queen', 'empress', 'matriarch_queen'].includes(this.caste);
       const isFireHit = damageType === 'fire' || ['cleaner', 'incinerator', 'uscm_heavy_flamer', 'uscm_smartgun_flamer'].includes(attacker?.type);
-      if (isFireHit && !['queen', 'crusher'].includes(this.caste)) {
+      if (isFireHit && !isQueen && this.caste !== 'crusher') {
         this.fireFleeTimer = Math.max(this.fireFleeTimer || 0, 2.4);
         this.fireSource = attacker ? { x: attacker.x, z: attacker.z } : { x: this.x + 1, z: this.z };
         audioManager.playXenoHiss?.(this.x, this.z);
@@ -34562,8 +34706,7 @@
       }
 
       audioManager.playAcidSizzle?.();
-      const isQueen = this.caste === 'queen';
-      const splashRadius = isQueen ? 6.2 : (this.caste === 'burster' ? 5.5 : 3.8);
+      const splashRadius = isQueen ? 6.2 : (['burster', 'boiler', 'exploder'].includes(this.caste) ? 5.5 : 3.8);
       const burstCount = isQueen ? 26 : 12;
 
       window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, burstCount, 0.12, isQueen ? 2.8 : 1.2);
@@ -34612,17 +34755,38 @@
 
       // Détonation cataclysmique du Burster / Boiler / Exploder à la mort
       if (['burster', 'boiler', 'exploder'].includes(this.caste)) {
-        window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, 38, 0.22, 1.4);
-        window.HiveSystems?.vfx?.spawnAcidPool?.(this.x, this.z, 3.8, 12);
+        const isBoiler = this.caste === 'boiler';
+        const blastRadius = isBoiler ? 6.8 : 5.8;
+        const blastDmg = isBoiler ? 115 : 95;
+        window.HiveSystems?.vfx?.burst(this.x, this.z, 0x39ff14, isBoiler ? 46 : 38, 0.24, 1.6);
+        window.HiveSystems?.vfx?.spawnAcidPool?.(this.x, this.z, isBoiler ? 4.4 : 3.8, 14);
         audioManager.playChestburstScreech?.();
         const blastHumans = (window.gameInstance?.humans || []).filter((h) => (
-          !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= 5.8
+          !h.isIncapacitated && !h.isCocooned && Math.hypot(h.x - this.x, h.z - this.z) <= blastRadius
         ));
         blastHumans.forEach((human) => {
-          human.takeDamage(95, this);
-          human.staggerTimer = 1.2;
-          window.HiveSystems?.vfx?.floatingText?.(human.x, 2.6, human.z, '-95 CATACLYSME', '#39ff14', true);
+          human.takeDamage(blastDmg, this);
+          human.staggerTimer = 1.4;
+          window.HiveSystems?.vfx?.floatingText?.(human.x, 2.6, human.z, `-${blastDmg} CATACLYSME ${this.caste.toUpperCase()} !`, '#39ff14', true);
         });
+      }
+
+      // Wave 27 : Le Carrier relâche son essaim dorsal de 2 Swarmers à la mort (AvP: Extinction 1:1)
+      if (this.caste === 'carrier') {
+        const stg = window.gameInstance?.currentStage;
+        if (stg && Array.isArray(stg.rtsUnits)) {
+          for (let sIdx = 0; sIdx < 2; sIdx++) {
+            const ang = (sIdx / 2) * Math.PI * 2 + 0.4;
+            const sx = this.x + Math.cos(ang) * 1.4;
+            const sz = this.z + Math.sin(ang) * 1.4;
+            const swarmerUnit = new HiveUnit(Date.now() + sIdx + stg.rtsUnits.length, 'swarmer', sx, sz);
+            swarmerUnit.createMesh();
+            stg.rtsUnits.push(swarmerUnit);
+          }
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 2.8, this.z, 'ESSAIM DORSAL LIBÉRÉ (+2 SWARMERS) !', '#a3e635', true);
+          stg.log?.('[CARRIER] Rupture des crêtes dorsales : 2 Swarmers libérés sur le champ de bataille.');
+          stg.updateStats?.();
+        }
       }
 
       // Mission Wave 8 : Trépas Viscéral 1:1, Hitstop, Hurlement & Éruption d'Acide
@@ -34679,7 +34843,7 @@
     }
 
     moveDirect(dx, dy, deltaSeconds = 1 / 60, maxDistance = Infinity, speedMultiplier = 1) {
-      if (!this.mesh || (this.caste === 'queen' && this.attachedToOvipositor) || this.isDestroyed) return false;
+      if (!this.mesh || (['queen', 'empress', 'matriarch_queen'].includes(this.caste) && this.attachedToOvipositor) || this.isDestroyed) return false;
       if (Math.hypot(dx, dy) <= 1e-4 || maxDistance <= 1e-4) {
         this.movementBlend = 0;
         animateProceduralModel(this.mesh, {
@@ -34769,11 +34933,15 @@
       this.attackCooldown -= deltaSeconds;
       this.supportCooldown -= deltaSeconds;
       this.royalFuryTimer = Math.max(0, (this.royalFuryTimer || 0) - deltaSeconds);
+      this.royalArmorBuffTimer = Math.max(0, (this.royalArmorBuffTimer || 0) - deltaSeconds);
+      this.broodSpawnCooldown = Math.max(0, (this.broodSpawnCooldown || 0) - deltaSeconds);
       this.attackAnimation = Math.max(0, this.attackAnimation - Math.max(0, deltaSeconds) * 3);
       this.movementBlend = Math.max(0, this.movementBlend - Math.max(0, deltaSeconds) * 4.5);
 
+      const isRoyalMatriarch = ['queen', 'empress', 'matriarch_queen'].includes(this.caste);
+
       // Wave 19 : Fuite thermique 1:1 des unités RTS reculant loin des flammes
-      if ((this.fireFleeTimer || 0) > 0 && !['queen', 'crusher'].includes(this.caste)) {
+      if ((this.fireFleeTimer || 0) > 0 && !isRoyalMatriarch && this.caste !== 'crusher') {
         this.fireFleeTimer = Math.max(0, this.fireFleeTimer - deltaSeconds);
         const src = this.fireSource || { x: this.x + 1, z: this.z };
         const distSrc = Math.hypot(this.x - src.x, this.z - src.z) || 1;
@@ -34788,31 +34956,52 @@
         this.hp = Math.min(this.maxHp, this.hp + 6 * Math.max(0, deltaSeconds));
       }
 
-      // Chantier 109 : Aura Phéromonale de Garde Royale (Praetorian / Palatine) régénérant l'essaim proche
-      if ((this.caste === 'praetorian' || this.caste === 'palatine') && !this.isDestroyed) {
+      // Chantier 109 & Wave 27 : Aura Phéromonale Royale (Reine / Impératrice / Matriarche / Praetorian / Palatine)
+      if ((isRoyalMatriarch || this.caste === 'praetorian' || this.caste === 'palatine') && !this.isDestroyed) {
         this.royalAuraTimer = (this.royalAuraTimer || 0) - deltaSeconds;
         if (this.royalAuraTimer <= 0) {
           this.royalAuraTimer = 2.5;
+          const auraRadius = this.caste === 'empress' ? 14.0 : (isRoyalMatriarch ? 11.5 : 8.0);
+          const healAmount = this.caste === 'empress' ? 22 : (isRoyalMatriarch ? 16 : 10);
+          if (isRoyalMatriarch && this.hp < this.maxHp) {
+            this.hp = Math.min(this.maxHp, this.hp + 8);
+          }
           const allUnits = window.gameInstance?.currentStage?.rtsUnits || [];
           allUnits.forEach((ally) => {
-            if (ally !== this && !ally.isDestroyed && ally.hp < ally.maxHp && Math.hypot(ally.x - this.x, ally.z - this.z) <= 8.0) {
-              ally.hp = Math.min(ally.maxHp, ally.hp + 10);
+            if (ally !== this && !ally.isDestroyed && Math.hypot(ally.x - this.x, ally.z - this.z) <= auraRadius) {
+              if (ally.hp < ally.maxHp) ally.hp = Math.min(ally.maxHp, ally.hp + healAmount);
+              ally.royalArmorBuffTimer = 3.2;
             }
           });
         }
       }
 
-      // Canon Giger — Salive visqueuse perlant continuellement des mâchoires
-      if ((this.caste === 'queen' || this.caste === 'praetorian' || this.caste === 'warrior') && !this.isDestroyed) {
-        this.salivaTimer = (this.salivaTimer || 0) - deltaSeconds;
-        if (this.salivaTimer <= 0) {
-          this.salivaTimer = (this.caste === 'queen' ? 0.95 : 1.7) + Math.random() * 1.5;
-          const jawY = this.caste === 'queen' ? 4.2 : 2.5;
-          window.HiveSystems?.vfx?.salivaDrip(this.x, jawY, this.z, this.caste === 'queen' ? 3 : 2);
+      // Wave 27 : Déploiement périodique d'un Swarmer dorsal par le Carrier en combat (AvP: Extinction)
+      if (this.caste === 'carrier' && this.broodSpawnCooldown <= 0) {
+        const stg = window.gameInstance?.currentStage;
+        const activeSwarmers = (stg?.rtsUnits || []).filter((u) => !u.isDestroyed && (u.caste === 'swarmer' || u.caste === 'swarmers')).length;
+        const hasNearbyEnemy = humans.some((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - this.x, h.z - this.z) <= 12.0);
+        if (stg && hasNearbyEnemy && activeSwarmers < 6) {
+          this.broodSpawnCooldown = 12.0;
+          const sw = new HiveUnit(Date.now() + stg.rtsUnits.length, 'swarmer', this.x + 1.1, this.z + 0.8);
+          sw.createMesh();
+          stg.rtsUnits.push(sw);
+          window.HiveSystems?.vfx?.floatingText?.(this.x, 2.7, this.z, 'LARGAGE DORSAL : +1 SWARMER !', '#a3e635', false);
+          stg.updateStats?.();
         }
       }
 
-      if (this.caste === 'queen') {
+      // Canon Giger — Salive visqueuse perlant continuellement des mâchoires
+      if ((isRoyalMatriarch || this.caste === 'praetorian' || this.caste === 'warrior') && !this.isDestroyed) {
+        this.salivaTimer = (this.salivaTimer || 0) - deltaSeconds;
+        if (this.salivaTimer <= 0) {
+          this.salivaTimer = (isRoyalMatriarch ? 0.95 : 1.7) + Math.random() * 1.5;
+          const jawY = isRoyalMatriarch ? 4.2 : 2.5;
+          window.HiveSystems?.vfx?.salivaDrip(this.x, jawY, this.z, isRoyalMatriarch ? 3 : 2);
+        }
+      }
+
+      if (isRoyalMatriarch) {
         const reach = this.attachedToOvipositor ? this.attackRange : 6.5;
         const nearbyThreats = humans.filter((human) => (
           !human.isCocooned &&
@@ -34907,7 +35096,7 @@
           target = nearestInZone((human) => !human.isCocooned && !human.isIncapacitated) || activeZone;
         }
 
-        const isRangedCaste = ['spitter', 'reef_spitter', 'pathogen_blight'].includes(this.caste);
+        const isRangedCaste = ['spitter', 'reef_spitter', 'pathogen_blight'].includes(this.caste) || this.caste === 'boiler';
         const dist = Math.hypot(target.x - this.x, target.z - this.z);
         const isRush = activeZone.command === 'RUSH';
         const isRoyalGuard = activeZone.command === 'ROYAL_GUARD';
@@ -34917,9 +35106,9 @@
           ? (hasTargetLoS ? this.attackRange : 2.0)
           : (isRoyalGuard ? 5.5 : (activeZone.command === 'DEFEND' ? 4 : (activeZone.command === 'CAPTURE' ? 1.5 : 2)));
         if (dist > stopRadius) {
-          // Chantier 109 : Bond Prédateur du Prowler (Aliens: Fireteam Elite) à moyenne portée
+          // Chantier 109 & Wave 27 : Bond Prédateur du Prowler / Lurker / Stalker à moyenne portée
           this.leapCooldown = Math.max(0, (this.leapCooldown || 0) - deltaSeconds);
-          if (this.caste === 'prowler' && target.human && isAttackOrder && dist <= 5.8 && dist >= 2.4 && this.leapCooldown <= 0 && stationMap.hasLineOfSight(this.x, this.z, target.human.x, target.human.z, 0.3)) {
+          if (['prowler', 'lurker', 'stalker'].includes(this.caste) && target.human && isAttackOrder && dist <= 5.8 && dist >= 2.4 && this.leapCooldown <= 0 && stationMap.hasLineOfSight(this.x, this.z, target.human.x, target.human.z, 0.3)) {
             this.leapCooldown = 4.2;
             this.attackCooldown = 0.75;
             this.attackAnimation = 1;
@@ -34935,7 +35124,7 @@
             target.human.staggerTimer = 1.0;
             audioManager.playLeapAttack?.();
             window.HiveSystems?.vfx?.burst(target.human.x, target.human.z, 0xef4444, 16, 0.14, 1.3);
-            window.HiveSystems?.vfx?.floatingText?.(target.human.x, 2.7, target.human.z, `-${leapDmg} BOND PRÉDATEUR PROWLER !`, '#ef4444', true);
+            window.HiveSystems?.vfx?.floatingText?.(target.human.x, 2.7, target.human.z, `-${leapDmg} BOND PRÉDATEUR ${this.caste.toUpperCase()} !`, '#ef4444', true);
           } else {
             const speedMultiplier = isRush ? 1.45 : (isRoyalGuard ? 1.30 : (activeZone.command === 'HUNT' ? 1.15 : (activeZone.command === 'DEFEND' ? 0.75 : 1)));
             this.moveTowards(target.x, target.z, deltaSeconds, speedMultiplier);
@@ -34948,12 +35137,15 @@
               const baseCooldown = (this.caste === 'swarmers' || this.caste === 'swarmer') ? 0.45 : (this.caste === 'runner' ? 0.62 : (isRangedCaste ? 1.45 : 0.86));
               this.attackCooldown = isRush ? baseCooldown * 0.68 : baseCooldown;
               this.attackAnimation = 1;
-              const furyMult = (this.royalFuryTimer || 0) > 0 ? 1.30 : 1.0;
+              const furyMult = ((this.royalFuryTimer || 0) > 0 ? 1.30 : 1.0) * ((this.royalArmorBuffTimer || 0) > 0 ? 1.15 : 1.0);
               const bonusDmg = Math.round((isRush ? this.damage * 1.35 : this.damage) * furyMult);
               const color = isRangedCaste ? 0xa3e635 : (isRush ? 0xdc2626 : 0x39ff14);
               if (isRangedCaste) {
                 const applyAcidHit = () => {
                   target.human?.takeDamage(bonusDmg, this);
+                  if (this.caste === 'boiler' && target.human) {
+                    window.HiveSystems?.vfx?.spawnAcidPool?.(target.human.x, target.human.z, 2.4, 8);
+                  }
                   audioManager.playAcidSizzle();
                 };
                 const projectileVfx = window.HiveSystems?.vfx;
@@ -35043,7 +35235,7 @@
           .sort((a, b) => Math.hypot(a.x - this.x, a.z - this.z) - Math.hypot(b.x - this.x, b.z - this.z))[0];
 
         if (localThreat) {
-          const isRangedAuto = ['spitter', 'reef_spitter', 'pathogen_blight'].includes(this.caste);
+          const isRangedAuto = ['spitter', 'boiler', 'reef_spitter', 'pathogen_blight'].includes(this.caste);
           const distThreat = Math.hypot(localThreat.x - this.x, localThreat.z - this.z);
           const canShoot = !isRangedAuto || stationMap.hasLineOfSight(this.x, this.z, localThreat.x, localThreat.z, 0.3);
           if (distThreat > this.attackRange || !canShoot) {
@@ -35051,18 +35243,34 @@
           } else if (this.attackCooldown <= 0) {
             this.attackCooldown = (this.caste === 'swarmers' || this.caste === 'swarmer') ? 0.45 : (this.caste === 'runner' ? 0.65 : (isRangedAuto ? 1.45 : 0.9));
             this.attackAnimation = 1;
+            const autoDmg = Math.round(this.damage * ((this.royalArmorBuffTimer || 0) > 0 ? 1.15 : 1.0));
             if (isRangedAuto && window.HiveSystems?.vfx?.projectile) {
               window.HiveSystems.vfx.projectile({
                 startX: this.x, startY: 1.55, startZ: this.z,
                 endX: localThreat.x, endY: 1.1, endZ: localThreat.z,
                 color: 0xa3e635, scale: 0.2, speed: 17, acid: true,
                 onImpact: () => {
-                  localThreat.takeDamage(this.damage, this);
+                  localThreat.takeDamage(autoDmg, this);
+                  if (this.caste === 'boiler') {
+                    window.HiveSystems?.vfx?.spawnAcidPool?.(localThreat.x, localThreat.z, 2.4, 8);
+                  }
                   audioManager.playAcidSizzle?.();
                 }
               });
             } else {
-              localThreat.takeDamage(this.damage, this);
+              const strikeDmg = this.caste === 'ravager' ? Math.round(autoDmg * 1.35) : autoDmg;
+              localThreat.takeDamage(strikeDmg, this);
+              if (this.caste === 'crusher' || this.caste === 'ravager') {
+                localThreat.staggerTimer = 1.0;
+                humans.forEach((extraH) => {
+                  if (extraH !== localThreat && !extraH.isCocooned && !extraH.isIncapacitated && Math.hypot(extraH.x - this.x, extraH.z - this.z) <= 3.2) {
+                    extraH.takeDamage(Math.round(strikeDmg * 0.6), this);
+                    extraH.staggerTimer = 0.7;
+                  }
+                });
+              } else if (this.caste === 'offspring') {
+                this.hp = Math.min(this.maxHp, this.hp + 18);
+              }
               audioManager.playBoneCrunch?.();
               audioManager.playWetImpact?.(localThreat.x, localThreat.z);
               window.HiveSystems?.vfx?.burst(localThreat.x, localThreat.z, 0xef4444, 12, 0.1, 1.2);
@@ -36421,6 +36629,7 @@
         window.HiveSystems?.vfx?.burst?.(playerCreature.x, playerCreature.z, 0xf59e0b, 16, 0.12, 1.2);
         window.HiveSystems?.vfx?.floatingText?.(playerCreature.x, 2.2, playerCreature.z, '+1 BIOMASSE (RATION)', '#39ff14', true);
         this.biomassHunted++;
+        this.applyJuvenileGrowth();
         showToast('Ration nutritive de laboratoire dévorée par le juvénile !');
         this.log(`[CROISSANCE] Ration nutritive ${this.biomassHunted}/3 consommée et assimilée.`);
         window.HiveSystems?.updateObjective(3, this.biomassHunted >= 3 ? 2 : 1);
@@ -36497,9 +36706,19 @@
       rodent.isIncapacitated = true;
       rodent.destroy();
       this.biomassHunted++;
+      this.applyJuvenileGrowth();
       this.log(`[CROISSANCE] Rongeur ${this.biomassHunted}/3 capturé et assimilé.`);
       window.HiveSystems?.updateObjective(3, this.biomassHunted >= 3 ? 2 : 1);
       this.updateHUD();
+    }
+
+    applyJuvenileGrowth() {
+      // Wave 27 : Croissance physique progressive du Chestburster à chaque repas assimilé (1:1 Alien 1979 / Romulus)
+      const growthScale = 1 + Math.min(3, this.biomassHunted) * 0.14;
+      playerCreature.detailedModel?.scale.setScalar(growthScale);
+      playerCreature.maxHealth += 15;
+      playerCreature.health = Math.min(playerCreature.maxHealth, playerCreature.health + 20);
+      window.HiveSystems?.vfx?.ring?.(playerCreature.x, playerCreature.z, 0x39ff14, 1.4);
     }
 
     emergeAdultForm() {
@@ -36831,7 +37050,25 @@
         deaconess: { jaw: 'TRIPLE MÂCHOIRE PRIMITIVE', tail: 'DARD ROYAL OSSEUX' },
         red_drone: { jaw: 'FRÉNÉSIE DE GRIFFAGE DOUBLE', tail: 'FOUET TRANCHANT CRAMOISI' },
         flying_drone: { jaw: 'PIQUÉ AÉRIEN PLONGEANT', tail: 'TRANSFIXION CAUDALE SUSPENDUE' },
-        snake_drone: { jaw: 'MORSURE CONSTRICTIVE OPHIDIENNE', tail: 'SECTION CAUDALE EN ÉPINGLE' }
+        snake_drone: { jaw: 'MORSURE CONSTRICTIVE OPHIDIENNE', tail: 'SECTION CAUDALE EN ÉPINGLE' },
+        ravager: { jaw: 'FAUCHAGE AUX LAMES BRACHIALES', tail: 'BALAYAGE ACÉRÉ' },
+        lurker: { jaw: 'BOND SILENCIEUX D’OMBRE', tail: 'PERFORATION FURTIVE' },
+        stalker: { jaw: 'EMBUSCADE DE TRAQUEUR', tail: 'DARD DE TRAQUE' },
+        burster: { jaw: 'PROJECTION ACIDE INSTABLE', tail: 'ÉCLAT CAUSTIQUE' },
+        empress: { jaw: 'DOMINANCE IMPÉRATRICE SUPRÊME', tail: 'BALAYAGE MATRIARCAL' },
+        matriarch_queen: { jaw: 'DOMINANCE DE MATRIARCHE', tail: 'FRAPPE ROYALE' },
+        praetorian: { jaw: 'RUGISSEMENT PRÉTORIEN', tail: 'LANCE ROYALE' },
+        predalien: { jaw: 'IMPLANTATION ORALE YAUTJA', tail: 'FOUET DE PRÉDATEUR' },
+        neomorph: { jaw: 'FRÉNÉSIE SANGUINE NÉOMORPHE', tail: 'LACÉRATION SPINALE' },
+        mantis_drone: { jaw: 'FAUCHAGE FALCIFORME', tail: 'ESTACA DE MANTE' },
+        bull_drone: { jaw: 'CHARGE CORNE TAUREAU', tail: 'COUP DE BÉLIER' },
+        gorilla_drone: { jaw: 'FRAPPE SISMIQUE QUADRUMANE', tail: 'PROJECTION LOURDE' },
+        boar_drone: { jaw: 'CHARGE SANGLIER', tail: 'DÉFENSE CAUDALE' },
+        scorpion_drone: { jaw: 'PIQÛRE DARD VENIMEUX', tail: 'AIGUILLON ARACHNOÏDE' },
+        cougar_drone: { jaw: 'BOND FÉLIN LACÉRANT', tail: 'FOUET AGILE' },
+        worker_drone: { jaw: 'PROJECTION DE RÉSINE', tail: 'ENTRAVE DE RUCHE' },
+        rhino_drone: { jaw: 'BÉLIER JUGGERNAUT RHINO', tail: 'CHOC DE CARAPACE' },
+        crab_drone: { jaw: 'BROYAGE AUX PINCES', tail: 'PINCE DORSALE' }
       };
       const actionLabels = casteActions[profile.key] || casteActions.drone;
       document.getElementById('stage-badge').textContent = `PHASE 4 : ${adultLabel} — CHASSE ET NURSERIE`;
@@ -36904,8 +37141,6 @@
             <option value="lurker" ${activeCaste === 'lurker' ? 'selected' : ''}>Lurker — Rôdeur Silencieux (Colonial Marines)</option>
             <option value="stalker" ${activeCaste === 'stalker' ? 'selected' : ''}>Stalker — Traqueur Furtif d'Ombre (AvP / Dark Descent)</option>
             <option value="burster" ${activeCaste === 'burster' ? 'selected' : ''}>Burster — Sapeur Caustique (Fireteam Elite)</option>
-            <option value="boiler" ${activeCaste === 'boiler' ? 'selected' : ''}>Boiler — Pustuleux Thermochimique Aveugle (Colonial Marines)</option>
-            <option value="carrier" ${activeCaste === 'carrier' ? 'selected' : ''}>Carrier — Porteur Dorsal d'Essaim (AvP Extinction)</option>
             <option value="empress" ${activeCaste === 'empress' ? 'selected' : ''}>Impératrice — Reine Mère Suprême (5.8m)</option>
             <option value="matriarch_queen" ${activeCaste === 'matriarch_queen' ? 'selected' : ''}>Matriarche Souveraine de la Ruche</option>
           </select>
@@ -37882,6 +38117,10 @@
       const distWave31 = (stationMap.wave31Props || []).find((wp) => !wp.isTriggered && Math.hypot(wp.x - playerCreature.x, wp.z - playerCreature.z) <= 15);
       if (distWave31) stationMap.triggerWave31Prop(distWave31);
 
+      // Wave 27 : Crachat acide sur les véhicules stationnés (Cheyenne, Transit Seegson, P-5000, Daihotai, Weyland Loader, ÉCHO-12, Seegson Tug)
+      const distVehicle = (stationMap.stationedVehicles || []).find((v) => !v.isSabotaged && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 15);
+      if (distVehicle) stationMap.sabotageStationedVehicle(distVehicle);
+
       // Audit QA #83 : Dégradation Structurelle de la Résine Organique sous Impact Acide
       resinGrid.damageResinNodes?.(playerCreature.x, playerCreature.z, 14.0, 'acid');
 
@@ -38840,6 +39079,12 @@
         stationMap.sabotageEEVPod(nearEEV);
         return true;
       }
+      // Wave 27 : Véhicules du lore stationnés (Cheyenne, Transit Seegson, P-5000, Daihotai, Weyland Loader, ÉCHO-12, Seegson Tug)
+      const nearVehicle = (stationMap.stationedVehicles || []).find((v) => !v.isSabotaged && Math.hypot(v.x - playerCreature.x, v.z - playerCreature.z) <= 6.5);
+      if (nearVehicle) {
+        stationMap.sabotageStationedVehicle(nearVehicle);
+        return true;
+      }
       showToast('Aucun piège environnemental (cuve LN2, creuset, câble, sas décon, grue, réacteur, MUTHUR, vapeur, barricade, Medibot, Zero-G, caisson cryo, spore, barbelé, boîte noire, générateur aux, désignateur, verrou orbital, chariot élévateur, sprinkler, trémie toxique, mortier M40, sas Narcissus, blindé M577, condensation eau, défibrillateur 5000V, purge C-30, caméra thermique, pupitre réacteur, coolant sub-zero, sniper M42A, trappe sol, volets anti-souffle, alcôve Seegson, leurre holo, purge atmo, sadar, huile hydraulique, laser decon, conteneur 10t, râtelier zx76, halon, radio uscm, extincteur co2, incinérateur fiorina, bras eva, mine claymore, fréon glacial, bio-scan muthur, rideau eau, sas étanches weyland, turbine géothermique, tourelle m24, gel cryo ln2, synthétique working joe, smoke m94, cryo purge c44, station fusion, collecteur huile, télémétrie muthur, berceau ovipositeur, fumigène ir m47, cryo-flow c50, tokamak hyperdyne, argon manifold, épurateur muthur, sarcophage ingénieur, brouilleur m56, cryo c60, arc-furnace weyland, torche éthylène, casai seegson, bio-stasis pathogène noir, transit mag-lev, halon 1301, mine claymore m20, échangeur ap14, camouflage résine, sevastopol jack, charge 15kv working joe, sas bio-alpha, réacteur nostromo, vapeur géothermique, éjection pyrotechnique, plomb fiorina, gondole sevastopol, cellule synthétique, rotor ventilation, épurateur atmo, inversion gravité, barricade uscm, serveur apollo, théâtre dissection, matrice cryo nostromo, passerelle chasm, bassin trempe fiorina, baie sans tain auriga, centrifugeuse cryo, rail 750v sevastopol, incinérateur medlab, grue atelier uscm, antenne lorenz, sas corbel, rampe narcissus, piston sismique, soufflet fonderie, sarcophage stasique, siphon propergol, rideau roulant, puisard chimique, palette munitions, alcôve synthétique, treuil fonderie, sas cryo nostromo, flume caloporteur, contrepoids fiorina, bioréacteur auriga, portique remus, cabine seegson, couveuse medlab, bunker sandbags, persiennes sevastopol, déversoir fiorina, soufflerie cryo, table holo-tactique, rigole plomb, cage spécimen, carrousel romulus, butoir monorail, surchauffeur vapeur, râtelier uscm, banc seegson, prise venturi, palan nostromo, batterie hadley, trempe fiorina, centrifugeuse auriga, manifold romulus, scanner sevastopol, turbogénérateur hadley, banc balistique uscm, bus apollo, tuyère fiorina) à portée immédiate.');
       return false;
     }
@@ -39123,80 +39368,104 @@
         }
       }
       if (key === '2' || key === 'r') {
+        // Wave 27 : Suppression du filtre redondant key === 'r' afin que [2] et [R] déclenchent les capacités spéciales de caste
         const caste = playerCreature.adultCaste || playerCreature.caste;
-        if (key === 'r' && (caste === 'king' || caste === 'empress' || caste === 'matriarch_queen')) {
+        if (caste === 'king' || caste === 'empress' || caste === 'matriarch_queen') {
           playerCreature.executeKingRoyalDominance();
-        } else if (key === 'r' && caste === 'deaconess') {
+        } else if (caste === 'deaconess') {
           playerCreature.executeDeaconessSonicRoar?.();
-        } else if (key === 'r' && caste === 'red_drone') {
+        } else if (caste === 'red_drone') {
           playerCreature.executeRedDroneCrimsonFrenzy?.();
-        } else if (key === 'r' && caste === 'deacon_adult') {
+        } else if (caste === 'deacon_adult' || caste === 'deacon') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.2);
           if (target) playerCreature.executeDeaconArchonPredation(target);
           else showToast('Aucune cible à portée de succion Archon (4.2m).');
-        } else if (key === 'r' && (caste === 'predalien' || playerCreature.adultCaste === 'predalien')) {
+        } else if (caste === 'predalien' || playerCreature.adultCaste === 'predalien') {
           playerCreature.executeOralImplantation();
-        } else if (key === 'r' && caste === 'bodyburster') {
+        } else if (caste === 'neomorph') {
+          playerCreature.executeNeomorphFrenzy?.();
+        } else if (caste === 'spitter') {
+          this.executeAcidSpit?.();
+        } else if (caste === 'carrier') {
+          if (playerCreature.executeCarrierFacehuggerSwarm) playerCreature.executeCarrierFacehuggerSwarm();
+          else playerCreature.executePraetorianRoar();
+        } else if (caste === 'ravager') {
+          const scytheTargets = (window.gameInstance?.humans || []).filter((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.6);
+          if (scytheTargets.length) {
+            playerCreature.triggerAttack('melee');
+            audioManager.playBoneCrunch?.();
+            rendererEngine.addScreenShake?.(0.36, 0.22);
+            scytheTargets.forEach((st) => {
+              st.takeDamage(155, playerCreature);
+              st.staggerTimer = 1.1;
+              window.HiveSystems?.vfx?.burst?.(st.x, st.z, 0xef4444, 24, 0.16, 1.8);
+              window.HiveSystems?.vfx?.floatingText?.(st.x, 2.7, st.z, '-155 LAMES BRACHIALES RAVAGER !', '#ef4444', true);
+            });
+            showToast('FAUCHAGE AUX LAMES BRACHIALES DU RAVAGER !');
+          } else {
+            showToast('Aucune cible à portée des lames brachiales du Ravager (4.6m).');
+          }
+        } else if (caste === 'bodyburster') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 12.0);
           playerCreature.executeBodybursterSpinalLunge(target);
-        } else if (key === 'r' && caste === 'newborn') {
+        } else if (caste === 'newborn') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 3.8);
           if (target) playerCreature.executeNewbornSkullCrush(target);
           else showToast('Aucune cible à portée d\'étreinte broyeuse (3.8m).');
-        } else if (key === 'r' && caste === 'raven') {
+        } else if (caste === 'raven') {
           playerCreature.executeRavenSeismicCharge();
-        } else if (key === 'r' && caste === 'crusher') {
+        } else if (caste === 'crusher') {
           playerCreature.executeCrusherCharge?.();
-        } else if (key === 'r' && (caste === 'praetorian' || caste === 'palatine' || caste === 'ravager' || caste === 'carrier')) {
+        } else if (caste === 'praetorian' || caste === 'palatine') {
           playerCreature.executePraetorianRoar();
-        } else if (key === 'r' && (caste === 'prowler' || caste === 'lurker' || caste === 'stalker')) {
+        } else if (caste === 'prowler' || caste === 'lurker' || caste === 'stalker') {
           playerCreature.executeProwlerAmbush();
-        } else if (key === 'r' && (caste === 'burster' || caste === 'boiler')) {
+        } else if (caste === 'burster' || caste === 'boiler') {
           this.executeAcidSpray?.();
-        } else if (key === 'r' && caste === 'offspring') {
+        } else if (caste === 'offspring') {
           playerCreature.executeOffspringZ01Siphon();
-        } else if (key === 'r' && caste === 'abomination') {
+        } else if (caste === 'abomination') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
           if (target) playerCreature.executeAbominationSternalCrush(target);
           else showToast('Aucune cible à portée de broyage sternal (4.5m).');
-        } else if (key === 'r' && caste === 'belugamorph') {
+        } else if (caste === 'belugamorph') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 3.8);
           if (target) playerCreature.executeBelugamorphFrenzyBite(target);
           else showToast('Aucune cible à portée de morsures voraces (3.8m).');
-        } else if (key === 'r' && caste === 'flying_drone') {
+        } else if (caste === 'flying_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 12.0);
           playerCreature.executeFlyingDiveSwoop(target);
-        } else if (key === 'r' && caste === 'snake_drone') {
+        } else if (caste === 'snake_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 10.0);
           if (target) playerCreature.executeSnakeConstrictionCoil(target);
           else showToast('Aucune cible à portée d\'enroulement serpentin (10m).');
-        } else if (key === 'r' && caste === 'mantis_drone') {
+        } else if (caste === 'mantis_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.2);
           if (target) playerCreature.executeMantisScytheDecapitation(target);
           else showToast('Aucune cible à portée de fauchage falciforme (5.2m).');
-        } else if (key === 'r' && caste === 'bull_drone') {
+        } else if (caste === 'bull_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 12.0);
           playerCreature.executeBullHornImpaleCharge(target);
-        } else if (key === 'r' && caste === 'gorilla_drone') {
+        } else if (caste === 'gorilla_drone') {
           playerCreature.executeGorillaGroundPound();
-        } else if (key === 'r' && caste === 'boar_drone') {
+        } else if (caste === 'boar_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 12.0);
           playerCreature.executeBoarGoreCharge(target);
-        } else if (key === 'r' && caste === 'scorpion_drone') {
+        } else if (caste === 'scorpion_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 4.5);
           if (target) playerCreature.executeScorpionVenomSting(target);
           else showToast('Aucune cible à portée de piqûre de dard caudal (4.5m).');
-        } else if (key === 'r' && caste === 'cougar_drone') {
+        } else if (caste === 'cougar_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 14.0);
           playerCreature.executeCougarPounceSlash(target);
-        } else if (key === 'r' && caste === 'worker_drone') {
+        } else if (caste === 'worker_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 6.5);
           if (target) playerCreature.executeWorkerResinSpray(target);
           else showToast('Aucune cible à portée de projection de résine (6.5m).');
-        } else if (key === 'r' && caste === 'rhino_drone') {
+        } else if (caste === 'rhino_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 14.0);
           playerCreature.executeRhinoBatteringRam(target);
-        } else if (key === 'r' && caste === 'crab_drone') {
+        } else if (caste === 'crab_drone') {
           const { human: target } = this.findClosestHuman((h) => !h.isCocooned && !h.isIncapacitated && Math.hypot(h.x - playerCreature.x, h.z - playerCreature.z) <= 5.5);
           if (target) playerCreature.executeCrabClawPincerCrush(target);
           else showToast('Aucune cible à portée de broyage aux pinces (5.5m).');
@@ -40365,7 +40634,7 @@
           window.HiveSystems?.vfx?.floatingText?.(ct.x, 2.2, ct.z, `-${unit.damage} CHARGE BÉLIER`, '#ef4444', true);
         });
         showToast('IMPACT DE CHARGE DU CRUSHER !');
-      } else if (unit.caste === 'praetorian' || unit.caste === 'palatine' || unit.caste === 'carrier') {
+      } else if (unit.caste === 'praetorian' || unit.caste === 'palatine') {
         audioManager.playBoneCrunch?.();
         audioManager.playWetImpact?.(unit.x, unit.z);
         rendererEngine.addScreenShake?.(0.28, 0.18);
@@ -40375,6 +40644,22 @@
         window.HiveSystems?.vfx?.burst(target.x, target.z, 0xa855f7, 20, 0.15, 1.6);
         window.HiveSystems?.vfx?.floatingText?.(target.x, 2.6, target.z, `-${unit.damage} CHOC ROYAL`, '#a855f7', true);
         showToast(`FRAPPE ROYALE DE ${unit.caste.toUpperCase()} !`);
+      } else if (unit.caste === 'carrier') {
+        audioManager.playBoneCrunch?.();
+        audioManager.playWetImpact?.(unit.x, unit.z);
+        target.takeDamage(unit.damage, unit);
+        target.staggerTimer = 0.8;
+        const activeSwarmers = (this.rtsUnits || []).filter((u) => !u.isDestroyed && (u.caste === 'swarmer' || u.caste === 'swarmers')).length;
+        if (activeSwarmers < 6) {
+          const sw = new HiveUnit(Date.now() + this.rtsUnits.length, 'swarmer', unit.x + 1.1, unit.z + 0.8);
+          sw.createMesh();
+          this.rtsUnits.push(sw);
+          this.updateStats?.();
+          showToast('FRAPPE DU CARRIER & LARGAGE D’UN SWARMER DORSAL !');
+        } else {
+          showToast('FRAPPE MATRICIELLE DU CARRIER !');
+        }
+        window.HiveSystems?.vfx?.burst(target.x, target.z, 0xa3e635, 20, 0.15, 1.6);
       } else if (unit.caste === 'ravager') {
         audioManager.playBoneCrunch?.();
         audioManager.playWetImpact?.(unit.x, unit.z);
@@ -40404,6 +40689,7 @@
           at.takeDamage(unit.damage, unit, 'acid');
           window.HiveSystems?.vfx?.burst(at.x, at.z, 0xa3e635, 16, 0.15, 1.5);
         });
+        window.HiveSystems?.vfx?.spawnAcidPool?.(target.x, target.z, 3.6, 10);
         window.HiveSystems?.vfx?.ring?.(target.x, target.z, 0xa3e635, 4.2);
         showToast(`RUPTURE CAUSTIQUE DU ${unit.caste.toUpperCase()} !`);
       } else if (unit.caste === 'offspring') {
@@ -40687,14 +40973,15 @@
       this.queen.hp = Math.min(1850, this.queen.hp + 650);
       this.queen.damage = 195;
       if (this.queen.mesh) {
-        rendererEngine.entitiesGroup.remove(this.queen.mesh);
+        rendererEngine.removeObject(this.queen.mesh);
       }
       this.queen.createMesh();
       audioManager.playQueenRoar?.();
       rendererEngine.addScreenShake?.(0.45, 0.35);
       window.HiveSystems?.vfx?.ring?.(this.queen.x, this.queen.z, 0xa855f7, 7.5);
       window.HiveSystems?.vfx?.burst?.(this.queen.x, this.queen.z, 0xa855f7, 36, 0.22, 2.4);
-      window.HiveSystems?.unlockEntry?.('codex_empress_matriarch');
+      window.HiveSystems?.unlockCodex?.(['codex_empress_ravager', 'codex_royal_pheromone_aura']);
+      window.HiveSystems?.narrative?.('IMPÉRATRICE // RÉSONANCE SYNAPTIQUE', 'La Reine Mère franchit le seuil impérial (5.8m) : aura phéromonale maximale activée sur toute la Ruche.', 5000);
       this.log('[ASCENSION IMPÉRATRICE] La Reine Mère mute en Impératrice Suprême (5.8m, 1850 PV).');
       showToast('ASCENSION ACCOMPLIE : REINE MÈRE -> IMPÉRATRICE SUPRÊME (5.8m) !');
       this.updateStats();
@@ -41016,7 +41303,7 @@
         let closestDistance = Infinity;
         for (const unit of this.rtsUnits) {
           if (unit.isDestroyed) continue;
-          if (unit.caste === 'queen' && unit.attachedToOvipositor) continue; // La Reine ne peut être incarnée que si détachée
+          if (['queen', 'empress', 'matriarch_queen'].includes(unit.caste) && unit.attachedToOvipositor) continue; // La Reine/Impératrice ne peut être incarnée que si détachée
           const distance = Math.hypot(unit.x - worldPoint.x, unit.z - worldPoint.z);
           if (distance < closestDistance) {
             closestUnit = unit;
@@ -41026,7 +41313,9 @@
         if (closestUnit && closestDistance <= 8.5) {
           this.possessedUnit = closestUnit;
           this.possessedMoveTarget = null;
-          const unitTitle = closestUnit.caste === 'queen' ? 'REINE DE GUERRE DÉTACHÉE' : closestUnit.caste.toUpperCase();
+          const unitTitle = closestUnit.caste === 'empress'
+            ? 'IMPÉRATRICE SUPRÊME DÉTACHÉE'
+            : (['queen', 'matriarch_queen'].includes(closestUnit.caste) ? 'REINE DE GUERRE DÉTACHÉE' : closestUnit.caste.toUpperCase());
           this.log(`[SYNAPSE] Contrôle direct du ${unitTitle} #${closestUnit.id}.`);
           showToast(`Contrôle synaptique actif : ${unitTitle} [ZQSD / ESPACE pour attaquer].`);
         } else if (this.possessedUnit) {
@@ -41139,7 +41428,7 @@
         this.selectionRingMesh.rotation.x = -Math.PI / 2;
         rendererEngine.scene.add(this.selectionRingMesh);
       }
-      const scaleByCaste = unit.caste === 'queen' ? 2.6 : (['crusher', 'praetorian', 'palatine', 'offspring'].includes(unit.caste) ? 1.55 : 1.0);
+      const scaleByCaste = ['queen', 'empress', 'matriarch_queen'].includes(unit.caste) ? 2.6 : (['crusher', 'praetorian', 'palatine', 'offspring', 'ravager', 'carrier'].includes(unit.caste) ? 1.55 : 1.0);
       this.selectionRingMesh.userData.baseScale = scaleByCaste;
       this.selectionRingMesh.scale.set(scaleByCaste, scaleByCaste, 1);
       this.selectionRingMesh.position.set(unit.x, 0.14, unit.z);
@@ -41170,9 +41459,10 @@
 
       if (queenStatusEl && this.queen) {
         const qPct = Math.max(0, Math.round((this.queen.hp / (this.queen.maxHp || 1000)) * 100));
-        const stance = this.queen.attachedToOvipositor ? 'REINE ANCRÉE' : 'REINE LIBRE';
+        const royalTitle = this.queen.caste === 'empress' ? 'IMPÉRATRICE' : 'REINE';
+        const stance = this.queen.attachedToOvipositor ? `${royalTitle} ANCRÉE` : `${royalTitle} LIBRE`;
         const isAttacked = (this.queenUnderAttackTimer || 0) > 0;
-        queenStatusEl.textContent = isAttacked ? `REINE ATTAQUÉE ! · ${qPct}%` : `${stance} · ${qPct}%`;
+        queenStatusEl.textContent = isAttacked ? `${royalTitle} ATTAQUÉE ! · ${qPct}%` : `${stance} · ${qPct}%`;
         queenStatusEl.classList.toggle('under-attack', isAttacked);
       }
       if (bioQuickEl) {
@@ -41295,7 +41585,7 @@
       }
       this.isCompleted = true;
       window.HiveSystems?.updateObjective(5, 5, 'Choisir le destin de la ruche.');
-      window.HiveSystems?.unlockCodex?.(['palimpseste', 'codex_irise']);
+      window.HiveSystems?.unlockCodex?.(['PALIMPSESTE', 'palimpseste', 'codex_irise', 'elian_torv']);
       window.HiveSystems?.ending((ending) => {
         if (!window.gameInstance) return;
         const aster = window.gameInstance.campaignCharacters?.asterRho;
@@ -41352,7 +41642,7 @@
         mantis.createMesh();
         this.mantisBoss = mantis;
         this.decorateMantisBoss();
-        window.HiveSystems?.unlockCodex?.(['mantis_4', 'codex_protocole_kappa']);
+        window.HiveSystems?.unlockCodex?.(['MANTIS_4', 'BRIAREOS_7', 'mantis_4', 'codex_protocole_kappa', 'codex_sadar_xm99_lance']);
 
         const jansenSpawn = this.findFreePosition(-36, 12, 5, [mantisSpawn]);
         const jansen = new HumanAI(207, 'powerloader', jansenSpawn.x, jansenSpawn.z, 'Exochargeur lourd MN-500 — Chef de pont Jansen');
@@ -41813,10 +42103,10 @@
       if (completedStage !== this.currentStage || !completedStage.isCompleted || this.currentStageIndex >= 5) return;
       const nextStage = this.currentStageIndex + 1;
       const unlocksByStage = {
-        2: ['facehugger', 'codex_ovomorphe', 'codex_sens_biologique', 'codex_facehugger', 'codex_confinement', 'codex_daihotai_tractor', 'journal_01', 'journal_02', 'journal_kade_origin'],
-        3: ['chestburster', 'codex_empreinte_hote', 'codex_chestburster', 'codex_mue', 'codex_seegson_boltgun', 'journal_03', 'journal_04', 'journal_aster_quarantine'],
-        4: ['drone', 'runner', 'codex_drone', 'codex_runner', 'codex_stalker_lurker', 'codex_colonial_marshals', 'codex_f44aa_storm_rifle', 'security_agent', 'thermal_operator', 'gyro_gunner', 'journal_05'],
-        5: ['worker', 'warrior', 'spitter', 'praetorian', 'queen', 'codex_worker', 'codex_warrior', 'codex_spitter', 'codex_praetorian', 'codex_queen', 'codex_boiler_carrier', 'argos_synthetic', 'capture_commando', 'journal_06', 'journal_07', 'journal_08', 'journal_torv_palimpseste']
+        2: ['facehugger', 'maintenance_technician', 'xenobiologist', 'codex_ovomorphe', 'codex_sens_biologique', 'codex_facehugger', 'codex_confinement', 'codex_daihotai_tractor', 'codex_seegson_cargo_tug', 'journal_01', 'journal_02', 'journal_kade_origin'],
+        3: ['chestburster', 'ASTER_RHO', 'codex_empreinte_hote', 'codex_chestburster', 'codex_mue', 'codex_seegson_boltgun', 'codex_narcissus_eev', 'journal_03', 'journal_04', 'journal_aster_quarantine'],
+        4: ['drone', 'runner', 'orbital_rifleman', 'sentry_turret', 'security_drone', 'codex_drone', 'codex_runner', 'codex_stalker_lurker', 'codex_colonial_marshals', 'codex_f44aa_storm_rifle', 'codex_m56_smartgun', 'codex_m240_incinerator', 'codex_ua571c_sentry', 'codex_upp_factions', 'security_agent', 'thermal_operator', 'gyro_gunner', 'journal_05'],
+        5: ['worker', 'warrior', 'spitter', 'praetorian', 'queen', 'BRIAREOS_7', 'MANTIS_4', 'PALIMPSESTE', 'elian_torv', 'codex_worker', 'codex_warrior', 'codex_spitter', 'codex_praetorian', 'codex_queen', 'codex_boiler_carrier', 'codex_m577_apc', 'codex_ud4l_cheyenne', 'codex_sadar_xm99_lance', 'codex_royal_pheromone_aura', 'codex_empress_ravager', 'argos_synthetic', 'capture_commando', 'journal_06', 'journal_07', 'journal_08', 'journal_torv_palimpseste']
       };
       window.HiveSystems?.checkpoint(nextStage, unlocksByStage[nextStage] || [], {
         adultCaste: playerCreature.adultCaste,
@@ -41850,7 +42140,7 @@
           desc: act?.summary || 'L’organisme parasitaire arachnoïde émerge de l’ovomorphe pour localiser et féconder un hôte viable.',
           morphology: 'Appendices arachnoïdes véloces, queue constrictrice préhensile et ovipositeur sous pression.',
           host: 'Matrice de ponte LV-426 sélectionnée. Détection cardiaque active.',
-          abilities: 'Bond balistique [Espace], camouflage dans les conduits [E/V], détection thermique [F2].'
+          abilities: 'Bond facial [ESPACE], conduits de ventilation [C], vision thermique [I], mutation royale [R].'
         },
         3: {
           num: 'ACTE III // GESTATION ET ÉRUPTION',
@@ -41858,7 +42148,7 @@
           desc: act?.summary || 'L’embryon assimile le génome de l’hôte avant de perforer la cage thoracique.',
           morphology: 'Thorax ophidien effilé, mâchoires broyeuses renforcées, peau d’albâtre translucide pré-chitine.',
           host: this.hostProfile ? `Hôte assimilé : ${this.hostProfile}` : 'Hôte biologique colonisé. Biomasse absorbée.',
-          abilities: 'Éruption thoracique [F], festin de biomasse [E], repli tactique sous les grilles [C].'
+          abilities: 'Éruption thoracique / Chasse & Mue [ESPACE], conduits [C], vision thermique [I].'
         },
         4: {
           num: 'ACTE IV // PREDATEUR APEX ET EXPANSION',
@@ -41866,7 +42156,7 @@
           desc: act?.summary || 'La mue terminale libère le chasseur biomécanique parfait au sein du complexe.',
           morphology: 'Carapace chitineuse noire ultra-dense, dôme crânien poli, vertèbres caudales barbelées.',
           host: `Spécimen XX121 — Adaptation caste ${playerCreature.adultCaste || 'drone'}.`,
-          abilities: 'Double mâchoire pharyngienne [F], empalement caudal [R], capture d’hôtes vivants.'
+          abilities: 'Griffes & Pièges [ESPACE], Embuscade [E], Spéciale de Caste [2/R], Dard Caudal [T], Plafond [Q], Conduits [C], Acide [X].'
         },
         5: {
           num: 'ACTE V // HIVE MIND ET DOMINION ROYAL',
@@ -42107,11 +42397,14 @@
       this.lastTimestamp = null;
     }
 
-    // Mission Wave 5 : Télémétrie Diégétique Temps Réel du Panneau de Pause Weyland-Yutani
+    // Mission Wave 5 & Wave 27 : Télémétrie Diégétique Temps Réel du Panneau de Pause Weyland-Yutani
     updatePauseTelemetry() {
       const casteEl = document.getElementById('pause-telemetry-caste');
       if (casteEl) {
-        casteEl.textContent = `XX121-${(playerCreature.caste || 'DRONE').toUpperCase()}`;
+        const activeCaste = this.currentStageIndex === 5
+          ? (this.currentStage?.queen?.caste || 'QUEEN')
+          : (playerCreature.form === 'drone' ? (playerCreature.adultCaste || 'DRONE') : (playerCreature.form || 'EGG'));
+        casteEl.textContent = `XX121-${String(activeCaste).toUpperCase()}`;
       }
       const originEl = document.getElementById('pause-telemetry-origin');
       if (originEl) {
@@ -42119,7 +42412,14 @@
       }
       const biomassEl = document.getElementById('pause-telemetry-biomass');
       if (biomassEl) {
-        biomassEl.textContent = `${Math.round(playerCreature.health)}/${playerCreature.maxHealth} PV | ${playerCreature.biomass || 0} BIO`;
+        const hpCur = this.currentStageIndex === 5 && this.currentStage?.queen ? Math.round(this.currentStage.queen.hp) : Math.round(playerCreature.health);
+        const hpMax = this.currentStageIndex === 5 && this.currentStage?.queen ? Math.round(this.currentStage.queen.maxHp) : Math.round(playerCreature.maxHealth);
+        const bioVal = this.currentStageIndex === 5
+          ? Math.round(this.currentStage?.biomass || 0)
+          : (this.currentStageIndex === 4
+            ? Math.round(this.currentStage?.huntReserve || 0)
+            : (this.currentStageIndex === 3 ? (this.currentStage?.biomassHunted || 0) : 0));
+        biomassEl.textContent = `${hpCur}/${hpMax} PV | ${bioVal} BIO`;
       }
       const hostsEl = document.getElementById('pause-telemetry-hosts');
       if (hostsEl) {

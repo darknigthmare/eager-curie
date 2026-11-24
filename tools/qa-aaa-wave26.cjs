@@ -79,7 +79,8 @@ const checks = [
     name: '8. Stage 4 [R]/[2] moveset coverage for deaconess, red_drone, ravager, carrier, lurker, stalker, burster, boiler, empress',
     ok: gameSrc.includes("caste === 'deaconess'") &&
         gameSrc.includes("caste === 'red_drone'") &&
-        gameSrc.includes("caste === 'ravager' || caste === 'carrier'") &&
+        gameSrc.includes("caste === 'ravager'") &&
+        gameSrc.includes("caste === 'carrier'") &&
         gameSrc.includes("caste === 'prowler' || caste === 'lurker' || caste === 'stalker'") &&
         gameSrc.includes("caste === 'burster' || caste === 'boiler'")
   },

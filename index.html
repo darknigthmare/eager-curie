@@ -1499,41 +1499,55 @@
             <span>FERMER [C]</span>
           </button>
         </header>
-        <div class="codex-tabs" role="tablist" aria-label="Catégories du codex">
-          <button type="button" class="codex-tab active" data-category="castes" role="tab" aria-selected="true">
-            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
-              <path d="M4 11 C4 7 7 4 10 4 C13 4 16 7 16 11 C16 14 14 16 12 16 L12 18 L8 18 L8 16 C6 16 4 14 4 11 Z" stroke-width="1.4"/>
-              <ellipse cx="8" cy="11" rx="1.2" ry="1.8" fill="currentColor"/>
-              <ellipse cx="12" cy="11" rx="1.2" ry="1.8" fill="currentColor"/>
-            </svg>
-            <span>CASTES</span>
-          </button>
-          <button type="button" class="codex-tab" data-category="threats" role="tab" aria-selected="false">
-            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
-              <circle cx="10" cy="10" r="7" stroke-width="1.4"/>
-              <path d="M10 3 L10 6 M10 14 L10 17 M3 10 L6 10 M14 10 L17 10" stroke-width="1.4"/>
-              <circle cx="10" cy="10" r="2" fill="#ef4444"/>
-            </svg>
-            <span>MENACES</span>
-          </button>
-          <button type="button" class="codex-tab" data-category="archives" role="tab" aria-selected="false">
-            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
-              <rect x="3" y="4" width="14" height="12" rx="2" stroke-width="1.4"/>
-              <circle cx="7" cy="10" r="2" stroke-width="1.2"/>
-              <circle cx="13" cy="10" r="2" stroke-width="1.2"/>
-              <line x1="7" y1="13" x2="13" y2="13" stroke-width="1.2"/>
-            </svg>
-            <span>ARCHIVES</span>
-          </button>
-          <button type="button" class="codex-tab" data-category="evolution" role="tab" aria-selected="false">
-            <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
-              <circle cx="10" cy="4" r="2" fill="currentColor"/>
-              <path d="M10 6 L10 10 M10 10 L5 13 L5 16 M10 10 L15 13 L15 16" stroke-width="1.4"/>
-              <circle cx="5" cy="16" r="1.5" fill="#39ff14"/>
-              <circle cx="15" cy="16" r="1.5" fill="#38bdf8"/>
-            </svg>
-            <span>ÉVOLUTION</span>
-          </button>
+        <div class="codex-nav-stack">
+          <div class="codex-tabs" role="tablist" aria-label="Catégories du codex">
+            <button type="button" class="codex-tab active" data-category="castes" role="tab" aria-selected="true">
+              <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <path d="M4 11 C4 7 7 4 10 4 C13 4 16 7 16 11 C16 14 14 16 12 16 L12 18 L8 18 L8 16 C6 16 4 14 4 11 Z" stroke-width="1.4"/>
+                <ellipse cx="8" cy="11" rx="1.2" ry="1.8" fill="currentColor"/>
+                <ellipse cx="12" cy="11" rx="1.2" ry="1.8" fill="currentColor"/>
+              </svg>
+              <span>CASTES</span>
+              <span class="codex-tab-count"></span>
+            </button>
+            <button type="button" class="codex-tab" data-category="threats" role="tab" aria-selected="false">
+              <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <circle cx="10" cy="10" r="7" stroke-width="1.4"/>
+                <path d="M10 3 L10 6 M10 14 L10 17 M3 10 L6 10 M14 10 L17 10" stroke-width="1.4"/>
+                <circle cx="10" cy="10" r="2" fill="#ef4444"/>
+              </svg>
+              <span>MENACES</span>
+              <span class="codex-tab-count"></span>
+            </button>
+            <button type="button" class="codex-tab" data-category="archives" role="tab" aria-selected="false">
+              <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <rect x="3" y="4" width="14" height="12" rx="2" stroke-width="1.4"/>
+                <circle cx="7" cy="10" r="2" stroke-width="1.2"/>
+                <circle cx="13" cy="10" r="2" stroke-width="1.2"/>
+                <line x1="7" y1="13" x2="13" y2="13" stroke-width="1.2"/>
+              </svg>
+              <span>ARCHIVES</span>
+              <span class="codex-tab-count"></span>
+            </button>
+            <button type="button" class="codex-tab" data-category="evolution" role="tab" aria-selected="false">
+              <svg class="btn-sq-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor">
+                <circle cx="10" cy="4" r="2" fill="currentColor"/>
+                <path d="M10 6 L10 10 M10 10 L5 13 L5 16 M10 10 L15 13 L15 16" stroke-width="1.4"/>
+                <circle cx="5" cy="16" r="1.5" fill="#39ff14"/>
+                <circle cx="15" cy="16" r="1.5" fill="#38bdf8"/>
+              </svg>
+              <span>ÉVOLUTION</span>
+              <span class="codex-tab-count"></span>
+            </button>
+          </div>
+          <div id="codex-archive-filters" class="codex-archive-filters hidden" role="group" aria-label="Filtrer les archives">
+            <button type="button" class="codex-filter-pill active" data-filter="all" aria-pressed="true">TOUT</button>
+            <button type="button" class="codex-filter-pill" data-filter="biology" aria-pressed="false">BIOLOGIE &amp; RUCHE</button>
+            <button type="button" class="codex-filter-pill" data-filter="arsenal" aria-pressed="false">ARSENAL</button>
+            <button type="button" class="codex-filter-pill" data-filter="vehicles" aria-pressed="false">VÉHICULES</button>
+            <button type="button" class="codex-filter-pill" data-filter="journals" aria-pressed="false">JOURNAUX</button>
+            <button type="button" class="codex-filter-pill" data-filter="station" aria-pressed="false">STATION &amp; ARCHIVES</button>
+          </div>
         </div>
         <div class="codex-layout">
           <nav id="codex-list" class="codex-list" aria-label="Entrées du codex"></nav>
@@ -1817,6 +1831,7 @@
       <div class="tracker-bezel">
         <div class="tracker-header">
           <span class="tracker-label">M314 MOTION TRACKER</span>
+          <span id="tracker-sector" class="tracker-sector-tag">SEC-00</span>
           <span id="tracker-status" class="tracker-status-tag">STANDBY</span>
         </div>
         <div class="tracker-screen-container">

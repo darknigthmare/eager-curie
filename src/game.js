@@ -26,7 +26,7 @@
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioCtx();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = this.volume;
+        this.masterGain.gain.value = this.isMuted ? 0 : this.volume;
         this.sfxGain = this.ctx.createGain();
         this.sfxGain.connect(this.masterGain);
         if (this.ctx.createDynamicsCompressor) {
@@ -177,16 +177,24 @@
     setVolume(value) {
       this.volume = Math.max(0, Math.min(1, Number(value) || 0));
       if (this.masterGain && this.ctx) {
-        this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : this.volume, this.ctx.currentTime, 0.03);
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : this.volume, now, 0.03);
       }
     }
 
-    toggleMuted() {
-      this.isMuted = !this.isMuted;
+    setMuted(muted) {
+      this.isMuted = Boolean(muted);
       if (this.masterGain && this.ctx) {
-        this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : this.volume, this.ctx.currentTime, 0.03);
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : this.volume, now, 0.03);
       }
       return this.isMuted;
+    }
+
+    toggleMuted() {
+      return this.setMuted(!this.isMuted);
     }
 
     // Audit QA #17 : Ducking audio dynamique sur le bus des détonations/mortiers pour préserver répliques vocales, M314 et feulements
@@ -824,23 +832,6 @@
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
       osc.connect(gain);
       this.connect(gain, x, z, 45);
-      osc.start(now); osc.stop(now + 0.2);
-    }
-
-    playElectricArc(x = null, z = null) {
-      if (!this.initialized || this.isMuted) return;
-      this.resume();
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(120, now);
-      osc.frequency.linearRampToValueAtTime(850, now + 0.08);
-      osc.frequency.linearRampToValueAtTime(60, now + 0.16);
-      gain.gain.setValueAtTime(0.55, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      osc.connect(gain);
-      this.connect(gain, x, z, 55);
       osc.start(now); osc.stop(now + 0.2);
     }
 
@@ -9787,93 +9778,6 @@
       osc2.start(tRelease);
       osc2.stop(tRelease + 0.028);
     }
-
-    // Mission Wave 11 : Ancrage Magnétique Lourd sur Tôle d'Acier (Alien 1979 / Romulus)
-    playMagneticBootClank(x = null, z = null) {
-      if (!this.initialized || this.isMuted) return;
-      this.resume();
-      const ctx = this.ctx;
-      const now = ctx.currentTime;
-
-      // Résonance métallique basse de sol en acier (140Hz -> 58Hz)
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(140, now);
-      osc.frequency.exponentialRampToValueAtTime(58, now + 0.14);
-
-      gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-
-      osc.connect(gain);
-      this.connect(gain, x, z, 50);
-      osc.start(now);
-      osc.stop(now + 0.15);
-
-      // Clic d'impact magnétique haute fréquence (3200Hz)
-      const click = ctx.createOscillator();
-      const clickGain = ctx.createGain();
-      click.type = 'square';
-      click.frequency.setValueAtTime(3200, now);
-      click.frequency.exponentialRampToValueAtTime(950, now + 0.025);
-
-      clickGain.gain.setValueAtTime(0.25, now);
-      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
-
-      click.connect(clickGain);
-      this.connect(clickGain, x, z, 45);
-      click.start(now);
-      click.stop(now + 0.03);
-    }
-
-    // Mission Wave 11 : Rupture Explosive du Joint d'Étanchéité Sous Vide (Alien 1979 / Romulus)
-    playAirlockOuterSealRupture(x = null, z = null) {
-      if (!this.initialized || this.isMuted) return;
-      this.resume();
-      const ctx = this.ctx;
-      const now = ctx.currentTime;
-
-      // 1. Détonation sourde de surpression
-      const boom = ctx.createOscillator();
-      const boomGain = ctx.createGain();
-      boom.type = 'sine';
-      boom.frequency.setValueAtTime(95, now);
-      boom.frequency.exponentialRampToValueAtTime(32, now + 0.35);
-
-      boomGain.gain.setValueAtTime(0.7, now);
-      boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
-
-      boom.connect(boomGain);
-      this.connect(boomGain, x, z, 80);
-      boom.start(now);
-      boom.stop(now + 0.38);
-
-      // 2. Échappement gazeux violent à haute vitesse
-      const bufferSize = Math.floor(ctx.sampleRate * 0.45);
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const output = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.12));
-      }
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-
-      const bpf = ctx.createBiquadFilter();
-      bpf.type = 'bandpass';
-      bpf.frequency.setValueAtTime(1800, now);
-      bpf.frequency.exponentialRampToValueAtTime(320, now + 0.42);
-      bpf.Q.setValueAtTime(2.8, now);
-
-      const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.55, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-
-      noise.connect(bpf);
-      bpf.connect(noiseGain);
-      this.connect(noiseGain, x, z, 75);
-      noise.start(now);
-      noise.stop(now + 0.45);
-    }
   }
 
   const audioManager = new AudioManager();
@@ -9889,6 +9793,7 @@
       this.rangeValEl = document.getElementById('tracker-range-val');
       this.contactsValEl = document.getElementById('tracker-contacts-val');
       this.statusEl = document.getElementById('tracker-status');
+      this.sectorEl = document.getElementById('tracker-sector');
       this.toggleBtn = document.getElementById('btn-toggle-tracker');
       this.modeBtn = document.getElementById('btn-tracker-mode');
       this.blueprintBtn = document.getElementById('btn-toggle-blueprint');
@@ -9956,7 +9861,9 @@
     toggleFocusedMode() {
       this.focusedMode = !this.focusedMode;
       if (this.modeBtn) {
-        this.modeBtn.textContent = this.focusedMode ? '[T] FOCAL' : '[T] 360°';
+        const label = this.modeBtn.querySelector('span');
+        if (label) label.textContent = this.focusedMode ? '[T] FOCAL' : '[T] 360°';
+        else this.modeBtn.textContent = this.focusedMode ? '[T] FOCAL' : '[T] 360°';
       }
       showToast(this.focusedMode ? 'M314 : Mode Balayage Focalisé 45° Longue Portée 35m [T]' : 'M314 : Mode Balayage Omni 360° Standard 22m [T]');
     }
@@ -10113,6 +10020,19 @@
       ctx.fillStyle = 'rgba(57, 255, 20, 0.45)';
       ctx.fillText(`${Math.round(maxRange * 0.5)}m`, cx + radius * 0.5, cy - 4);
       ctx.fillText(`${Math.round(maxRange)}m`, cx + radius * 0.92, cy - 4);
+      const liveSector = stationMap.getSectorInfo?.(player.x, player.z);
+      if (liveSector) {
+        if (this.sectorEl && this.sectorEl.textContent !== liveSector.code) {
+          this.sectorEl.textContent = liveSector.code;
+          this.sectorEl.style.color = liveSector.color || '#7dd3fc';
+          this.sectorEl.style.borderColor = liveSector.color || 'rgba(56, 189, 248, 0.45)';
+        }
+        ctx.font = 'bold 7.5px monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = liveSector.color || '#7dd3fc';
+        ctx.fillText(liveSector.code, 5, 5);
+      }
       ctx.restore();
 
       if (this.focusedMode) {
@@ -10262,7 +10182,7 @@
             const normDist = (cdist / maxRange) * radius;
             const bx = cx + Math.sin(relAngle) * normDist;
             const by = cy - Math.cos(relAngle) * normDist;
-            const angleDiff = Math.abs((((relAngle - this.sweepAngle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+            const angleDiff = Math.abs((((relAngle - sweepNorthAngle) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
             const isHit = this.focusedMode || angleDiff < 0.35;
             ctx.fillStyle = isHit ? '#ffffff' : '#f59e0b';
             ctx.shadowColor = '#f59e0b';
@@ -10456,9 +10376,10 @@
 
         const curDeck = stationMap.blueprintCurrentDeck || 'A';
         const deckCol = curDeck === 'A' ? '#38bdf8' : (curDeck === 'B' ? '#fbbf24' : '#f87171');
+        const bpSector = stationMap.getSectorInfo?.(player.x, player.z);
         ctx.fillStyle = deckCol;
         ctx.font = '700 9px monospace';
-        ctx.fillText(`WY-APOLLO [PONT ${curDeck}]`, 12, 18);
+        ctx.fillText(`WY-APOLLO [PONT ${curDeck}]${bpSector ? ' · ' + bpSector.code : ''}`, 12, 18);
 
         // Onglets Multi-Ponts commutables
         const tabs = [
@@ -18142,22 +18063,22 @@
       }
 
       for (const pod of (this.cryoPods || [])) {
-        if (pod.isBroken) {
-          const d = Math.hypot(pod.x - px, pod.z - pz);
-          if (d <= 14.0) {
-            const drop = (1.0 - d / 14.0) * 198.5;
-            targetTemp = Math.min(targetTemp, 18.5 - drop);
-          }
+        const d = Math.hypot(pod.x - px, pod.z - pz);
+        if (pod.isBroken && d <= 14.0) {
+          const drop = (1.0 - d / 14.0) * 198.5;
+          targetTemp = Math.min(targetTemp, 18.5 - drop);
+        } else if (!pod.isBroken && d <= 4.5) {
+          targetTemp = Math.min(targetTemp, -12.4);
         }
       }
 
       for (const pod of (this.cryoStasisPods || [])) {
-        if (pod.isShattered) {
-          const d = Math.hypot(pod.x - px, pod.z - pz);
-          if (d <= 14.0) {
-            const drop = (1.0 - d / 14.0) * 198.5;
-            targetTemp = Math.min(targetTemp, 18.5 - drop);
-          }
+        const d = Math.hypot(pod.x - px, pod.z - pz);
+        if (pod.isShattered && d <= 14.0) {
+          const drop = (1.0 - d / 14.0) * 198.5;
+          targetTemp = Math.min(targetTemp, 18.5 - drop);
+        } else if (!pod.isShattered && d <= 4.5) {
+          targetTemp = Math.min(targetTemp, -12.4);
         }
       }
 
@@ -18181,11 +18102,32 @@
         }
       }
 
+      for (const ct of (this.cryoExpansionTanks || [])) {
+        if (!ct.isVented) {
+          const d = Math.hypot(ct.x - px, ct.z - pz);
+          if (d <= 6.5) {
+            const drop = (1.0 - d / 6.5) * 110.5;
+            targetTemp = Math.min(targetTemp, 18.5 - drop);
+          }
+        }
+      }
+
+      for (const cg of (this.subZeroCryoGelCanisters || [])) {
+        if (cg.isDischarged) {
+          const d = Math.hypot(cg.x - px, cg.z - pz);
+          if (d <= 6.0) {
+            const drop = (1.0 - d / 6.0) * 115.0;
+            targetTemp = Math.min(targetTemp, 18.5 - drop);
+          }
+        }
+      }
+
       this.currentAmbientTemp = (this.currentAmbientTemp !== undefined)
         ? (this.currentAmbientTemp + (targetTemp - this.currentAmbientTemp) * Math.min(1.0, safeDelta * 4.0))
         : targetTemp;
 
       const t = this.currentAmbientTemp;
+      this.ambientTemp = t;
       const sign = t > 0 ? '+' : '';
       tempValEl.textContent = `${sign}${t.toFixed(1)}°C`;
 
@@ -19152,61 +19094,6 @@
         const dist = Math.hypot(playerCreature.x - mist.x, playerCreature.z - mist.z);
         if (dist <= 7.0) {
           playerCreature.isInMist = true;
-        }
-      }
-    }
-
-    // Mission Wave 12 : Télémétrie Diégétique du Capteur Thermique Cryogénique Ambiant (Alien 1979 / Aliens 1986)
-    updateAmbientTemperatureSensor(safeDelta) {
-      const tempElement = document.getElementById('cryo-ambient-temp');
-      const barFill = document.getElementById('cryo-temp-bar-fill');
-      const sensorBox = document.getElementById('cryo-ambient-sensor');
-      if (!tempElement || !window.playerCreature) return;
-
-      const px = window.playerCreature.x;
-      const pz = window.playerCreature.z;
-      let temp = 18.5; // Température standard de coursive Nostromo / Sevastopol
-
-      // Proximité de caissons cryogéniques (Chantier 15 & Chantier 112)
-      const nearBrokenPod = (this.cryoPods || []).some((p) => p.isBroken && Math.hypot(p.x - px, p.z - pz) <= 7.0) ||
-                            (this.cryoStasisPods || []).some((p) => p.isShattered && Math.hypot(p.x - px, p.z - pz) <= 7.0);
-      const nearActivePod = (this.cryoPods || []).some((p) => !p.isBroken && Math.hypot(p.x - px, p.z - pz) <= 4.0) ||
-                            (this.cryoStasisPods || []).some((p) => !p.isShattered && Math.hypot(p.x - px, p.z - pz) <= 4.0);
-
-      // Proximité d'autres sources cryogéniques
-      const nearCryoGas = (this.cryoExpansionTanks || []).some((ct) => !ct.isVented && Math.hypot(ct.x - px, ct.z - pz) <= 6.0) ||
-                          (this.subZeroCryoGelCanisters || []).some((cg) => cg.isDischarged && Math.hypot(cg.x - px, cg.z - pz) <= 5.5);
-
-      if (nearBrokenPod) {
-        temp = -180.0;
-      } else if (nearCryoGas) {
-        temp = -92.0;
-      } else if (nearActivePod) {
-        temp = -12.4;
-      }
-
-      const sign = temp > 0 ? '+' : '';
-      tempElement.textContent = `${sign}${temp.toFixed(1)}°C`;
-
-      if (temp <= -80.0) {
-        sensorBox?.classList.add('deep-freeze');
-        sensorBox?.classList.remove('subzero');
-        if (barFill) {
-          barFill.style.width = '10%';
-          barFill.style.background = '#0284c7';
-        }
-      } else if (temp < 0) {
-        sensorBox?.classList.add('subzero');
-        sensorBox?.classList.remove('deep-freeze');
-        if (barFill) {
-          barFill.style.width = '35%';
-          barFill.style.background = 'linear-gradient(90deg, #0284c7, #38bdf8)';
-        }
-      } else {
-        sensorBox?.classList.remove('subzero', 'deep-freeze');
-        if (barFill) {
-          barFill.style.width = '75%';
-          barFill.style.background = 'linear-gradient(90deg, #38bdf8, #22c55e)';
         }
       }
     }
@@ -30992,7 +30879,22 @@
 
     setAdultCaste(caste, restoreHealth = true) {
       this.adultCaste = ADULT_CASTE_PROFILES[caste] ? caste : 'drone';
-      window.HiveSystems?.unlockCodex?.([this.adultCaste, 'codex_castes_etendues']);
+      const codexByCaste = {
+        stalker: ['codex_stalker_caste', 'stalker'],
+        boiler: ['codex_boiler_carrier', 'burster'],
+        carrier: ['codex_boiler_carrier', 'praetorian'],
+        ravager: ['codex_empress_ravager', 'warrior'],
+        empress: ['codex_empress_ravager', 'codex_royal_pheromone_aura', 'queen'],
+        matriarch_queen: ['codex_royal_pheromone_aura', 'queen'],
+        predalien: ['warrior', 'praetorian'],
+        neomorph: ['runner', 'prowler'],
+        deacon: ['drone'],
+        deacon_adult: ['drone'],
+        deaconess: ['queen'],
+        abomination: ['offspring']
+      };
+      const extraUnlocks = codexByCaste[this.adultCaste] || [];
+      window.HiveSystems?.unlockCodex?.([this.adultCaste, 'codex_castes_etendues', ...extraUnlocks]);
       // Selecting the future morphology during implantation must not grant
       // adult statistics to the egg, Facehugger or juvenile forms.
       if (this.form !== 'drone') return;
@@ -31937,6 +31839,19 @@
 
   const playerCreature = new PlayerCreature();
 
+  const ARMORED_HOST_TYPES = [
+    'commando', 'smartgunner', 'gyro', 'marine', 'heavy', 'guard', 'uscm_sniper', 'weyland_commando_mk2',
+    'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic',
+    'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander',
+    'uscm_breacher_shotgun', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_smartgun_flamer',
+    'uscm_heavy_grenadier', 'uscm_pulse_lance_gunner', 'uscm_railgun_marksman', 'uscm_cryo_sweeper',
+    'uscm_mortar_trooper', 'uscm_heavy_mortar_spotter', 'uscm_veteran_smartgunner', 'uscm_command_apc_gunner',
+    'uscm_heavy_plasma_gunner', 'uscm_colonial_marshal', 'uscm_cn20_nerve_gas_specialist', 'uscm_cbrn_decon_sweeper',
+    'upp_vanguard', 'weyland_shock_enforcer', 'weyland_xeno_tamer_commando', 'weyland_apex_handler',
+    'weyland_subzero_cryo_trooper', 'weyland_cryo_containment_ward', 'weyland_ape_suit_specialist',
+    'weyland_hazmat_incinerator', 'weyland_mutagen_flamer_specialist'
+  ];
+
   class HumanAI {
     constructor(id, type, x, z, name = '') {
       this.id = id;
@@ -32162,6 +32077,7 @@
         });
         rendererEngine.scene.add(group);
         this.mesh = group;
+        this.attachOverheadHealthBar(group);
         return;
       }
 
@@ -32205,6 +32121,83 @@
       group.position.set(this.x, 0, this.z);
       rendererEngine.scene.add(group);
       this.mesh = group;
+      this.attachOverheadHealthBar(group);
+    }
+
+    attachOverheadHealthBar(group) {
+      if (!group || this.type === 'labrodent' || typeof THREE === 'undefined') return;
+      const isMech = ['powerloader', 'exosuit', 'weyland_heavy_mech', 'weyland_cryo_containment_mech_suit'].includes(this.type) || this.bossId === 'MANTIS_4';
+      const barWidth = this.bossId ? 1.85 : (isMech ? 1.5 : 1.05);
+      const barY = this.bossId === 'MANTIS_4' ? 4.2 : (isMech ? 3.65 : (this.type === 'labhound' || this.isCyberHound ? 1.45 : 2.38));
+
+      const barGroup = new THREE.Group();
+      barGroup.name = 'overhead_health_bar';
+      barGroup.userData.isHealthBar = true;
+      barGroup.position.set(0, barY, 0);
+      barGroup.visible = Boolean(this.bossId);
+
+      const bgMat = new THREE.MeshBasicMaterial({
+        color: 0x020617,
+        transparent: true,
+        opacity: 0.78,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.13), bgMat);
+      bgMesh.castShadow = false;
+      bgMesh.receiveShadow = false;
+      bgMesh.renderOrder = 10;
+      bgMesh.userData.isHealthBar = true;
+      barGroup.add(bgMesh);
+
+      const fillWidth = Math.max(0.1, barWidth - 0.06);
+      const fillMat = new THREE.MeshBasicMaterial({
+        color: this.bossId ? 0x38bdf8 : 0xef4444,
+        transparent: true,
+        opacity: 0.94,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const fillMesh = new THREE.Mesh(new THREE.PlaneGeometry(fillWidth, 0.08), fillMat);
+      fillMesh.position.z = 0.01;
+      fillMesh.castShadow = false;
+      fillMesh.receiveShadow = false;
+      fillMesh.renderOrder = 11;
+      fillMesh.userData.isHealthBar = true;
+      barGroup.add(fillMesh);
+
+      group.add(barGroup);
+      this.healthBarGroup = barGroup;
+      this.healthBarFill = fillMesh;
+      this.healthBarFillWidth = fillWidth;
+    }
+
+    updateOverheadHealthBar() {
+      const bar = this.healthBarGroup;
+      const fill = this.healthBarFill;
+      if (!bar || !fill) return;
+      if (this.isIncapacitated || this.isCocooned || this.isBursting || this.hp <= 0) {
+        bar.visible = false;
+        return;
+      }
+      const hasShield = Boolean(this.bossId && this.bossPhase === 1 && (this.bossShield || 0) > 0);
+      const maxVal = hasShield ? Math.max(1, this.bossMaxShield || 200) : Math.max(1, this.maxHp || 100);
+      const curVal = hasShield ? Math.max(0, this.bossShield || 0) : Math.max(0, this.hp);
+      const ratio = Math.max(0.01, Math.min(1, curVal / maxVal));
+      const shouldShow = Boolean(this.bossId) || this.hp < this.maxHp;
+      bar.visible = shouldShow;
+      if (!shouldShow) return;
+
+      fill.scale.x = ratio;
+      fill.position.x = -((1 - ratio) * this.healthBarFillWidth) * 0.5;
+      if (fill.material?.color) {
+        if (hasShield) fill.material.color.setHex(0x38bdf8);
+        else if (ratio <= 0.35) fill.material.color.setHex(0xf97316);
+        else fill.material.color.setHex(this.isSynthetic?.() ? 0xe2e8f0 : 0xef4444);
+      }
+      if (rendererEngine?.camera) {
+        bar.lookAt(rendererEngine.camera.position);
+      }
     }
 
     addFaceAnchor(group) {
@@ -32556,6 +32549,7 @@
       );
       rendererEngine.addScreenShake?.(appliedDamage >= 40 ? 0.24 : 0.14);
 
+      this.updateOverheadHealthBar();
       if (this.hp <= 0) {
         this.incapacitate();
       }
@@ -32565,6 +32559,7 @@
     incapacitate() {
       if (this.isIncapacitated) return;
       this.isIncapacitated = true;
+      this.updateOverheadHealthBar();
       if (this.skimmerDroneMesh) {
         window.HiveSystems?.vfx?.burst?.(this.skimmerDroneMesh.position.x, this.skimmerDroneMesh.position.z, 0x94a3b8, 20, 0.15, 1.5);
         rendererEngine.scene.remove(this.skimmerDroneMesh);
@@ -32648,6 +32643,7 @@
       if (this.isCocooned) return false;
       this.isCocooned = true;
       this.isIncapacitated = true;
+      this.updateOverheadHealthBar();
       if (this.skimmerDroneMesh) {
         rendererEngine.scene.remove(this.skimmerDroneMesh);
         this.skimmerDroneMesh = null;
@@ -32699,6 +32695,7 @@
 
     collapseForBurst() {
       this.isBursting = true;
+      this.updateOverheadHealthBar();
       if (this.mesh) {
         this.mesh.rotation.x = Math.PI / 2;
         this.mesh.position.y = 0.3;
@@ -33301,9 +33298,10 @@
             const barkColor = '#94a3b8';
             window.HiveSystems?.vfx?.floatingText?.(this.x, 2.6, this.z, radioBark, barkColor, false);
 
-            // Portée d'alerte étouffée : seuls les alliés directs à proximité (< 6.5m) entendent les cris
+            // Portée d'alerte étouffée : seuls les alliés directs non hostiles à proximité (< 6.5m) entendent les cris
             const nearbyAllies = (window.gameInstance?.humans || []).filter((h) => (
               h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
+              !this.isFactionHostile(h) &&
               Math.hypot(h.x - this.x, h.z - this.z) <= 6.5
             ));
             nearbyAllies.forEach((ally) => {
@@ -33345,7 +33343,8 @@
 
             const allies = (window.gameInstance?.humans || []).filter((h) => (
               h !== this && !h.isIncapacitated && !h.isCocooned && !h.isLured &&
-              ['guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator', 'commando', 'android', 'synthetic', 'weyland_cyber_hound'].includes(h.type) &&
+              !this.isFactionHostile(h) &&
+              (h.isCombatant?.() || h.isSynthetic?.() || h.isCyberHound) &&
               Math.hypot(h.x - this.x, h.z - this.z) <= 35
             ));
             allies.forEach((ally) => {
@@ -33804,7 +33803,7 @@
               2.5,
               this.z,
               combatTarget.x,
-              combatTarget.caste === 'queen' ? 3.2 : 1.4,
+              combatTarget.caste === 'empress' ? 4.3 : (['queen', 'matriarch_queen'].includes(combatTarget.caste) ? 3.5 : 1.4),
               combatTarget.z
             );
             window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 20, 0.15, 1.5);
@@ -33836,7 +33835,7 @@
               2.65,
               this.z,
               combatTarget.x,
-              combatTarget.caste === 'queen' ? 3.5 : 1.5,
+              combatTarget.caste === 'empress' ? 4.3 : (['queen', 'matriarch_queen'].includes(combatTarget.caste) ? 3.5 : 1.5),
               combatTarget.z
             );
             window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 20, 0.16, 1.8);
@@ -33869,7 +33868,7 @@
                 startY: 2.72,
                 startZ: this.z,
                 endX: combatTarget.x,
-                endY: combatTarget.caste === 'queen' ? 3.6 : 1.3,
+                endY: combatTarget.caste === 'empress' ? 4.3 : (['queen', 'matriarch_queen'].includes(combatTarget.caste) ? 3.5 : 1.3),
                 endZ: combatTarget.z,
                 color: 0xf59e0b,
                 scale: 0.18,
@@ -34049,7 +34048,7 @@
               2.65,
               this.z,
               combatTarget.x,
-              combatTarget.caste === 'queen' ? 3.5 : 1.5,
+              combatTarget.caste === 'empress' ? 4.3 : (['queen', 'matriarch_queen'].includes(combatTarget.caste) ? 3.5 : 1.5),
               combatTarget.z
             );
             window.HiveSystems?.vfx?.burst?.(combatTarget.x, combatTarget.z, 0xf97316, 32, 0.24, 2.4);
@@ -34451,7 +34450,7 @@
                   startY: 2.72,
                   startZ: this.z,
                   endX: combatTarget.x,
-                  endY: combatTarget.caste === 'queen' ? 3.6 : 1.3,
+                  endY: combatTarget.caste === 'empress' ? 4.3 : (['queen', 'matriarch_queen'].includes(combatTarget.caste) ? 3.5 : 1.3),
                   endZ: combatTarget.z,
                   color: projectileColor,
                   scale: this.bossId === 'MANTIS_4' ? 0.2 : 0.14,
@@ -34612,6 +34611,7 @@
         attack: this.attackAnimation,
         crouch: this.isInfected ? 0.18 : 0
       });
+      this.updateOverheadHealthBar();
     }
 
     // Wave 18 : Réactions d'escouade USCM face aux exécutions brutales (Headbite / Kidnapping Plafond)
@@ -34726,6 +34726,7 @@
         });
         rendererEngine.scene.add(group);
         this.mesh = group;
+        this.attachOverheadHealthBar(group);
         return;
       }
       let geo = new THREE.SphereGeometry(this.caste === 'queen' ? 2.5 : (['praetorian', 'palatine', 'crusher'].includes(this.caste) ? 1.6 : (['swarmers', 'swarmer'].includes(this.caste) ? 0.6 : 1.0)), 12, 12);
@@ -34752,6 +34753,84 @@
       group.position.set(this.x, 0, this.z);
       rendererEngine.scene.add(group);
       this.mesh = group;
+      this.attachOverheadHealthBar(group);
+    }
+
+    attachOverheadHealthBar(group) {
+      if (!group || typeof THREE === 'undefined') return;
+      const isRoyal = ['queen', 'empress', 'matriarch_queen'].includes(this.caste);
+      const isHeavy = ['praetorian', 'palatine', 'crusher', 'ravager', 'carrier', 'king', 'abomination'].includes(this.caste);
+      const isTiny = ['swarmer', 'swarmers'].includes(this.caste);
+      const barWidth = this.caste === 'empress' ? 2.4 : (isRoyal ? 2.1 : (isHeavy ? 1.45 : (isTiny ? 0.72 : 1.1)));
+      const barY = this.caste === 'empress' ? 6.2 : (isRoyal ? 5.2 : (isHeavy ? 3.45 : (isTiny ? 1.15 : 2.55)));
+
+      const barGroup = new THREE.Group();
+      barGroup.name = 'hive_overhead_health_bar';
+      barGroup.userData.isHealthBar = true;
+      barGroup.position.set(0, barY, 0);
+      barGroup.visible = isRoyal;
+
+      const bgMat = new THREE.MeshBasicMaterial({
+        color: 0x04070d,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(barWidth, 0.14), bgMat);
+      bgMesh.castShadow = false;
+      bgMesh.receiveShadow = false;
+      bgMesh.renderOrder = 10;
+      bgMesh.userData.isHealthBar = true;
+      barGroup.add(bgMesh);
+
+      const fillWidth = Math.max(0.1, barWidth - 0.06);
+      const fillMat = new THREE.MeshBasicMaterial({
+        color: isRoyal ? 0xc084fc : 0x39ff14,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const fillMesh = new THREE.Mesh(new THREE.PlaneGeometry(fillWidth, 0.09), fillMat);
+      fillMesh.position.z = 0.01;
+      fillMesh.castShadow = false;
+      fillMesh.receiveShadow = false;
+      fillMesh.renderOrder = 11;
+      fillMesh.userData.isHealthBar = true;
+      barGroup.add(fillMesh);
+
+      group.add(barGroup);
+      this.healthBarGroup = barGroup;
+      this.healthBarFill = fillMesh;
+      this.healthBarFillWidth = fillWidth;
+    }
+
+    updateOverheadHealthBar() {
+      const bar = this.healthBarGroup;
+      const fill = this.healthBarFill;
+      if (!bar || !fill) return;
+      if (this.isDestroyed || this.hp <= 0) {
+        bar.visible = false;
+        return;
+      }
+      const isRoyal = ['queen', 'empress', 'matriarch_queen'].includes(this.caste);
+      const isPossessed = window.gameInstance?.currentStage?.possessedUnit === this;
+      const ratio = Math.max(0.01, Math.min(1, this.hp / Math.max(1, this.maxHp || 100)));
+      const shouldShow = isRoyal || isPossessed || this.hp < this.maxHp;
+      bar.visible = shouldShow;
+      if (!shouldShow) return;
+
+      fill.scale.x = ratio;
+      fill.position.x = -((1 - ratio) * this.healthBarFillWidth) * 0.5;
+      if (fill.material?.color) {
+        if (ratio <= 0.25) fill.material.color.setHex(0xef4444);
+        else if (ratio <= 0.55) fill.material.color.setHex(0xf59e0b);
+        else fill.material.color.setHex(isRoyal ? 0xc084fc : 0x39ff14);
+      }
+      if (rendererEngine?.camera) {
+        bar.lookAt(rendererEngine.camera.position);
+      }
     }
 
     destroy() {
@@ -34765,6 +34844,7 @@
       const armorMult = (this.royalArmorBuffTimer || 0) > 0 ? 0.8 : 1.0;
       const actualDmg = Math.max(0, amount * armorMult);
       this.hp = Math.max(0, this.hp - actualDmg);
+      this.updateOverheadHealthBar();
 
       // Wave 19 : Aversion thermique 1:1 des unités RTS face aux lance-flammes (hors Reine/Impératrice & Crusher)
       const isQueen = ['queen', 'empress', 'matriarch_queen'].includes(this.caste);
@@ -34953,7 +35033,7 @@
       }
       if (moved) {
         this.mesh.position.set(this.x, 0, this.z);
-        this.animationPhase += Math.max(0, deltaSeconds) * (this.caste === 'queen' ? 5.5 : (this.caste === 'runner' ? 13 : (this.caste === 'swarmers' || this.caste === 'swarmer' ? 15 : 8)));
+        this.animationPhase += Math.max(0, deltaSeconds) * (['queen', 'empress', 'matriarch_queen'].includes(this.caste) ? 5.5 : (this.caste === 'runner' ? 13 : (this.caste === 'swarmers' || this.caste === 'swarmer' ? 15 : 8)));
         this.movementBlend = 1;
         animateProceduralModel(this.mesh, {
           phase: this.animationPhase,
@@ -35019,6 +35099,7 @@
         const fleeDx = (this.x - src.x) / distSrc;
         const fleeDz = (this.z - src.z) / distSrc;
         this.moveDirect(fleeDx, fleeDz, deltaSeconds, 3.0, 1.25);
+        this.updateOverheadHealthBar();
         return;
       }
 
@@ -35136,6 +35217,7 @@
           movement: this.attachedToOvipositor ? 0.08 : this.movementBlend,
           pulse: 0.45
         });
+        this.updateOverheadHealthBar();
         return;
       }
 
@@ -35364,6 +35446,7 @@
         attack: this.attackAnimation,
         pulse: this.caste === 'praetorian' ? 0.25 : 0
       });
+      this.updateOverheadHealthBar();
     }
   }
 
@@ -36007,6 +36090,7 @@
         window.gameInstance.humans.push(eng, xenoBio);
       }
       this.updateHUD();
+      this.updateAsterTelemetry();
       appendSensorLog('[FACEHUGGER] Rejoignez une cible viable, bondissez puis maintenez l’agrippement.', 'bio');
       window.HiveSystems?.setMission(2, 0, 'Approcher un hôte viable sans toucher les équipes de capture.');
     }
@@ -36035,9 +36119,9 @@
           : `<strong>Choix d’hôte :</strong><br><br>• Imani Kade produit un Drone polyvalent.<br>• L’animal de service produit un Runner quadrupède.<br>• Un commando blindé produit un Warrior.<br>• Masque d’Aster Rho : ${maskStatus}. Chaque bond arrache une attache avant toute implantation.<br>• Déplacez-vous puis bondissez à courte portée.`);
       const actionsContainer = document.getElementById('action-buttons-container');
       actionsContainer.innerHTML = this.isAttacking
-        ? `<button type="button" id="btn-action-leap" class="act-btn" style="border-color: #f59e0b;">RESSERRER L’ÉTREINTE — ${Math.round(this.implantProgress)}% [ESPACE]</button>`
+        ? `<button type="button" id="btn-action-leap" class="act-btn" style="border-color: #f59e0b;"><span class="act-btn-label">RESSERRER L’ÉTREINTE — ${Math.round(this.implantProgress)}% [ESPACE]</span></button>`
         : `
-          <button type="button" id="btn-action-leap" class="act-btn" ${this.isBonding ? 'disabled' : ''} style="border-color: #39ff14;">${this.isBonding ? 'BOND EN COURS…' : 'BONDIR SUR LE VISAGE [ESPACE]'}</button>
+          <button type="button" id="btn-action-leap" class="act-btn" ${this.isBonding ? 'disabled' : ''} style="border-color: #39ff14;"><span class="act-btn-label">${this.isBonding ? 'BOND EN COURS…' : 'BONDIR SUR LE VISAGE [ESPACE]'}</span></button>
           <button type="button" id="btn-thermal-vision" class="act-btn" style="border-color: #06b6d4; background: rgba(6,182,212,0.15);"><span class="key-badge">I</span>VISION THERMIQUE</button>
           ${!this.isRoyal ? '<button type="button" id="btn-royal-mutate" class="act-btn" style="border-color: #9333ea; background: rgba(147,51,234,0.18);"><span class="key-badge">R</span>MUTATION ROYALE (Alien 3)</button>' : '<button type="button" class="act-btn" disabled style="border-color: #a855f7; color: #c084fc;">FACEHUGGER ROYAL ACTIF</button>'}
         `;
@@ -36047,6 +36131,40 @@
       const btnRoyal = document.getElementById('btn-royal-mutate');
       if (btnRoyal) btnRoyal.onclick = () => this.applyRoyalMutation();
       enrichActionButtonsWithSquareIcons(actionsContainer);
+    }
+
+    updateImplantProgressUI() {
+      setHudBar('sec', 'IMPLANTATION', this.implantProgress);
+      const btn = document.getElementById('btn-action-leap');
+      if (!btn) return;
+      const label = btn.querySelector('.act-btn-label') || btn.querySelector('span:not(.action-sq-icon):not(.key-badge)');
+      const text = `RESSERRER L’ÉTREINTE — ${Math.round(this.implantProgress)}% [ESPACE]`;
+      if (label) label.textContent = text;
+      else btn.textContent = text;
+    }
+
+    updateAsterTelemetry() {
+      const hud = document.getElementById('boss-telemetry-hud');
+      if (!hud) return;
+      const secHud = document.getElementById('boss-telemetry-secondary');
+      secHud?.classList.add('hidden');
+      const aster = (window.gameInstance?.humans || []).find((h) => h.characterKey === 'asterRho');
+      if (!aster || aster.isIncapacitated || aster.isCocooned || aster.usedAsHost || this.isCompleted) {
+        hud.classList.add('hidden');
+        return;
+      }
+      hud.classList.remove('hidden');
+      const nameEl = document.getElementById('boss-hud-name');
+      const phaseEl = document.getElementById('boss-hud-phase');
+      const hpValEl = document.getElementById('boss-hud-hp-val');
+      const shieldFill = document.getElementById('boss-hud-shield-fill');
+      const hpFill = document.getElementById('boss-hud-hp-fill');
+      const attaches = Math.max(0, Math.min(2, Number(aster.maskAttachments) || 0));
+      if (nameEl) nameEl.textContent = 'SURVEILLANTE ASTER RHO // CIBLE KAPPA';
+      if (phaseEl) phaseEl.textContent = attaches > 0 ? `VISIÈRE ${attaches}/2` : 'VISAGE EXPOSÉ';
+      if (hpValEl) hpValEl.textContent = `${Math.ceil(aster.hp)}/${aster.maxHp} PV`;
+      if (shieldFill) shieldFill.style.width = `${(attaches / 2) * 100}%`;
+      if (hpFill) hpFill.style.width = `${Math.max(0, Math.min(100, (aster.hp / Math.max(1, aster.maxHp)) * 100))}%`;
     }
 
     applyRoyalMutation(silent = false) {
@@ -36219,18 +36337,9 @@
       this.targetHost = closestHost;
       if (window.gameInstance) {
         window.gameInstance.hostProfile = closestHost.type;
-        const armoredHostTypes = [
-          'commando', 'smartgunner', 'gyro', 'marine', 'heavy', 'guard', 'uscm_sniper', 'weyland_commando_mk2',
-          'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic',
-          'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander',
-          'uscm_breacher_shotgun', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_smartgun_flamer',
-          'uscm_heavy_grenadier', 'uscm_pulse_lance_gunner', 'uscm_railgun_marksman', 'uscm_cryo_sweeper',
-          'uscm_mortar_trooper', 'uscm_veteran_smartgunner', 'uscm_command_apc_gunner', 'uscm_heavy_plasma_gunner',
-          'weyland_shock_enforcer', 'weyland_xeno_tamer_commando', 'weyland_apex_handler'
-        ];
         let adultCaste = closestHost.type === 'labhound'
           ? 'runner'
-          : (armoredHostTypes.includes(closestHost.type) ? 'warrior' : 'drone');
+          : (ARMORED_HOST_TYPES.includes(closestHost.type) ? 'warrior' : 'drone');
         if (this.isRoyal) {
           adultCaste = 'praetorian';
           window.gameInstance.hostProfile = 'royal_host';
@@ -36265,7 +36374,7 @@
       const gripPower = this.isRoyal ? 24 : 14;
       this.implantProgress = Math.min(100, this.implantProgress + gripPower);
       audioManager.playHeartbeat(1.2);
-      this.updateHUD();
+      this.updateImplantProgressUI();
       this.finishImplantationIfReady();
     }
 
@@ -36339,14 +36448,16 @@
     }
     destroy() {
       if (playerCreature.attachedHost) playerCreature.detachFromHost({ releaseHost: true, hide: true });
+      document.getElementById('boss-telemetry-hud')?.classList.add('hidden');
     }
     update(deltaSeconds = 1 / 60) {
+      this.updateAsterTelemetry();
       if (!this.isAttacking || this.isCompleted) return;
       this.implantProgress = Math.min(100, this.implantProgress + (6 / 0.42) * Math.max(0, deltaSeconds));
       const displayedPercent = Math.floor(this.implantProgress);
       if (displayedPercent !== this.lastImplantPercent) {
         this.lastImplantPercent = displayedPercent;
-        this.updateHUD();
+        this.updateImplantProgressUI();
       }
       this.finishImplantationIfReady();
     }
@@ -36433,7 +36544,10 @@
       }
       const btnEruptNow = document.getElementById('btn-erupt-now');
       if (btnEruptNow) {
-        btnEruptNow.textContent = `PERFORER LE STERNUM [ESPACE] (${Math.round(pressure)}%)`;
+        const eruptLabel = btnEruptNow.querySelector('.act-btn-label') || btnEruptNow.querySelector('span:not(.action-sq-icon):not(.key-badge)');
+        const eruptText = `PERFORER LE STERNUM [ESPACE] (${Math.round(pressure)}%)`;
+        if (eruptLabel) eruptLabel.textContent = eruptText;
+        else btnEruptNow.textContent = eruptText;
       }
 
       // Heartbeat arrhythmia acceleration
@@ -36502,7 +36616,14 @@
       this.updateHUD();
       appendSensorLog('[GESTATION] L’hôte reprend connaissance. La croissance demeure entièrement interne.', 'bio');
       window.HiveSystems?.setMission(3, 0, 'Maturer sans révéler la présence du parasite à l’extérieur.');
-      window.HiveSystems?.narrative('IMANI KADE', 'Je… je vais bien. Le sédatif doit se dissiper.');
+      const hostIsAnimal = this.infectedHost?.type === 'labhound';
+      const hostSpeaker = hostIsAnimal
+        ? 'CAPTEUR VÉTÉRINAIRE'
+        : String(this.infectedHost?.name || 'HÔTE EN QUARANTAINE').toUpperCase();
+      const hostLine = hostIsAnimal
+        ? `${this.infectedHost?.name || 'L’animal de service'} gémit et reprend connaissance. Rythme cardiaque instable.`
+        : 'Je… je vais bien. Le sédatif doit se dissiper, j’ai juste la poitrine serrée.';
+      window.HiveSystems?.narrative(hostSpeaker, hostLine);
     }
 
     updateHUD() {
@@ -36537,7 +36658,7 @@
         const activeMut = playerCreature.embryoMutation || 'carapace';
         instructions.innerHTML = '<strong>Incubation silencieuse & Adaptation génétique :</strong><br><br>• Aucun organisme n’est visible sur l’hôte.<br>• Sélectionnez la mutation embryonnaire active.<br>• À maturité, la perception basculera dans la cage thoracique.';
         actionsContainer.innerHTML = `
-          <button type="button" class="act-btn" disabled>GESTATION INTERNE — ${Math.floor(this.gestationProgress)}%</button>
+          <button type="button" class="act-btn" disabled><span class="act-btn-label">GESTATION INTERNE — ${Math.floor(this.gestationProgress)}%</span></button>
           <div style="display:flex;gap:6px;margin-top:6px;width:100%;justify-content:center;flex-wrap:wrap;">
             <button type="button" class="act-btn btn-mut" data-mutation="agility" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'agility' ? '#38bdf8' : '#334155'};background:${activeMut === 'agility' ? 'rgba(56,189,248,0.22)' : 'transparent'};">AGILITÉ (+18% VIT)</button>
             <button type="button" class="act-btn btn-mut" data-mutation="acid" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'acid' ? '#84cc16' : '#334155'};background:${activeMut === 'acid' ? 'rgba(132,204,22,0.22)' : 'transparent'};">SANG ACIDE (+40% DEG)</button>
@@ -36554,7 +36675,7 @@
         });
       } else if (this.step === 'READY_TO_BURST') {
         instructions.innerHTML = `<strong>Vue intra-thoracique :</strong><br><br>• Le sternum remplit le champ de vision.<br>• Déclenchez la poussée en martelant [ESPACE] ou le bouton d'éruption.<br>• Pression costale : <strong>${Math.round(this.sternumPressure || 10)}%</strong>.`;
-        actionsContainer.innerHTML = `<button type="button" id="btn-erupt-now" class="act-btn" style="border-color: #ef4444;">PERFORER LE STERNUM [ESPACE] (${Math.round(this.sternumPressure || 10)}%)</button>`;
+        actionsContainer.innerHTML = `<button type="button" id="btn-erupt-now" class="act-btn" style="border-color: #ef4444;"><span class="act-btn-label">PERFORER LE STERNUM [ESPACE] (${Math.round(this.sternumPressure || 10)}%)</span></button>`;
         document.getElementById('btn-erupt-now').onclick = () => this.pumpSternumPressure();
       } else if (this.step === 'BURST_SEQUENCE') {
         instructions.innerHTML = '<strong>Perforation :</strong><br><br>• La poussée fracture progressivement les plaques sternales.';
@@ -36585,7 +36706,7 @@
         const activeMut = playerCreature.embryoMutation || 'carapace';
         instructions.innerHTML = `<strong>Chrysalide métamorphique (Cocon Romulus) :</strong><br><br>• Le juvénile tisse un cocon biomécanique ancré aux conduits et parois.<br>• Mutation active : <strong>${activeMut.toUpperCase()}</strong>.<br>• À 100%, la suture longitudinale se déchire pour libérer le prédateur adulte.`;
         actionsContainer.innerHTML = `
-          <button type="button" id="btn-emerge-drone" class="act-btn" ${!isMature ? 'disabled' : ''} style="border-color: #39ff14; ${isMature ? 'background: rgba(57,255,20,0.22); box-shadow: 0 0 16px rgba(57,255,20,0.5);' : ''}">${isMature ? `DÉCHIRER LE COCON ROMULUS & ÉMERGER EN ${adultLabel} [ESPACE]` : `MATURATION DU COCON ROMULUS... (${Math.round(this.chrysalisTimer)}%)`}</button>
+          <button type="button" id="btn-emerge-drone" class="act-btn" ${!isMature ? 'disabled' : ''} style="border-color: #39ff14; ${isMature ? 'background: rgba(57,255,20,0.22); box-shadow: 0 0 16px rgba(57,255,20,0.5);' : ''}"><span class="act-btn-label">${isMature ? `DÉCHIRER LE COCON ROMULUS & ÉMERGER EN ${adultLabel} [ESPACE]` : `MATURATION DU COCON ROMULUS... (${Math.round(this.chrysalisTimer)}%)`}</span></button>
           <div style="display:flex;gap:6px;margin-top:6px;width:100%;justify-content:center;flex-wrap:wrap;">
             <button type="button" class="act-btn btn-mut" data-mutation="agility" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'agility' ? '#38bdf8' : '#334155'};background:${activeMut === 'agility' ? 'rgba(56,189,248,0.22)' : 'transparent'};">AGILITÉ</button>
             <button type="button" class="act-btn btn-mut" data-mutation="acid" style="font-size:11px;padding:4px 8px;border-color:${activeMut === 'acid' ? '#84cc16' : '#334155'};background:${activeMut === 'acid' ? 'rgba(132,204,22,0.22)' : 'transparent'};">ACIDE</button>
@@ -36691,11 +36812,12 @@
       audioManager.playRodentSqueak?.(playerCreature.x + 5, playerCreature.z);
       appendSensorLog('[FAUNE] Cinq petits rongeurs fuient entre les équipements du bloc médical.', 'bio');
 
-      // Chantier 1 : Rations nutritives de laboratoire (Alien 1979)
+      // Chantier 1 : Rations nutritives de laboratoire (Alien 1979) — placement anti-collision (Wave 29)
       const rationOffsets = [[-4, 5], [5, -4]];
       rationOffsets.forEach(([roX, roZ], rIdx) => {
-        const rx = playerCreature.x + roX;
-        const rz = playerCreature.z + roZ;
+        const safePos = this.findRodentSpawn(playerCreature.x + roX, playerCreature.z + roZ, 10 + rIdx);
+        const rx = safePos.x;
+        const rz = safePos.z;
         const mesh = window.HiveModelFactory?.createIndustrialProp?.('ration');
         if (mesh) {
           mesh.position.set(rx, 0.05, rz);
@@ -36932,25 +37054,31 @@
 
     spawnInvestigator() {
       if (!window.gameInstance || this.investigator) return;
-      const spawnX = playerCreature.x > 0 ? playerCreature.x - 14 : playerCreature.x + 14;
-      const spawnZ = playerCreature.z > 0 ? playerCreature.z - 12 : playerCreature.z + 12;
-      const tech = new HumanAI(340, 'scientist', spawnX, spawnZ, 'Technicien de garde Brett');
+      const prefX = playerCreature.x > 0 ? playerCreature.x - 14 : playerCreature.x + 14;
+      const prefZ = playerCreature.z > 0 ? playerCreature.z - 12 : playerCreature.z + 12;
+      const techPos = this.findRodentSpawn(prefX, prefZ, 20);
+      const medPos = this.findRodentSpawn(techPos.x + 3.2, techPos.z - 2.4, 21);
+      const tech = new HumanAI(340, 'scientist', techPos.x, techPos.z, 'Technicien de garde Brett');
       tech.hp = tech.maxHp = 60;
       tech.hostEligibility = 'viable';
-      tech.patrolOrigin = { x: spawnX, z: spawnZ };
+      tech.patrolOrigin = { x: techPos.x, z: techPos.z };
       tech.createMesh();
       tech.lureTowards(playerCreature.x, playerCreature.z);
-      const med = new HumanAI(341, 'civilian_medic', spawnX + 3.2, spawnZ - 2.4, 'Médecin MedBay Dr Clara Solis');
+      const med = new HumanAI(341, 'civilian_medic', medPos.x, medPos.z, 'Médecin MedBay Dr Clara Solis');
       med.hp = med.maxHp = 65;
       med.hostEligibility = 'viable';
-      med.patrolOrigin = { x: spawnX + 3.2, z: spawnZ - 2.4 };
+      med.patrolOrigin = { x: medPos.x, z: medPos.z };
       med.createMesh();
       this.investigator = tech;
       window.gameInstance.humans.push(tech, med);
       audioManager.playRadioChatter?.();
       showToast('INTRUSION AUDITIVE : Un technicien s\'approche du laboratoire médical !');
       appendSensorLog('[ÉCOUTEURS] Pas précipités dans le couloir d\'accès. Un membre d\'équipage investigue les bruits.', 'bio');
-      window.HiveSystems?.narrative('TECHNICIEN BRETT', 'Dr Kade ? Votre transpondeur clignote en anomalie... Hé, qu\'est-ce que c\'est que cette flaque ?! Mon dieu...');
+      const hostName = this.infectedHost?.name || 'Sujet de quarantaine';
+      const brettLine = this.infectedHost?.type === 'labhound'
+        ? `Le collier biométrique de ${hostName} vient de passer à zéro... Hé, qu'est-ce que c'est que cette flaque ?! Mon dieu...`
+        : `${hostName} ? Votre transpondeur clignote en anomalie... Hé, qu'est-ce que c'est que cette flaque ?! Mon dieu...`;
+      window.HiveSystems?.narrative('TECHNICIEN BRETT', brettLine);
     }
 
     update(deltaSeconds = 1 / 60) {
@@ -37006,7 +37134,12 @@
         if (displayedPercent !== this.lastDisplayedPercent) {
           this.lastDisplayedPercent = displayedPercent;
           const progressButton = document.querySelector('#action-buttons-container .act-btn');
-          if (progressButton) progressButton.textContent = `GESTATION INTERNE — ${displayedPercent}%`;
+          if (progressButton) {
+            const progLabel = progressButton.querySelector('.act-btn-label') || progressButton.querySelector('span:not(.action-sq-icon):not(.key-badge)');
+            const progText = `GESTATION INTERNE — ${displayedPercent}%`;
+            if (progLabel) progLabel.textContent = progText;
+            else progressButton.textContent = progText;
+          }
           setHudBar('sec', 'GESTATION INTERNE', this.gestationProgress);
         }
         if (this.gestationProgress >= 100) {
@@ -37076,7 +37209,7 @@
             const emergeTxt = isMature
               ? `ÉMERGER EN ${adultLabel} ADULTE [ESPACE]`
               : `MATURATION ${adultLabel}... (${displayedPercent}%)`;
-            const emergeSpan = emergeButton.querySelector('span');
+            const emergeSpan = emergeButton.querySelector('.act-btn-label') || emergeButton.querySelector('span:not(.action-sq-icon):not(.key-badge)');
             if (emergeSpan) emergeSpan.textContent = emergeTxt;
             else emergeButton.textContent = emergeTxt;
             emergeButton.disabled = !isMature;
@@ -37400,7 +37533,7 @@
         <button type="button" id="btn-resin-meld" class="act-btn" data-tab-cat="stealth" style="border-color: #22c55e; background: rgba(34,197,94,0.25); display: ${playerCreature.isProwling || playerCreature.isCeilingProwling ? 'inline-block' : 'none'};"><span class="key-badge">Z</span>FUSION CAMOUFLAGE PAROI DE RÉSINE</button>
         <button type="button" id="btn-launch-magcart" class="act-btn" data-tab-cat="environment" style="border-color: #eab308; background: rgba(234,179,8,0.22);"><span class="key-badge">K</span>PROPULSION WAGONNET TRANSIT MAG-LEV</button>
         <button type="button" id="btn-trigger-halon" class="act-btn" data-tab-cat="environment" style="border-color: #ef4444; background: rgba(239,68,68,0.22);"><span class="key-badge">K</span>PURGE EXTINCTEUR GAZ HALON 1301</button>
-        <button type="button" id="btn-found-queen-hive" class="act-btn" data-tab-cat="stealth" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);">ÉTABLIR LA NURSERIE ROYALE</button>
+        <button type="button" id="btn-found-queen-hive" class="act-btn" data-tab-cat="stealth" style="border-color: #9d4edd; background: rgba(157,78,221,0.22);"><span class="act-btn-label">ÉTABLIR LA NURSERIE ROYALE</span></button>
       `;
 
       // Injection dynamique des icônes vectorielles .btn-sq-icon sur chaque bouton d'action selon sa catégorie
@@ -37421,7 +37554,6 @@
       if (selectCaste) {
         selectCaste.onchange = (e) => {
           playerCreature.setAdultCaste(e.target.value);
-          playerCreature.createMesh();
           this.updateHUD();
           showToast(`MORPHOLOGIE MODIFIÉE : ${playerCreature.getAdultProfile().label.toUpperCase()}`);
         };
@@ -37453,7 +37585,7 @@
 
       document.getElementById('btn-drone-ambush').onclick = () => this.executeAmbush();
       document.getElementById('btn-inner-jaw').onclick = () => this.handleKeyDown('2');
-      document.getElementById('btn-tail-impale').onclick = () => this.executeTailImpale();
+      document.getElementById('btn-tail-impale').onclick = () => this.handleKeyDown('3');
       document.getElementById('btn-claw-swipe').onclick = () => this.executeClawSwipe();
       document.getElementById('btn-drone-hiss').onclick = () => this.handleKeyDown('h');
       document.getElementById('btn-acid-spit').onclick = () => this.handleKeyDown('x');
@@ -39733,7 +39865,7 @@
         audioManager.playWetImpact?.(target.x, target.z);
 
         const caste = playerCreature.adultCaste || playerCreature.caste || 'drone';
-        const isHeavyCaste = ['queen', 'crusher', 'goliath_siege_crusher', 'titan_crusher_berserker', 'predalien', 'newborn', 'praetorian', 'bone_crusher_ravager', 'ancient_progenitor_queen', 'magma_crust_crusher', 'queen_mother', 'flying_queen', 'matriarch_queen', 'ravager'].includes(caste);
+        const isHeavyCaste = ['queen', 'empress', 'king', 'raven', 'palatine', 'alpha', 'abomination', 'carrier', 'rhino_drone', 'bull_drone', 'gorilla_drone', 'crusher', 'goliath_siege_crusher', 'titan_crusher_berserker', 'predalien', 'newborn', 'praetorian', 'bone_crusher_ravager', 'ancient_progenitor_queen', 'magma_crust_crusher', 'queen_mother', 'flying_queen', 'matriarch_queen', 'ravager'].includes(caste);
         if (isHeavyCaste) {
           audioManager.playGroundSlamImpact?.(landing.x, landing.z);
           rendererEngine.addFloorCraterDecal?.(landing.x, landing.z, 3.2);
@@ -40129,12 +40261,8 @@
     }
 
     getActiveThreats() {
-      const combatantTypes = [
-        'guard', 'marine', 'smartgunner', 'gyro', 'cleaner', 'incinerator',
-        'commando', 'android', 'synthetic', 'powerloader', 'exosuit'
-      ];
       return (window.gameInstance?.humans || []).filter((human) => (
-        combatantTypes.includes(human.type) &&
+        (human.isCombatant?.() || human.isSynthetic?.() || human.isCyberHound) &&
         !human.isCocooned &&
         !human.isIncapacitated
       ));
@@ -40202,13 +40330,18 @@
     updateRoyalButton() {
       const button = document.getElementById('btn-found-queen-hive');
       if (!button) return;
+      const setBtnLabel = (txt) => {
+        const lbl = button.querySelector('.act-btn-label') || button.querySelector('span:not(.action-sq-icon):not(.key-badge)');
+        if (lbl) lbl.textContent = txt;
+        else button.textContent = txt;
+      };
       const activeThreatCount = this.getActiveThreats().length;
       const threatStatus = activeThreatCount === 0 ? 'SECTEUR SÛR' : `${activeThreatCount} MENACE(S)`;
       if (this.royalCycle?.isActive) {
         button.disabled = true;
         button.style.borderColor = '#a855f7';
         button.style.boxShadow = '0 0 12px rgba(168,85,247,0.4)';
-        button.textContent = `CYCLE ROYAL — ${this.royalCycle.state} ${Math.floor(this.royalCycle.progress)}% · ${threatStatus}`;
+        setBtnLabel(`CYCLE ROYAL — ${this.royalCycle.state} ${Math.floor(this.royalCycle.progress)}% · ${threatStatus}`);
         return;
       }
       const canFound = this.canFoundHive();
@@ -40217,12 +40350,12 @@
         button.style.borderColor = '#39ff14';
         button.style.background = 'rgba(57,255,20,0.25)';
         button.style.boxShadow = '0 0 16px rgba(57,255,20,0.5)';
-        button.textContent = `★ ÉTABLIR LA NURSERIE ROYALE [PRÊT] ★`;
+        setBtnLabel('★ ÉTABLIR LA NURSERIE ROYALE [PRÊT] ★');
       } else {
         button.style.borderColor = '#9d4edd';
         button.style.background = 'rgba(157,78,221,0.18)';
         button.style.boxShadow = 'none';
-        button.textContent = `ÉTABLIR LA NURSERIE — HÔTES ${this.capturedHosts}/2 · ${threatStatus}`;
+        setBtnLabel(`ÉTABLIR LA NURSERIE — HÔTES ${this.capturedHosts}/2 · ${threatStatus}`);
       }
     }
 
@@ -40474,12 +40607,82 @@
         }
       }
 
+      this.checkSectorNarrative();
+      this.updateEliteTelemetry();
       this.updateCooldownBadges();
       this.updateRoyalButton();
     }
 
+    checkSectorNarrative() {
+      const sector = stationMap.getSectorInfo?.(playerCreature.x, playerCreature.z);
+      if (!sector || !sector.id) return;
+      this.visitedSectors = this.visitedSectors || new Set();
+      if (this.visitedSectors.has(sector.id)) return;
+      this.visitedSectors.add(sector.id);
+      const beats = {
+        cryo_med: {
+          speaker: 'PALIMPSESTE // BAIE CRYO-MÉDICALE',
+          line: 'Caissons d’hypersommeil et cuves Z-01 en stase : température critique, hôtes endormis détectés.'
+        },
+        armory_kappa: {
+          speaker: 'CANAL KAPPA // ARMURERIE',
+          line: 'Râteliers M41A, M56 et bunker USCM en alerte. Les équipes lourdes convergent sur ce périmètre.'
+        },
+        reactor_core: {
+          speaker: 'M.U.T.H.U.R. 6000 // RÉACTEUR THERMIQUE',
+          line: 'Flux thermique élevé autour du réacteur central : idéal pour la nidification mais surveillé par les unités lourdes.'
+        },
+        hive_nursery: {
+          speaker: 'SYNAPSE RUCHE // NURSERIE BIO-RÉSINE',
+          line: 'Flèche biomécanique active : la sécrétion de résine s’accélère. Sécurisez vos hôtes pour fonder le cycle royal.'
+        },
+        eva_airlock: {
+          speaker: 'SAS EVA // PASSERELLE EST',
+          line: 'Sas de dépressurisation et navette d’évacuation amarrée : sabotage possible pour piéger les escouades.'
+        }
+      };
+      const beat = beats[sector.id];
+      if (beat) {
+        appendSensorLog(`[SECTEUR ${sector.code}] Entrée dans ${sector.name}.`, 'stealth');
+        window.HiveSystems?.narrative?.(beat.speaker, beat.line, 4400);
+      }
+    }
+
+    updateEliteTelemetry() {
+      const hud = document.getElementById('boss-telemetry-hud');
+      if (!hud) return;
+      const secHud = document.getElementById('boss-telemetry-secondary');
+      secHud?.classList.add('hidden');
+      const elites = (window.gameInstance?.humans || []).filter((h) => (
+        !h.isIncapacitated && !h.isCocooned &&
+        ['powerloader', 'weyland_commando_mk2', 'weyland_research_director'].includes(h.type)
+      ));
+      if (!elites.length || this.isCompleted) {
+        hud.classList.add('hidden');
+        return;
+      }
+      elites.sort((a, b) => {
+        const prio = (t) => (t === 'powerloader' ? 0 : (t === 'weyland_commando_mk2' ? 1 : 2));
+        return prio(a.type) - prio(b.type);
+      });
+      const elite = elites[0];
+      hud.classList.remove('hidden');
+      const nameEl = document.getElementById('boss-hud-name');
+      const phaseEl = document.getElementById('boss-hud-phase');
+      const hpValEl = document.getElementById('boss-hud-hp-val');
+      const shieldFill = document.getElementById('boss-hud-shield-fill');
+      const hpFill = document.getElementById('boss-hud-hp-fill');
+      const hpPct = Math.max(0, Math.min(100, (elite.hp / Math.max(1, elite.maxHp)) * 100));
+      if (nameEl) nameEl.textContent = `${String(elite.name || elite.type).toUpperCase()}`;
+      if (phaseEl) phaseEl.textContent = elite.type === 'powerloader' ? 'CATERPILLAR P-5000' : (elite.type === 'weyland_commando_mk2' ? 'ARMURE MK-II' : 'CIBLE HAUTE VALEUR');
+      if (hpValEl) hpValEl.textContent = `${Math.ceil(elite.hp)}/${elite.maxHp} PV`;
+      if (shieldFill) shieldFill.style.width = `${hpPct}%`;
+      if (hpFill) hpFill.style.width = `${hpPct}%`;
+    }
+
     destroy() {
       this.royalCycle?.destroy();
+      document.getElementById('boss-telemetry-hud')?.classList.add('hidden');
       if (this.ovomorphs) {
         for (const egg of this.ovomorphs) {
           if (egg.mesh) rendererEngine.removeObject(egg.mesh);
@@ -40834,7 +41037,7 @@
         target.takeDamage(unit.damage, unit);
         target.staggerTimer = 2.2;
         window.HiveSystems?.vfx?.burst(target.x, target.z, 0x39ff14, 14, 0.12, 1.2);
-        window.HiveSystems?.vfx?.floatingText?.(target.x, 2.3, target.z, 'ENTRAAVÉ PAR LA RÉSINE !', '#39ff14', true);
+        window.HiveSystems?.vfx?.floatingText?.(target.x, 2.3, target.z, 'ENTRAVÉ PAR LA RÉSINE !', '#39ff14', true);
         showToast('JET DE RÉSINE ENTRAPANTE DE L\'OUVRIÈRE !');
       } else {
         audioManager.playBoneCrunch?.();
@@ -41048,7 +41251,7 @@
       const oviBtnBorder = isAttached ? '#a855f7' : '#39ff14';
 
       actionsContainer.innerHTML = `
-        <button type="button" id="btn-toggle-ovipositor" class="act-btn" style="border-color: ${oviBtnBorder}; background: ${oviBtnBg}; font-weight: bold;">${oviBtnLabel}</button>
+        <button type="button" id="btn-toggle-ovipositor" class="act-btn" style="border-color: ${oviBtnBorder}; background: ${oviBtnBg}; font-weight: bold;"><span class="act-btn-label">${oviBtnLabel}</span></button>
         <button type="button" id="btn-spawn-drone" class="act-btn">CYCLE DRONE — HÔTE STANDARD (30 Bio)</button>
         <button type="button" id="btn-spawn-runner" class="act-btn">CYCLE RUNNER — HÔTE QUADRUPÈDE (30 Bio)</button>
         <button type="button" id="btn-spawn-warrior" class="act-btn">CYCLE WARRIOR — HÔTE COMMANDO/BLINDÉ (45 Bio)</button>
@@ -41064,7 +41267,7 @@
         <button type="button" id="btn-spawn-palatine" class="act-btn">GÉLÉE ROYALE : ÉLITE PALATINE (110 Bio)</button>
         <button type="button" id="btn-spawn-offspring" class="act-btn">MUTAGÈNE Z-01 : OFFSPRING (95 Bio)</button>
         <button type="button" id="btn-evolve-empress" class="act-btn" style="border-color: #a855f7; background: rgba(168,85,247,0.18);">ASCENSION IMPÉRATRICE SUPRÊME (140 Bio)</button>
-        <button type="button" id="btn-final-conquest" class="act-btn" disabled style="border-color: #39ff14; background: rgba(57,255,20,0.24);">ISOLER PALIMPSESTE ET CHOISIR UNE FIN</button>
+        <button type="button" id="btn-final-conquest" class="act-btn" disabled style="border-color: #39ff14; background: rgba(57,255,20,0.24);"><span class="act-btn-label">ISOLER PALIMPSESTE ET CHOISIR UNE FIN</span></button>
       `;
 
       document.getElementById('btn-toggle-ovipositor').onclick = () => this.toggleQueenOvipositor();
@@ -41121,7 +41324,7 @@
     }
 
     isArmoredHost(host) {
-      return ['commando', 'smartgunner', 'gyro', 'marine', 'heavy', 'guard', 'uscm_sniper', 'weyland_commando_mk2', 'uscm_heavy_flamer', 'uscm_combat_engineer', 'uscm_sadar_operator', 'uscm_recon_scout', 'uscm_combat_medic', 'uscm_recon_sniper', 'uscm_demolitionist', 'uscm_phalanx_shield', 'uscm_sentry_sapper', 'uscm_field_commander', 'uscm_breacher_shotgun', 'uscm_m42b_marksman', 'weyland_plasma_gunner', 'uscm_smartgun_flamer'].includes(host?.type);
+      return ARMORED_HOST_TYPES.includes(host?.type);
     }
 
     findCompatibleHost(caste) {
@@ -41168,6 +41371,34 @@
       ) return false;
       if (['drone', 'runner', 'warrior', 'offspring'].includes(caste)) return Boolean(this.findCompatibleHost(caste));
       return Boolean(this.findSpecializationPrecursor(caste));
+    }
+
+    getCycleBlockReason(caste, cost) {
+      if (this.queen?.isDestroyed) return 'Reine détruite.';
+      if (!this.queen?.attachedToOvipositor) return 'Réarrimez la Reine à l’ovipositeur [X] pour incuber.';
+      if (this.incubationCycles.filter((cycle) => cycle.isActive).length >= 3) return 'Nurserie saturée (3/3 cycles actifs).';
+      if (this.biomass < cost) return `Biomasse insuffisante (${Math.floor(this.biomass)}/${cost} Bio).`;
+      if (['drone', 'runner', 'warrior', 'offspring'].includes(caste)) {
+        if (!this.findCompatibleHost(caste)) {
+          const req = caste === 'runner'
+            ? 'hôte quadrupède cocoonisé'
+            : (caste === 'warrior'
+              ? 'hôte blindé/commando cocoonisé'
+              : (caste === 'offspring' ? 'hôte viable cocoonisé (Z-01)' : 'hôte humanoïde standard cocoonisé'));
+          return `Requis : ${req}.`;
+        }
+        return `Prêt — lancer le cycle ${caste.toUpperCase()} (${cost} Bio).`;
+      }
+      if (!this.findSpecializationPrecursor(caste)) {
+        const precursorReq = {
+          worker: 'DRONE', prowler: 'DRONE', spitter: 'DRONE',
+          burster: 'RUNNER ou DRONE', boiler: 'SPITTER ou BURSTER',
+          crusher: 'WARRIOR ou RUNNER', ravager: 'WARRIOR',
+          praetorian: 'WARRIOR', carrier: 'PRAETORIAN', palatine: 'PRAETORIAN'
+        };
+        return `Requis : précurseur mature (${precursorReq[caste] || 'DRONE'}) libre.`;
+      }
+      return `Prêt — spécialiser en ${caste.toUpperCase()} (${cost} Bio).`;
     }
 
     spawnUnit(caste, cost) {
@@ -41310,23 +41541,15 @@
       const biomassElement = document.getElementById('hive-biomass');
       const unitElement = document.getElementById('hive-units');
       if (biomassElement) biomassElement.textContent = this.biomass;
-      if (unitElement) unitElement.textContent = this.rtsUnits.filter((unit) => !unit.isDestroyed).length;
+      const aliveUnits = this.rtsUnits.filter((unit) => !unit.isDestroyed).length;
+      const activeCycles = this.incubationCycles.filter((cycle) => cycle.isActive).length;
+      if (unitElement) {
+        unitElement.textContent = activeCycles > 0
+          ? `${aliveUnits} (+${activeCycles} cycle${activeCycles > 1 ? 's' : ''})`
+          : String(aliveUnits);
+      }
       const biomassPercent = Math.max(0, Math.min(100, (this.biomass / 220) * 100));
       setHudBar('sec', 'BIOMASSE DISPONIBLE', biomassPercent, this.biomass);
-      const droneButton = document.getElementById('btn-spawn-drone');
-      const workerButton = document.getElementById('btn-spawn-worker');
-      const runnerButton = document.getElementById('btn-spawn-runner');
-      const warriorButton = document.getElementById('btn-spawn-warrior');
-      const spitterButton = document.getElementById('btn-spawn-spitter');
-      const praetorianButton = document.getElementById('btn-spawn-praetorian');
-      const prowlerButton = document.getElementById('btn-spawn-prowler');
-      const bursterButton = document.getElementById('btn-spawn-burster');
-      const boilerButton = document.getElementById('btn-spawn-boiler');
-      const crusherButton = document.getElementById('btn-spawn-crusher');
-      const ravagerButton = document.getElementById('btn-spawn-ravager');
-      const carrierButton = document.getElementById('btn-spawn-carrier');
-      const palatineButton = document.getElementById('btn-spawn-palatine');
-      const offspringButton = document.getElementById('btn-spawn-offspring');
       const empressButton = document.getElementById('btn-evolve-empress');
       const conquestButton = document.getElementById('btn-final-conquest');
       const oviButton = document.getElementById('btn-toggle-ovipositor');
@@ -41335,27 +41558,40 @@
         const oviText = isAttached
           ? 'DÉTACHER LA REINE DE L’OVIPOSITEUR [X]'
           : 'RÉARRIMER LA REINE À L’OVIPOSITEUR [X]';
-        const oviSpan = oviButton.querySelector('span');
+        const oviSpan = oviButton.querySelector('.act-btn-label') || oviButton.querySelector('span:not(.action-sq-icon):not(.key-badge)') || oviButton.querySelector('span');
         if (oviSpan) oviSpan.textContent = oviText;
         else oviButton.textContent = oviText;
         oviButton.style.borderColor = isAttached ? '#a855f7' : '#39ff14';
         oviButton.style.background = isAttached ? 'rgba(168,85,247,0.24)' : 'rgba(57,255,20,0.24)';
       }
-      if (droneButton) droneButton.disabled = !this.canBeginCycle('drone', 30);
-      if (workerButton) workerButton.disabled = !this.canBeginCycle('worker', 25);
-      if (runnerButton) runnerButton.disabled = !this.canBeginCycle('runner', 30);
-      if (warriorButton) warriorButton.disabled = !this.canBeginCycle('warrior', 45);
-      if (prowlerButton) prowlerButton.disabled = !this.canBeginCycle('prowler', 40);
-      if (spitterButton) spitterButton.disabled = !this.canBeginCycle('spitter', 50);
-      if (bursterButton) bursterButton.disabled = !this.canBeginCycle('burster', 35);
-      if (boilerButton) boilerButton.disabled = !this.canBeginCycle('boiler', 55);
-      if (crusherButton) crusherButton.disabled = !this.canBeginCycle('crusher', 75);
-      if (ravagerButton) ravagerButton.disabled = !this.canBeginCycle('ravager', 85);
-      if (praetorianButton) praetorianButton.disabled = !this.canBeginCycle('praetorian', 80);
-      if (carrierButton) carrierButton.disabled = !this.canBeginCycle('carrier', 95);
-      if (palatineButton) palatineButton.disabled = !this.canBeginCycle('palatine', 110);
-      if (offspringButton) offspringButton.disabled = !this.canBeginCycle('offspring', 95);
-      if (empressButton) empressButton.disabled = Boolean(this.queen?.isDestroyed || this.queen?.caste === 'empress' || this.biomass < 140);
+      const spawnDefs = [
+        ['btn-spawn-drone', 'drone', 30],
+        ['btn-spawn-worker', 'worker', 25],
+        ['btn-spawn-runner', 'runner', 30],
+        ['btn-spawn-warrior', 'warrior', 45],
+        ['btn-spawn-prowler', 'prowler', 40],
+        ['btn-spawn-spitter', 'spitter', 50],
+        ['btn-spawn-burster', 'burster', 35],
+        ['btn-spawn-boiler', 'boiler', 55],
+        ['btn-spawn-crusher', 'crusher', 75],
+        ['btn-spawn-ravager', 'ravager', 85],
+        ['btn-spawn-praetorian', 'praetorian', 80],
+        ['btn-spawn-carrier', 'carrier', 95],
+        ['btn-spawn-palatine', 'palatine', 110],
+        ['btn-spawn-offspring', 'offspring', 95]
+      ];
+      for (const [btnId, caste, cost] of spawnDefs) {
+        const btn = document.getElementById(btnId);
+        if (!btn) continue;
+        btn.disabled = !this.canBeginCycle(caste, cost);
+        btn.title = this.getCycleBlockReason(caste, cost);
+      }
+      if (empressButton) {
+        empressButton.disabled = Boolean(this.queen?.isDestroyed || this.queen?.caste === 'empress' || this.biomass < 140);
+        empressButton.title = this.queen?.caste === 'empress'
+          ? 'Impératrice Suprême déjà active.'
+          : (this.biomass < 140 ? `Biomasse insuffisante (${Math.floor(this.biomass)}/140 Bio).` : 'Faire muter la Reine Mère en Impératrice Suprême (5.8m, 1850 PV).');
+      }
       if (conquestButton) {
         conquestButton.disabled = !this.canCompleteConquest();
         const activeThreats = (window.gameInstance?.humans || []).filter((human) => !human.isCocooned && !human.isIncapacitated).length;
@@ -41364,7 +41600,7 @@
           : (this.mantisBoss ? `MANTIS PHASE ${this.mantisBoss?.bossPhase || 1}` : 'EN APPROCHE ORBITALE');
         const purgeStatus = this.relayCount >= 3 ? 'PURGE INTERROMPUE' : `PURGE ${Math.ceil(this.purgeRemaining)}s`;
         const conquestText = `ISOLER PALIMPSESTE — RELAIS ${this.relayCount}/3 · ${bossStatus} · MENACES ${activeThreats} · ${purgeStatus}`;
-        const conquestSpan = conquestButton.querySelector('span');
+        const conquestSpan = conquestButton.querySelector('.act-btn-label') || conquestButton.querySelector('span:not(.action-sq-icon):not(.key-badge)') || conquestButton.querySelector('span');
         if (conquestSpan) conquestSpan.textContent = conquestText;
         else conquestButton.textContent = conquestText;
         conquestButton.title = conquestButton.disabled
@@ -41617,7 +41853,8 @@
       }
       if (bioQuickEl) {
         const cocoons = (window.gameInstance?.humans || []).filter((h) => h.isCocooned && !h.isConsumedByCycle).length;
-        bioQuickEl.textContent = `BIO ${Math.round(this.biomass)}/220 · HÔTES ${cocoons}`;
+        const oviRate = (this.queen?.attachedToOvipositor && !this.queen.isDestroyed) ? ' (+3/8s)' : '';
+        bioQuickEl.textContent = `BIO ${Math.round(this.biomass)}/220${oviRate} · HÔTES ${cocoons}`;
       }
 
       if (timerEl) {
@@ -41860,6 +42097,7 @@
         if (typeof resinGrid !== 'undefined' && resinGrid?.getResin?.(this.possessedUnit.x, this.possessedUnit.z) > 0) {
           this.possessedUnit.hp = Math.min(this.possessedUnit.maxHp, this.possessedUnit.hp + 6 * deltaSeconds);
         }
+        this.possessedUnit.updateOverheadHealthBar?.();
       } else {
         // Panning libre de la caméra tactique RTS (ZQSD / Flèches)
         const { dx, dy } = inputManager.getMovementVector();
@@ -41925,18 +42163,19 @@
         }
       }
 
-      // Wave 23 : Récolte organique passive de l'Ovipositeur (évite tout soft-lock économique)
+      // Wave 23 & 29 : Récolte organique passive de l'Ovipositeur (évite tout soft-lock économique)
       if (this.queen?.attachedToOvipositor && !this.queen.isDestroyed) {
         this.oviBiomassTimer = (this.oviBiomassTimer || 0) + deltaSeconds;
         if (this.oviBiomassTimer >= 8.0) {
           this.oviBiomassTimer = 0;
           if (this.biomass < 220) {
             this.biomass = Math.min(220, this.biomass + 3);
+            window.HiveSystems?.vfx?.floatingText?.(this.queen.x, 4.4, this.queen.z, '+3 BIO', '#a3e635', false);
             this.updateStats();
           }
         }
       }
-      const hostCount = humans.filter((human) => human.isCocooned).length;
+      const hostCount = humans.filter((human) => human.isCocooned && !human.isConsumedByCycle).length;
       if (hostCount !== this.lastHostCount) {
         this.lastHostCount = hostCount;
         const hostElement = document.getElementById('hive-hosts');
@@ -41982,7 +42221,7 @@
         }
         if (this.queenDetachingTimer <= 0) {
           this.queen.attachedToOvipositor = false;
-          this.queen.speed = 0.38;
+          this.queen.speed = this.queen.caste === 'empress' ? 0.42 : 0.38;
           window.HiveSystems?.vfx?.burst?.(this.queen.x, this.queen.z, 0x3b0764, 32, 0.24, 2.8);
           window.HiveSystems?.vfx?.floatingText?.(this.queen.x, 3.8, this.queen.z, 'OVIPOSITEUR SECTIONNÉ !', '#a855f7', true);
           audioManager.playQueenRoar?.();
@@ -42079,7 +42318,9 @@
         sidebar.inert = !expanded;
         sidebar.setAttribute('aria-hidden', String(!expanded));
         toggleButton.setAttribute('aria-expanded', String(expanded));
-        toggleButton.textContent = expanded ? 'MASQUER LES ACTIONS' : 'ACTIONS / OBJECTIFS';
+        const toggleLabel = toggleButton.querySelector('span');
+        if (toggleLabel) toggleLabel.textContent = expanded ? 'MASQUER LES ACTIONS' : 'ACTIONS / OBJECTIFS';
+        else toggleButton.textContent = expanded ? 'MASQUER LES ACTIONS' : 'ACTIONS / OBJECTIFS';
         if (!expanded) document.getElementById('game-canvas')?.focus({ preventScroll: true });
       };
 
@@ -42592,7 +42833,7 @@
       }
       const hostsEl = document.getElementById('pause-telemetry-hosts');
       if (hostsEl) {
-        const cocoonCount = (this.humans || []).filter((h) => h.isCocooned).length;
+        const cocoonCount = (this.humans || []).filter((h) => h.isCocooned && !h.isConsumedByCycle).length;
         const neutCount = (this.humans || []).filter((h) => h.isIncapacitated && !h.isCocooned).length;
         hostsEl.textContent = `${cocoonCount} COCON(S) | ${neutCount} NEUT.`;
       }
@@ -42600,6 +42841,10 @@
 
     setMasterVolume(value) {
       audioManager.setVolume(value);
+    }
+
+    setMuted(muted) {
+      return audioManager.setMuted(muted);
     }
 
     toggleAudio() {

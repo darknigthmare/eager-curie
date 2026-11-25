@@ -270,7 +270,11 @@
       app?.classList.toggle('high-contrast', this.values.highContrast);
       app?.classList.toggle('reduce-motion', this.values.reducedMotion);
       if (this.game && this.audioMuted !== this.values.muted) {
-        this.audioMuted = !!this.game.toggleAudio?.();
+        if (typeof this.game.setMuted === 'function') {
+          this.audioMuted = !!this.game.setMuted(this.values.muted);
+        } else {
+          this.audioMuted = !!this.game.toggleAudio?.();
+        }
       }
       const audioButton = document.getElementById('btn-audio-toggle');
       audioButton?.setAttribute('aria-pressed', String(this.values.muted));
@@ -361,12 +365,6 @@
     clear(resolveProjectiles = false) {
       const effects = this.effects.splice(0, this.effects.length);
       for (const effect of effects) {
-        if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
-          while (effect.group.children.length > 0) {
-            const p = effect.group.children.pop();
-            this.particleMeshPool.push(p);
-          }
-        }
         if (effect.burst && effect.group && this.particleMeshPool.length < 180) {
           while (effect.group.children.length > 0) {
             const p = effect.group.children.pop();
@@ -1570,6 +1568,7 @@
       this.game = null;
       this.content = null;
       this.activeCodexCategory = 'castes';
+      this.activeArchiveFilter = 'all';
       this.focusOrigins = new WeakMap();
       this.inertSnapshots = new Map();
       this.narrativeTimer = null;
@@ -1966,6 +1965,54 @@
       });
     }
 
+    activateCodexTab(category, preferredEntryId = null) {
+      const tabs = Array.from(document.querySelectorAll('.codex-tab'));
+      const panel = document.querySelector('.codex-layout');
+      const targetTab = tabs.find((t) => (t.getAttribute('data-category') || 'castes') === category) || tabs[0];
+      const resolvedCategory = targetTab?.getAttribute('data-category') || category || 'castes';
+      this.activeCodexCategory = resolvedCategory;
+      tabs.forEach((tab) => {
+        const active = tab === targetTab;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+      });
+      if (targetTab) panel?.setAttribute('aria-labelledby', targetTab.id);
+      this.renderCodex(resolvedCategory, preferredEntryId);
+    }
+
+    matchesArchiveFilter(entry, filter = this.activeArchiveFilter) {
+      if (!filter || filter === 'all') return true;
+      const src = String(entry?.source || entry?.category || 'archives').toLowerCase();
+      if (filter === 'biology') return src === 'biology' || src === 'hive';
+      if (filter === 'arsenal') return src === 'arsenal';
+      if (filter === 'vehicles') return src === 'vehicles';
+      if (filter === 'journals') return src === 'journal';
+      if (filter === 'station') return src === 'station' || src === 'archives' || src === 'opposition';
+      return true;
+    }
+
+    updateCodexTabCounts() {
+      const rawUnlocked = this.saveManager.read()?.unlockedCodex || ['ovomorphe'];
+      const unlocked = new Set(rawUnlocked);
+      const unlockedLower = new Set(rawUnlocked.map((v) => String(v).toLowerCase()));
+      const isEntryUnlocked = (entryId, entryObj) => (
+        Boolean(entryObj?.unlockedByDefault) ||
+        unlocked.has(entryId) ||
+        unlockedLower.has(String(entryId).toLowerCase())
+      );
+
+      document.querySelectorAll('.codex-tab').forEach((tab) => {
+        const countEl = tab.querySelector('.codex-tab-count');
+        if (!countEl) return;
+        const cat = tab.getAttribute('data-category') || 'castes';
+        const list = cat === 'evolution' ? this.entriesForCategory('castes') : this.entriesForCategory(cat);
+        const total = list.length;
+        const count = list.filter((e, idx) => isEntryUnlocked(e.id || e.key || `entry-${idx}`, e)).length;
+        countEl.textContent = `${count}/${total}`;
+      });
+    }
+
     bindCodex() {
       document.getElementById('btn-close-codex')?.addEventListener('click', () => this.closeCodex());
       const tabs = Array.from(document.querySelectorAll('.codex-tab'));
@@ -1975,25 +2022,12 @@
         panel.setAttribute('role', 'tabpanel');
       }
 
-      const activateTab = (button) => {
-        const category = button.getAttribute('data-category') || 'castes';
-        this.activeCodexCategory = category;
-        tabs.forEach((tab) => {
-          const active = tab === button;
-          tab.classList.toggle('active', active);
-          tab.setAttribute('aria-selected', String(active));
-          tab.tabIndex = active ? 0 : -1;
-        });
-        panel?.setAttribute('aria-labelledby', button.id);
-        this.renderCodex(category);
-      };
-
       tabs.forEach((button, index) => {
         const category = button.getAttribute('data-category') || `category-${index}`;
         button.id = `codex-tab-${category}`;
         button.setAttribute('aria-controls', 'codex-tabpanel');
         button.tabIndex = button.classList.contains('active') ? 0 : -1;
-        button.addEventListener('click', () => activateTab(button));
+        button.addEventListener('click', () => this.activateCodexTab(category));
         button.addEventListener('keydown', (event) => {
           const horizontalKeys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
           if (!horizontalKeys.includes(event.key)) return;
@@ -2004,12 +2038,27 @@
           if (event.key === 'Home') nextIndex = 0;
           if (event.key === 'End') nextIndex = tabs.length - 1;
           const nextTab = tabs[nextIndex];
-          activateTab(nextTab);
+          this.activateCodexTab(nextTab.getAttribute('data-category') || 'castes');
           nextTab.focus({ preventScroll: true });
         });
       });
       const initiallyActiveTab = tabs.find((tab) => tab.classList.contains('active'));
       if (initiallyActiveTab) panel?.setAttribute('aria-labelledby', initiallyActiveTab.id);
+
+      const filterPills = Array.from(document.querySelectorAll('.codex-filter-pill'));
+      filterPills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+          this.activeArchiveFilter = pill.getAttribute('data-filter') || 'all';
+          filterPills.forEach((p) => {
+            const active = p === pill;
+            p.classList.toggle('active', active);
+            p.setAttribute('aria-pressed', String(active));
+          });
+          if (this.activeCodexCategory === 'archives') {
+            this.renderCodex('archives');
+          }
+        });
+      });
     }
 
     bindPauseAndSettings() {
@@ -2400,10 +2449,14 @@
       window.audioManager?.playMotherChime?.();
     }
 
-    renderCodex(category) {
+    renderCodex(category, preferredEntryId = null) {
       const list = document.getElementById('codex-list');
       const detail = document.getElementById('codex-detail');
       if (!list || !detail) return;
+      this.updateCodexTabCounts();
+      const archiveFilters = document.getElementById('codex-archive-filters');
+      archiveFilters?.classList.toggle('hidden', category !== 'archives');
+
       list.replaceChildren();
       const layout = list.closest('.codex-layout');
       layout?.classList.toggle('is-full-width', category === 'evolution');
@@ -2413,7 +2466,10 @@
         return;
       }
 
-      const entries = this.entriesForCategory(category);
+      const rawEntries = this.entriesForCategory(category);
+      const entries = category === 'archives'
+        ? rawEntries.filter((entry) => this.matchesArchiveFilter(entry, this.activeArchiveFilter))
+        : rawEntries;
       const rawUnlocked = this.saveManager.read()?.unlockedCodex || ['ovomorphe'];
       const unlocked = new Set(rawUnlocked);
       const unlockedLower = new Set(rawUnlocked.map((v) => String(v).toLowerCase()));
@@ -2466,11 +2522,21 @@
         detail.innerHTML = '<span class="codex-status">BASE VIDE</span><h3>AUCUNE DONNÉE</h3><p>Cette section sera alimentée par les observations de campagne.</p>';
         return;
       }
-      const firstUnlockedIndex = entries.findIndex((entry) => isEntryUnlocked(entry.id || entry.key, entry));
-      const selectedIndex = firstUnlockedIndex >= 0 ? firstUnlockedIndex : 0;
+      let selectedIndex = -1;
+      if (preferredEntryId) {
+        const needle = String(preferredEntryId).toLowerCase();
+        selectedIndex = entries.findIndex((entry) => String(entry.id || entry.key || '').toLowerCase() === needle);
+      }
+      if (selectedIndex < 0) {
+        const firstUnlockedIndex = entries.findIndex((entry) => isEntryUnlocked(entry.id || entry.key, entry));
+        selectedIndex = firstUnlockedIndex >= 0 ? firstUnlockedIndex : 0;
+      }
+      const selectedEntry = entries[selectedIndex];
+      const selectedUnlocked = isEntryUnlocked(selectedEntry.id || selectedEntry.key, selectedEntry);
       list.children[selectedIndex]?.classList.add('active');
       list.children[selectedIndex]?.setAttribute('aria-current', 'true');
-      this.renderCodexDetail(detail, entries[selectedIndex], firstUnlockedIndex >= 0);
+      list.children[selectedIndex]?.scrollIntoView?.({ block: 'nearest' });
+      this.renderCodexDetail(detail, selectedEntry, selectedUnlocked);
     }
 
     renderCodexDetail(container, entry, unlocked) {
@@ -2622,7 +2688,9 @@
     }
 
     renderEvolution(container) {
-      const unlocked = new Set(this.saveManager.read()?.unlockedCodex || ['ovomorphe']);
+      const rawUnlocked = this.saveManager.read()?.unlockedCodex || ['ovomorphe'];
+      const unlocked = new Set(rawUnlocked);
+      const unlockedLower = new Set(rawUnlocked.map((v) => String(v).toLowerCase()));
       const branches = [
         {
           label: 'CYCLE REPRODUCTIF OBLIGATOIRE',
@@ -2682,9 +2750,14 @@
         const nodesGrid = document.createElement('div');
         nodesGrid.className = 'evolution-nodes-grid';
         branch.ids.forEach((id) => {
-          const isUnlocked = unlocked.has(id);
-          const node = document.createElement('div');
-          node.className = `evolution-node${isUnlocked ? ' unlocked' : ' locked'}`;
+          const isUnlocked = unlocked.has(id) || unlockedLower.has(String(id).toLowerCase());
+          const node = document.createElement(isUnlocked ? 'button' : 'div');
+          if (isUnlocked) {
+            node.type = 'button';
+            node.title = `Consulter le dossier ${String(names[id] || id)}`;
+            node.addEventListener('click', () => this.activateCodexTab('castes', id));
+          }
+          node.className = `evolution-node${isUnlocked ? ' unlocked is-clickable' : ' locked'}`;
           node.innerHTML = `
             <div class="evolution-node-header">
               <div class="evolution-node-icon" aria-hidden="true">${casteIcons[id] || casteIcons.drone}</div>
@@ -2692,7 +2765,7 @@
             </div>
             <div class="evolution-node-body">
               <span class="evolution-node-name">${String(names[id] || id).toUpperCase()}</span>
-              <span class="evolution-node-status">${isUnlocked ? 'ACTIF / DÉCOUVERT' : 'GÉNOTYPE REQUIS'}</span>
+              <span class="evolution-node-status">${isUnlocked ? 'OUVRIR LE DOSSIER →' : 'GÉNOTYPE REQUIS'}</span>
             </div>
           `;
           nodesGrid.appendChild(node);
